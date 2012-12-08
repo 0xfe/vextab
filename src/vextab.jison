@@ -18,7 +18,9 @@
 
 "notes"                        { this.begin('notes'); return 'NOTES'; }
 "tabstave"                       return 'TABSTAVE'
-<INITIAL>[^\s=]+       return 'WORD'
+<INITIAL>[^\s=]+                 return 'WORD'
+
+
 "/"                   return '/'
 "-"                   return '-'
 "+"                   return '+'
