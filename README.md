@@ -44,7 +44,12 @@ creates a sub-directory called `node-modules`.
 
 ## Build and Test
 
-Run `build.sh` and pull up `build/runtest.html` in your browser.
+Run `build.sh` and pull up `build/src/runtest.html` in your browser.
+
+If you want to auto-build on changes to source files, you need to install the Ruby gem `guard`. If you have `bundler` you can do the following.
+
+    $ bundle install
+    $ bundle exec guard
 
 ## Links
 
