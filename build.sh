@@ -9,8 +9,9 @@
 # npm install coffee-script
 
 rm -rf build/
-mkdir build
-./node_modules/.bin/jison src/vextab.jison -o build/vextab_parser.js
-./node_modules/.bin/coffee --join build/vextab_coffee.js --compile src/*.coffee
+mkdir -p build/output
+
+./node_modules/.bin/jison src/vextab.jison -o build/output/vextab_parser.js
+./node_modules/.bin/coffee -o build/output --compile src/*.coffee
 cp -R src build/
 cp -R support build/
