@@ -60,29 +60,27 @@
 %%
 
 e:
-  vextab maybe_EOF
+  maybe_vextab EOF
+    { return $1 }
   ;
 
-maybe_EOF
+maybe_vextab
   :
-  | EOF
+    { $$ = null }
+  | vextab
+    { $$ = $1 }
   ;
 
 vextab
   : stave
+    { $$ = [$1] }
   | vextab stave
-  | EOF
+    { $$ = [].concat($1, $2) }
   ;
 
 stave
   : TABSTAVE maybe_options maybe_notelist
-    {
-      var options = $2;
-      if (options && options.notation) {
-        vextab_parser.artist.addNoteStave($2);
-      }
-      vextab_parser.artist.addTabStave($2);
-    }
+    { $$ = { element: "stave", options: $2, notes: $3 } }
   ;
 
 maybe_options
@@ -101,7 +99,9 @@ options
 
 maybe_notelist
   :
+    { $$ = null }
   | notelist
+    { $$ = $1 }
   ;
 
 notelist
