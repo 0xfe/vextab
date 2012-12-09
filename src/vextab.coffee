@@ -7,4 +7,5 @@ class Vex.Flow.VexTab
     throw new Vex.RERR("ParseError", message)
 
   parse: (code) ->
+    console.log("Parsing: #{code}")
     return vextab_parser.parse(code)
