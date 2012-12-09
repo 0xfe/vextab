@@ -92,7 +92,14 @@ vextab
 
 stave
   : TABSTAVE maybe_options maybe_notelist
-    { $$ = { element: "stave", options: $2, notes: $3 } }
+    { $$ = {
+        element: "stave",
+        options: $2,
+        notes: $3,
+        _l: @1.first_line,
+        _c: @1.first_column
+      }
+    }
   ;
 
 maybe_options

@@ -1,15 +1,73 @@
 class Vex.Flow.VexTab
   @DEBUG = true
-  L = (message) -> console.log(message) if Vex.Flow.VexTab.DEBUG
 
+  # Private methods
+  L = (message) -> console.log("Vex.Flow.VexTab: #{message}") if Vex.Flow.VexTab.DEBUG
+  newError = (object, msg) ->
+    new Vex.RERR("ParseError",
+                 "#{msg} in line #{object._l} column #{object._c}")
+
+  # Public methods
   constructor: (@artist) ->
     @valid = false
-    vextab_parser.parseError = Vex.Flow.VexTab.parseError
+    @elements = false
 
-  @parseError: (message, hash) ->
-    L message
-    throw new Vex.RERR("ParseError", message)
+  parseStaveOptions: (options) ->
+    params = {}
+    return params unless options?
+
+    # Keep track of notation visibility
+    notation_visibility =
+      notation: false
+      tablature: true
+
+    notation_option = null
+
+    for option in options
+      error = (msg) -> newError(option, msg)
+      params[option.key] = option.value
+      switch option.key
+        when "notation", "tablature"
+          throw error("'#{option.key}' must be 'true' or 'false'") if option.value not in ["true", "false"]
+          notation_visibility[option.key] = option.value
+          notation_option = option
+        when "key"
+          throw error("Invalid key signature '#{option.value}") unless _.has(Vex.Flow.keySignature.keySpecs, option.value)
+        when "clef"
+          clefs = ["treble", "bass", "tenor", "alto"]
+          throw error("'clef' must be one of #{clefs.join(', ')}") if option.value not in clefs
+        when "time"
+          try
+            new Vex.Flow.TimeSignature(option.value)
+          catch e
+            throw error("Invalid time signature: '#{option.value}'")
+        when "tuning"
+          try
+            new Vex.Flow.Tuning(option.value)
+          catch e
+            throw error("Invalid tuning: '#{option.value}'")
+        else
+          throw error("Invalid option '#{option.key}'")
+
+    if notation_visibility["notation"] == "false" and notation_visibility["tablature"] == "false"
+       throw newError(notation_option, "Both 'notation' and 'tablature' can't be invisible")
+
+    return params
+
+  generate: ->
+    for stave in @elements
+      if stave.element != "stave"
+        throw newError(stave, "Invalid stave")
+
+      @artist.addStave(@parseStaveOptions(stave.options))
 
   parse: (code) ->
     L "Parsing:\n#{code}"
-    return vextab_parser.parse(code)
+
+    vextab_parser.parseError = (message, hash) ->
+      L message
+      throw new Vex.RERR("ParseError", message)
+
+    @elements = vextab_parser.parse(code)
+    @generate()
+    return @elements
