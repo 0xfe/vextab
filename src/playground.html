@@ -42,6 +42,9 @@
 
   <script>
     $(function() {
+      Vex.Flow.Artist.DEBUG = true;
+      Vex.Flow.VexTab.DEBUG = true;
+
       renderer = new Vex.Flow.Renderer($('#boo')[0],
         Vex.Flow.Renderer.Backends.CANVAS);
 

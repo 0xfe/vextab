@@ -1,5 +1,5 @@
 class Vex.Flow.Artist
-  @DEBUG = true
+  @DEBUG = false
   L = (args...) -> console?.log("(Vex.Flow.Artist)", args...) if Vex.Flow.Artist.DEBUG
 
   constructor: (@x, @y, @width, options) ->

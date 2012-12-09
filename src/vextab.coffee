@@ -1,6 +1,6 @@
 class Vex.Flow.VexTab
-  @DEBUG = true
-  L = (args...) -> console?.log("(Vex.Flow.Artist)", args...) if Vex.Flow.Artist.DEBUG
+  @DEBUG = false
+  L = (args...) -> console?.log("(Vex.Flow.VexTab)", args...) if Vex.Flow.VexTab.DEBUG
 
   # Private methods
   newError = (object, msg) ->
