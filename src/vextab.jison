@@ -104,9 +104,21 @@ maybe_options
 
 options
   : WORD '=' WORD
-    { $$ = [{key: $1, value: $3}] }
+    { $$ = [{
+        key: $1,
+        value: $3,
+        _l: @1.first_line,
+        _c: @1.first_column
+      }]
+    }
   | options WORD '=' WORD
-    { $$ = [].concat($1, [{key: $2, value: $4}]) }
+    { $$ = [].concat($1, [{
+        key: $2,
+        value: $4,
+        _l: @2.first_line,
+        _c: @2.first_column
+        }])
+    }
   ;
 
 maybe_notelist
@@ -140,9 +152,19 @@ lingo
   | '|'
     { $$ = {command: "bar"} }
   | '['
-    { $$ = {command: "open_beam"} }
+    { $$ = {
+        command: "open_beam",
+        _l: @1.first_line,
+        _c: @1.first_column
+      }
+    }
   | ']'
-    { $$ = {command: "close_beam"} }
+    { $$ = {
+        command: "close_beam",
+        _l: @1.first_line,
+        _c: @1.first_column
+      }
+    }
   ;
 
 line
@@ -170,7 +192,11 @@ chord
 
 frets
   : NUMBER
-    { $$ = [{fret: $1}] }
+    { $$ = [{
+        fret: $1,
+        _l: @1.first_line,
+        _c: @1.first_column}]
+    }
   | articulation timed_fret
     { $$ = [_.extend($2, {articulation: $1})] }
   | frets maybe_decorator articulation timed_fret
