@@ -1,0 +1,87 @@
+<html>
+
+<head>
+  <title>VexTab Playground</title>
+  <style type="text/css">
+    body {
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      color: #554;
+      margin: 0px;
+      height: 80%;
+    }
+
+    pre#error {
+      font-family: Courier;
+      color: red;
+    }
+
+    textarea#blah {
+      width: 600px;
+      height: 300px;
+    }
+  </style>
+
+  <!-- Support Sources -->
+  <script src="../support/vexflow-free.js"></script>
+  <script src="../support/underscore-min.js"></script>
+
+  <!-- VexTab Generated JS -->
+  <script src="../output/vextab_parser.js"></script>
+  <script src="../output/artist.js"></script>
+  <script src="../output/vextab.js"></script>
+
+  <!-- Test Sources -->
+  <link rel="stylesheet" href="../support/qunit.css"
+    type="text/css" media="screen" />
+  <script src="../support/jquery.js"></script>
+  <script src="../support/qunit.js"></script>
+  <script src="../support/raphael.js"></script>
+  <script src="../output/vextab_tests.js"></script>
+
+  <script>
+    $(function() {
+      renderer = new Vex.Flow.Renderer($('#boo')[0],
+        Vex.Flow.Renderer.Backends.CANVAS);
+
+      artist = new Vex.Flow.Artist(10, 10, 600);
+      vextab = new Vex.Flow.VexTab(artist);
+
+      vextab.parse($("#blah").val());
+      artist.render(renderer);
+
+      $("#blah").keyup(_.throttle(function() {
+        vextab.reset();
+        artist.reset();
+        try {
+          vextab.parse($("#blah").val());
+          artist.render(renderer);
+          $("#error").text("");
+        } catch (e) {
+          $("#error").text(e.message);
+        }
+      }, 200 /* throttle at 200ms */));
+    })
+  </script>
+</head>
+
+<body>
+  <h1>Play With VexTab</h1>
+
+  <canvas id="boo"></canvas>
+  <pre id="error"></pre>
+
+  <p/>
+
+  <textarea id="blah">tabstave notation=true key=A
+notes :q (5/2.5/3.7/4) 5h6/3 7/4 |
+notes :8 [ t12p7p5h7/4 ] :q 7/5 :8 [ 3s5/5 ]
+
+tabstave notation=true
+notes :q (8/2.7b9b7/3) (5b6/2.5b6/3)v :8 [ 7s12/4 ]
+notes [ t:16:9s:8:3s:16:0/4 ]
+</textarea>
+</body>
+
+</html>

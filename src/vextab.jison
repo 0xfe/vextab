@@ -68,7 +68,7 @@
 e:
   maybe_vextab EOF
     {
-      if (Vex.Flow.VexTab.DEBUG) {
+      if (Vex.Flow.VexTab.DEBUG && $1) {
         console.log($1);
         console.log(JSON.stringify($1, null, " "));
       }

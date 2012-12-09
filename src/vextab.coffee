@@ -1,14 +1,17 @@
 class Vex.Flow.VexTab
   @DEBUG = true
+  L = (args...) -> console?.log("(Vex.Flow.Artist)", args...) if Vex.Flow.Artist.DEBUG
 
   # Private methods
-  L = (message) -> console.log("Vex.Flow.VexTab: #{message}") if Vex.Flow.VexTab.DEBUG
   newError = (object, msg) ->
     new Vex.RERR("ParseError",
                  "#{msg} in line #{object._l} column #{object._c}")
 
   # Public methods
   constructor: (@artist) ->
+    @reset()
+
+  reset: ->
     @valid = false
     @elements = false
 
@@ -32,7 +35,7 @@ class Vex.Flow.VexTab
           notation_visibility[option.key] = option.value
           notation_option = option
         when "key"
-          throw error("Invalid key signature '#{option.value}") unless _.has(Vex.Flow.keySignature.keySpecs, option.value)
+          throw error("Invalid key signature '#{option.value}'") unless _.has(Vex.Flow.keySignature.keySpecs, option.value)
         when "clef"
           clefs = ["treble", "bass", "tenor", "alto"]
           throw error("'clef' must be one of #{clefs.join(', ')}") if option.value not in clefs
@@ -62,12 +65,16 @@ class Vex.Flow.VexTab
       @artist.addStave(@parseStaveOptions(stave.options))
 
   parse: (code) ->
-    L "Parsing:\n#{code}"
-
     vextab_parser.parseError = (message, hash) ->
       L message
       throw new Vex.RERR("ParseError", message)
 
+    throw new Vex.RERR("ParseError", "No code") unless code?
+
+    L "Parsing:\n#{code}"
     @elements = vextab_parser.parse(code)
-    @generate()
+    if @elements
+      @valid = true
+      @generate()
+
     return @elements
