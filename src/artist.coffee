@@ -45,6 +45,7 @@ class Vex.Flow.Artist
     if opts.notation
       note_stave = new Vex.Flow.Stave(@x, @last_y, @options.stave_width).
         addClef(opts.clef).addKeySignature(opts.key)
+      note_stave.addTimeSignature(opts.time) if opts.time?
       @last_y += note_stave.getHeight()
       tabstave_start_x = note_stave.getNoteStartX()
 
