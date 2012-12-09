@@ -16,13 +16,11 @@
 %s notes
 %%
 
-"notes"                        { this.begin('notes'); return 'NOTES'; }
-"tabstave"                       return 'TABSTAVE'
-<INITIAL>[^\s=]+                 return 'WORD'
-
+"notes"               { this.begin('notes'); return 'NOTES'; }
+"tabstave"            return 'TABSTAVE'
+<INITIAL>[^\s=]+      return 'WORD'
 
 "/"                   return '/'
-"-"                   return '-'
 "+"                   return '+'
 ":"                   return ':'
 "="                   return '='
@@ -34,20 +32,28 @@
 "."                   return '.'
 
 /* These are valid inside fret/string expressions only */
+
+/* Articulations */
 <notes>[b]            return 'b'
 <notes>[s]            return 's'
 <notes>[h]            return 'h'
 <notes>[p]            return 'p'
 <notes>[t]            return 't'
+<notes>[-]            return '-'
+
+/* Decorators */
+<notes>[v]            return 'v'
+<notes>[V]            return 'V'
+
+/* Time values */
+<notes>[0-9]+         return 'NUMBER'
 <notes>[q]            return 'q'
 <notes>[w]            return 'w'
 <notes>[h]            return 'h'
 <notes>[d]            return 'd'
-<notes>[v]            return 'v'
-<notes>[V]            return 'V'
-<notes>[0-9]+         return 'NUMBER'
 
-/* New lines reset your state */
+
+/* Newlines reset your state */
 [\r\n]+               { this.begin('INITIAL'); }
 \s+                   /* skip whitespace */
 <<EOF>>               return 'EOF'
@@ -62,7 +68,10 @@
 e:
   maybe_vextab EOF
     {
-      console.log($1);
+      if (Vex.Flow.VexTab.DEBUG) {
+        console.log($1);
+        console.log(JSON.stringify($1, null, " "));
+      }
       return $1;
     }
   ;
@@ -109,29 +118,16 @@ maybe_notelist
 
 notelist
   : NOTES notes
-    { $$ = {notes: $2} }
+    { $$ = $2 }
   | notelist NOTES notes
-    { $1.notes.concat($3); $$ = $1 }
+    { $$ = $1.concat($3); }
   ;
 
 notes
   : lingo
     { $$ = $1 }
-  | lingo notes
+  | notes lingo
     { $$ = [].concat($1, $2)  }
-  | '[' lingo ']'
-    { $$ = ["beam_start"].concat($2).concat(["beam_end"]) }
-  | '[' lingo ']' notes
-    { $$ = ["beam_start"].concat($2).concat(["beam_end"]).concat($4) }
-  | '[' lingo notes ']'
-    { $$ = ["beam_start"].concat($2).concat($3).concat(["beam_end"]) }
-  | '[' lingo notes ']' notes
-    { $$ = ["beam_start"].
-              concat($2).
-              concat($3).
-              concat(["beam_end"]).
-              concat($5)
-    }
   ;
 
 lingo
@@ -141,6 +137,12 @@ lingo
     { $$ = $1 }
   | time
     { $$ = $1 }
+  | '|'
+    { $$ = {command: "bar"} }
+  | '['
+    { $$ = {command: "open_beam"} }
+  | ']'
+    { $$ = {command: "close_beam"} }
   ;
 
 line
@@ -150,22 +152,20 @@ line
       _.each($1, function(fret) { fret['string'] = $4 })
       $$ = $1
     }
-  | '|'
-    { $$ = {fret: "b"} }
   ;
 
 chord_line
   : line
-    { $$ = [$1] }
+    { $$ = $1 }
   | chord_line '.' line
     { $$ = [].concat($1, $3) }
   ;
 
 chord
   : '(' chord_line ')' maybe_decorator
-    { $$ = {line: $2, decorator: $4} }
+    { $$ = {chord: $2, decorator: $4} }
   | articulation '(' chord_line ')' maybe_decorator
-    { $$ = {line: $3, articulation: $1, decorator: $5} }
+    { $$ = {chord: $3, articulation: $1, decorator: $5} }
   ;
 
 frets

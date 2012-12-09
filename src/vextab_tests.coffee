@@ -24,6 +24,7 @@ class Vex.Flow.Test.VexTab
   @Start: ->
     module "VexTab Parser";
     test("Basic Test", @basic);
+    test("Complex Test", @complex);
     test("Notation Only Test", @notationOnly);
 
   @basic: ->
@@ -33,6 +34,28 @@ class Vex.Flow.Test.VexTab
     notEqual null, tab.parse("tabstave\n")
     catchError tab, "tabstave\n notes /2 10/3"
     ok true, "all pass"
+
+  @complex: ->
+      expect 2
+      tab = makeParser()
+      code = """
+      tabstave notation=true key=A
+      notes :q (5/2.5/3.7/4) 5h6/3 7/4 |
+      notes :8 [ t12p7p5h7/4 ] :q 7/5 :8 [ 3s5/5 ]
+      notes :8 5-6-7v/4 (8-9-10/4.11s12/4)v
+
+      tabstave notation=true
+      notes :q (8/2.7b9b7/3) (5b6/2.5b6/3)v :8 [ 7s12/4 ]
+      notes [ t:16:9-:8:3s:16:0/4 ]
+
+      tabstave notation=true
+      notes :q (5/4.5/5)s(7/4.7/5)s(5/4.5/5)
+      notes :8 [ (5/4.5/5) (7/5) ] |
+      notes :8 [ t(12/5.12/4)s(5/5.5/4) 3b4/5 ] :h 5V/6
+      """
+
+      notEqual null, tab.parse(code)
+      catchError tab, "tabstave\n notes :q 5/L"
 
   @notationOnly: ->
     tab = makeParser()
