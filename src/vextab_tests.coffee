@@ -7,12 +7,12 @@ Vex.Flow.Test = {} if _.isUndefined(Vex.Flow.Test)
 
 class Vex.Flow.Test.VexTab
   @Start: ->
-    module "VexTab Parser";
-    test("Basic Test", @basic);
-    test("Complex Test", @complex);
-    test("Stave Options Test", @staveOptionsTest);
-    test("Notation Only Test", @notationOnly);
-    test("Tuning Test", @tuning);
+    module "VexTab Parser"
+    test "Basic Test", @basic
+    test "Complex Test", @complex
+    test "Stave Options Test", @staveOptionsTest
+    test "Notation Only Test", @notationOnly
+    test "Tuning Test", @tuning
 
   # Private method
   catchError = (tab, code) ->

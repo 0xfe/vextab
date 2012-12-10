@@ -1,3 +1,11 @@
+# Vex.Flow.VexTab
+# Copyright 2012 Mohit Cheppudira <mohit@muthanna.com>
+#
+# This class implements the semantic analysis of the Jison
+# output, and generates elements that can be used by
+# Vex.Flow.Artist to render the notation.
+# parsed by Vex.Flow.VexTab.
+
 class Vex.Flow.VexTab
   @DEBUG = false
   L = (args...) -> console?.log("(Vex.Flow.VexTab)", args...) if Vex.Flow.VexTab.DEBUG
@@ -14,26 +22,23 @@ class Vex.Flow.VexTab
   reset: ->
     @valid = false
     @elements = false
+    @current_duration = "q"
 
   parseStaveOptions: (options) ->
-    params = {}
-    return params unless options?
-
-    # Keep track of notation visibility
-    notation_visibility =
+    params =
       notation: false
       tablature: true
 
-    notation_option = null
+    return params unless options?
 
+    notation_option = null
     for option in options
       error = (msg) -> newError(option, msg)
       params[option.key] = option.value
       switch option.key
         when "notation", "tablature"
-          throw error("'#{option.key}' must be 'true' or 'false'") if option.value not in ["true", "false"]
-          notation_visibility[option.key] = option.value
           notation_option = option
+          throw error("'#{option.key}' must be 'true' or 'false'") if option.value not in ["true", "false"]
         when "key"
           throw error("Invalid key signature '#{option.value}'") unless _.has(Vex.Flow.keySignature.keySpecs, option.value)
         when "clef"
@@ -52,17 +57,45 @@ class Vex.Flow.VexTab
         else
           throw error("Invalid option '#{option.key}'")
 
-    if notation_visibility["notation"] == "false" and notation_visibility["tablature"] == "false"
+    if params.notation == "false" and params.tablature == "false"
        throw newError(notation_option, "Both 'notation' and 'tablature' can't be invisible")
 
     return params
+
+  parseCommand: (note) ->
+    # Parse commands: open_beam, close_beam, bar
+
+  parseChord: (element) ->
+    @artist.addChord(
+      _.map(element.chord, (note)-> _.pick(note, 'fret', 'string', 'articulation', 'decorator')),
+      element.decorator)
+
+  parseFret: (note) ->
+    @artist.addNote(_.pick(
+      note, 'fret', 'string', 'articulation', 'decorator'))
+
+  parseStaveElements: (notes) ->
+    for element in notes
+      if element.time
+        @artist.setDuration(element.time + (if element.dot then "d" else ""))
+
+      if element.command
+        @parseCommand(element)
+
+      if element.chord
+        @parseChord(element)
+
+      if element.fret
+        @parseFret(element)
 
   generate: ->
     for stave in @elements
       if stave.element != "stave"
         throw newError(stave, "Invalid stave")
-
       @artist.addStave(@parseStaveOptions(stave.options))
+
+      if stave.notes?
+        @parseStaveElements(stave.notes)
 
   parse: (code) ->
     vextab_parser.parseError = (message, hash) ->
