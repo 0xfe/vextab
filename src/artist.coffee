@@ -67,15 +67,17 @@ class Vex.Flow.Artist
       accidental = null
 
       if selected_note.change
-        accidental = if selected_note.accidental == null then "n" else selected_note.accidental
+        accidental = unless selected_note.accidental? then "n" else selected_note.accidental
 
       new_note = selected_note.note
       new_octave = spec_props.octave
 
-      if @music_api.getNoteParts(selected_note.note).root == "b" and @music_api.getNoteParts(spec_props.key).root == "c"
-         new_octave--
+      old_root = @music_api.getNoteParts(spec_props.key).root
+      new_root = @music_api.getNoteParts(selected_note.note).root
 
-      else if @music_api.getNoteParts(selected_note.note).root == "c" and @music_api.getNoteParts(spec_props.key).root == "b"
+      if new_root == "b" and old_root == "c"
+         new_octave--
+      else if new_root == "c" and old_root == "b"
          new_octave++
 
       new_spec = "#{new_note}/#{new_octave}"
