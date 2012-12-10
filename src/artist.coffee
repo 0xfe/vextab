@@ -47,50 +47,60 @@ class Vex.Flow.Artist
   setDuration: (duration) ->
     @current_duration = duration
 
-  addChord: (chord, decorator) ->
-    stave = @staves.last
-    # if stave.note?
-
-  addNote: (note) ->
+  addTabChord: (chord, decorator) ->
     stave = _.last(@staves)
     if stave.tab?
+      positions = []
+      for note in chord
+          positions.push {fret: note.fret, str: note.string}
+
       tab_note = new Vex.Flow.TabNote(
-        positions: [{fret: note.fret, str: note.string}]
+        positions: positions
         duration: @current_duration
       )
       stave.tab_notes.push tab_note
 
     if stave.note?
-      spec = @tuning.getNoteForFret(note.fret, note.string)
-      spec_props = Vex.Flow.keyProperties(spec)
-      selected_note = @key_manager.selectNote(spec_props.key)
-      accidental = null
+      specs = []
+      accidentals = []
+      for note in chord
+        spec = @tuning.getNoteForFret(note.fret, note.string)
+        spec_props = Vex.Flow.keyProperties(spec)
+        selected_note = @key_manager.selectNote(spec_props.key)
+        accidental = null
 
-      if selected_note.change
-        accidental = unless selected_note.accidental? then "n" else selected_note.accidental
+        if selected_note.change
+          accidental = unless selected_note.accidental? then "n" else selected_note.accidental
 
-      new_note = selected_note.note
-      new_octave = spec_props.octave
+        new_note = selected_note.note
+        new_octave = spec_props.octave
 
-      old_root = @music_api.getNoteParts(spec_props.key).root
-      new_root = @music_api.getNoteParts(selected_note.note).root
+        # TODO(0xfe): This logic should probably be in the KeyManager code
+        old_root = @music_api.getNoteParts(spec_props.key).root
+        new_root = @music_api.getNoteParts(selected_note.note).root
 
-      if new_root == "b" and old_root == "c"
-         new_octave--
-      else if new_root == "c" and old_root == "b"
-         new_octave++
+        if new_root == "b" and old_root == "c"
+           new_octave--
+        else if new_root == "c" and old_root == "b"
+           new_octave++
 
-      new_spec = "#{new_note}/#{new_octave}"
+        specs.push "#{new_note}/#{new_octave}"
+        accidentals.push accidental
+
 
       stave_note = new Vex.Flow.StaveNote({
-          keys: [new_spec]
+          keys: specs
           duration: @current_duration
           clef: @current_clef
           auto_stem: true
         })
-
       stave.note_notes.push stave_note
-      if accidental? then stave_note.addAccidental(0, new Vex.Flow.Accidental(accidental))
+
+      _.each(accidentals, (acc, index) ->
+        stave_note.addAccidental(index, new Vex.Flow.Accidental(acc)) if acc?)
+
+  addTabNote: (note) ->
+    @addTabChord([note])
 
   addStave: (options) ->
     opts =

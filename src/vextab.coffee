@@ -66,12 +66,12 @@ class Vex.Flow.VexTab
     # Parse commands: open_beam, close_beam, bar
 
   parseChord: (element) ->
-    @artist.addChord(
+    @artist.addTabChord(
       _.map(element.chord, (note)-> _.pick(note, 'fret', 'string', 'articulation', 'decorator')),
       element.decorator)
 
   parseFret: (note) ->
-    @artist.addNote(_.pick(
+    @artist.addTabNote(_.pick(
       note, 'fret', 'string', 'articulation', 'decorator'))
 
   parseStaveElements: (notes) ->

@@ -13,11 +13,14 @@ JISON = "node_modules/.bin/jison"
 directory 'build'
 
 FileList['src/*.coffee'].each do |src|
-  file "build/output/#{File.basename(src, '.coffee')}.js" => [src, 'build'] do |task|
-    sh "#{COFFEE} -o build/output --compile #{task.prerequisites.first}"
+  cs_source = src
+  js_target = "build/output/#{File.basename(src, '.coffee')}.js"
+
+  file js_target => [cs_source, 'build'] do
+    sh "#{COFFEE} -o build/output --compile #{cs_source}"
   end
 
-  task :coffee => "build/output/#{File.basename(src, '.coffee')}.js"
+  task :build_coffee => js_target
 end
 
 file 'build/output/vextab_parser.js' => 'src/vextab.jison' do
@@ -40,6 +43,6 @@ task :watch do
   sh 'bundle exec guard'
 end
 
-task :make => [:coffee, 'build/src', 'build/support', 'build/output/vextab_parser.js']
+task :make => [:build_coffee, 'build/src', 'build/support', 'build/output/vextab_parser.js']
 
 task :default => [:make]
