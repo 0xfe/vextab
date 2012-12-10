@@ -11,6 +11,6 @@ end
 guard :shell do
   watch(/^src\//) do |f|
     puts "Rebuilding on: #{f}"
-    `./build.sh`
+    `rake make`
   end
 end

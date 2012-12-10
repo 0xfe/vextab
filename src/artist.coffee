@@ -3,7 +3,7 @@ class Vex.Flow.Artist
   L = (args...) -> console?.log("(Vex.Flow.Artist)", args...) if Vex.Flow.Artist.DEBUG
 
   constructor: (@x, @y, @width, options) ->
-   @options =
+    @options =
       stave_width: @width - 20
     _.extend(@options, options)
     @reset()

@@ -1,4 +1,4 @@
-# Vex Tab
+# VexTab 2.0
 
 A VexTab Parser for VexFlow.
 Copyright (c) 2012 Mohit Muthanna Cheppudira.
@@ -30,26 +30,29 @@ This rewrite of VexTab has three key dependencies:
   * [Jison](http://zaach.github.com/jison/) - An LALR(1) parser modeled on Bison.
   * [Underscore.js](http://underscorejs.org/) - A utility-belt library for JavaScript.
 
-## Setup
+## Prerequisites (for VexTab developers)
 
 First install Node:
 
     $ brew install node (on OSX)
     $ sudo apt-get install node (on Linux)
 
-Then install CoffeScript and Jison. Do this form the root VexTab directory so it
-creates a sub-directory called `node-modules`.
+Then install CoffeScript and Jison. Do this from the root VexTab directory so it creates a sub-directory called `node-modules`.
 
     $ npm install jison coffee-script
 
-## Build and Test
-
-Run `build.sh` and pull up `build/src/runtest.html` in your browser.
-
-If you want to auto-build on changes to source files, you need to install the Ruby gem `guard`. If you have `bundler` you can do the following.
+Next, install Ruby and the `bundler` gem. Then install all the dependencies
+by typing:
 
     $ bundle install
-    $ bundle exec guard
+
+## Build and Test
+
+Run `rake` and pull up `build/src/runtest.html` in your browser.
+
+If you want to auto-build on changes to source files type:
+
+    $ rake watch
 
 ## Links
 
