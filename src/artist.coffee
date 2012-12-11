@@ -89,11 +89,11 @@ class Vex.Flow.Artist
       stave.tab?.setContext(ctx).draw()
 
       if stave.tab? and stave.note?
-        Vex.Flow.Formatter.FormatAndDrawTab ctx, stave.tab, stave.note, stave.tab_notes, stave.note_notes
+        Vex.Flow.Formatter.FormatAndDrawTab ctx, stave.tab, stave.note, stave.tab_notes, stave.note_notes, true
       else if stave.tab?
         Vex.Flow.Formatter.FormatAndDraw ctx, stave.tab, stave.tab_notes
       else if stave.note?
-        Vex.Flow.Formatter.FormatAndDraw ctx, stave.note, stave.note_notes
+        Vex.Flow.Formatter.FormatAndDraw ctx, stave.note, stave.note_notes, true
 
   setDuration: (duration) ->
     @current_duration = duration
