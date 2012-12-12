@@ -26,8 +26,8 @@ class Vex.Flow.VexTab
 
   parseStaveOptions: (options) ->
     params =
-      notation: false
-      tablature: true
+      notation: "false"
+      tablature: "true"
 
     return params unless options?
 
@@ -67,17 +67,18 @@ class Vex.Flow.VexTab
 
   parseChord: (element) ->
     @artist.addChord(
-      _.map(element.chord, (note)-> _.pick(note, 'fret', 'string', 'articulation', 'decorator')),
+      _.map(element.chord,
+            (note)-> _.pick(note, 'time', 'dot', 'fret', 'string', 'articulation', 'decorator')),
       element.decorator)
 
   parseFret: (note) ->
     @artist.addNote(_.pick(
-      note, 'fret', 'string', 'articulation', 'decorator'))
+      note, 'time', 'dot', 'fret', 'string', 'articulation', 'decorator'))
 
   parseStaveElements: (notes) ->
     for element in notes
       if element.time
-        @artist.setDuration(element.time + (if element.dot then "d" else ""))
+        @artist.setDuration(element.time, element.dot)
 
       if element.command
         @parseCommand(element)

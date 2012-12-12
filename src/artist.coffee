@@ -14,6 +14,8 @@ class Vex.Flow.Artist
       font_face: "Arial"
       font_size: 10
       bottom_spacing: 20
+      tab_stave_lower_spacing: 10
+      note_stave_lower_spacing: 0
     _.extend(@options, options)
     @reset()
 
@@ -92,10 +94,22 @@ class Vex.Flow.Artist
             clef: @current_clef
             auto_stem: true
           })
-    _.each accidentals, (acc, index) ->
-          stave_note.addAccidental(index, new Vex.Flow.Accidental(acc)) if acc?
+    for acc, index in  accidentals
+      stave_note.addAccidental(index, new Vex.Flow.Accidental(acc)) if acc?
 
     stave_notes.push stave_note
+
+  addTabNote: (spec) ->
+    tab_notes = _.last(@staves).tab_notes
+    new_tab_note = new Vex.Flow.TabNote(
+      positions: spec
+      duration: @current_duration
+    )
+    tab_notes.push new_tab_note
+
+  makeDuration = (time, dot) -> time + (if dot then "d" else "")
+  setDuration: (time, dot) ->
+    @current_duration = makeDuration(time, dot)
 
   addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
     L "addTabArticulations: ", type, first_note, last_note, first_indices, last_indices
@@ -146,14 +160,15 @@ class Vex.Flow.Artist
 
   addArticulations: (articulations) ->
     L "addArticulations: ", articulations
-    tab_notes = _.last(@staves).tab_notes
-    stave_notes = _.last(@staves).note_notes
+    stave = _.last(@staves)
+    tab_notes = stave.tab_notes
+    stave_notes = stave.note_notes
     return if _.isEmpty(tab_notes) or _.isEmpty(articulations)
 
     current_tab_note = _.last(tab_notes)
 
     for valid_articulation in ["s", "h", "p", "t", "T"]
-      indices = (index for articulation, index in articulations when articulation? and articulation == valid_articulation)
+      indices = (i for art, i in articulations when art? and art == valid_articulation)
       if _.isEmpty(indices) then continue
 
       if tab_notes.length < 2
@@ -161,29 +176,27 @@ class Vex.Flow.Artist
         prev_indices = null
       else
         prev_tab_note = tab_notes[tab_notes.length - 2]
+
+        # Figure out which strings the articulations are on
         this_strings = (n.str for n, i in current_tab_note.getPositions() when i in indices)
+
+        # Only allows articulations where both notes are on the same strings
         valid_strings = (pos.str for pos, i in prev_tab_note.getPositions() when pos.str in this_strings)
+
+        # Get indices of articulated notes on previous chord
         prev_indices = (i for n, i in prev_tab_note.getPositions() when n.str in valid_strings)
+
+        # Get indices of articulated notes on current chord
         current_indices = (i for n, i in current_tab_note.getPositions() when n.str in valid_strings)
 
-      @addTabArticulation(valid_articulation,
-        prev_tab_note, current_tab_note, prev_indices, current_indices)
+      if stave.tab?
+        @addTabArticulation(valid_articulation,
+          prev_tab_note, current_tab_note, prev_indices, current_indices)
 
-      if _.last(@staves).note?
+      if stave.note?
         @addStaveArticulation(valid_articulation,
           stave_notes[stave_notes.length - 2], _.last(stave_notes),
           prev_indices, current_indices)
-
-  addTabNote: (spec) ->
-    tab_notes = _.last(@staves).tab_notes
-    new_tab_note = new Vex.Flow.TabNote(
-      positions: spec
-      duration: @current_duration
-    )
-    tab_notes.push new_tab_note
-
-  setDuration: (duration) ->
-    @current_duration = duration
 
   addChord: (chord, decorator) ->
     return if _.isEmpty(chord)
@@ -195,6 +208,7 @@ class Vex.Flow.Artist
     articulations = []  # Articulations (ties, bends, taps)
     decorators = []     # Decorators (vibratos, harmonics)
     tab_specs = []      # The tab notes
+    durations = []      # The duration of each position
 
     # Chords are complicated, because they can contain little
     # lines one each string. We need to keep track of the motion
@@ -208,6 +222,8 @@ class Vex.Flow.Artist
         current_string = note.string
 
       unless specs[current_position]?
+        # New position. Create new element arrays for this
+        # position.
         specs[current_position] = []
         accidentals[current_position] = []
         tab_specs[current_position] = []
@@ -216,16 +232,19 @@ class Vex.Flow.Artist
 
       [new_note, new_octave, accidental] = @getNoteForFret(note.fret, note.string)
 
+      current_duration = if note.time? then makeDuration(note.time, note.dot) else @current_duration
       specs[current_position].push "#{new_note}/#{new_octave}"
       accidentals[current_position].push accidental
       tab_specs[current_position].push {fret: note.fret, str: note.string}
       articulations[current_position].push note.articulation
+      durations[current_position] = current_duration
 
       current_position++
 
-    _.each specs, (spec, spec_index) =>
+    for spec, spec_index in specs
+      @current_duration = durations[spec_index]
+      @addTabNote tab_specs[spec_index]
       @addStaveNote spec, accidentals[spec_index] if stave.note?
-      @addTabNote tab_specs[spec_index] if stave.tab?
       @addArticulations articulations[spec_index]
 
   addNote: (note) ->
@@ -236,29 +255,30 @@ class Vex.Flow.Artist
       tuning: "standard"
       clef: "treble"
       key: "C"
-      notation: false
-      tablature: true
+      notation: "false"
+      tablature: "true"
 
     _.extend(opts, options)
+    L "addTabStave: ", options
 
     tab_stave = null
     note_stave = null
 
     # This is used to line up tablature and notation.
-    tabstave_start_x = 20
+    tabstave_start_x = 40
 
-    if opts.notation
+    if opts.notation is "true"
       note_stave = new Vex.Flow.Stave(@x, @last_y, @options.stave_width).
         addClef(opts.clef).addKeySignature(opts.key)
       note_stave.addTimeSignature(opts.time) if opts.time?
-      @last_y += note_stave.getHeight()
+      @last_y += note_stave.getHeight() + @options.note_stave_lower_spacing
       tabstave_start_x = note_stave.getNoteStartX()
       @current_clef = opts.clef
 
-    if opts.tablature
+    if opts.tablature is "true"
       tab_stave = new Vex.Flow.TabStave(@x, @last_y, @options.stave_width).
         addTabGlyph().setNoteStartX(tabstave_start_x)
-      @last_y += tab_stave.getHeight()
+      @last_y += tab_stave.getHeight() + @options.tab_stave_lower_spacing
 
     @staves.push {
       tab: tab_stave,
