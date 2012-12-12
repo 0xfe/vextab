@@ -39,6 +39,7 @@
 <notes>[h]            return 'h'
 <notes>[p]            return 'p'
 <notes>[t]            return 't'
+<notes>[T]            return 'T'
 <notes>[-]            return '-'
 
 /* Decorators */
@@ -248,6 +249,7 @@ articulation
   : '-' { $$ = '-' }
   | 's' { $$ = 's' }
   | 't' { $$ = 't' }
+  | 'T' { $$ = 'T' }
   | 'b' { $$ = 'b' }
   | 'h' { $$ = 'h' }
   | 'p' { $$ = 'p' }
