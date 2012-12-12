@@ -19,6 +19,7 @@ class Vex.Flow.Artist
   reset: ->
     @staves = []
     @notes = []
+    @articulations = []
     @last_y = @y
 
     @tuning = new Vex.Flow.Tuning()
@@ -26,6 +27,26 @@ class Vex.Flow.Artist
     @music_api = new Vex.Flow.Music()
     @current_duration = "q"
     @current_clef = "treble"
+
+  render: (renderer) ->
+    renderer.resize(@width, @last_y)
+    ctx = renderer.getContext()
+    ctx.clear()
+    ctx.setFont(@options.font_face, @options.font_size, "")
+
+    for stave in @staves
+      stave.note?.setContext(ctx).draw()
+      stave.tab?.setContext(ctx).draw()
+
+      if stave.tab? and stave.note?
+        Vex.Flow.Formatter.FormatAndDrawTab ctx, stave.tab, stave.note, stave.tab_notes, stave.note_notes, true
+      else if stave.tab?
+        Vex.Flow.Formatter.FormatAndDraw ctx, stave.tab, stave.tab_notes
+      else if stave.note?
+        Vex.Flow.Formatter.FormatAndDraw ctx, stave.note, stave.note_notes, true
+
+    for articulation in @articulations
+      articulation.setContext(ctx).draw()
 
   # Given a fret/string pair, returns a note, octave, and required accidentals
   # based on current guitar tuning and stave key. The accidentals may be different
@@ -70,30 +91,47 @@ class Vex.Flow.Artist
 
     _.last(@staves).note_notes.push stave_note
 
-  addTabNote: (spec) ->
-    L "addTabNote:", spec
-    tab_note = new Vex.Flow.TabNote(
+  addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
+    articulation = null
+    if type == "s"
+      articulation = new Vex.Flow.TabSlide({
+        first_note: first_note
+        last_note: last_note
+        first_indices: first_indices
+        last_indices: last_indices
+        })
+
+    if type in ["h", "p"]
+      articulation = new Vex.Flow.TabTie({
+        first_note: first_note
+        last_note: last_note
+        first_indices: first_indices
+        last_indices: last_indices
+        }, type.toUpperCase())
+
+    @articulations.push articulation if articulation?
+
+
+  addTabNote: (spec, articulations) ->
+    L "addTabNote:", spec, articulations
+    tab_notes = _.last(@staves).tab_notes
+    new_tab_note = new Vex.Flow.TabNote(
       positions: spec
       duration: @current_duration
     )
-    _.last(@staves).tab_notes.push tab_note
 
-  render: (renderer) ->
-    renderer.resize(@width, @last_y)
-    ctx = renderer.getContext()
-    ctx.clear()
-    ctx.setFont(@options.font_face, @options.font_size, "")
+    for valid_articulation in ["s", "h", "p", "t"]
+      indices = (index for articulation, index in articulations when articulation? and articulation == valid_articulation)
+      if _.isEmpty(indices) then continue
 
-    for stave in @staves
-      stave.note?.setContext(ctx).draw()
-      stave.tab?.setContext(ctx).draw()
+      this_strings = (n.str for n, i in spec when i in indices)
+      prev_indices = (i for n, i in _.last(tab_notes).getPositions() when n.str in this_strings)
 
-      if stave.tab? and stave.note?
-        Vex.Flow.Formatter.FormatAndDrawTab ctx, stave.tab, stave.note, stave.tab_notes, stave.note_notes, true
-      else if stave.tab?
-        Vex.Flow.Formatter.FormatAndDraw ctx, stave.tab, stave.tab_notes
-      else if stave.note?
-        Vex.Flow.Formatter.FormatAndDraw ctx, stave.note, stave.note_notes, true
+      L "articulations: ", articulations, "strings: ", this_strings
+      L "indices: ", indices, "prev_indices:", prev_indices
+      @addTabArticulation(valid_articulation, _.last(tab_notes), new_tab_note, prev_indices, indices) unless _.isEmpty(indices)
+
+    tab_notes.push new_tab_note
 
   setDuration: (duration) ->
     @current_duration = duration
@@ -105,6 +143,8 @@ class Vex.Flow.Artist
 
     specs = []          # The stave note specs
     accidentals = []    # The stave accidentals
+    articulations = []  # Articulations (ties, bends, taps)
+    decorators = []     # Decorators (vibratos, harmonics)
     tab_specs = []      # The tab notes
 
     # Chords are complicated, because they can contain little
@@ -122,18 +162,21 @@ class Vex.Flow.Artist
         specs[current_position] = []
         accidentals[current_position] = []
         tab_specs[current_position] = []
+        articulations[current_position] = []
+        decorators[current_position] = []
 
       [new_note, new_octave, accidental] = @getNoteForFret(note.fret, note.string)
 
       specs[current_position].push "#{new_note}/#{new_octave}"
       accidentals[current_position].push accidental
       tab_specs[current_position].push {fret: note.fret, str: note.string}
+      articulations[current_position].push note.articulation
 
       current_position++
 
     _.each specs, (spec, spec_index) =>
-      @addStaveNote(spec, accidentals[spec_index]) if stave.note?
-      @addTabNote tab_specs[spec_index] if stave.tab?
+      @addStaveNote spec, accidentals[spec_index], articulations[spec_index] if stave.note?
+      @addTabNote tab_specs[spec_index], articulations[spec_index] if stave.tab?
 
   addNote: (note) ->
     @addChord([note])
