@@ -69,7 +69,7 @@ class Vex.Flow.VexTab
     @artist.addChord(
       _.map(element.chord,
             (note)-> _.pick(note, 'time', 'dot', 'fret', 'string', 'articulation', 'decorator')),
-      element.decorator)
+      element.articulation, element.decorator)
 
   parseFret: (note) ->
     @artist.addNote(_.pick(

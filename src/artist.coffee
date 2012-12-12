@@ -198,7 +198,7 @@ class Vex.Flow.Artist
           stave_notes[stave_notes.length - 2], _.last(stave_notes),
           prev_indices, current_indices)
 
-  addChord: (chord, decorator) ->
+  addChord: (chord, chord_articulation, chord_decorator) ->
     return if _.isEmpty(chord)
     L "addTabChord:", chord
     stave = _.last(@staves)
@@ -209,6 +209,7 @@ class Vex.Flow.Artist
     decorators = []     # Decorators (vibratos, harmonics)
     tab_specs = []      # The tab notes
     durations = []      # The duration of each position
+    num_notes = 0
 
     # Chords are complicated, because they can contain little
     # lines one each string. We need to keep track of the motion
@@ -217,6 +218,7 @@ class Vex.Flow.Artist
     current_position = 0
 
     for note in chord
+      num_notes++
       if note.string != current_string
         current_position = 0
         current_string = note.string
@@ -232,7 +234,7 @@ class Vex.Flow.Artist
 
       [new_note, new_octave, accidental] = @getNoteForFret(note.fret, note.string)
 
-      current_duration = if note.time? then makeDuration(note.time, note.dot) else @current_duration
+      current_duration = if note.time? then {time: note.time, dot: note.dot} else null
       specs[current_position].push "#{new_note}/#{new_octave}"
       accidentals[current_position].push accidental
       tab_specs[current_position].push {fret: note.fret, str: note.string}
@@ -241,11 +243,17 @@ class Vex.Flow.Artist
 
       current_position++
 
-    for spec, spec_index in specs
-      @current_duration = durations[spec_index]
-      @addTabNote tab_specs[spec_index]
-      @addStaveNote spec, accidentals[spec_index] if stave.note?
-      @addArticulations articulations[spec_index]
+    for spec, i in specs
+      saved_duration = @current_duration
+      @setDuration(durations[i].time, durations[i].dot) if durations[i]?
+      @addTabNote tab_specs[i]
+      @addStaveNote spec, accidentals[i] if stave.note?
+      @addArticulations articulations[i]
+
+    if chord_articulation?
+      art = []
+      art.push chord_articulation for num in [1..num_notes]
+      @addArticulations art
 
   addNote: (note) ->
     @addChord([note])
