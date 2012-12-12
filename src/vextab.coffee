@@ -62,8 +62,9 @@ class Vex.Flow.VexTab
 
     return params
 
-  parseCommand: (note) ->
-    # Parse commands: open_beam, close_beam, bar
+  parseCommand: (element) ->
+    if element.command is "bar"
+      @artist.addBar()
 
   parseChord: (element) ->
     @artist.addChord(

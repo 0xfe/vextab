@@ -111,6 +111,12 @@ class Vex.Flow.Artist
   setDuration: (time, dot) ->
     @current_duration = makeDuration(time, dot)
 
+  addBar: ->
+    L "addBar()"
+    stave = _.last(@staves)
+    stave.tab_notes.push(new Vex.Flow.BarNote())
+    stave.note_notes.push(new Vex.Flow.BarNote()) if stave.note?
+
   addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
     L "addTabArticulations: ", type, first_note, last_note, first_indices, last_indices
     if _.isEmpty(first_indices) and _.isEmpty(last_indices) then return
@@ -158,6 +164,16 @@ class Vex.Flow.Artist
 
     @stave_articulations.push articulation if articulation?
 
+  getPreviousNoteIndex: ->
+    tab_notes = _.last(@staves).tab_notes
+    index = 2
+    while index <= tab_notes.length
+      note = tab_notes[tab_notes.length - index]
+      return (tab_notes.length - index) if note instanceof Vex.Flow.TabNote
+      index++
+
+    return -1
+
   addArticulations: (articulations) ->
     L "addArticulations: ", articulations
     stave = _.last(@staves)
@@ -171,12 +187,13 @@ class Vex.Flow.Artist
       indices = (i for art, i in articulations when art? and art == valid_articulation)
       if _.isEmpty(indices) then continue
 
-      if tab_notes.length < 2
+      prev_index = @getPreviousNoteIndex()
+      L "prev_tab_note: ", prev_tab_note
+      if prev_index is -1
         prev_tab_note = null
         prev_indices = null
       else
-        prev_tab_note = tab_notes[tab_notes.length - 2]
-
+        prev_tab_note = tab_notes[prev_index]
         # Figure out which strings the articulations are on
         this_strings = (n.str for n, i in current_tab_note.getPositions() when i in indices)
 
@@ -195,7 +212,7 @@ class Vex.Flow.Artist
 
       if stave.note?
         @addStaveArticulation(valid_articulation,
-          stave_notes[stave_notes.length - 2], _.last(stave_notes),
+          stave_notes[prev_index], _.last(stave_notes),
           prev_indices, current_indices)
 
   addChord: (chord, chord_articulation, chord_decorator) ->
