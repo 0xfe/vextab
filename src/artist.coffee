@@ -4,6 +4,7 @@
 # This class is responsible for rendering the elements
 # parsed by Vex.Flow.VexTab.
 
+
 class Vex.Flow.Artist
   @DEBUG = false
   L = (args...) -> console?.log("(Vex.Flow.Artist)", args...) if Vex.Flow.Artist.DEBUG
@@ -20,19 +21,25 @@ class Vex.Flow.Artist
     @reset()
 
   reset: ->
+    @tuning = new Vex.Flow.Tuning()
+    @key_manager = new Vex.Flow.KeyManager("C")
+    @music_api = new Vex.Flow.Music()
+
+    # Generated elements
     @staves = []
     @notes = []
     @tab_articulations = []
     @stave_articulations = []
-    @last_y = @y
 
-    @tuning = new Vex.Flow.Tuning()
-    @key_manager = new Vex.Flow.KeyManager("C")
-    @music_api = new Vex.Flow.Music()
+    # Current state
+    @last_y = @y
     @current_duration = "q"
     @current_clef = "treble"
+    @current_bends = []
+    @bend_start_index = null
 
   render: (renderer) ->
+    @closeBends()
     renderer.resize(@width, @last_y + @options.bottom_spacing)
     ctx = renderer.getContext()
     ctx.clear()
@@ -117,11 +124,56 @@ class Vex.Flow.Artist
     stave.tab_notes.push(new Vex.Flow.BarNote())
     stave.note_notes.push(new Vex.Flow.BarNote()) if stave.note?
 
+  makeBend = (from_fret, to_fret) ->
+    direction = if from_fret > to_fret then Vex.Flow.Bend.DOWN else Vex.Flow.Bend.UP
+    text = switch Math.abs(from_fret - to_fret)
+      when 1 then "1/2"
+      when 2 then "Full"
+      when 3 then "1 1/2"
+      else "Bend to #{to_fret}"
+
+    return {type: direction, text: text}
+
+  openBends: (first_note, last_note, first_indices, last_indices) ->
+    L "openBends", first_note, last_note, first_indices, last_indices
+    tab_notes = _.last(@staves).tab_notes
+
+    if _.isEmpty(@current_bends)
+      @bend_start_index = tab_notes.length - 2
+
+    first_frets = first_note.getPositions()
+    last_frets = last_note.getPositions()
+    for index, i in first_indices
+      last_index = last_indices[i]
+      from_fret = first_frets[index]
+      to_fret = last_frets[last_index]
+      @current_bends[i] ?= []
+      @current_bends[i].push makeBend(from_fret.fret, to_fret.fret)
+
+  closeBends: ->
+    L "closeBends"
+    return unless @bend_start_index?
+    tab_notes = _.last(@staves).tab_notes
+    for phrases, i in @current_bends
+      phrase = []
+      for bend in phrases
+        phrase.push bend
+      tab_notes[@bend_start_index].addModifier(
+        new Vex.Flow.Bend(null, null, phrase), i)
+
+    # Replace bent notes with ghosts (make them invisible)
+    for tab_note in tab_notes[@bend_start_index+1..tab_notes.length - 2]
+      tab_note.setGhost(true)
+
+    @current_bends = []
+    @bend_start_index = null
+
   addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
     L "addTabArticulations: ", type, first_note, last_note, first_indices, last_indices
     if _.isEmpty(first_indices) and _.isEmpty(last_indices) then return
 
     articulation = null
+
     if type == "s"
       articulation = new Vex.Flow.TabSlide({
         first_note: first_note
@@ -149,12 +201,15 @@ class Vex.Flow.Artist
       if type == "t"
         last_note.addModifier(new Vex.Flow.Annotation("T"))
 
+    if type == "b"
+      @openBends(first_note, last_note, first_indices, last_indices)
+
     @tab_articulations.push articulation if articulation?
 
   addStaveArticulation: (type, first_note, last_note, first_indices, last_indices) ->
     L "addStaveArticulations: ", type, first_note, last_note, first_indices, last_indices
     articulation = null
-    if type in ["s", "h", "p", "t", "T"]
+    if type in ["b", "s", "h", "p", "t", "T"]
       articulation = new Vex.Flow.StaveTie({
         first_note: first_note
         last_note: last_note
@@ -164,6 +219,7 @@ class Vex.Flow.Artist
 
     @stave_articulations.push articulation if articulation?
 
+  # This gets the previous (second-to-last) non-bar non-ghost note.
   getPreviousNoteIndex: ->
     tab_notes = _.last(@staves).tab_notes
     index = 2
@@ -183,10 +239,12 @@ class Vex.Flow.Artist
 
     current_tab_note = _.last(tab_notes)
 
-    for valid_articulation in ["s", "h", "p", "t", "T"]
+    has_bends = false
+    for valid_articulation in ["b", "s", "h", "p", "t", "T"]
       indices = (i for art, i in articulations when art? and art == valid_articulation)
       if _.isEmpty(indices) then continue
 
+      if valid_articulation is "b" then has_bends = true
       prev_index = @getPreviousNoteIndex()
       L "prev_tab_note: ", prev_tab_note
       if prev_index is -1
@@ -214,6 +272,8 @@ class Vex.Flow.Artist
         @addStaveArticulation(valid_articulation,
           stave_notes[prev_index], _.last(stave_notes),
           prev_indices, current_indices)
+
+    @closeBends() unless has_bends
 
   addChord: (chord, chord_articulation, chord_decorator) ->
     return if _.isEmpty(chord)
@@ -305,6 +365,7 @@ class Vex.Flow.Artist
         addTabGlyph().setNoteStartX(tabstave_start_x)
       @last_y += tab_stave.getHeight() + @options.tab_stave_lower_spacing
 
+    @closeBends()
     @staves.push {
       tab: tab_stave,
       note: note_stave,
