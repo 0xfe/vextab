@@ -20,6 +20,11 @@
 "tabstave"            return 'TABSTAVE'
 <INITIAL>[^\s=]+      return 'WORD'
 
+/* Annotations */
+<notes>[$]                { this.begin('annotations'); return "$" }
+<annotations>[$]          { this.begin('notes'); return "$" }
+<annotations>[^,$]+       return 'WORD'
+
 "/"                   return '/'
 "+"                   return '+'
 ":"                   return ':'
@@ -32,11 +37,6 @@
 ","                   return ','
 "|"                   return '|'
 "."                   return '.'
-
-/* Annotations */
-<notes>"$"                { this.begin('annotations'); return "$" }
-<annotations>"$"          { this.begin('notes'); return "$" }
-<annotations>[^\s,$]+      return 'WORD'
 
 /* These are valid inside fret/string expressions only */
 

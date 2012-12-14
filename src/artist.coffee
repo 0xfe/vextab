@@ -164,7 +164,6 @@ class Vex.Flow.Artist
       to_fret = last_frets[last_index]
       @current_bends[index] ?= []
       @current_bends[index].push makeBend(from_fret.fret, to_fret.fret)
-      L "Push: ", index
 
   closeBends: ->
     L "closeBends"
@@ -176,7 +175,6 @@ class Vex.Flow.Artist
         phrase.push bend
       tab_notes[@bend_start_index].addModifier(
         new Vex.Flow.Bend(null, null, phrase), k)
-      L "Pop: ", k
 
     # Replace bent notes with ghosts (make them invisible)
     for tab_note in tab_notes[@bend_start_index+1..tab_notes.length - 2]
@@ -208,11 +206,9 @@ class Vex.Flow.Artist
 
     if stave.tab
       for tab_note, i in tab_notes[tab_notes.length - annotations.length..]
-        continue if annotations[i] is "_"
         tab_note.addModifier(new Vex.Flow.Annotation(annotations[i]), 0)
     else
       for note, i in stave_notes[stave_notes.length - annotations.length..]
-        continue if annotations[i] is "_"
         note.addAnnotation(0, new Vex.Flow.Annotation(annotations[i]))
 
   addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
