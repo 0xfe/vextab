@@ -198,6 +198,23 @@ class Vex.Flow.Artist
     # Throw away tab tuplet because it can't be rendered
     new Vex.Flow.Tuplet(tab_notes[tab_notes.length - notes..])
 
+  addAnnotations: (annotations) ->
+    stave = _.last(@staves)
+    stave_notes = stave.note_notes
+    tab_notes = stave.tab_notes
+
+    if annotations.length > tab_notes.length
+      throw new Vex.RERR("ArtistError", "More annotations than note elements")
+
+    if stave.tab
+      for tab_note, i in tab_notes[tab_notes.length - annotations.length..]
+        continue if annotations[i] is "_"
+        tab_note.addModifier(new Vex.Flow.Annotation(annotations[i]), 0)
+    else
+      for note, i in stave_notes[stave_notes.length - annotations.length..]
+        continue if annotations[i] is "_"
+        note.addAnnotation(0, new Vex.Flow.Annotation(annotations[i]))
+
   addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
     L "addTabArticulations: ", type, first_note, last_note, first_indices, last_indices
     if _.isEmpty(first_indices) and _.isEmpty(last_indices) then return

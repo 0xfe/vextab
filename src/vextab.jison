@@ -13,7 +13,7 @@
 %}
 
 %lex
-%s notes
+%s notes annotations
 %%
 
 "notes"               { this.begin('notes'); return 'NOTES'; }
@@ -32,6 +32,11 @@
 ","                   return ','
 "|"                   return '|'
 "."                   return '.'
+
+/* Annotations */
+<notes>"$"                { this.begin('annotations'); return "$" }
+<annotations>"$"          { this.begin('notes'); return "$" }
+<annotations>[^\s,$]+      return 'WORD'
 
 /* These are valid inside fret/string expressions only */
 
@@ -183,6 +188,14 @@ lingo
           _c: @1.first_column
         }
       }
+  | annotations
+    { $$ = {
+          command: "annotations",
+          params: $1,
+          _l: @1.first_line,
+          _c: @1.first_column
+        }
+      }
   ;
 
 line
@@ -273,5 +286,16 @@ maybe_decorator
 
 tuplets
   : '^' NUMBER '^'            { $$ = {tuplet: $2} }
-  | '^' NUMBER ',' NUMBER '^' { $$ = {tuplet: $2, notes: $4}}
+  | '^' NUMBER ',' NUMBER '^' { $$ = {tuplet: $2, notes: $4} }
+  ;
+
+annotations
+  : '$' annotation_words '$'  { $$ = $2 }
+  ;
+
+annotation_words
+  : WORD
+    { $$ = [$1] }
+  | annotation_words ',' WORD
+    { $$ = [].concat($1, $3) }
   ;

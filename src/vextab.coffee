@@ -69,6 +69,9 @@ class Vex.Flow.VexTab
     if element.command is "tuplet"
       @artist.makeTuplets(element.params.tuplet, element.params.notes)
 
+    if element.command is "annotations"
+      @artist.addAnnotations(element.params)
+
   parseChord: (element) ->
     @artist.addChord(
       _.map(element.chord,
