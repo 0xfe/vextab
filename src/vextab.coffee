@@ -115,7 +115,10 @@ class Vex.Flow.VexTab
     throw new Vex.RERR("ParseError", "No code") unless code?
 
     L "Parsing:\n#{code}"
-    @elements = vextab_parser.parse(code)
+
+    # Strip lines
+    stripped_code = (line.trim() for line in code.split(/\r\n|\r|\n/))
+    @elements = vextab_parser.parse(stripped_code.join("\n"))
     if @elements
       @generate()
       @valid = true

@@ -26,19 +26,8 @@
   <!-- Support Sources -->
   <script src="../support/vexflow-free.js"></script>
   <script src="../support/underscore-min.js"></script>
-
-  <!-- VexTab Generated JS -->
-  <script src="../output/vextab_parser.js"></script>
-  <script src="../output/artist.js"></script>
-  <script src="../output/vextab.js"></script>
-
-  <!-- Test Sources -->
-  <link rel="stylesheet" href="../support/qunit.css"
-    type="text/css" media="screen" />
   <script src="../support/jquery.js"></script>
-  <script src="../support/qunit.js"></script>
-  <script src="../support/raphael.js"></script>
-  <script src="../output/vextab_tests.js"></script>
+  <script src="../tabdiv-min.js"></script>
 
   <script>
     $(function() {
@@ -48,13 +37,10 @@
       renderer = new Vex.Flow.Renderer($('#boo')[0],
         Vex.Flow.Renderer.Backends.CANVAS);
 
-      artist = new Vex.Flow.Artist(10, 10, 600);
+      artist = new Vex.Flow.Artist(10, 10, 600, {scale: 0.8});
       vextab = new Vex.Flow.VexTab(artist);
 
-      vextab.parse($("#blah").val());
-      artist.render(renderer);
-
-      $("#blah").keyup(_.throttle(function() {
+      function render() {
         vextab.reset();
         artist.reset();
         try {
@@ -64,7 +50,10 @@
         } catch (e) {
           $("#error").text(e.message);
         }
-      }, 200 /* throttle at 200ms */));
+      }
+
+      $("#blah").keyup(_.throttle(render));
+      render();
     })
   </script>
 </head>

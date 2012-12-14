@@ -42,10 +42,12 @@ class Vex.Flow.Artist
     @bend_start_strings = null
 
   render: (renderer) ->
+    L "Render: ", @options
     @closeBends()
-    renderer.resize(@width, @last_y + @options.bottom_spacing)
+    renderer.resize(@width * @options.scale,
+        (@last_y + @options.bottom_spacing) * @options.scale)
     ctx = renderer.getContext()
-    ctx.scale(@scale, @scale)
+    ctx.scale(@options.scale, @options.scale)
     ctx.clear()
     ctx.setFont(@options.font_face, @options.font_size, "")
 

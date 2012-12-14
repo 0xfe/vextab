@@ -27,6 +27,10 @@ file 'build/output/vextab_parser.js' => 'src/vextab.jison' do
   sh "#{JISON} src/vextab.jison -o build/output/vextab_parser.js"
 end
 
+file 'build/output/tabdiv2.js' => 'src/tabdiv2.js' do
+    sh "cp src/tabdiv2.js build/output/tabdiv2.js"
+end
+
 file 'build/src' => 'build' do
   sh 'cp -R src build'
 end
@@ -47,8 +51,29 @@ task :watch do
   sh 'bundle exec guard'
 end
 
+task 'build/tabdiv-min.js' => [:build_coffee,
+                                'build/output/vextab_parser.js',
+                                'build/output/tabdiv2.js'] do
+  require 'uglifier'
+
+  files = [
+    'build/output/vextab_parser.js',
+    'build/output/artist.js',
+    'build/output/vextab.js',
+    'build/output/tabdiv2.js'
+    ]
+
+  puts "Building build/tabdiv-min.js"
+  File.open("build/tabdiv-min.js", "w") do |f|
+    files.each do |file|
+      min = Uglifier.new.compile(File.read(file))
+      f.write(min)
+    end
+  end
+end
+
 task :make => [:build_coffee, 'build/src', 'build/doc',
-               'build/support', 'build/output/vextab_parser.js']
+               'build/support', 'build/tabdiv-min.js']
 
 task :deploy => :make do
   sh 'scp -r build/* mohit@muthanna.com:www/vexflow/vextab2'

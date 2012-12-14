@@ -77,7 +77,7 @@ Vex.Flow.TabDiv.prototype.init = function(sel) {
   }
 
   // Initialize parser.
-  this.artist = new Vex.Flow.Artist(10, 10, this.width, {scale: this.scale});
+  this.artist = new Vex.Flow.Artist(10, 0, this.width, {scale: this.scale});
   this.parser = new Vex.Flow.VexTab(this.artist);
 
   if (!Vex.Flow.TabDiv.NOLOGO) {
