@@ -18,8 +18,13 @@
     }
 
     textarea#blah {
-      width: 600px;
+      width: 500px;
       height: 300px;
+      font-family: Courier;
+      font-size: 12px;
+      padding: 10px;
+      margin-top: 40px;
+      border: #eee solid 10px;
     }
   </style>
 
@@ -59,13 +64,14 @@
 </head>
 
 <body>
-  <h1>Play With VexTab</h1>
+  <h1>VexTab Playground</h1>
 
-  <canvas id="boo"></canvas>
-  <pre id="error"></pre>
+  <div style="float:left;">
+    <canvas id="boo"></canvas>
+    <pre id="error"></pre>
+  </div>
 
-  <p/>
-
+  <div style="float:left;">
   <textarea id="blah">tabstave notation=true key=A
 notes :q (5/2.5/3.7/4) 5h6/3 7/4 |
 notes :8 [ t12p7p5h7/4 ] :q 7/5 :8 [ 3s5/5 ]
@@ -74,6 +80,7 @@ tabstave notation=true
 notes :q (8/2.7b9b7/3) (5b6/2.5b6/3)v :8 [ 7s12/4 ]
 notes [ t:16:9s:8:3s:16:0/4 ]
 </textarea>
+  </div>
 </body>
 
 </html>
