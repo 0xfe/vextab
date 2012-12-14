@@ -50,4 +50,8 @@ end
 task :make => [:build_coffee, 'build/src', 'build/doc',
                'build/support', 'build/output/vextab_parser.js']
 
+task :deploy => :make do
+  sh 'scp -r build/* mohit@muthanna.com:www/vexflow/vextab2'
+end
+
 task :default => [:make]
