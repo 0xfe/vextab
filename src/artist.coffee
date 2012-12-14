@@ -35,8 +35,9 @@ class Vex.Flow.Artist
     @last_y = @y
     @current_duration = "q"
     @current_clef = "treble"
-    @current_bends = []
+    @current_bends = {}
     @bend_start_index = null
+    @bend_start_strings = null
 
   render: (renderer) ->
     @closeBends()
@@ -125,12 +126,17 @@ class Vex.Flow.Artist
     stave.note_notes.push(new Vex.Flow.BarNote()) if stave.note?
 
   makeBend = (from_fret, to_fret) ->
-    direction = if from_fret > to_fret then Vex.Flow.Bend.DOWN else Vex.Flow.Bend.UP
-    text = switch Math.abs(from_fret - to_fret)
-      when 1 then "1/2"
-      when 2 then "Full"
-      when 3 then "1 1/2"
-      else "Bend to #{to_fret}"
+    direction = Vex.Flow.Bend.UP
+    text = ""
+
+    if from_fret > to_fret
+      direction = Vex.Flow.Bend.DOWN
+    else
+      text = switch Math.abs(to_fret - from_fret)
+        when 1 then "1/2"
+        when 2 then "Full"
+        when 3 then "1 1/2"
+        else "Bend to #{to_fret}"
 
     return {type: direction, text: text}
 
@@ -138,34 +144,42 @@ class Vex.Flow.Artist
     L "openBends", first_note, last_note, first_indices, last_indices
     tab_notes = _.last(@staves).tab_notes
 
+    start_note = first_note
+    start_indices = first_indices
     if _.isEmpty(@current_bends)
       @bend_start_index = tab_notes.length - 2
+      @bend_start_strings = first_indices
+    else
+      start_note = tab_notes[@bend_start_index]
+      start_indices = @bend_start_strings
 
-    first_frets = first_note.getPositions()
+    first_frets = start_note.getPositions()
     last_frets = last_note.getPositions()
-    for index, i in first_indices
+    for index, i in start_indices
       last_index = last_indices[i]
-      from_fret = first_frets[index]
+      from_fret = first_note.getPositions()[first_indices[i]]
       to_fret = last_frets[last_index]
-      @current_bends[i] ?= []
-      @current_bends[i].push makeBend(from_fret.fret, to_fret.fret)
+      @current_bends[index] ?= []
+      @current_bends[index].push makeBend(from_fret.fret, to_fret.fret)
+      L "Push: ", index
 
   closeBends: ->
     L "closeBends"
     return unless @bend_start_index?
     tab_notes = _.last(@staves).tab_notes
-    for phrases, i in @current_bends
+    for k, v of @current_bends
       phrase = []
-      for bend in phrases
+      for bend in v
         phrase.push bend
       tab_notes[@bend_start_index].addModifier(
-        new Vex.Flow.Bend(null, null, phrase), i)
+        new Vex.Flow.Bend(null, null, phrase), k)
+      L "Pop: ", k
 
     # Replace bent notes with ghosts (make them invisible)
     for tab_note in tab_notes[@bend_start_index+1..tab_notes.length - 2]
       tab_note.setGhost(true)
 
-    @current_bends = []
+    @current_bends = {}
     @bend_start_index = null
 
   addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
