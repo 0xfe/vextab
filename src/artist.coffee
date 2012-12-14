@@ -277,6 +277,21 @@ class Vex.Flow.Artist
 
     return -1
 
+  addDecorator: (decorator) ->
+    L "addDecorator: ", decorator
+    return unless decorator?
+
+    stave = _.last(@staves)
+    tab_notes = stave.tab_notes
+    modifier = null
+
+    if decorator == "v"
+      modifier = new Vex.Flow.Vibrato()
+    if decorator == "V"
+      modifier = new Vex.Flow.Vibrato().setHarsh(true)
+
+    _.last(tab_notes).addModifier(modifier, 0) if modifier?
+
   addArticulations: (articulations) ->
     L "addArticulations: ", articulations
     stave = _.last(@staves)
@@ -364,6 +379,7 @@ class Vex.Flow.Artist
       tab_specs[current_position].push {fret: note.fret, str: note.string}
       articulations[current_position].push note.articulation
       durations[current_position] = current_duration
+      decorators[current_position] = note.decorator if note.decorator?
 
       current_position++
 
@@ -373,11 +389,15 @@ class Vex.Flow.Artist
       @addTabNote tab_specs[i]
       @addStaveNote spec, accidentals[i] if stave.note?
       @addArticulations articulations[i]
+      @addDecorator decorators[i] if decorators[i]?
+
 
     if chord_articulation?
       art = []
       art.push chord_articulation for num in [1..num_notes]
       @addArticulations art
+
+    @addDecorator chord_decorator if chord_decorator?
 
   addNote: (note) ->
     @addChord([note])
