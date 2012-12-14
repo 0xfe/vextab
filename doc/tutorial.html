@@ -1,0 +1,307 @@
+<html>
+<head>
+  <title>VexTab Tutorial</title>
+  <link href='http://fonts.googleapis.com/css?family=OFL+Sorts+Mill+Goudy+TT|Yanone+Kaffeesatz|Tangerine'
+   rel='stylesheet' type='text/css'>
+  <link href="tabdiv.css" media="screen" rel="Stylesheet" type="text/css" />
+  <link href="style.css" media="screen" rel="Stylesheet" type="text/css" />
+
+  <!-- Support Sources -->
+  <script src="../support/vexflow-free.js"></script>
+  <script src="../support/underscore-min.js"></script>
+
+  <!-- VexTab Generated JS -->
+  <script src="../output/vextab_parser.js"></script>
+  <script src="../output/artist.js"></script>
+  <script src="../output/vextab.js"></script>
+
+  <!-- Test Sources -->
+  <script src="../support/jquery.js"></script>
+  <script src="tabdiv2.js"></script>
+</head>
+
+<body>
+  <div class="vex">
+    <a href="http://vexflow.com">VexFlow</a> |
+    <a href="http://my.vexflow.com">My VexFlow</a> |
+    <a href="http://vexflow.com/vextab">VexTab</a> |
+    <a href="http://0xfe.blogspot.com">0xfe</a>
+  </div>
+
+  <div class="header">
+    <h1>The VexTab Tutorial</h1>
+    <div class="main">
+      <b>An N-step program for learning all about <a href="http://vexflow.com/vextab">VexTab</a></b>
+    </div>pre-pre-pre-alpha by <a href="http://0xfe.blogspot.com">0xfe</a>.
+  </div>
+
+  <div class="content">
+    <h2>Step 1: The Stave</h2>
+
+    <div class="description">
+      The <code>tabstave</code> keyword is used to create a new tab
+      stave. The green code box below is editable - try adding another
+      stave by typing <code>tabstave</code> on a new line.
+      <p/>
+      <code>tabstave</code> takes keyword arguments. For example, the string
+      <code>tabstave notation=true</code> renders a standard notation stave
+      above the tab stave. Try this on the tab stave below.
+    </div>
+
+    <div style="width:420; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=400 scale=1.0 editor="true"
+      editor_width=420 editor_height=80>tabstave</div>
+    </div>
+
+    <h2>Step 2: Add some notes</h2>
+    <div class="description">
+      The <code>notes</code> keyword can be used to add notes. Notes are
+      represented in the format <code>fret/string</code>. To add a long
+      line of notes on the same string, you can use the format
+      <code>fret-fret-fret/string</code>. Add a few more frets and
+      notice how the notes are auto-justified.
+    </div>
+
+    <div style="width:420; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=400 scale=1.0 editor="true"
+      editor_width=420 editor_height=100>tabstave notation=true
+notes 4-5-6/3 10/4</div>
+    </div>
+
+    <h2>Step 3: Stave keywords</h2>
+    <div class="description">
+      <p><code>tabstave</code> takes keyword arguments that can be combined.</p>
+
+      <table class="tabstave-keywords">
+        <thead>
+          <tr><td><strong>keyword</strong></td><td><strong>values</strong></td></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>notation</code></td>
+            <td>true/<code>false</code></td>
+          </tr>
+          <tr>
+            <td><code>tablature</code></td>
+            <td><code>true</code>/false</td>
+          </tr>
+          <tr>
+            <td><code>clef</code></td>
+            <td><code>treble</code>, alto, tenor, bass</td>
+          </tr>
+          <tr>
+            <td><code>key</code></td>
+            <td><code>C</code>, Am, F, Dm, Bb, Gm, Eb, Cm, Ab, Fm, Db, Bbm, Gb, Ebm, Cb, Abm, G, Em, D, Bm, A, F#m, E, C#m, B, G#m, F#, D#m, C#, A#m</td>
+          </tr>
+          <tr>
+            <td><code>time</code></td>
+            <td>C, C|, #/#</td>
+          </tr>
+          <tr>
+            <td><code>tuning</code></td>
+            <td>standard, dropd, eb, <code>E/5,B/4,G/4,D/4,A/3,E/3</code></td>
+          </tr>
+        </tbody>
+      </table>
+      For example
+      <ul>
+        <li><code>tabstave notation=true</code> renders a standard notation stave
+        above the tab stave.</li>
+        <li><code>tabstave notation=true tablature=false</code> only renders the notation stave.</li>
+        <li><code>tabstave notation=true clef=alto</code> changes the clef to alto.</li>
+        <li><code>tabstave notation=true clef=bass key=C# time=C|</code> would create two staves (one notation, one tab), bass clef in the key of C# and half common time</li>
+      </ul>
+      Try these on the tab stave below.
+    </div>
+
+    <div style="width:420; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=400 scale=1.0 editor="true"
+      editor_width=420 editor_height=80>tabstave notation=true clef=bass key=Ab time=C|
+notes 4-5/6</div>
+    </div>
+
+    <h2>Step 4: Add bar-lines</h2>
+    <div class="description">
+      The <code>|</code> character places a bar-line between the notes. You
+      can add as many bars as you want to a stave. Note that a space is
+      required before and after the <code>|</code> character.
+    </div>
+
+    <div style="width:520; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=500 scale=1.0 editor="true"
+      editor_width=520 editor_height=110>tabstave
+notes 4-5-6/3 10/4 | 5-4-2/3 2/2
+
+tabstave
+notes 6-7-8-9/3 | 9-8-7-6/2</div>
+    </div>
+
+    <h2>Step 5: Bend a few notes</h2>
+    <div class="description">
+      To draw bends, separate two frets with a <code>b</code> character. The
+      difference between the frets determines how much to bend. E.g.,
+      <code>10b12</code> is a full-step bend.<p/>
+      If you separate three frets with a bend, and the first fret is the same
+      as the last fret, a bend-and-release is displayed.
+      E.g., <code>10b12b10</code>.
+    </div>
+
+    <div style="width:520; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=500 scale=1.0 editor="true"
+      editor_width=520 editor_height=110>tabstave
+notes 4-5-6b7/3 10/4 | 5-4-2/3 2/2
+
+tabstave
+notes 6-7b9b7/3 7/4 | 9-8-7-6/2</div>
+    </div>
+
+    <h2>Step 6: Add some vibrato</h2>
+    <div class="description">
+      Adding a <code>v</code> to the end of a note signifies
+      a vibrato. A capital v (<code>V</code>) signifies a harsh vibrato. You
+      can also add a vibrato to a bend.
+    </div>
+
+    <div style="width:520; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=500 scale=1.0 editor="true"
+      editor_width=520 editor_height=110>tabstave
+notes 4-5-6b7v/3 10/1 | 5-4-2/3 2v/2
+
+tabstave
+notes 6-7b9b7/3 7/4 | 9-8-7-6V/2</div>
+    </div>
+
+    <h2>Step 7: Add some chords</h2>
+    <div class="description">
+      To render chords, group notes in parenthesis and separate each
+      string/fret combination with a period. E.g., <code>(4/5.5/6)</code>.
+      <p/>
+      You can bend individual notes in a chord just like you would for single
+      notes.
+    </div>
+
+    <div style="width:520; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=500 scale=1.0 editor="true"
+      editor_width=520 editor_height=130>tabstave
+notes (5/2.6/3.7/4) 5v/1 | 5-4-3/3 2v/4
+
+tabstave
+notes (8/2.7b9b7/3) (5b6/2.5b6/3) 7/4 |
+notes (5/2.6/3.7/4)</div>
+    </div>
+
+    <h2>Step 8: Add some hammer-ons, pull-offs, taps, and slides</h2>
+    <div class="description">
+      To render hammer-ons, pull-offs, taps, or slides, use the characters
+      <code>h</code>, <code>p</code>, <code>t</code> or <code>s</code>,
+      respectively. For example, to render a hammer-on/pull-off combo from
+      fret 6 to 8 back to 6, use <code>6h8p6</code>.
+      <p/>
+      You can also hammer-on, pull-off, tap, and slide between chords.
+    </div>
+
+    <div style="width:520; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=500 scale=1.0 editor="true"
+      editor_width=520 editor_height=230>tabstave
+notes (5/2.5/3.7/4) 5h6/3 7/4 |
+notes t12p7p5h7/4 7/5 5s3/5
+
+tabstave
+notes (8/2.7b9b7/3) (5b6/2.5b6/3)v 7s0/4 |
+notes (5/2.6/3.7/4)v
+
+tabstave
+notes (5/4.5/5)s(7/4.7/5)s(5/4.5/5) (5/4.5/5)h(7/5) |
+notes t(12/5.12/4)s(5/5.5/4) 3b4/5 5V/6</div>
+    </div>
+
+    <h2>Step 9: Add durations and triplets.</h2>
+    <div class="description">
+      By default, note durations are set to 8th notes. To change the duration
+      of the following notes you can use the colon character <code>:</code> followed
+      by a duration code.
+      <p/>
+      For example, <code>:w</code> specifies a whole note. The currently available
+      durations are: <code>w h q 8 16 32</code>, for whole, half, quarter, eighth,
+      sixteenth, and thirty-second note durations. Suffixing a dot to the duration indicates a dotted note.
+      <p/>
+      You can indicate tuplets by enclosing a tuplet number (3, 5, 7, etc.) within caret signs (<code>^</code>). VexTab will create a tuplet out of the preceding notes. For example, <code>:8 4-5-6/4 ^3^</code> will create
+      a triplet out of three notes.
+    </div>
+
+    <div style="width:570; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=550 scale=1.0 editor="true"
+      editor_width=570 editor_height=100>tabstave notation=true time=4/4 key=Ab tuning=eb
+notes :8 5s7s8/5 ^3^ :q (5/2.6/3)h(7/3) :8d 5/4 :16 5/5</div>
+    </div>
+
+    <div class="description">
+      <p/>
+      Here's a longer example rendered with durations and standard notation.
+      Notice how you can set the duration in the middle of slides, bends, or other
+      types of ties by prefixing the fret with <code>:duration:</code>.
+      <p/>
+    </div>
+
+    <div style="width:640; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=620 scale=1.0 editor="true"
+      editor_width=640 editor_height=230>tabstave notation=true key=A
+notes :q (5/2.5/3.7/4) 5h6/3 7/4 |
+notes :8 t12p7p5h7/4 :q 7/5 :8 3s5/5
+
+tabstave notation=true
+notes :q (8/2.7b9b7/3) (5b6/2.5b6/3)v :8 7s12/4
+notes t:16:9s:8:3s:16:0/4
+
+tabstave notation=true
+notes :q (5/4.5/5)s(7/4.7/5)s(5/4.5/5)
+notes :8 (5/4.5/5)h(7/5) |
+notes :8 t(12/5.12/4)s(5/5.5/4) 3b4/5 :h 5V/6</div>
+
+ <h2>Step 10: Add lyrics, chords, or other text.</h2>
+    <div class="description">
+      You can annotate your notation by enclosing comma-separated text between dollar symbols (<code>$</code>). VexTab will associate each comma-separated set of words with each of the preceding notes.
+      <p/>
+      Here's an example:
+     </div>
+
+    <div style="width:570; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=550 scale=1.0 editor="true"
+      editor_width=570 editor_height=100>tabstave notation=true time=4/4 key=Ab tuning=eb
+notes :q 5/5 5/4 5/3 ^3^ $Fi,Ga,Ro!$ :h 4/4 $Blah!$</div>
+    </div>
+
+    <div class="description">
+      <p/>
+      You can use this to indicate, chords, lyrics, picking direction, or anything else that you want to associate with the note.
+      <p/>
+    </div>
+
+    <div style="width:640; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=620 scale=1.0 editor="true"
+      editor_width=640 editor_height=230>tabstave notation=true key=A
+notes :q (5/2.5/3.7/4) $A7#9$ 5h6/3 7/4 |
+notes :8 7/4 $Sweep$  6/3 5/2 3v/1 :q 7/5 $D9$ :8 3s5/5</div>
+
+
+    <center>
+    <h2>Step N + 1: Coming soon</h2>
+      <p/>
+      <a href="http://0xfe.blogspot.com">The Blog</a><p/>
+    </center>
+  </div>
+</body>
+
+</html>

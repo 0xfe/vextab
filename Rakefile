@@ -35,6 +35,10 @@ file 'build/support' => 'build' do
   sh 'cp -R support build'
 end
 
+file 'build/doc' => 'build' do
+    sh 'cp -R doc build'
+end
+
 task :clean do
   sh 'rm -rf build'
 end
@@ -43,6 +47,7 @@ task :watch do
   sh 'bundle exec guard'
 end
 
-task :make => [:build_coffee, 'build/src', 'build/support', 'build/output/vextab_parser.js']
+task :make => [:build_coffee, 'build/src', 'build/doc',
+               'build/support', 'build/output/vextab_parser.js']
 
 task :default => [:make]

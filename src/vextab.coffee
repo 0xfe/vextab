@@ -24,6 +24,8 @@ class Vex.Flow.VexTab
     @elements = false
     @current_duration = "q"
 
+  isValid: -> @valid
+
   parseStaveOptions: (options) ->
     params =
       notation: "false"
@@ -115,7 +117,7 @@ class Vex.Flow.VexTab
     L "Parsing:\n#{code}"
     @elements = vextab_parser.parse(code)
     if @elements
-      @valid = true
       @generate()
+      @valid = true
 
     return @elements

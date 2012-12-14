@@ -17,6 +17,7 @@ class Vex.Flow.Artist
       bottom_spacing: 20
       tab_stave_lower_spacing: 10
       note_stave_lower_spacing: 0
+      scale: 1.0
     _.extend(@options, options)
     @reset()
 
@@ -43,6 +44,7 @@ class Vex.Flow.Artist
     @closeBends()
     renderer.resize(@width, @last_y + @options.bottom_spacing)
     ctx = renderer.getContext()
+    ctx.scale(@scale, @scale)
     ctx.clear()
     ctx.setFont(@options.font_face, @options.font_size, "")
 
@@ -62,6 +64,8 @@ class Vex.Flow.Artist
 
     for articulation in @stave_articulations
       articulation.setContext(ctx).draw()
+
+  draw: (renderer) -> @render renderer
 
   # Given a fret/string pair, returns a note, octave, and required accidentals
   # based on current guitar tuning and stave key. The accidentals may be different
@@ -283,7 +287,7 @@ class Vex.Flow.Artist
     current_tab_note = _.last(tab_notes)
 
     has_bends = false
-    for valid_articulation in ["b", "s", "h", "p", "t", "T"]
+    for valid_articulation in ["b", "s", "h", "p", "t", "T", "v", "V"]
       indices = (i for art, i in articulations when art? and art == valid_articulation)
       if _.isEmpty(indices) then continue
 
