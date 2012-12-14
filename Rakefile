@@ -36,7 +36,7 @@ file 'build/output/vextab_parser.js' => 'src/vextab.jison' do
 end
 
 file 'build/output/tabdiv2.js' => 'src/tabdiv2.js' do
-    sh "cp src/tabdiv2.js build/output/tabdiv2.js"
+  sh "cp src/tabdiv2.js build/output/tabdiv2.js"
 end
 
 file 'build/src' => 'build' do
@@ -48,7 +48,7 @@ file 'build/support' => 'build' do
 end
 
 file 'build/doc' => 'build' do
-    sh 'cp -R doc build'
+  sh 'cp -R doc build'
 end
 
 task :clean do
@@ -59,9 +59,9 @@ task :watch do
   sh 'bundle exec guard'
 end
 
-task 'build/tabdiv-min.js' => [:build_coffee,
-                                'build/output/vextab_parser.js',
-                                'build/output/tabdiv2.js'] do
+file 'build/tabdiv-min.js' => [:build_coffee,
+                               'build/output/vextab_parser.js',
+                               'build/output/tabdiv2.js'] do
   require 'uglifier'
 
   files = [
@@ -78,10 +78,12 @@ task 'build/tabdiv-min.js' => [:build_coffee,
       f.write(min)
     end
   end
-  sh 'cp -R build/tabdiv-min.js build/support'
+
+  # Create a copy in support/
+  sh 'cp build/tabdiv-min.js build/support'
 end
 
-task :make => [:build_coffee, 'build/src', 'build/doc',
+task :make => ['build/src', 'build/doc',
                'build/support', 'build/tabdiv-min.js']
 
 task :deploy => :make do
