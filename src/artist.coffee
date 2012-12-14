@@ -105,6 +105,9 @@ class Vex.Flow.Artist
     for acc, index in  accidentals
       stave_note.addAccidental(index, new Vex.Flow.Accidental(acc)) if acc?
 
+    if @current_duration[@current_duration.length - 1] == "d"
+      stave_note.addDotToAll()
+
     stave_notes.push stave_note
 
   addTabNote: (spec) ->
@@ -181,6 +184,19 @@ class Vex.Flow.Artist
 
     @current_bends = {}
     @bend_start_index = null
+
+  makeTuplets: (tuplets, notes) ->
+    L "makeTuplets", tuplets, notes
+    notes ?= tuplets
+    return unless _.last(@staves).note
+    stave_notes = _.last(@staves).note_notes
+    tab_notes = _.last(@staves).tab_notes
+
+    throw new Vex.RERR("ArtistError", "Not enough notes for tuplet") if stave_notes.length < notes
+    modifier = new Vex.Flow.Tuplet(stave_notes[stave_notes.length - notes..])
+    @stave_articulations.push modifier
+    # Throw away tab tuplet because it can't be rendered
+    new Vex.Flow.Tuplet(tab_notes[tab_notes.length - notes..])
 
   addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
     L "addTabArticulations: ", type, first_note, last_note, first_indices, last_indices

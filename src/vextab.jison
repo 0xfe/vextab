@@ -28,6 +28,8 @@
 ")"                   return ')'
 "["                   return '['
 "]"                   return ']'
+"^"                   return '^'
+","                   return ','
 "|"                   return '|'
 "."                   return '.'
 
@@ -173,6 +175,14 @@ lingo
         _c: @1.first_column
       }
     }
+  | tuplets
+    { $$ = {
+          command: "tuplet",
+          params: $1,
+          _l: @1.first_line,
+          _c: @1.first_column
+        }
+      }
   ;
 
 line
@@ -259,4 +269,9 @@ maybe_decorator
   : 'v' { $$ = 'v' }
   | 'V' { $$ = 'V' }
   |     { $$ = null }
+  ;
+
+tuplets
+  : '^' NUMBER '^'            { $$ = {tuplet: $2} }
+  | '^' NUMBER ',' NUMBER '^' { $$ = {tuplet: $2, notes: $4}}
   ;
