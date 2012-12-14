@@ -6,6 +6,14 @@ require 'fileutils'
 require 'rake/testtask'
 
 DIR = File.dirname(__FILE__)
+DEPLOY_SSH_SERVER = "mohit@my.vexflow.com"
+DEPLOY_DIR = "/home/mohit/www/vexflow/vextab"
+DEPLOY_SSH_DIR = "#{DEPLOY_SSH_SERVER}:#{DEPLOY_DIR}"
+DEPLOY_VEXFLOW_DIR = "#{DEPLOY_SSH_SERVER}:/home/mohit/www/vexflow"
+
+def ssh(command)
+  sh "ssh #{DEPLOY_SSH_SERVER} 'source ~/.bash_profile; cd #{DEPLOY_DIR}; #{command}'"
+end
 
 COFFEE = "node_modules/.bin/coffee"
 JISON = "node_modules/.bin/jison"
@@ -70,13 +78,17 @@ task 'build/tabdiv-min.js' => [:build_coffee,
       f.write(min)
     end
   end
+  sh 'cp -R build/tabdiv-min.js build/support'
 end
 
 task :make => [:build_coffee, 'build/src', 'build/doc',
                'build/support', 'build/tabdiv-min.js']
 
 task :deploy => :make do
-  sh 'scp -r build/* mohit@muthanna.com:www/vexflow/vextab2'
+  sh "scp build/tabdiv-min.js #{DEPLOY_SSH_DIR}/support"
+  sh "scp -r support #{DEPLOY_SSH_DIR}"
+  sh "scp -r support #{DEPLOY_VEXFLOW_DIR}"
+  sh "scp doc/* #{DEPLOY_SSH_DIR}"
 end
 
 task :default => [:make]
