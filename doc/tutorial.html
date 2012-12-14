@@ -36,6 +36,13 @@
   </div>
 
   <div class="content">
+    <h2>What is VexTab?</h2>
+    <div class="description">
+      VexTab is a language that allows you to easily create, edit, and share guitar tablature. Unlike ASCII tab, which is designed for readability, VexTab is designed for writeability.
+      <p/>
+      Follow along below to start writing beautiful music notation. If you want to save and share your writing, go to <a href="http://my.vexflow.com">My VexFlow</a>.
+    </div>
+
     <h2>Step 1: The Stave</h2>
 
     <div class="description">
@@ -270,7 +277,7 @@ notes :8 t(12/5.12/4)s(5/5.5/4) 3b4/5 :h 5V/6</div>
 
  <h2>Step 10: Add lyrics, chords, or other text.</h2>
     <div class="description">
-      You can annotate your notation by enclosing comma-separated text between dollar symbols (<code>$</code>). VexTab will associate each comma-separated set of words with each of the preceding notes.
+      You can annotate your notation by enclosing comma-separated text between dollar symbols (<code>$</code>). VexTab will associate each comma-separated set of words with each of the preceding notes. Annotations can be used for lyrics, chords, picking hints, etc.
       <p/>
       Here's an example:
      </div>
@@ -284,20 +291,30 @@ notes :q 5/5 5/4 5/3 ^3^ $Fi,Ga,Ro!$ :h 4/4 $Blah!$</div>
 
     <div class="description">
       <p/>
-      You can use this to indicate, chords, lyrics, picking direction, or anything else that you want to associate with the note.
+      There are two ways to customize these annotations. You can use preset styles or custom styles. For preset styles, simply prefix your annotation with <code>.<i>style</i>.</code> inside the dollar signs. E.g., The code <code>$.big.C Major$</code>, will render the text "C Major" in a big bold font.
+
       <p/>
+      The current preset styles are <code>big</code>, <code>medium</code>, and <code>italic</code>.
+      <p/>
+
+      <p/>
+      For custom styles you can specify the font face, size, and style by prefixing your annotation with <code>.<i>face</i>.<i>size</i>.<i>style</i></code> within the dollar signs. E.g., <code>$.Times-14-italic.Blah$</code> will render "Blah" in 14pt Italic Times Roman.
+
+      Here are some examples of preset and custom styles.
     </div>
 
     <div style="width:640; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=620 scale=1.0 editor="true"
-      editor_width=640 editor_height=230>tabstave notation=true key=A
-notes :q (5/2.5/3.7/4) $A7#9$ 5h6/3 7/4 |
-notes :8 7/4 $Sweep$  6/3 5/2 3v/1 :q 7/5 $D9$ :8 3s5/5</div>
+      editor_width=640 editor_height=130>tabstave notation=true key=A
+notes :q (5/2.5/3.7/4) $.big.A7#9$ 5h6/3 7/4 |
+notes :8 7/4 $.italic.sweep$  6/3 5/2 3v/1 :q 7v/5 $.Arial-10-bold.P.H$ :8 3s5/5</div>
 
 
     <center>
     <h2>Step N + 1: Coming soon</h2>
+      <p/>
+      Meanwhile, you can save and share your VexTab at <a href="http://my.vexflow.com">My VexFlow</a>.
       <p/>
       <a href="http://0xfe.blogspot.com">The Blog</a><p/>
     </center>

@@ -14,6 +14,7 @@ class Vex.Flow.Artist
       stave_width: @width - 20
       font_face: "Arial"
       font_size: 10
+      font_style: null
       bottom_spacing: 20
       tab_stave_lower_spacing: 10
       note_stave_lower_spacing: 0
@@ -200,6 +201,35 @@ class Vex.Flow.Artist
     # Throw away tab tuplet because it can't be rendered
     new Vex.Flow.Tuplet(tab_notes[tab_notes.length - notes..])
 
+  makeAnnotation: (text) ->
+    font_face = @options.font_face
+    font_size = @options.font_size
+    font_style = @options.font_style
+
+    parts = text.match(/^\.([^-]*)-([^-]*)-([^.]*)\.(.*)/)
+
+    if parts?
+      font_face = parts[1]
+      font_size = parts[2]
+      font_style = parts[3]
+      text = parts[4]
+    else
+      parts = text.match(/^\.([^.]*)\.(.*)/)
+      if parts?
+        text = parts[2]
+        switch parts[1]
+          when "big"
+            font_style = "bold"
+            font_size = "14"
+          when "italic", "italics"
+            font_face = "Times"
+            font_style = "italic"
+          when "medium"
+            font_size = "12"
+
+    annotation = new Vex.Flow.Annotation(text).
+      setFont(font_face, font_size, font_style);
+
   addAnnotations: (annotations) ->
     stave = _.last(@staves)
     stave_notes = stave.note_notes
@@ -210,10 +240,10 @@ class Vex.Flow.Artist
 
     if stave.tab
       for tab_note, i in tab_notes[tab_notes.length - annotations.length..]
-        tab_note.addModifier(new Vex.Flow.Annotation(annotations[i]), 0)
+        tab_note.addModifier(@makeAnnotation(annotations[i]), 0)
     else
       for note, i in stave_notes[stave_notes.length - annotations.length..]
-        note.addAnnotation(0, new Vex.Flow.Annotation(annotations[i]))
+        note.addAnnotation(0, @makeAnnotation(annotations[i]))
 
   addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
     L "addTabArticulations: ", type, first_note, last_note, first_indices, last_indices
