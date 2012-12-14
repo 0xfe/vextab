@@ -52,7 +52,7 @@
         }
       }
 
-      $("#blah").keyup(_.throttle(render));
+      $("#blah").keyup(_.throttle(render, 100));
       render();
     })
   </script>
