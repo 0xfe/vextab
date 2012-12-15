@@ -131,6 +131,7 @@ class Vex.Flow.Artist
 
   addBar: ->
     L "addBar()"
+    @closeBends()
     stave = _.last(@staves)
     stave.tab_notes.push(new Vex.Flow.BarNote())
     stave.note_notes.push(new Vex.Flow.BarNote()) if stave.note?

@@ -13,6 +13,8 @@ class Vex.Flow.Test.VexTab
     test "Stave Options Test", @staveOptionsTest
     test "Notation Only Test", @notationOnly
     test "Tuning Test", @tuning
+    test "String/Fret Test", @stringFret
+    test "MultiFret Test", @multiFret
 
   # Private method
   catchError = (tab, code) ->
@@ -104,7 +106,7 @@ class Vex.Flow.Test.VexTab
       notEqual null, tab.parse("tabstave notation=true tablature=true time=" + time)
 
     catchError(tab, "tabstave notation=true time=rrr")
-    ok(true, "all pass");
+    ok true, "all pass"
 
   @tuning: ->
     expect 9
@@ -120,4 +122,24 @@ class Vex.Flow.Test.VexTab
     catchError(tab, "tabstave tuning=E,B,G,D,A,E")
     catchError(tab, "tabstave tuning=T/5,B/4,G/4,D/4,A/3,E/3")
 
-    ok(true, "all pass");
+    ok true, "all pass"
+
+  @stringFret: ->
+    expect 5
+    tab = makeParser()
+
+    notEqual null, tab.parse "tabstave\n notes 10/2 10/3"
+    catchError(tab, "tabstave\n notes /2 10/3")
+    catchError(tab, "tabstave\n notes j/2 10/3")
+    catchError(tab, "tabstave\n notes 4")
+
+    ok true, "all pass"
+
+  @multiFret: ->
+    expect 4
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave\n notes 10-11/3")
+    notEqual null, tab.parse("tabstave\n notes 10-11-12-13-15/3 5-4-3-2-1/2")
+    catchError(tab, "tabstave\n notes 10/2-10")
+    catchError(tab, "tabstave\n notes 10-/2")

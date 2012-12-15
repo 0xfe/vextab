@@ -18,58 +18,65 @@ end
 COFFEE = "node_modules/.bin/coffee"
 JISON = "node_modules/.bin/jison"
 
-directory 'build'
+directory 'build/output'
+directory 'build/src'
+directory 'build/support'
+directory 'build/doc'
+
+generated_sources = [
+  "build/output/vextab_parser.js",
+  "build/output/tabdiv2.js",
+  "build/output/artist.js",
+  "build/output/vextab.js"
+]
 
 FileList['src/*.coffee'].each do |src|
   cs_source = src
   js_target = "build/output/#{File.basename(src, '.coffee')}.js"
 
-  file js_target => [cs_source, 'build'] do
+  file js_target => [cs_source, 'build/output'] do
     sh "#{COFFEE} -o build/output --compile #{cs_source}"
   end
 
-  task :build_coffee => js_target
+  task :coffee => js_target
 end
 
-file 'build/output/vextab_parser.js' => 'src/vextab.jison' do
+def copy_path(path_glob, dest_dir, name)
+  FileList[path_glob].each do |source|
+    target = "#{dest_dir}/#{File.basename(source)}"
+    file target => [source, dest_dir] do
+      cp source, target, :verbose => true
+    end
+
+    desc "Copy data in: #{path_glob}"
+    task name => target
+  end
+end
+
+file 'build/output/vextab_parser.js' => ['src/vextab.jison', 'build/output'] do
   sh "#{JISON} src/vextab.jison -o build/output/vextab_parser.js"
 end
 
-file 'build/output/tabdiv2.js' => 'src/tabdiv2.js' do
+file 'build/output/tabdiv2.js' => ['src/tabdiv2.js', 'build/output'] do
   sh "cp src/tabdiv2.js build/output/tabdiv2.js"
 end
 
-file 'build/src' => 'build' do
-  sh 'cp -R src build'
-end
-
-file 'build/support' => 'build' do
-  sh 'cp -R support build'
-end
-
-file 'build/doc' => 'build' do
-  sh 'cp -R doc build'
-end
+copy_path("src/*", "build/src", :build_copy)
+copy_path("support/*", "build/support", :build_copy)
+copy_path("doc/*", "build/doc", :build_copy)
 
 task :clean do
   sh 'rm -rf build'
 end
 
 task :watch do
-  sh 'bundle exec guard'
+  sh 'bundle exec guard -i'
 end
 
-file 'build/tabdiv-min.js' => [:build_coffee,
-                               'build/output/vextab_parser.js',
-                               'build/output/tabdiv2.js'] do
+file 'build/tabdiv-min.js' => generated_sources do
   require 'uglifier'
 
-  files = [
-    'build/output/vextab_parser.js',
-    'build/output/artist.js',
-    'build/output/vextab.js',
-    'build/output/tabdiv2.js'
-    ]
+  files = generated_sources
 
   puts "Building build/tabdiv-min.js"
   File.open("build/tabdiv-min.js", "w") do |f|
@@ -83,8 +90,7 @@ file 'build/tabdiv-min.js' => [:build_coffee,
   sh 'cp build/tabdiv-min.js build/support'
 end
 
-task :make => ['build/src', 'build/doc',
-               'build/support', 'build/tabdiv-min.js']
+task :make => [:build_copy, :coffee, 'build/tabdiv-min.js']
 
 task :deploy => :make do
   sh "scp build/tabdiv-min.js #{DEPLOY_SSH_DIR}/support"
