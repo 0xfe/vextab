@@ -3,12 +3,21 @@
 A VexTab Parser for VexFlow.
 Copyright (c) 2012 Mohit Muthanna Cheppudira.
 
-## Important Note
+## What is VexTab?
 
-This is currently experimental. Until this is complete, please use the version
-of VexTab bundled with VexFlow.
+VexTab is a language that allows you to easily create, edit, and share guitar
+tablature. Unlike ASCII tab, which is designed for readability, VexTab is
+designed for writeability.
 
-## Why?
+Go try it out at [The VexTab Tutorial](http://vexflow.com/vextab/tutorial.html).
+
+If you want to save and share your VexTab, try out [My Vexflow](http://my.vexflow.com).
+
+## Updates
+
+VexTab 2.0 now supports all VexTab 1.0 features, and [includes a few new ones](http://my.vexflow.com/articles/53?source=enabled).
+
+## Why 2.0?
 
 The original version of VexTab is chock full of suck. It's basically a hand-rolled
 recursive descent parser that generates VexFlow elements inline. It's also a
@@ -46,6 +55,8 @@ by typing:
 
     $ bundle install
 
+Quesions? Ask the [VexFlow Google Group](https://groups.google.com/forum/?fromgroups#!forum/vexflow).
+
 ## Build and Test
 
 Run `rake` and pull up `build/src/runtest.html` in your browser.
@@ -56,7 +67,9 @@ If you want to auto-build on changes to source files type:
 
 ## Links
 
-* [VexTab Home](http://vextab.com)
+* [VexTab Home](http://vexflow.com/vextab)
 * [The VexTab Tutorial](http://vexflow.com/vextab/tutorial.html)
 * [Google Group](https://groups.google.com/forum/?fromgroups#!forum/vexflow)
+* [VexFlow Home](http://vextab.com)
+* [My VexFlow](http://my.vexflow.com)
 * [Me](http://0xfe.muthanna.com)
