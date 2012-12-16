@@ -15,9 +15,16 @@ class Vex.Flow.Test.VexTab
     test "Tuning Test", @tuning
     test "String/Fret Test", @stringFret
     test "MultiFret Test", @multiFret
+    test "Tie Test", Vex.Flow.Test.VexTab.tie
+    test "Bend Test", Vex.Flow.Test.VexTab.bend
+    test "Vibrato Test", Vex.Flow.Test.VexTab.vibrato
+    test "Chord Test", Vex.Flow.Test.VexTab.chord
+    test "Tapping Test", Vex.Flow.Test.VexTab.tapping
+    test "Chord Ties Test", Vex.Flow.Test.VexTab.chordTies
+    test "Duration Test", Vex.Flow.Test.VexTab.duration
 
   # Private method
-  catchError = (tab, code) ->
+  catchError = (tab, code, error_type="ParseError") ->
     error =
       code: "NoError"
       message: "Expected exception not caught"
@@ -27,7 +34,7 @@ class Vex.Flow.Test.VexTab
     catch e
       error = e
 
-    equal(error.code, "ParseError", error.message)
+    equal(error.code, error_type, error.message)
 
   makeParser = -> new Vex.Flow.VexTab(new Vex.Flow.Artist(0, 0, 600))
 
@@ -143,3 +150,88 @@ class Vex.Flow.Test.VexTab
     notEqual null, tab.parse("tabstave\n notes 10-11-12-13-15/3 5-4-3-2-1/2")
     catchError(tab, "tabstave\n notes 10/2-10")
     catchError(tab, "tabstave\n notes 10-/2")
+
+  @tie: ->
+    expect 5
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave\n notes 10s11/3")
+    notEqual null, tab.parse("tabstave\n notes 10s11h12p10/3")
+
+    catchError(tab, "tabstave\n notes 10/2s10")
+    catchError(tab, "tabstave\n notes 10s")
+
+    ok true, "all pass"
+
+  @bend: ->
+    expect 5
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave\n notes 10b11/3")
+    notEqual null, tab.parse("tabstave\n notes 10b11s12/3")
+    notEqual null, tab.parse("tabstave\n notes 10s11b12/3")
+    catchError(tab, "tabstave\n notes 10b12b10b-/2")
+
+    ok(true, "all pass");
+
+  @vibrato: ->
+    expect 10
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave\n notes 10v/3")
+    notEqual null, tab.parse("tabstave\n notes 10-11v-12v/3")
+    notEqual null, tab.parse("tabstave\n notes 10b11v-12/3")
+    notEqual null, tab.parse("tabstave\n notes 10b11b10v-12/3")
+    notEqual null, tab.parse("tabstave\n notes 10s11v-12/3")
+    notEqual null, tab.parse("tabstave\n notes 10s11vs4s12vh15p10-1/2")
+    catchError(tab, "tabstave\n notes 10v")
+    catchError(tab, "tabstave\n notes 10vb/1")
+    catchError(tab, "tabstave\n notes 10-b11/3")
+
+    ok(true, "all pass");
+
+  @chord: ->
+    expect 7
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave\n notes (4/6)")
+    notEqual null, tab.parse("tabstave\n notes (4/5.6/7)")
+    catchError(tab, "tabstave\n notes (4")
+    catchError(tab, "tabstave\n notes (4/)")
+    catchError(tab, "tabstave\n notes (/5)")
+    catchError(tab, "tabstave\n notes (4/5.)")
+
+    ok(true, "all pass")
+
+  @tapping: ->
+    expect 5
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave\n notes t5p4p3/3")
+    notEqual null, tab.parse("tabstave\n notes 5t12p5-4-3/1")
+    catchError(tab, "tabstave\n notes 5t/4")
+    catchError(tab, "tabstave\n notes t-4-4h5/3")
+
+    ok(true, "all pass")
+
+  @chordTies: ->
+    expect 7
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave\n notes (1/2.2/3)s(3/2.4/3)")
+    notEqual null, tab.parse("tabstave\n notes (1/2.2/3.3/4)s(3/2.4/3.5/4)")
+    notEqual null, tab.parse("tabstave\n notes (4/5.1/2.2/3)s(3/2.4/3)")
+    notEqual null, tab.parse("tabstave\n notes (1/2.2/3)s(3/2.5/5.4/3)")
+    notEqual null, tab.parse("tabstave\n notes (1/2.2/3)s(3/2.4/3)h(6/2.7/3)")
+    notEqual null, tab.parse("tabstave\n notes t(1/2.2/3)s(3/2.4/3)h(6/2.7/3)")
+
+    ok(true, "all pass")
+
+  @duration: ->
+    tab = makeParser()
+    notEqual null, tab.parse("tabstave\n notes :w (1/2.2/3)s(3/2.4/3)")
+    notEqual null, tab.parse("tabstave\n notes :h (1/2.2/3)s(3/2.4/3) :q 1/2")
+    notEqual null, tab.parse("tabstave\n notes :h (1/2.2/3)s(3/2.4/3) 1/2 ^3^")
+    catchError(tab, "tabstave notation=true\n notes :w (1/2.2/3)s(3/2.4/3) ^3^", "ArtistError")
+    ok(true, "all pass")
+
