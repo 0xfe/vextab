@@ -3,7 +3,7 @@ VexTab Tests
 Copyright Mohit Cheppudira 2010 <mohit@muthanna.com>
 ###
 
-Vex.Flow.Test = {} if _.isUndefined(Vex.Flow.Test)
+Vex.Flow.Test ?= {}
 
 class Vex.Flow.Test.VexTab
   @Start: ->
@@ -16,6 +16,7 @@ class Vex.Flow.Test.VexTab
     test "String/Fret Test", @stringFret
     test "MultiFret Test", @multiFret
     test "Tie Test", @tie
+    test "Bar Test", @bar
     test "Bend Test", @bend
     test "Vibrato Test", @vibrato
     test "Chord Test", @chord
@@ -162,11 +163,22 @@ class Vex.Flow.Test.VexTab
     notEqual null, tab.parse("tabstave\n notes 10s11/3")
     notEqual null, tab.parse("tabstave\n notes 10s11h12p10/3")
     notEqual null, tab.parse("tabstave notation=true key=A\n notes :w 5/5 | T5/5 | T5V/5")
-
     catchError(tab, "tabstave\n notes 10/2s10")
     catchError(tab, "tabstave\n notes 10s")
 
     ok true, "all pass"
+
+  @bar: ->
+    expect 5
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave\n notes |10s11/3")
+    notEqual null, tab.parse("tabstave\n notes 10s11h12p10/3|")
+    notEqual null, tab.parse("tabstave notation=true key=A\n notes || :w || 5/5 ||| T5/5 | T5V/5")
+    catchError(tab, "tabstave\n | notes 10/2s10")
+
+    ok true, "all pass"
+
 
   @bend: ->
     expect 5

@@ -52,7 +52,9 @@ class Vex.Flow.Artist
     ctx.setFont(@options.font_face, @options.font_size, "")
 
     for stave in @staves
+      L "Rendering note stave."
       stave.note?.setContext(ctx).draw()
+      L "Rendering tab stave."
       stave.tab?.setContext(ctx).draw()
 
       if stave.tab? and stave.note?
@@ -62,9 +64,11 @@ class Vex.Flow.Artist
       else if stave.note?
         Vex.Flow.Formatter.FormatAndDraw ctx, stave.note, stave.note_notes, true
 
+    L "Rendering tab articulations."
     for articulation in @tab_articulations
       articulation.setContext(ctx).draw()
 
+    L "Rendering note articulations."
     for articulation in @stave_articulations
       articulation.setContext(ctx).draw()
 
@@ -173,7 +177,8 @@ class Vex.Flow.Artist
       @current_bends[index] ?= []
       @current_bends[index].push makeBend(from_fret.fret, to_fret.fret)
 
-  closeBends: ->
+  # Close and apply all the bends to the last N notes.
+  closeBends: (offset=1) ->
     L "closeBends"
     return unless @bend_start_index?
     tab_notes = _.last(@staves).tab_notes
@@ -185,7 +190,7 @@ class Vex.Flow.Artist
         new Vex.Flow.Bend(null, null, phrase), k)
 
     # Replace bent notes with ghosts (make them invisible)
-    for tab_note in tab_notes[@bend_start_index+1..tab_notes.length - 2]
+    for tab_note in tab_notes[@bend_start_index+1..((tab_notes.length - 2) + offset)]
       tab_note.setGhost(true)
 
     @current_bends = {}
@@ -368,7 +373,7 @@ class Vex.Flow.Artist
           stave_notes[prev_index], _.last(stave_notes),
           prev_indices, current_indices)
 
-    @closeBends() unless has_bends
+    @closeBends(0) unless has_bends
 
   addChord: (chord, chord_articulation, chord_decorator) ->
     return if _.isEmpty(chord)
@@ -410,7 +415,7 @@ class Vex.Flow.Artist
       specs[current_position].push "#{new_note}/#{new_octave}"
       accidentals[current_position].push accidental
       tab_specs[current_position].push {fret: note.fret, str: note.string}
-      articulations[current_position].push note.articulation
+      articulations[current_position].push note.articulation if note.articulation?
       durations[current_position] = current_duration
       decorators[current_position] = note.decorator if note.decorator?
 

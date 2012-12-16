@@ -165,36 +165,36 @@ lingo
   | time
     { $$ = $1 }
   | '|'
-    { $$ = {command: "bar"} }
+    { $$ = [{command: "bar"}] }
   | '['
-    { $$ = {
+    { $$ = [{
         command: "open_beam",
         _l: @1.first_line,
         _c: @1.first_column
-      }
+      }]
     }
   | ']'
-    { $$ = {
+    { $$ = [{
         command: "close_beam",
         _l: @1.first_line,
         _c: @1.first_column
-      }
+      }]
     }
   | tuplets
-    { $$ = {
+    { $$ = [{
           command: "tuplet",
           params: $1,
           _l: @1.first_line,
           _c: @1.first_column
-        }
+        }]
       }
   | annotations
-    { $$ = {
+    { $$ = [{
           command: "annotations",
           params: $1,
           _l: @1.first_line,
           _c: @1.first_column
-        }
+        }]
       }
   ;
 

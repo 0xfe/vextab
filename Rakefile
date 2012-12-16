@@ -61,6 +61,20 @@ file 'build/output/tabdiv2.js' => ['src/tabdiv2.js', 'build/output'] do
   sh "cp src/tabdiv2.js build/output/tabdiv2.js"
 end
 
+file 'build/tabdiv-min.js' => generated_sources do
+  require 'uglifier'
+  files = generated_sources
+  File.open("build/tabdiv-min.js", "w") do |f|
+    files.each do |file|
+      min = Uglifier.new.compile(File.read(file))
+      f.write(min)
+    end
+  end
+
+  # Create a copy in support/
+  sh 'cp build/tabdiv-min.js build/support'
+end
+
 copy_path("src/*", "build/src", :build_copy)
 copy_path("support/*", "build/support", :build_copy)
 copy_path("doc/*", "build/doc", :build_copy)
@@ -71,23 +85,6 @@ end
 
 task :watch do
   sh 'bundle exec guard -i'
-end
-
-file 'build/tabdiv-min.js' => generated_sources do
-  require 'uglifier'
-
-  files = generated_sources
-
-  puts "Building build/tabdiv-min.js"
-  File.open("build/tabdiv-min.js", "w") do |f|
-    files.each do |file|
-      min = Uglifier.new.compile(File.read(file))
-      f.write(min)
-    end
-  end
-
-  # Create a copy in support/
-  sh 'cp build/tabdiv-min.js build/support'
 end
 
 task :make => [:build_copy, :coffee, 'build/tabdiv-min.js']

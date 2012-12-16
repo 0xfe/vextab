@@ -46,9 +46,9 @@
       vextab = new Vex.Flow.VexTab(artist);
 
       function render() {
-        vextab.reset();
-        artist.reset();
         try {
+          vextab.reset();
+          artist.reset();
           vextab.parse($("#blah").val());
           artist.render(renderer);
           $("#error").text("");
