@@ -15,13 +15,17 @@ class Vex.Flow.Test.VexTab
     test "Tuning Test", @tuning
     test "String/Fret Test", @stringFret
     test "MultiFret Test", @multiFret
-    test "Tie Test", Vex.Flow.Test.VexTab.tie
-    test "Bend Test", Vex.Flow.Test.VexTab.bend
-    test "Vibrato Test", Vex.Flow.Test.VexTab.vibrato
-    test "Chord Test", Vex.Flow.Test.VexTab.chord
-    test "Tapping Test", Vex.Flow.Test.VexTab.tapping
-    test "Chord Ties Test", Vex.Flow.Test.VexTab.chordTies
-    test "Duration Test", Vex.Flow.Test.VexTab.duration
+    test "Tie Test", @tie
+    test "Bend Test", @bend
+    test "Vibrato Test", @vibrato
+    test "Chord Test", @chord
+    test "Tapping Test", @tapping
+    test "Chord Ties Test", @chordTies
+    test "Duration Test", @duration
+    test "Triplets and Tuplets Test", @tripletsAndTuplets
+    test "Dotted Notes Test", @dottedNotes
+    test "Annotations Test", @annotations
+    test "Long Bends Test", @longBends
 
   # Private method
   catchError = (tab, code, error_type="ParseError") ->
@@ -152,11 +156,12 @@ class Vex.Flow.Test.VexTab
     catchError(tab, "tabstave\n notes 10-/2")
 
   @tie: ->
-    expect 5
+    expect 6
     tab = makeParser()
 
     notEqual null, tab.parse("tabstave\n notes 10s11/3")
     notEqual null, tab.parse("tabstave\n notes 10s11h12p10/3")
+    notEqual null, tab.parse("tabstave notation=true key=A\n notes :w 5/5 | T5/5 | T5V/5")
 
     catchError(tab, "tabstave\n notes 10/2s10")
     catchError(tab, "tabstave\n notes 10s")
@@ -235,3 +240,44 @@ class Vex.Flow.Test.VexTab
     catchError(tab, "tabstave notation=true\n notes :w (1/2.2/3)s(3/2.4/3) ^3^", "ArtistError")
     ok(true, "all pass")
 
+  @tripletsAndTuplets: ->
+    expect 1
+    tab = makeParser()
+    code = """
+    tabstave notation=true key=Ab tuning=eb
+    notes :8 5s7s8/5 ^3^ :16 (5/2.6/3) 7-12-15s21/3 ^5^
+    tabstave notation=true key=Ab tuning=eb
+    notes :8 5h7s9-12s15p12h15/5 ^7^ | :q 5-7-8/5 ^3^
+    """
+    notEqual null, tab.parse(code)
+
+  @dottedNotes: ->
+    expect 1
+    tab = makeParser()
+    code = """
+    tabstave notation=true time=4/4 key=Ab tuning=eb
+    notes :8d 5/4 :16 5/5 :8d 5/4 :16 5/5 :8d 5/4 :16 5/5 :q 5v/5
+    """
+    notEqual null, tab.parse(code)
+
+  @annotations: ->
+    expect 1
+    tab = makeParser()
+    code = """
+    tabstave notation=true time=4/4 key=Ab tuning=eb
+    notes :q 5/5 5/4 5/3 ^3^ $Fi,Ga,Ro!$ :h 4/4 $Blah!$
+
+    tabstave notation=true key=A
+    notes :q (5/2.5/3.7/4) $.big.A7#9$ 5h6/3 7/4 |
+    notes :8 7/4 $.italic.sweep$ 6/3 5/2 3v/1 :q 7v/5 $.Arial-10-bold.P.H$ :8 3s5/5
+    """
+    notEqual null, tab.parse(code)
+
+  @longBends: ->
+    expect 1
+    tab = makeParser()
+    code = """
+    tabstave notation=true key=A
+    notes :8 7b9b7b9b7s12b14b12s7s5s2/3
+    """
+    notEqual null, tab.parse(code)
