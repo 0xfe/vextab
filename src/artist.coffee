@@ -179,8 +179,8 @@ class Vex.Flow.Artist
 
   # Close and apply all the bends to the last N notes.
   closeBends: (offset=1) ->
-    L "closeBends"
     return unless @bend_start_index?
+    L "closeBends(#{offset})"
     tab_notes = _.last(@staves).tab_notes
     for k, v of @current_bends
       phrase = []
@@ -335,7 +335,9 @@ class Vex.Flow.Artist
     stave = _.last(@staves)
     tab_notes = stave.tab_notes
     stave_notes = stave.note_notes
-    return if _.isEmpty(tab_notes) or _.isEmpty(articulations)
+    if _.isEmpty(tab_notes) or _.isEmpty(articulations)
+      @closeBends(0)
+      return
 
     current_tab_note = _.last(tab_notes)
 
