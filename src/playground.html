@@ -53,6 +53,7 @@
           artist.render(renderer);
           $("#error").text("");
         } catch (e) {
+          console.log(e);
           $("#error").text(e.message);
         }
       }
@@ -72,13 +73,15 @@
   </div>
 
   <div style="float:left;">
-  <textarea id="blah">tabstave notation=true key=A
-notes :q (5/2.5/3.7/4) 5h6/3 7/4 |
-notes :8 [ t12p7p5h7/4 ] :q 7/5 :8 [ 3s5/5 ]
+  <textarea id="blah">tabstave notation=true key=A time=4/4
+notes :q (5/2.5/3.7/4) :8 7p5h6/3 ^3^ 5h6h7/5 ^3^ :q 7V/4 |
+notes :8 t12p7/4 s5s3/4 :8 3s:16:5-7/5 :h p5/4 
 
 tabstave notation=true
-notes :q (8/2.7b9b7/3) (5b6/2.5b6/3)v :8 [ 7s12/4 ]
-notes [ t:16:9s:8:3s:16:0/4 ]
+notes :q (5/4.5/5)s(7/4.7/5)s(5/4.5/5) ^3^
+notes :8 7p5/4 (5/4.5/5)h(7/5) |
+notes :8 t(12/5.12/4)s(5/5.5/4) 3b4/5
+notes :h (5V/6.5/4.6/3.7/2) $.medium.A13$ $.italic.let ring$
 </textarea>
   </div>
 </body>
