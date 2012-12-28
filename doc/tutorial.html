@@ -51,7 +51,7 @@
     <div style="width:420; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=400 scale=1.0 editor="true"
-      editor_width=420 editor_height=80>tabstave</div>
+      editor_height=80>tabstave</div>
     </div>
 
     <h2>Step 2: Add some notes</h2>
@@ -65,8 +65,7 @@
 
     <div style="width:420; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
-      width=400 scale=1.0 editor="true"
-      editor_width=420 editor_height=100>tabstave notation=true
+      width=400 scale=1.0 editor="true" editor_height=100>tabstave notation=true
 notes 4-5-6/3 10/4</div>
     </div>
 
@@ -119,12 +118,14 @@ notes 4-5-6/3 10/4</div>
     <div style="width:420; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=400 scale=1.0 editor="true"
-      editor_width=420 editor_height=80>tabstave notation=true clef=bass key=Ab time=C|
+      editor_height=80>tabstave notation=true clef=bass key=Ab time=C|
 notes 4-5/6</div>
     </div>
 
-    <h2>Step 4: Add bar-lines</h2>
+    <h2>Step 4: Add rests and bar-lines</h2>
     <div class="description">
+      You can render a rest on the notation stave by typing <code>##</code>. Rests are positioned automatically, but you can specify a position by inserting a number in between the hashes, e.g., <code>#4#</code>. The position ranges from <code>0</code> to <code>9</code> (bottom to top.)
+      <p/>
       The <code>|</code> character places a bar-line between the notes. You
       can add as many bars as you want to a stave. Note that a space is
       required before and after the <code>|</code> character.
@@ -133,11 +134,11 @@ notes 4-5/6</div>
     <div style="width:520; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=500 scale=1.0 editor="true"
-      editor_width=520 editor_height=110>tabstave
-notes 4-5-6/3 10/4 | 5-4-2/3 2/2
+      editor_height=110>tabstave notation=true
+notes 4-5-6/3 ## | 5-4-2/3 2/2
 
-tabstave
-notes 6-7-8-9/3 | 9-8-7-6/2</div>
+tabstave notation=true
+notes 6-7-8/3 #0# | 9-8-7-6/2</div>
     </div>
 
     <h2>Step 5: Bend a few notes</h2>
@@ -153,7 +154,7 @@ notes 6-7-8-9/3 | 9-8-7-6/2</div>
     <div style="width:520; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=500 scale=1.0 editor="true"
-      editor_width=520 editor_height=110>tabstave
+      editor_height=110>tabstave
 notes 4-5-6b7/3 10/4 | 5-4-2/3 2/2
 
 tabstave
@@ -170,7 +171,7 @@ notes 6-7b9b7/3 7/4 | 9-8-7-6/2</div>
     <div style="width:520; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=500 scale=1.0 editor="true"
-      editor_width=520 editor_height=110>tabstave
+      editor_height=110>tabstave
 notes 4-5-6b7v/3 10/1 | 5-4-2/3 2v/2
 
 tabstave
@@ -189,7 +190,7 @@ notes 6-7b9b7/3 7/4 | 9-8-7-6V/2</div>
     <div style="width:520; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=500 scale=1.0 editor="true"
-      editor_width=520 editor_height=130>tabstave
+      editor_height=130>tabstave
 notes (5/2.6/3.7/4) 5v/1 | 5-4-3/3 2v/4
 
 tabstave
@@ -210,7 +211,7 @@ notes (5/2.6/3.7/4)</div>
     <div style="width:520; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=500 scale=1.0 editor="true"
-      editor_width=520 editor_height=230>tabstave
+      editor_height=230>tabstave
 notes (5/2.5/3.7/4) 5h6/3 7/4 |
 notes t12p7p5h7/4 7/5 5s3/5
 
@@ -223,7 +224,7 @@ notes (5/4.5/5)s(7/4.7/5)s(5/4.5/5) (5/4.5/5)h(7/5) |
 notes t(12/5.12/4)s(5/5.5/4) 3b4/5 5V/6</div>
     </div>
 
-    <h2>Step 9: Add durations and triplets.</h2>
+    <h2>Step 9: Add durations and tuplets.</h2>
     <div class="description">
       By default, note durations are set to quarter notes. To change the duration
       of the following notes you can use the colon character <code>:</code> followed
@@ -240,7 +241,7 @@ notes t(12/5.12/4)s(5/5.5/4) 3b4/5 5V/6</div>
     <div style="width:570; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=550 scale=1.0 editor="true"
-      editor_width=570 editor_height=100>tabstave notation=true time=4/4 key=Ab tuning=eb
+      editor_height=100>tabstave notation=true time=4/4 key=Ab tuning=eb
 notes :8 5s7s8/5 ^3^ :q (5/2.6/3)h(7/3) :8d 5/4 :16 5/5</div>
     </div>
 
@@ -255,7 +256,7 @@ notes :8 5s7s8/5 ^3^ :q (5/2.6/3)h(7/3) :8d 5/4 :16 5/5</div>
     <div style="width:640; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=620 scale=1.0 editor="true"
-      editor_width=640 editor_height=230>tabstave notation=true key=A
+      editor_height=230>tabstave notation=true key=A
 notes :q (5/2.5/3.7/4) 5h6/3 7/4 |
 notes :8 t12p7p5h7/4 :q 7/5 :8 3s5/5
 
@@ -278,7 +279,7 @@ notes :8 t(12/5.12/4)s(5/5.5/4) 3b4/5 :h 5V/6</div>
     <div style="width:570; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=550 scale=1.0 editor="true"
-      editor_width=570 editor_height=100>tabstave notation=true time=4/4 key=Ab tuning=eb
+      editor_height=100>tabstave notation=true time=4/4 key=Ab tuning=eb
 notes :q 5/5 5/4 5/3 ^3^ $Fi,Ga,Ro!$ :h 4/4 $Blah!$</div>
     </div>
 
@@ -299,7 +300,7 @@ notes :q 5/5 5/4 5/3 ^3^ $Fi,Ga,Ro!$ :h 4/4 $Blah!$</div>
     <div style="width:640; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=620 scale=1.0 editor="true"
-      editor_width=640 editor_height=130>tabstave notation=true key=A
+      editor_height=130>tabstave notation=true key=A
 notes :q (5/2.5/3.7/4) $.big.A7#9$ 5h6/3 7/4 |
 notes :8 7/4 $.italic.sweep$ 6/3 5/2 3v/1 :q 7v/5 $.Arial-10-bold.P.H$ :8 3s5/5</div>
 

@@ -105,15 +105,15 @@ class Vex.Flow.Artist
 
     return [new_note, new_octave, accidental]
 
-  addStaveNote: (spec, accidentals) ->
+  addStaveNote: (spec, accidentals, is_rest=false) ->
     stave_notes = _.last(@staves).note_notes
     stave_note = new Vex.Flow.StaveNote({
             keys: spec
-            duration: @current_duration
+            duration: @current_duration + (if is_rest then "r" else "")
             clef: @current_clef
-            auto_stem: true
+            auto_stem: if is_rest then false else true
           })
-    for acc, index in  accidentals
+    for acc, index in accidentals
       stave_note.addAccidental(index, new Vex.Flow.Accidental(acc)) if acc?
 
     if @current_duration[@current_duration.length - 1] == "d"
@@ -377,9 +377,20 @@ class Vex.Flow.Artist
 
     @closeBends(0) unless has_bends
 
+  addRest: (params) ->
+    L "addRest: ", params
+    if params["position"] == 0
+      @addStaveNote ["r/4"], [], true
+    else
+      position = @tuning.getNoteForFret(parseInt(params["position"] * 2, 10), 4)
+      @addStaveNote [position], [], true
+
+    tab_notes = _.last(@staves).tab_notes
+    tab_notes.push new Vex.Flow.GhostNote(@current_duration)
+
   addChord: (chord, chord_articulation, chord_decorator) ->
     return if _.isEmpty(chord)
-    L "addTabChord:", chord
+    L "addTabChord: ", chord
     stave = _.last(@staves)
 
     specs = []          # The stave note specs

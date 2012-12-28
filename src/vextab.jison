@@ -37,6 +37,7 @@
 ","                   return ','
 "|"                   return '|'
 "."                   return '.'
+"#"                   return '#'
 
 /* These are valid inside fret/string expressions only */
 
@@ -196,6 +197,13 @@ lingo
           _c: @1.first_column
         }]
       }
+  | rest
+    {
+      $$ = [{
+          command: "rest",
+          params: $1
+        }]
+    }
   ;
 
 line
@@ -298,4 +306,9 @@ annotation_words
     { $$ = [$1] }
   | annotation_words ',' WORD
     { $$ = [].concat($1, $3) }
+  ;
+
+rest
+  : '#' '#'                   { $$ = {position: 0} }
+  | '#' NUMBER '#'            { $$ = {position: $2} }
   ;

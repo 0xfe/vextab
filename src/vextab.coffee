@@ -74,6 +74,9 @@ class Vex.Flow.VexTab
     if element.command is "annotations"
       @artist.addAnnotations(element.params)
 
+    if element.command is "rest"
+      @artist.addRest(element.params)
+
   parseChord: (element) ->
     @artist.addChord(
       _.map(element.chord,

@@ -27,6 +27,7 @@ class Vex.Flow.Test.VexTab
     test "Dotted Notes Test", @dottedNotes
     test "Annotations Test", @annotations
     test "Long Bends Test", @longBends
+    test "Rest Test", @rest
 
   # Private method
   catchError = (tab, code, error_type="ParseError") ->
@@ -291,5 +292,14 @@ class Vex.Flow.Test.VexTab
     code = """
     tabstave notation=true key=A
     notes :8 7b9b7b9b7s12b14b12s7s5s2/3
+    """
+    notEqual null, tab.parse(code)
+
+  @rest: ->
+    expect 1
+    tab = makeParser()
+    code = """
+    tabstave notation=true key=A
+    notes :8 ## 7b9b7b9b7s12b14b12s7s5s2/3 #0# 4/4 #9# 5/5
     """
     notEqual null, tab.parse(code)
