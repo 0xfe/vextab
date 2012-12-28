@@ -93,6 +93,7 @@ task :deploy => :make do
   sh "scp build/tabdiv-min.js #{DEPLOY_SSH_DIR}/support"
   sh "scp -r support #{DEPLOY_SSH_DIR}"
   sh "scp -r support #{DEPLOY_VEXFLOW_DIR}"
+  sh "scp build/tabdiv-min.js #{DEPLOY_VEXFLOW_DIR}/support"
   sh "scp doc/* #{DEPLOY_SSH_DIR}"
 end
 
