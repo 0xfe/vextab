@@ -305,6 +305,76 @@ notes :q (5/2.5/3.7/4) $.big.A7#9$ 5h6/3 7/4 |
 notes :8 7/4 $.italic.sweep$ 6/3 5/2 3v/1 :q 7v/5 $.Arial-10-bold.P.H$ :8 3s5/5</div>
 
 
+ <h2>Step Eleven: Customize the appearance.</h2>
+    <div class="description">
+      The rendered notation can be customized heavily using the <code>options</code> command. You can change the width, default fonts, scale, and spacing to prettify your notation to your hearts extent. For example, <code>options width=400</code> sets the width of the stave to 400 pixels.
+
+      <p/>
+
+      Here's a list of the current options, followed by some examples.
+     </div>
+
+     <table class="tabstave-keywords">
+        <thead>
+          <tr><td><strong>option</strong></td><td><strong>description</strong></td></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>width</code></td>
+            <td>Set the width of the stave in pixels.</td>
+          </tr>
+          <tr>
+            <td><code>scale</code></td>
+            <td>The zoom level of the notation. Default is 1.0.</td>
+          </tr>
+          <tr>
+            <td><code>space</code></td>
+            <td>Adds space (given in pixels) before the next stave.</td>
+          </tr>
+          <tr>
+            <td><code>stave-distance</code></td>
+            <td>Sets the distance (in pixels) between the note and tab staves.</td>
+          </tr>
+          <tr>
+            <td><code>font-face/font-style/font-size</code></td>
+            <td>Set the default font for annotations.</td>
+          </tr>
+        </tbody>
+      </table>
+
+    <div class="description">
+      You can make it big.
+    </div>
+    <div style="width:640; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=420 scale=1.0 editor="true"
+      editor_height=100>options width=100 scale=2.0
+tabstave notation=true tablature=false
+notes :q 5/5</div>
+    </div>
+
+    <div class="description">
+      You can add room above a stave for the high notes.
+    </div>
+    <div style="width:640; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=420 scale=1.0 editor="true"
+      editor_height=100>options space=40 font-size=14
+tabstave notation=true key=A
+notes :q (5/2.5/3.7/4) $A7#9$ 15h16/1 20/1
+</div>
+
+    <div class="description">
+      Make more room between note and tab staves.
+    </div>
+    <div style="width:640; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=420 scale=0.8 editor="true"
+      editor_width=335 editor_height=100>options stave-distance=50 scale=0.8
+tabstave notation=true key=A
+notes :q (5/2.5/3.7/4) ## 0h1/6 0/1
+</div>
+
     <center>
     <h2>Step N + 1: Coming soon</h2>
       <p/>
