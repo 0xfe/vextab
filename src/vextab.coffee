@@ -103,12 +103,20 @@ class Vex.Flow.VexTab
 
   generate: ->
     for stave in @elements
-      if stave.element != "stave"
-        throw newError(stave, "Invalid stave")
-      @artist.addStave(@parseStaveOptions(stave.options))
-
-      if stave.notes?
-        @parseStaveElements(stave.notes)
+      switch stave.element
+        when "stave"
+          @artist.addStave(@parseStaveOptions(stave.options))
+          @parseStaveElements(stave.notes) if stave.notes?
+        when "options"
+          options = {}
+          for option in stave.params
+            options[option.key] = option.value
+          try
+            @artist.setOptions(options)
+          catch e
+            throw newError(stave, e.message)
+        else
+          throw newError(stave, "Invalid keyword '#{stave.element}'")
 
   parse: (code) ->
     vextab_parser.parseError = (message, hash) ->

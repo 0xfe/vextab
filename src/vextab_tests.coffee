@@ -28,6 +28,7 @@ class Vex.Flow.Test.VexTab
     test "Annotations Test", @annotations
     test "Long Bends Test", @longBends
     test "Rest Test", @rest
+    test "Options Test", @options
 
   # Private method
   catchError = (tab, code, error_type="ParseError") ->
@@ -303,3 +304,16 @@ class Vex.Flow.Test.VexTab
     notes :8 ## 7b9b7b9b7s12b14b12s7s5s2/3 #0# 4/4 #9# 5/5
     """
     notEqual null, tab.parse(code)
+
+  @options: ->
+    expect 8
+    tab = makeParser()
+
+    notEqual null, tab.parse("options width=400\ntabstave\n")
+    notEqual null, tab.parse("options font-face=Arial\ntabstave\n")
+    notEqual null, tab.parse("options font-size=10\ntabstave\n")
+    notEqual null, tab.parse("options font-style=italic\ntabstave\n")
+    notEqual null, tab.parse("options space=40\ntabstave\n")
+    notEqual null, tab.parse("options stave-distance=40\ntabstave\n")
+    catchError tab, "options w=40\ntabstave\n notes /2 10/3"
+    ok true, "all pass"

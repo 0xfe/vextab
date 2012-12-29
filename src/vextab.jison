@@ -18,6 +18,7 @@
 
 "notes"               { this.begin('notes'); return 'NOTES'; }
 "tabstave"            return 'TABSTAVE'
+"options"             return 'OPTIONS'
 <INITIAL>[^\s=]+      return 'WORD'
 
 /* Annotations */
@@ -105,6 +106,14 @@ stave
         element: "stave",
         options: $2,
         notes: $3,
+        _l: @1.first_line,
+        _c: @1.first_column
+      }
+    }
+  | OPTIONS options {
+      $$ = {
+        element: "options",
+        params: $2,
         _l: @1.first_line,
         _c: @1.first_column
       }

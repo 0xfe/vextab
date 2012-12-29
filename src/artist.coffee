@@ -11,7 +11,6 @@ class Vex.Flow.Artist
 
   constructor: (@x, @y, @width, options) ->
     @options =
-      stave_width: @width - 20
       font_face: "Arial"
       font_size: 10
       font_style: null
@@ -19,13 +18,23 @@ class Vex.Flow.Artist
       tab_stave_lower_spacing: 10
       note_stave_lower_spacing: 0
       scale: 1.0
-    _.extend(@options, options)
+    _.extend(@options, options) if options?
     @reset()
 
   reset: ->
     @tuning = new Vex.Flow.Tuning()
     @key_manager = new Vex.Flow.KeyManager("C")
     @music_api = new Vex.Flow.Music()
+
+    # User customizations
+    @customizations =
+      "font-size": @options.font_size
+      "font-face": @options.font_face
+      "font-style": @options.font_style
+      "scale": @options.scale
+      "width": @width
+      "stave-distance": 0
+      "space": 0
 
     # Generated elements
     @staves = []
@@ -41,13 +50,24 @@ class Vex.Flow.Artist
     @bend_start_index = null
     @bend_start_strings = null
 
+  setOptions: (options) ->
+    L "setOptions: ", options
+    valid_options = _.keys(@customizations)
+    for k, v of options
+      if k in valid_options
+        @customizations[k] = v
+      else
+        throw new Vex.RERR("ArtistError", "Invalid option '#{k}'")
+
+    @last_y += parseInt(@customizations.space, 10)
+
   render: (renderer) ->
     L "Render: ", @options
     @closeBends()
-    renderer.resize(@width * @options.scale,
-        (@last_y + @options.bottom_spacing) * @options.scale)
+    renderer.resize(@customizations.width * @customizations.scale,
+        (@last_y + @options.bottom_spacing) * @customizations.scale)
     ctx = renderer.getContext()
-    ctx.scale(@options.scale, @options.scale)
+    ctx.scale(@customizations.scale, @customizations.scale)
     ctx.clear()
     ctx.setFont(@options.font_face, @options.font_size, "")
 
@@ -210,10 +230,9 @@ class Vex.Flow.Artist
     new Vex.Flow.Tuplet(tab_notes[tab_notes.length - notes..])
 
   makeAnnotation: (text) ->
-    font_face = @options.font_face
-    font_size = @options.font_size
-    font_style = @options.font_style
-
+    font_face = @customizations["font-face"]
+    font_size = @customizations["font-size"]
+    font_style = @customizations["font-style"]
     parts = text.match(/^\.([^-]*)-([^-]*)-([^.]*)\.(.*)/)
 
     if parts?
@@ -236,7 +255,7 @@ class Vex.Flow.Artist
             font_size = "12"
 
     annotation = new Vex.Flow.Annotation(text).
-      setFont(font_face, font_size, font_style);
+      setFont(font_face, font_size, font_style)
 
   addAnnotations: (annotations) ->
     stave = _.last(@staves)
@@ -471,15 +490,17 @@ class Vex.Flow.Artist
     tabstave_start_x = 40
 
     if opts.notation is "true"
-      note_stave = new Vex.Flow.Stave(@x, @last_y, @options.stave_width).
+      note_stave = new Vex.Flow.Stave(@x, @last_y, @customizations.width - 20).
         addClef(opts.clef).addKeySignature(opts.key)
       note_stave.addTimeSignature(opts.time) if opts.time?
-      @last_y += note_stave.getHeight() + @options.note_stave_lower_spacing
+      @last_y += note_stave.getHeight() +
+                 @options.note_stave_lower_spacing +
+                 parseInt(@customizations["stave-distance"], 10)
       tabstave_start_x = note_stave.getNoteStartX()
       @current_clef = opts.clef
 
     if opts.tablature is "true"
-      tab_stave = new Vex.Flow.TabStave(@x, @last_y, @options.stave_width).
+      tab_stave = new Vex.Flow.TabStave(@x, @last_y, @customizations.width - 20).
         addTabGlyph().setNoteStartX(tabstave_start_x)
       @last_y += tab_stave.getHeight() + @options.tab_stave_lower_spacing
 
