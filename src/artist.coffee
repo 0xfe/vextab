@@ -398,6 +398,8 @@ class Vex.Flow.Artist
 
   addRest: (params) ->
     L "addRest: ", params
+    @closeBends()
+
     if params["position"] == 0
       @addStaveNote ["r/4"], [], true
     else
