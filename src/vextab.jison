@@ -112,11 +112,20 @@ vextab
   ;
 
 stave
-  : TABSTAVE maybe_options maybe_notelist
+  : TABSTAVE maybe_options stave_data
     { $$ = {
         element: "stave",
         options: $2,
-        notes: $3,
+        notes: $3.notes,
+        text: $3.text,
+        _l: @1.first_line,
+        _c: @1.first_column
+      }
+    }
+  | TABSTAVE maybe_options
+    { $$ = {
+        element: "stave",
+        options: $2,
         _l: @1.first_line,
         _c: @1.first_column
       }
@@ -129,6 +138,24 @@ stave
         _c: @1.first_column
       }
     }
+  ;
+
+stave_data
+  : stave_additions
+    { $$ = $1 }
+  | stave_data stave_additions
+    {
+      var text = [].concat($1.text, $2.text);
+      var notes = [].concat($1.notes, $2.notes);
+      $$ = {text: text, notes: notes};
+    }
+  ;
+
+stave_additions
+  : TEXT text
+    {$$ = {text: $2, notes: []}}
+  | NOTES notes
+    {$$ = {notes: $2, text: []}}
   ;
 
 maybe_options
@@ -155,24 +182,6 @@ options
         _c: @2.first_column
         }])
     }
-  ;
-
-maybe_notelist
-  :
-    { $$ = null }
-  | notelist
-    { $$ = $1 }
-  ;
-
-notelist
-  : NOTES notes
-    { $$ = $2 }
-  | notelist NOTES notes
-    { $$ = $1.concat($3); }
-  | TEXT text
-    { $$ = $2 }
-  | notelist TEXT text
-    { $$ = $1.concat($3); }
   ;
 
 text
