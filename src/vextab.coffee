@@ -44,7 +44,7 @@ class Vex.Flow.VexTab
         when "key"
           throw error("Invalid key signature '#{option.value}'") unless _.has(Vex.Flow.keySignature.keySpecs, option.value)
         when "clef"
-          clefs = ["treble", "bass", "tenor", "alto"]
+          clefs = ["treble", "bass", "tenor", "alto", "percussion"]
           throw error("'clef' must be one of #{clefs.join(', ')}") if option.value not in clefs
         when "time"
           try
@@ -80,12 +80,16 @@ class Vex.Flow.VexTab
   parseChord: (element) ->
     @artist.addChord(
       _.map(element.chord,
-            (note)-> _.pick(note, 'time', 'dot', 'fret', 'string', 'articulation', 'decorator')),
+            (note)-> _.pick(note, 'time', 'dot', 'fret', 'abc', 'string', 'articulation', 'decorator')),
       element.articulation, element.decorator)
 
   parseFret: (note) ->
     @artist.addNote(_.pick(
       note, 'time', 'dot', 'fret', 'string', 'articulation', 'decorator'))
+
+  parseABC: (note) ->
+    @artist.addNote(_.pick(
+      note, 'time', 'dot', 'abc', 'string', 'articulation', 'decorator'))
 
   parseStaveElements: (notes) ->
     for element in notes
@@ -100,6 +104,9 @@ class Vex.Flow.VexTab
 
       if element.fret
         @parseFret(element)
+
+      if element.abc
+        @parseABC(element)
 
   generate: ->
     for stave in @elements

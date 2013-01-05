@@ -29,6 +29,8 @@ class Vex.Flow.Test.VexTab
     test "Long Bends Test", @longBends
     test "Rest Test", @rest
     test "Options Test", @options
+    test "ABC Notes Test", @abcNotes
+    test "Rhythm/Slash Notation Test", @abcNotes
 
   # Private method
   catchError = (tab, code, error_type="ParseError") ->
@@ -317,3 +319,26 @@ class Vex.Flow.Test.VexTab
     notEqual null, tab.parse("options stave-distance=40\ntabstave\n")
     catchError tab, "options w=40\ntabstave\n notes /2 10/3"
     ok true, "all pass"
+
+  @abcNotes: ->
+    expect 6
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave\n notes A/5 C-D-E/5")
+    notEqual null, tab.parse("tabstave\n notes :q A/5 C-D-:h:E/5")
+    notEqual null, tab.parse("tabstave\n notes :q (A/5.A/4)T(A/5.A/4)")
+    notEqual null, tab.parse("tabstave\n notes A#/5 C##-D@@-E/5")
+    notEqual null, tab.parse("tabstave\n notes An/5 C-D@-E/5")
+
+    ok(true, "all pass")
+
+  @rhythmNotation: ->
+    expect 4
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave\n notes :qS A/5 C-D-:h:E/5")
+    notEqual null, tab.parse("tabstave\n notes :16S (A/5.A/4)T(A/5.A/4)")
+    notEqual null, tab.parse("tabstave\n notes :qS X/5 C-D-:h:E/5")
+
+    ok(true, "all pass")
+

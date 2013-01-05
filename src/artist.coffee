@@ -125,6 +125,12 @@ class Vex.Flow.Artist
 
     return [new_note, new_octave, accidental]
 
+  getNoteForABC: (abc, string) ->
+    key = abc.key
+    octave = string
+    accidental = abc.accidental
+    return [key, octave, accidental]
+
   addStaveNote: (spec, accidentals, is_rest=false) ->
     stave_notes = _.last(@staves).note_notes
     stave_note = new Vex.Flow.StaveNote({
@@ -430,7 +436,7 @@ class Vex.Flow.Artist
 
     for note in chord
       num_notes++
-      if note.string != current_string
+      if note.abc? or note.string != current_string
         current_position = 0
         current_string = note.string
 
@@ -443,7 +449,15 @@ class Vex.Flow.Artist
         articulations[current_position] = []
         decorators[current_position] = []
 
-      [new_note, new_octave, accidental] = @getNoteForFret(note.fret, note.string)
+      [new_note, new_octave, accidental] = [null, null, null]
+
+      if note.fret?
+        [new_note, new_octave, accidental] = @getNoteForFret(note.fret, note.string)
+      else if note.abc?
+        [new_note, new_octave, accidental] = @getNoteForABC(note.abc, note.string)
+        note.fret = 'X'
+      else
+        throw new Vex.RERR("ArtistError", "No note specified")
 
       current_duration = if note.time? then {time: note.time, dot: note.dot} else null
       specs[current_position].push "#{new_note}/#{new_octave}"

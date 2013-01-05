@@ -39,6 +39,7 @@
 "|"                   return '|'
 "."                   return '.'
 "#"                   return '#'
+"@"                   return '@'
 
 /* These are valid inside fret/string expressions only */
 
@@ -62,6 +63,12 @@
 <notes>[h]            return 'h'
 <notes>[d]            return 'd'
 
+/* Slash notation */
+<notes>[S]            return 'S'
+
+/* ABC */
+<notes>[A-GX]         return 'ABC'
+<notes>[n]            return 'n'
 
 /* Newlines reset your state */
 [\r\n]+               { this.begin('INITIAL'); }
@@ -245,6 +252,8 @@ frets
         _l: @1.first_line,
         _c: @1.first_column}]
     }
+  | abc
+    { $$ = [{abc: $1, _l: @1.first_line, _c: @1.first_column}]}
   | articulation timed_fret
     { $$ = [_.extend($2, {articulation: $1})] }
   | frets maybe_decorator articulation timed_fret
@@ -258,9 +267,15 @@ frets
 
 timed_fret
   : ':' time_values maybe_dot ':' NUMBER
-    { $$ = {time: $2, dot: $3, fret: $5}}
+    { $$ = {
+      time: $2, dot: $3, fret: $5,
+      _l: @1.first_line, _c: @1.first_column}}
   |  NUMBER
-    { $$ = {fret: $1} }
+    { $$ = {fret: $1, _l: @1.first_line, _c: @1.first_column} }
+  | ':' time_values maybe_dot ':' abc
+    { $$ = {time: $2, dot: $3, abc: $5}}
+  |  abc
+    { $$ = {abc: $1, _l: @1.first_line, _c: @1.first_column} }
   ;
 
 time
@@ -269,6 +284,10 @@ time
   ;
 
 time_values
+  : time_unit maybe_slash { $$ = $1 + $2 }
+  ;
+
+time_unit
   : NUMBER  { $$ = $1 }
   | 'q'     { $$ = $1 }
   | 'w'     { $$ = $1 }
@@ -278,6 +297,11 @@ time_values
 maybe_dot
   :         { $$ = false }
   | 'd'     { $$ = true }
+  ;
+
+maybe_slash
+  :       { $$ = '' }
+  | 'S'   { $$ = 's' }
   ;
 
 string
@@ -320,4 +344,17 @@ annotation_words
 rest
   : '#' '#'                   { $$ = {position: 0} }
   | '#' NUMBER '#'            { $$ = {position: $2} }
+  ;
+
+abc
+  : ABC abc_accidental        { $$ = {key: $1, accidental: $2} }
+  ;
+
+abc_accidental
+  : '#'                       { $$ = "#" }
+  | '#' '#'                   { $$ = "##" }
+  | '@'                       { $$ = "b" }
+  | '@' '@'                   { $$ = "bb" }
+  | 'n'                       { $$ = "n" }
+  |
   ;
