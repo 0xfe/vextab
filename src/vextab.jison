@@ -13,12 +13,13 @@
 %}
 
 %lex
-%s notes annotations
+%s notes text annotations
 %%
 
 "notes"               { this.begin('notes'); return 'NOTES'; }
 "tabstave"            return 'TABSTAVE'
 "options"             return 'OPTIONS'
+"text"                { this.begin('text'); return 'TEXT'; }
 <INITIAL>[^\s=]+      return 'WORD'
 
 /* Annotations */
@@ -57,11 +58,11 @@
 <notes>[V]            return 'V'
 
 /* Time values */
-<notes>[0-9]+         return 'NUMBER'
-<notes>[q]            return 'q'
-<notes>[w]            return 'w'
-<notes>[h]            return 'h'
-<notes>[d]            return 'd'
+<notes,text>[0-9]+         return 'NUMBER'
+<notes,text>[q]            return 'q'
+<notes,text>[w]            return 'w'
+<notes,text>[h]            return 'h'
+<notes,text>[d]            return 'd'
 
 /* Slash notation */
 <notes>[S]            return 'S'
@@ -69,6 +70,9 @@
 /* ABC */
 <notes>[A-GX]         return 'ABC'
 <notes>[n]            return 'n'
+
+/* Text Lines */
+<text>[^\s=]+         return 'WORD'
 
 /* Newlines reset your state */
 [\r\n]+               { this.begin('INITIAL'); }
@@ -165,6 +169,20 @@ notelist
     { $$ = $2 }
   | notelist NOTES notes
     { $$ = $1.concat($3); }
+  | TEXT text
+    { $$ = $2 }
+  | notelist TEXT text
+    { $$ = $1.concat($3); }
+  ;
+
+text
+  : WORD
+    { $$ = [{text: $1}] }
+  | time { $$ = [$1] }
+  | text WORD
+    { $$ = [].concat($1, {text: $2}) }
+  | text time
+    { $$ = [].concat($1, $2) }
   ;
 
 notes
