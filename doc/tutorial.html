@@ -282,7 +282,7 @@ notes :8 (5/4.5/5)h(7/5) |
 notes :8 t(12/5.12/4)s(5/5.5/4) 3b4/5 :h 5V/6</div>
   </div>
 
- <h2>Step 10: Add lyrics, chords, or other text.</h2>
+ <h2>Step 10: Add lyrics, annotations, or other text.</h2>
     <div class="description">
       You can annotate your notation by enclosing comma-separated text between dollar symbols (<code>$</code>). VexTab will associate each comma-separated set of words with each of the preceding notes. Annotations can be used for lyrics, chords, picking hints, etc.
       <p/>
@@ -314,14 +314,31 @@ notes :q 5/5 5/4 5/3 ^3^ $Fi,Ga,Ro!$ :h 4/4 $Blah!$</div>
     <div style="width:640; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=620 scale=1.0 editor="true"
-      editor_height=130>tabstave notation=true key=A
+      editor_height=100>tabstave notation=true key=A
 notes :q (5/2.5/3.7/4) $.big.A7#9$ 5h6/3 7/4 |
 notes :8 7/4 $.italic.sweep$ 6/3 5/2 3v/1 :q 7v/5 $.Arial-10-bold.P.H$ :8 3s5/5</div>
     </div>
 
-<h2>Step Eleven: Notate rhythms with slash notation.</h2>
+<h2>Step Eleven: Even more text!</h2>
     <div class="description">
-      By suffixing a duration with <code>S</code> all following notes on the standard notation stave get rendered as slash notation. You can change the position of the note on the staff by changing the note name.
+      VexTab provides a more flexible alternative for adding text to yor
+      scores. You can create a <code>text</code> line with text that can be both vertically positioned, and note aligned. This method is great for notating chords.
+      <p/>
+      In the example below I've created two text spans, "G Minor" and "A Major", each with a duration of a half-note. Notice that the duration syntax is the same (except that spans are separated by commas.) Also notice how I set the default font size in the <code>options</code> line.
+     </div>
+
+    <div style="width:570; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=550 scale=1.0 editor="true"
+      editor_height=100>options space=12 font-size=14
+
+tabstave notation=true time=4/4 key=Ab tuning=eb
+notes :q 5/5 5/4 5/3 ^3^ :h 4/4
+text :h,G Minor,A Major</div>
+    </div>
+
+     <div class="description">
+      You can vertically position any text by adding a <code>.<i>NUMBER</i></code> to your list of spans. If unset, <code><i>NUMBER</i></code> defaults to <code>0</code>, which positions your text above the stave. Higher numbers move the text downward, and lower numbers (to the negative) move the text upward.
       <p/>
       Here's an example:
      </div>
@@ -329,14 +346,55 @@ notes :8 7/4 $.italic.sweep$ 6/3 5/2 3v/1 :q 7v/5 $.Arial-10-bold.P.H$ :8 3s5/5<
     <div style="width:570; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=550 scale=1.0 editor="true"
-      editor_height=100>tabstave notation=true tablature=false time=4/4 clef=percussion
-notes :2S B/4 $.medium.G$ :qS B/4 :q ## | :8S B/4 $.medium.Am$ B/4 :qS B-B-B/4 ^3^
+      editor_height=120>options space=10
+
+tabstave notation=true tablature=false time=4/4 key=Ab tuning=eb
+notes :8 C-D-E-F-G-A-B/4 C/5
+text :8,.1,Do,Re,Me,.10,Fa,So,La,Ti,.1,Do
+
+options space=10</div>
+    </div>
+
+    <div class="description">
+      If you have bars in your music, you will need to add a bar to your text so that the notes and text align correctly. Simply add a <code>|</code> between commas to indicate a bar.
+      <p/>
+      Also, you can use the <code>++</code> command in your span to create a new text line on the same stave. Here's an example of these features:
+    </div>
+
+    <div style="width:570; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=550 scale=1.0 editor="true"
+      editor_height=120>options space=10 font-size=12
+
+tabstave notation=true tablature=false time=4/4 key=Ab tuning=eb
+notes :q C-D-E-F/4 | G-A-B/4 C/5
+text :h,.1,C,Em,|
+text :h,G7,C
+text ++, .11, :w, This is a new text line.
+
+options space=15</div>
+    </div>
+
+<h2>Step 12: Notate rhythms with slash notation.</h2>
+    <div class="description">
+      By suffixing a duration with <code>S</code> all following notes on the standard notation stave get rendered as slash notation. You can change the position of the note on the staff by changing the note name.
+     </div>
+
+    <div style="width:570; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=550 scale=1.0 editor="true"
+      editor_height=120>options font-size=14 space=15
+
+tabstave notation=true tablature=false time=4/4 clef=percussion
+notes :2S B/4 :qS B/4 :q ## | :8S B/4 B/4 :qS B-B-B/4 ^3^
+text :w, G Maj7, |, Am
+
 options space=10
 </div>
     </div>
 
 
- <h2>Step 12: Customize the appearance.</h2>
+ <h2>Step 13: Customize the appearance.</h2>
     <div class="description">
       The rendered notation can be customized heavily using the <code>options</code> command. You can change the width, default fonts, scale, and spacing to prettify your notation to your hearts extent. For example, <code>options width=400</code> sets the width of the stave to 400 pixels.
 

@@ -22,7 +22,6 @@ class Vex.Flow.VexTab
   reset: ->
     @valid = false
     @elements = false
-    @current_duration = "q"
 
   isValid: -> @valid
 
