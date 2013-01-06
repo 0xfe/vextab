@@ -554,7 +554,7 @@ class Vex.Flow.Artist
   addTextVoice: ->
     _.last(@staves).text_voices.push []
 
-  addTextNote: (text, position=0, justification="center", smooth=true) ->
+  addTextNote: (text, position=0, justification="center", smooth=true, ignore_ticks=false) ->
     voices = _.last(@staves).text_voices
     throw new Vex.RERR("ArtistError", "Can't add text note without text voice") if _.isEmpty(voices)
 
@@ -572,15 +572,19 @@ class Vex.Flow.Artist
       else
         Vex.Flow.TextNote.Justification.CENTER
 
+    duration = if ignore_ticks then "b" else @current_duration
     note = new Vex.Flow.TextNote({
         text: text,
-        duration: @current_duration,
+        duration: duration,
         smooth: smooth,
+        ignore_ticks: ignore_ticks,
         font:
           family: font_face
           size: font_size
           weight: font_style
         }).setLine(position).setJustification(just)
+
+    L "BOO", note
     _.last(voices).push(note)
 
   addStave: (options) ->

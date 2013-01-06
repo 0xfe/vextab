@@ -186,9 +186,9 @@ options
 
 text
   : STR
-    { $$ = [{text: $1}] }
+    { $$ = [{text: $1, _l: @1.first_line, _c: @1.first_column}] }
   | text ',' STR
-    { $$ = [].concat($1, {text: $3}) }
+    { $$ = [].concat($1, {text: $3, _l: @3.first_line, _c: @3.first_column}) }
   ;
 
 notes
