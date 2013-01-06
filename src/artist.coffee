@@ -61,6 +61,71 @@ class Vex.Flow.Artist
 
     @last_y += parseInt(@customizations.space, 10)
 
+  formatAndRender = (ctx, tab, score, text_notes) ->
+    tab_stave = tab.stave if tab?
+    score_stave = score.stave if score?
+
+    tab_voices = []
+    score_voices = []
+    text_voices = []
+    beams = null
+    format_stave = null
+    text_stave = null
+
+    if tab?
+      for notes in tab.voices
+        _.each(notes, (note) -> note.setStave(tab_stave))
+        voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4).
+          setMode(Vex.Flow.Voice.Mode.SOFT)
+        voice.addTickables notes
+        tab_voices.push voice
+      format_stave = tab_stave
+      text_stave = tab_stave
+
+    if score?
+      for notes in score.voices
+        _.each(notes, (note) -> note.setStave(score_stave))
+        voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4).
+          setMode(Vex.Flow.Voice.Mode.SOFT)
+        voice.addTickables notes
+        score_voices.push voice
+        beams = Vex.Flow.Beam.applyAndGetBeams(voice)
+      format_stave = score_stave
+      text_stave = score_stave
+
+    for notes in text_notes
+      _.each(notes, (voice) -> voice.setStave(text_stave))
+      voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4).
+          setMode(Vex.Flow.Voice.Mode.SOFT)
+      voice.addTickables notes
+      text_voices.push voice
+
+    if format_stave?
+      format_voices = []
+      formatter = new Vex.Flow.Formatter()
+
+      if tab?
+        formatter.joinVoices(tab_voices)
+        format_voices = tab_voices
+
+      if score?
+        formatter.joinVoices(score_voices)
+        format_voices = format_voices.concat(score_voices)
+
+      if not _.isEmpty(text_notes)
+        formatter.joinVoices(text_voices)
+        format_voices = format_voices.concat(text_voices)
+
+      formatter.formatToStave(format_voices, format_stave);
+
+      _.each(tab_voices, (voice) -> voice.draw(ctx, tab_stave)) if tab?
+      _.each(score_voices, (voice) -> voice.draw(ctx, score_stave)) if score?
+      _.each(beams, (beam) -> beam.setContext(ctx).draw()) if score?
+      _.each(text_voices, (voice) -> voice.draw(ctx, text_stave)) if not _.isEmpty(text_notes)
+
+      if tab? and stave?
+        (new Vex.Flow.StaveConnector(score.stave, tab.stave)).setContext(ctx).draw()
+
   render: (renderer) ->
     L "Render: ", @options
     @closeBends()
@@ -72,17 +137,14 @@ class Vex.Flow.Artist
     ctx.setFont(@options.font_face, @options.font_size, "")
 
     for stave in @staves
-      L "Rendering note stave."
-      stave.note?.setContext(ctx).draw()
-      L "Rendering tab stave."
-      stave.tab?.setContext(ctx).draw()
+      L "Rendering staves."
+      stave.tab.setContext(ctx).draw() if stave.tab?
+      stave.note.setContext(ctx).draw() if stave.note?
 
-      if stave.tab? and stave.note?
-        Vex.Flow.Formatter.FormatAndDrawTab ctx, stave.tab, stave.note, stave.tab_notes, stave.note_notes, true
-      else if stave.tab?
-        Vex.Flow.Formatter.FormatAndDraw ctx, stave.tab, stave.tab_notes
-      else if stave.note?
-        Vex.Flow.Formatter.FormatAndDraw ctx, stave.note, stave.note_notes, true
+      formatAndRender(ctx,
+                      if stave.tab? then {stave: stave.tab, voices: [stave.tab_notes]} else null,
+                      if stave.note? then {stave: stave.note, voices: [stave.note_notes]} else null,
+                      stave.text_voices)
 
     L "Rendering tab articulations."
     for articulation in @tab_articulations
@@ -156,7 +218,8 @@ class Vex.Flow.Artist
     tab_notes.push new_tab_note
 
   makeDuration = (time, dot) -> time + (if dot then "d" else "")
-  setDuration: (time, dot) ->
+  setDuration: (time, dot=false) ->
+    L "setDuration: ", time, dot
     @current_duration = makeDuration(time, dot)
 
   addBar: ->
@@ -488,6 +551,38 @@ class Vex.Flow.Artist
   addNote: (note) ->
     @addChord([note])
 
+  addTextVoice: ->
+    _.last(@staves).text_voices.push []
+
+  addTextNote: (text, position=0, justification="center", smooth=true) ->
+    voices = _.last(@staves).text_voices
+    throw new Vex.RERR("ArtistError", "Can't add text note without text voice") if _.isEmpty(voices)
+
+    font_face = @customizations["font-face"]
+    font_size = @customizations["font-size"]
+    font_style = @customizations["font-style"]
+
+    just = switch justification
+      when "center"
+        Vex.Flow.TextNote.Justification.CENTER
+      when "left"
+        Vex.Flow.TextNote.Justification.LEFT
+      when "right"
+        Vex.Flow.TextNote.Justification.RIGHT
+      else
+        Vex.Flow.TextNote.Justification.CENTER
+
+    note = new Vex.Flow.TextNote({
+        text: text,
+        duration: @current_duration,
+        smooth: smooth,
+        font:
+          family: font_face
+          size: font_size
+          weight: font_style
+        }).setLine(position).setJustification(just)
+    _.last(voices).push(note)
+
   addStave: (options) ->
     opts =
       tuning: "standard"
@@ -525,7 +620,8 @@ class Vex.Flow.Artist
       tab: tab_stave,
       note: note_stave,
       tab_notes: [],
-      note_notes: []
+      note_notes: [],
+      text_voices: []
     }
 
     @tuning.setTuning(opts.tuning)

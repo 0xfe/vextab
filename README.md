@@ -5,8 +5,8 @@ Copyright (c) 2012 Mohit Muthanna Cheppudira.
 
 ## What is VexTab?
 
-VexTab is a language that allows you to easily create, edit, and share guitar
-tablature. Unlike ASCII tab, which is designed for readability, VexTab is
+VexTab is a language that allows you to easily create, edit, and share music notation
+and guitar tablature. Unlike ASCII tab, which is designed for readability, VexTab is
 designed for writeability.
 
 Go try it out at [The VexTab Tutorial](http://vexflow.com/vextab/tutorial.html).
@@ -64,6 +64,18 @@ Run `rake` and pull up `build/src/runtest.html` in your browser.
 If you want to auto-build on changes to source files type:
 
     $ rake watch
+
+## License
+
+VexTab is an open specification and the reference implementation (this repository)
+is open source. It is freely available complete and uncrippled for non-commercial use.
+
+If you would like to use this code on commercial websites, products, plugins, or tools,
+please get in touch with me. (I'm very reasonable.)
+
+Note that the underlying library, VexFlow, is completely open source and distributed
+under the MIT license. See the [VexFlow GitHub Page](http://github.com/0xfe/vexflow)
+for details.
 
 ## Links
 

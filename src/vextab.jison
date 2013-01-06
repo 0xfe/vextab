@@ -27,6 +27,9 @@
 <annotations>[$]          { this.begin('notes'); return "$" }
 <annotations>[^,$]+       return 'WORD'
 
+/* Text Lines */
+<text>[^,\r\n]+            return 'STR'
+
 "/"                   return '/'
 "+"                   return '+'
 ":"                   return ':'
@@ -65,14 +68,11 @@
 <notes,text>[d]            return 'd'
 
 /* Slash notation */
-<notes>[S]            return 'S'
+<notes>[S]                 return 'S'
 
 /* ABC */
-<notes>[A-GX]         return 'ABC'
-<notes>[n]            return 'n'
-
-/* Text Lines */
-<text>[^\s=]+         return 'WORD'
+<notes>[A-GX]              return 'ABC'
+<notes>[n]                 return 'n'
 
 /* Newlines reset your state */
 [\r\n]+               { this.begin('INITIAL'); }
@@ -185,13 +185,10 @@ options
   ;
 
 text
-  : WORD
+  : STR
     { $$ = [{text: $1}] }
-  | time { $$ = [$1] }
-  | text WORD
-    { $$ = [].concat($1, {text: $2}) }
-  | text time
-    { $$ = [].concat($1, $2) }
+  | text ',' STR
+    { $$ = [].concat($1, {text: $3}) }
   ;
 
 notes

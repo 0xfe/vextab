@@ -108,12 +108,40 @@ class Vex.Flow.VexTab
       if element.abc
         @parseABC(element)
 
+  parseStaveText: (text_line) ->
+    @artist.addTextVoice() unless _.isEmpty(text_line)
+
+    position = 0
+    justification = "center"
+    smooth = true
+
+    for str in text_line
+      text = str.text.trim()
+      if text[0] == ":"
+        @artist.setDuration(text)
+      else if text[0] == "."
+        command = text[1..]
+        switch command
+          when "center", "left", "right"
+            justification = command
+          when "strict"
+            smooth = false
+          when "smooth"
+            smooth = true
+          else
+            position = parseInt(text[1..], 10)
+      else if text[0..1] == "++"
+        @artist.addTextVoice()
+      else
+        @artist.addTextNote(text, position, justification, smooth)
+
   generate: ->
     for stave in @elements
       switch stave.element
         when "stave"
           @artist.addStave(@parseStaveOptions(stave.options))
           @parseStaveElements(stave.notes) if stave.notes?
+          @parseStaveText(stave.text) if stave.text?
         when "options"
           options = {}
           for option in stave.params

@@ -30,7 +30,8 @@ class Vex.Flow.Test.VexTab
     test "Rest Test", @rest
     test "Options Test", @options
     test "ABC Notes Test", @abcNotes
-    test "Rhythm/Slash Notation Test", @abcNotes
+    test "Rhythm/Slash Notation Test", @rhythmNotation
+    test "Text Lines", @textLines
 
   # Private method
   catchError = (tab, code, error_type="ParseError") ->
@@ -324,10 +325,10 @@ class Vex.Flow.Test.VexTab
     expect 6
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes A/5 C-D-E/5")
+    notEqual null, tab.parse("tabstave notation=true\n notes A/5 C-D-E/5")
     notEqual null, tab.parse("tabstave\n notes :q A/5 C-D-:h:E/5")
     notEqual null, tab.parse("tabstave\n notes :q (A/5.A/4)T(A/5.A/4)")
-    notEqual null, tab.parse("tabstave\n notes A#/5 C##-D@@-E/5")
+    notEqual null, tab.parse("tabstave notation=true tablature=false\n notes A#/5 C##-D@@-E/5")
     notEqual null, tab.parse("tabstave\n notes An/5 C-D@-E/5")
 
     ok(true, "all pass")
@@ -337,8 +338,20 @@ class Vex.Flow.Test.VexTab
     tab = makeParser()
 
     notEqual null, tab.parse("tabstave\n notes :qS A/5 C-D-:h:E/5")
-    notEqual null, tab.parse("tabstave\n notes :16S (A/5.A/4)T(A/5.A/4)")
-    notEqual null, tab.parse("tabstave\n notes :qS X/5 C-D-:h:E/5")
+    notEqual null, tab.parse("tabstave notation=true\n notes :16S (A/5.A/4)T(A/5.A/4)")
+    notEqual null, tab.parse("tabstave notation=true tablature=false\n notes :qS X/5 C-D-:h:E/5")
+
+    ok(true, "all pass")
+
+  @textLines: ->
+    expect 6
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave\n notes :qS A/5 C-D-:h:E/5")
+    notEqual null, tab.parse("tabstave\n text .4, Blah, :16, Boo")
+    notEqual null, tab.parse("tabstave notation=true\n text .4, Blah, :16, Boo")
+    notEqual null, tab.parse("tabstave notation=true\n text .4, Blah,++, :16, Boo")
+    notEqual null, tab.parse("tabstave notation=true\n text .4, .strict, Blah,++, :16, .smooth, Boo")
 
     ok(true, "all pass")
 
