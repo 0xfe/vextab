@@ -164,7 +164,8 @@ class Vex.Flow.VexTab
 
   parse: (code) ->
     vextab_parser.parseError = (message, hash) ->
-      L message
+      L "VexTab parse error: ", message, hash
+      message = "Unexpected text '#{hash.text}' at line #{hash.loc.first_line} column #{hash.loc.first_column}."
       throw new Vex.RERR("ParseError", message)
 
     throw new Vex.RERR("ParseError", "No code") unless code?

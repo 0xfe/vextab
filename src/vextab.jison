@@ -28,51 +28,51 @@
 <annotations>[^,$]+       return 'WORD'
 
 /* Text Lines */
-<text>[^,\r\n]+            return 'STR'
+<text>[^,\r\n]+           return 'STR'
 
-"/"                   return '/'
-"+"                   return '+'
-":"                   return ':'
-"="                   return '='
-"("                   return '('
-")"                   return ')'
-"["                   return '['
-"]"                   return ']'
-"^"                   return '^'
-","                   return ','
-"|"                   return '|'
-"."                   return '.'
-"#"                   return '#'
-"@"                   return '@'
+"/"                       return '/'
+"+"                       return '+'
+":"                       return ':'
+"="                       return '='
+"("                       return '('
+")"                       return ')'
+"["                       return '['
+"]"                       return ']'
+"^"                       return '^'
+","                       return ','
+"|"                       return '|'
+"."                       return '.'
+"#"                       return '#'
+"@"                       return '@'
 
 /* These are valid inside fret/string expressions only */
 
 /* Articulations */
-<notes>[b]            return 'b'
-<notes>[s]            return 's'
-<notes>[h]            return 'h'
-<notes>[p]            return 'p'
-<notes>[t]            return 't'
-<notes>[T]            return 'T'
-<notes>[-]            return '-'
+<notes>[b]                return 'b'
+<notes>[s]                return 's'
+<notes>[h]                return 'h'
+<notes>[p]                return 'p'
+<notes>[t]                return 't'
+<notes>[T]                return 'T'
+<notes>[-]                return '-'
 
 /* Decorators */
-<notes>[v]            return 'v'
-<notes>[V]            return 'V'
+<notes>[v]                return 'v'
+<notes>[V]                return 'V'
 
 /* Time values */
-<notes,text>[0-9]+         return 'NUMBER'
-<notes,text>[q]            return 'q'
-<notes,text>[w]            return 'w'
-<notes,text>[h]            return 'h'
-<notes,text>[d]            return 'd'
+<notes,text>[0-9]+        return 'NUMBER'
+<notes,text>[q]           return 'q'
+<notes,text>[w]           return 'w'
+<notes,text>[h]           return 'h'
+<notes,text>[d]           return 'd'
 
 /* Slash notation */
-<notes>[S]                 return 'S'
+<notes>[S]                return 'S'
 
 /* ABC */
-<notes>[A-GX]              return 'ABC'
-<notes>[n]                 return 'n'
+<notes>[A-GX]             return 'ABC'
+<notes>[n]                return 'n'
 
 /* Newlines reset your state */
 [\r\n]+               { this.begin('INITIAL'); }
