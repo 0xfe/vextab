@@ -31,6 +31,7 @@ class Vex.Flow.Artist
       "font-size": @options.font_size
       "font-face": @options.font_face
       "font-style": @options.font_style
+      "annotation-position": "bottom"
       "scale": @options.scale
       "width": @width
       "stave-distance": 0
@@ -298,7 +299,7 @@ class Vex.Flow.Artist
     # Throw away tab tuplet because it can't be rendered
     new Vex.Flow.Tuplet(tab_notes[tab_notes.length - notes..])
 
-  getScoreArticulationParts = (text) -> text.match(/^\.(a[^\/]*)\/(top|bottom)\./)
+  getScoreArticulationParts = (text) -> text.match(/^\.(a[^\/]*)\/(t|b)[^.]*\./)
   makeScoreArticulation: (text) ->
     parts = getScoreArticulationParts(text)
     if parts?
@@ -306,7 +307,7 @@ class Vex.Flow.Artist
      position = parts[2]
 
      POSTYPE = Vex.Flow.Modifier.Position
-     pos = if position is "top" then POSTYPE.ABOVE else POSTYPE.BELOW
+     pos = if position is "t" then POSTYPE.ABOVE else POSTYPE.BELOW
      return new Vex.Flow.Articulation(type).setPosition(pos)
     else return null
 
@@ -314,6 +315,15 @@ class Vex.Flow.Artist
     font_face = @customizations["font-face"]
     font_size = @customizations["font-size"]
     font_style = @customizations["font-style"]
+    aposition = @customizations["annotation-position"]
+
+    VJUST = Vex.Flow.Annotation.VerticalJustify
+    default_vjust = if aposition is "top" then VJUST.TOP else VJUST.BOTTOM
+
+    makeIt = (text, just=default_vjust) ->
+      new Vex.Flow.Annotation(text).
+        setFont(font_face, font_size, font_style).
+        setVerticalJustification(just)
 
     parts = text.match(/^\.([^-]*)-([^-]*)-([^.]*)\.(.*)/)
     if parts?
@@ -321,11 +331,11 @@ class Vex.Flow.Artist
       font_size = parts[2]
       font_style = parts[3]
       text = parts[4]
-      return new Vex.Flow.Annotation(text).
-        setFont(font_face, font_size, font_style)
+      return makeIt(text)
 
     parts = text.match(/^\.([^.]*)\.(.*)/)
     if parts?
+      just = default_vjust
       text = parts[2]
       switch parts[1]
         when "big"
@@ -336,10 +346,15 @@ class Vex.Flow.Artist
           font_style = "italic"
         when "medium"
           font_size = "12"
-      return new Vex.Flow.Annotation(text).
-        setFont(font_face, font_size, font_style)
+        when "top"
+          just = VJUST.TOP
+          @customizations["annotation-position"] = "top"
+        when "bottom"
+          just = VJUST.BOTTOM
+          @customizations["annotation-position"] = "bottom"
+      return if text then makeIt(text, just) else null
 
-    return new Vex.Flow.Annotation(text).setFont(font_face, font_size, font_style)
+    return makeIt(text)
 
   addAnnotations: (annotations) ->
     stave = _.last(@staves)
@@ -352,10 +367,14 @@ class Vex.Flow.Artist
     # Add text annotations
     if stave.tab
       for tab_note, i in tab_notes[tab_notes.length - annotations.length..]
-        tab_note.addModifier(@makeAnnotation(annotations[i]), 0) unless getScoreArticulationParts(annotations[i])
+        unless getScoreArticulationParts(annotations[i])
+          annotation = @makeAnnotation(annotations[i])
+          tab_note.addModifier(@makeAnnotation(annotations[i]), 0) if annotation
     else
       for note, i in stave_notes[stave_notes.length - annotations.length..]
-         note.addAnnotation(0, @makeAnnotation(annotations[i])) unless getScoreArticulationParts(annotations[i])
+        unless getScoreArticulationParts(annotations[i])
+          annotation = @makeAnnotation(annotations[i])
+          note.addAnnotation(0, @makeAnnotation(annotations[i])) if annotation
 
     # Add glyph articulations on score
     if stave.note

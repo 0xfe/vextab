@@ -259,7 +259,7 @@ notes :8 5s7s8/5 ^3^ :q (5/2.6/3)h(7/3) :8d 5/4 :16 5/5</div>
 
     <div class="description">
       <p/>
-      Here's a longer example rendered with durations and standard notation.
+      Here's another example rendered with durations and standard notation.
       Notice how you can set the duration in the middle of slides, bends, or other
       types of ties by prefixing the fret with <code>:duration:</code>.
       <p/>
@@ -268,24 +268,16 @@ notes :8 5s7s8/5 ^3^ :q (5/2.6/3)h(7/3) :8d 5/4 :16 5/5</div>
     <div style="width:640; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=620 scale=1.0 editor="true"
-      editor_height=230>tabstave notation=true key=A
-notes :q (5/2.5/3.7/4) 5h6/3 7/4 |
-notes :8 t12p7p5h7/4 :q 7/5 :8 3s5/5
-
-tabstave notation=true
+      editor_height=230>tabstave notation=true
 notes :q (8/2.7b9b7/3) (5b6/2.5b6/3)v :8 7s12/4
-notes t:16:9s:8:3s:16:0/4
-
-tabstave notation=true
-notes :q (5/4.5/5)s(7/4.7/5)s(5/4.5/5)
-notes :8 (5/4.5/5)h(7/5) |
-notes :8 t(12/5.12/4)s(5/5.5/4) 3b4/5 :h 5V/6</div>
+notes t:16:9s:8:3s:16:0/4</div>
   </div>
 
  <h2>Step 10: Add lyrics, annotations, or other text.</h2>
     <div class="description">
       You can annotate your notation by enclosing comma-separated text between dollar symbols (<code>$</code>). VexTab will associate each comma-separated set of words with each of the preceding notes. Annotations can be used for lyrics, chords, picking hints, etc.
       <p/>
+      Annotations can be positioned above or below the stave using the <code>$.top.$</code> or <code>$.bottom.$</code> commands.
       Here's an example:
      </div>
 
@@ -293,12 +285,10 @@ notes :8 t(12/5.12/4)s(5/5.5/4) 3b4/5 :h 5V/6</div>
     <div class="vex-tabdiv"
       width=550 scale=1.0 editor="true"
       editor_height=100>tabstave notation=true time=4/4 key=Ab tuning=eb
-notes :q 5/5 5/4 5/3 ^3^ $Fi,Ga,Ro!$ :h 4/4 $Blah!$</div>
+notes :q 5/5 5/4 5/3 ^3^ $Fi,Ga,Ro!$ :h 4/4 $.top.$ $Blah!$</div>
     </div>
 
     <div class="description">
-      <p/>
-
       There are two ways to customize these annotations. You can use preset styles or custom styles. For preset styles, simply prefix your annotation with <code>.<i>style</i>.</code> inside the dollar signs. E.g., The code <code>$.big.C Major$</code>, will render the text "C Major" in a big bold font.
 
       <p/>
@@ -319,7 +309,48 @@ notes :q (5/2.5/3.7/4) $.big.A7#9$ 5h6/3 7/4 |
 notes :8 7/4 $.italic.sweep$ 6/3 5/2 3v/1 :q 7v/5 $.Arial-10-bold.P.H$ :8 3s5/5</div>
     </div>
 
-<h2>Step Eleven: Even more text!</h2>
+<h2>Step Eleven: Staccatos, Fermatas, and more!</h2>
+    <div class="description">
+      Add beautiful articulations to your scores using the <code>$.ariculation/position.$</code> syntax.
+      <p/>
+      Articulations have different codes, e.g., <code>a.</code> for staccato, <code>a@a</code> for top fermata, etc. They can be positioned on <code>top</code> or on the <code>bottom</code>.
+      <p/>
+      Below is a list of all the available articulations.
+    </div>
+    <div style="width:670; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=650 scale=1.0 editor="true"
+      editor_height=100>options space=20 font-style=italic font-face=times font-size=12
+
+tabstave notation=true tablature=false
+notes :q
+notes C/4 $.a./bottom.$
+notes E/4 $.av/bottom.$
+notes G/4 $.a>/bottom.$
+notes B/4 $.a-/bottom.$
+notes C/5 $.a^/top.$
+notes E/5 $.a+/top.$
+notes G/5 $.ao/top.$
+
+text :q,.-1,.strict,Stacatto,Staccatissimo,Accent,Tenuto,Marcato,LH pizzicato,Snap pizzicato
+text ++,.12,:q,a.,av,a>,a-,a^,a+,ao
+options space=120
+
+tabstave notation=true tablature=false
+notes :q
+notes C/4 $.ah/bottom.$
+notes E/4 $.a@a/top.$
+notes G/4 $.a@u/bottom.$
+notes B/4 $.a|/bottom.$
+notes C/5 $.am/top.$
+
+text :q,.-1,.strict,Open Note,Up Fermata,Down Fermata,Bow Up,Bow Down
+text ++,.12,:q,ah,a@a,a@u,a|,am
+options space=30
+</div>
+    </div>
+
+<h2>Step 12: Even more text!</h2>
     <div class="description">
       VexTab provides a more flexible alternative for adding text to yor
       scores. You can create a <code>text</code> line with text that can be both vertically positioned, and note aligned. This method is great for notating chords.
@@ -375,7 +406,7 @@ text ++, .11, :w, This is a new text line.
 options space=15</div>
     </div>
 
-<h2>Step 12: Notate rhythms with slash notation.</h2>
+<h2>Step 13: Notate rhythms with slash notation.</h2>
     <div class="description">
       By suffixing a duration with <code>S</code> all following notes on the standard notation stave get rendered as slash notation. You can change the position of the note on the staff by changing the note name.
      </div>
@@ -394,7 +425,7 @@ options space=10
     </div>
 
 
- <h2>Step 13: Customize the appearance.</h2>
+ <h2>Step 14: Customize the appearance.</h2>
     <div class="description">
       The rendered notation can be customized heavily using the <code>options</code> command. You can change the width, default fonts, scale, and spacing to prettify your notation to your hearts extent. For example, <code>options width=400</code> sets the width of the stave to 400 pixels.
 
