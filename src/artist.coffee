@@ -298,33 +298,48 @@ class Vex.Flow.Artist
     # Throw away tab tuplet because it can't be rendered
     new Vex.Flow.Tuplet(tab_notes[tab_notes.length - notes..])
 
+  getScoreArticulationParts = (text) -> text.match(/^\.(a[^\/]*)\/(top|bottom)\./)
+  makeScoreArticulation: (text) ->
+    parts = getScoreArticulationParts(text)
+    if parts?
+     type = parts[1]
+     position = parts[2]
+
+     POSTYPE = Vex.Flow.Modifier.Position
+     pos = if position is "top" then POSTYPE.ABOVE else POSTYPE.BELOW
+     return new Vex.Flow.Articulation(type).setPosition(pos)
+    else return null
+
   makeAnnotation: (text) ->
     font_face = @customizations["font-face"]
     font_size = @customizations["font-size"]
     font_style = @customizations["font-style"]
-    parts = text.match(/^\.([^-]*)-([^-]*)-([^.]*)\.(.*)/)
 
+    parts = text.match(/^\.([^-]*)-([^-]*)-([^.]*)\.(.*)/)
     if parts?
       font_face = parts[1]
       font_size = parts[2]
       font_style = parts[3]
       text = parts[4]
-    else
-      parts = text.match(/^\.([^.]*)\.(.*)/)
-      if parts?
-        text = parts[2]
-        switch parts[1]
-          when "big"
-            font_style = "bold"
-            font_size = "14"
-          when "italic", "italics"
-            font_face = "Times"
-            font_style = "italic"
-          when "medium"
-            font_size = "12"
+      return new Vex.Flow.Annotation(text).
+        setFont(font_face, font_size, font_style)
 
-    annotation = new Vex.Flow.Annotation(text).
-      setFont(font_face, font_size, font_style)
+    parts = text.match(/^\.([^.]*)\.(.*)/)
+    if parts?
+      text = parts[2]
+      switch parts[1]
+        when "big"
+          font_style = "bold"
+          font_size = "14"
+        when "italic", "italics"
+          font_face = "Times"
+          font_style = "italic"
+        when "medium"
+          font_size = "12"
+      return new Vex.Flow.Annotation(text).
+        setFont(font_face, font_size, font_style)
+
+    return new Vex.Flow.Annotation(text).setFont(font_face, font_size, font_style)
 
   addAnnotations: (annotations) ->
     stave = _.last(@staves)
@@ -334,12 +349,19 @@ class Vex.Flow.Artist
     if annotations.length > tab_notes.length
       throw new Vex.RERR("ArtistError", "More annotations than note elements")
 
+    # Add text annotations
     if stave.tab
       for tab_note, i in tab_notes[tab_notes.length - annotations.length..]
-        tab_note.addModifier(@makeAnnotation(annotations[i]), 0)
+        tab_note.addModifier(@makeAnnotation(annotations[i]), 0) unless getScoreArticulationParts(annotations[i])
     else
       for note, i in stave_notes[stave_notes.length - annotations.length..]
-        note.addAnnotation(0, @makeAnnotation(annotations[i]))
+         note.addAnnotation(0, @makeAnnotation(annotations[i])) unless getScoreArticulationParts(annotations[i])
+
+    # Add glyph articulations on score
+    if stave.note
+      for note, i in stave_notes[stave_notes.length - annotations.length..]
+        score_articulation = @makeScoreArticulation(annotations[i])
+        note.addArticulation(0, score_articulation) if score_articulation?
 
   addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
     L "addTabArticulations: ", type, first_note, last_note, first_indices, last_indices
