@@ -69,12 +69,13 @@ class Vex.Flow.Artist
     tab_voices = []
     score_voices = []
     text_voices = []
-    beams = null
+    beams = []
     format_stave = null
     text_stave = null
 
     if tab?
       for notes in tab.voices
+        continue if _.isEmpty(notes)
         _.each(notes, (note) -> note.setStave(tab_stave))
         voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4).
           setMode(Vex.Flow.Voice.Mode.SOFT)
@@ -85,6 +86,7 @@ class Vex.Flow.Artist
 
     if score?
       for notes in score.voices
+        continue if _.isEmpty(notes)
         _.each(notes, (note) -> note.setStave(score_stave))
         voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4).
           setMode(Vex.Flow.Voice.Mode.SOFT)
@@ -95,6 +97,7 @@ class Vex.Flow.Artist
       text_stave = score_stave
 
     for notes in text_notes
+      continue if _.isEmpty(notes)
       _.each(notes, (voice) -> voice.setStave(text_stave))
       voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4).
           setMode(Vex.Flow.Voice.Mode.SOFT)
@@ -106,18 +109,18 @@ class Vex.Flow.Artist
       formatter = new Vex.Flow.Formatter()
 
       if tab?
-        formatter.joinVoices(tab_voices)
+        formatter.joinVoices(tab_voices) unless _.isEmpty(tab_voices)
         format_voices = tab_voices
 
       if score?
-        formatter.joinVoices(score_voices)
+        formatter.joinVoices(score_voices) unless _.isEmpty(score_voices)
         format_voices = format_voices.concat(score_voices)
 
       if not _.isEmpty(text_notes)
         formatter.joinVoices(text_voices)
         format_voices = format_voices.concat(text_voices)
 
-      formatter.formatToStave(format_voices, format_stave);
+      formatter.formatToStave(format_voices, format_stave) unless _.isEmpty(format_voices)
 
       _.each(tab_voices, (voice) -> voice.draw(ctx, tab_stave)) if tab?
       _.each(score_voices, (voice) -> voice.draw(ctx, score_stave)) if score?
@@ -331,7 +334,7 @@ class Vex.Flow.Artist
       font_size = parts[2]
       font_style = parts[3]
       text = parts[4]
-      return makeIt(text)
+      return if text then makeIt(text) else null
 
     parts = text.match(/^\.([^.]*)\.(.*)/)
     if parts?
@@ -595,6 +598,15 @@ class Vex.Flow.Artist
   addTextVoice: ->
     _.last(@staves).text_voices.push []
 
+  setTextFont: (font) ->
+    if font?
+      parts = font.match(/([^-]*)-([^-]*)-([^.]*)/)
+      if parts?
+        L "YES", parts
+        @customizations["font-face"] = parts[1]
+        @customizations["font-size"] = parseInt(parts[2], 10)
+        @customizations["font-style"] = parts[3]
+
   addTextNote: (text, position=0, justification="center", smooth=true, ignore_ticks=false) ->
     voices = _.last(@staves).text_voices
     throw new Vex.RERR("ArtistError", "Can't add text note without text voice") if _.isEmpty(voices)
@@ -602,6 +614,8 @@ class Vex.Flow.Artist
     font_face = @customizations["font-face"]
     font_size = @customizations["font-size"]
     font_style = @customizations["font-style"]
+
+    L "FACE:", font_face, font_size, text, position
 
     just = switch justification
       when "center"
@@ -624,8 +638,8 @@ class Vex.Flow.Artist
           size: font_size
           weight: font_style
         }).setLine(position).setJustification(just)
+    L note
 
-    L "BOO", note
     _.last(voices).push(note)
 
   addStave: (options) ->

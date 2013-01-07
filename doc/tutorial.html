@@ -313,14 +313,14 @@ notes :8 7/4 $.italic.sweep$ 6/3 5/2 3v/1 :q 7v/5 $.Arial-10-bold.P.H$ :8 3s5/5<
     <div class="description">
       Add beautiful articulations to your scores using the <code>$.ariculation/position.$</code> syntax.
       <p/>
-      Articulations have different codes, e.g., <code>a.</code> for staccato, <code>a@a</code> for top fermata, etc. They can be positioned on <code>top</code> or on the <code>bottom</code>.
+      Articulations have different codes, e.g., <code>a.</code> for staccato, <code>a@a</code> for up-fermata, etc. They can be positioned on <code>top</code> or on the <code>bottom</code>.
       <p/>
       Below is a list of all the available articulations.
     </div>
     <div style="width:670; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=650 scale=1.0 editor="true"
-      editor_height=100>options space=20 font-style=italic font-face=times font-size=12
+      editor_height=100>options space=20 font-style=italic font-face=times font-size=10
 
 tabstave notation=true tablature=false
 notes :q
@@ -333,8 +333,8 @@ notes E/5 $.a+/top.$
 notes G/5 $.ao/top.$
 
 text :q,.-1,.strict,Stacatto,Staccatissimo,Accent,Tenuto,Marcato,LH pizzicato,Snap pizzicato
-text ++,.12,:q,a.,av,a>,a-,a^,a+,ao
-options space=120
+text ++,.12,.font=courier-12-,:q,a.,av,a>,a-,a^,a+,ao
+options space=120 font-style=italic font-face=times font-size=10
 
 tabstave notation=true tablature=false
 notes :q
@@ -345,8 +345,8 @@ notes B/4 $.a|/bottom.$
 notes C/5 $.am/top.$
 
 text :q,.-1,.strict,Open Note,Up Fermata,Down Fermata,Bow Up,Bow Down
-text ++,.12,:q,ah,a@a,a@u,a|,am
-options space=30
+text ++,.12,.font=courier-12-,:q,ah,a@a,a@u,a|,am
+options space=40
 </div>
     </div>
 

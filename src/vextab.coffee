@@ -113,12 +113,21 @@ class Vex.Flow.VexTab
     position = 0
     justification = "center"
     smooth = true
+    font = null
 
     bartext = => @artist.addTextNote("", 0, justification, false, true)
+    createNote = (text) =>
+      try
+        @artist.addTextNote(text, position, justification, smooth)
+      catch e
+        throw newError(str, "Bad text or duration. Did you forget a comma?")
 
     for str in text_line
       text = str.text.trim()
-      if text[0] == ":"
+      if text.match(/\.font=.*/)
+        font = text[6..]
+        @artist.setTextFont(font)
+      else if text[0] == ":"
         @artist.setDuration(text)
       else if text[0] == "."
         command = text[1..]
@@ -138,10 +147,7 @@ class Vex.Flow.VexTab
       else if text[0..1] == "++"
         @artist.addTextVoice()
       else
-        try
-          @artist.addTextNote(text, position, justification, smooth)
-        catch e
-          throw newError(str, "Bad text or duration. Did you forget a comma?")
+        createNote(text)
 
   generate: ->
     for stave in @elements
