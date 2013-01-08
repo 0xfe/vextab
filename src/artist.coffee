@@ -474,7 +474,7 @@ class Vex.Flow.Artist
       score_modifier = new Vex.Flow.Articulation("am").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
 
     _.last(tab_notes).addModifier(modifier, 0) if modifier?
-    _.last(score_notes).addArticulation(0, score_modifier) if score_modifier?
+    _.last(score_notes)?.addArticulation(0, score_modifier) if score_modifier?
 
 
   addArticulations: (articulations) ->
