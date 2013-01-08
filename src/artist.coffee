@@ -369,7 +369,10 @@ class Vex.Flow.Artist
     # Add text annotations
     if stave.tab
       for tab_note, i in tab_notes[tab_notes.length - annotations.length..]
-        unless getScoreArticulationParts(annotations[i])
+        if getScoreArticulationParts(annotations[i])
+          score_articulation = @makeScoreArticulation(annotations[i])
+          tab_note.addModifier(score_articulation, 0)
+        else
           annotation = @makeAnnotation(annotations[i])
           tab_note.addModifier(@makeAnnotation(annotations[i]), 0) if annotation
     else
@@ -386,6 +389,12 @@ class Vex.Flow.Artist
 
   addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
     L "addTabArticulations: ", type, first_note, last_note, first_indices, last_indices
+
+    if type == "t"
+        last_note.addModifier(
+          new Vex.Flow.Annotation("T").
+            setVerticalJustification(Vex.Flow.Annotation.VerticalJustify.BOTTOM))
+
     if _.isEmpty(first_indices) and _.isEmpty(last_indices) then return
 
     articulation = null
@@ -413,9 +422,6 @@ class Vex.Flow.Artist
         first_indices: first_indices
         last_indices: last_indices
         }, " ")
-
-      if type == "t"
-        last_note.addModifier(new Vex.Flow.Annotation("T"))
 
     if type == "b"
       @openBends(first_note, last_note, first_indices, last_indices)
@@ -452,14 +458,24 @@ class Vex.Flow.Artist
 
     stave = _.last(@staves)
     tab_notes = stave.tab_notes
+    score_notes = stave.note_notes
     modifier = null
+    score_modifier = null
 
     if decorator == "v"
       modifier = new Vex.Flow.Vibrato()
     if decorator == "V"
       modifier = new Vex.Flow.Vibrato().setHarsh(true)
+    if decorator == "u"
+      modifier = new Vex.Flow.Articulation("a^").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
+      score_modifier = new Vex.Flow.Articulation("a^").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
+    if decorator == "d"
+      modifier = new Vex.Flow.Articulation("am").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
+      score_modifier = new Vex.Flow.Articulation("am").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
 
     _.last(tab_notes).addModifier(modifier, 0) if modifier?
+    _.last(score_notes).addArticulation(0, score_modifier) if score_modifier?
+
 
   addArticulations: (articulations) ->
     L "addArticulations: ", articulations

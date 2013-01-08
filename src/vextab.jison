@@ -59,6 +59,8 @@
 /* Decorators */
 <notes>[v]                return 'v'
 <notes>[V]                return 'V'
+<notes>[u]                return 'u'
+<notes>[d]                return 'd'
 
 /* Time values */
 <notes,text>[0-9]+        return 'NUMBER'
@@ -345,6 +347,8 @@ articulation
 
 maybe_decorator
   : 'v' { $$ = 'v' }
+  | 'd' { $$ = 'd' }
+  | 'u' { $$ = 'u' }
   | 'V' { $$ = 'V' }
   |     { $$ = null }
   ;

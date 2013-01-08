@@ -172,23 +172,22 @@ tabstave
 notes 6-7b9b7/3 7/4 | 9-8-7-6/2</div>
     </div>
 
-    <h2>Step 6: Mute notes and add vibrato</h2>
+    <h2>Step 6: Mute notes, show strokes, and add vibrato</h2>
     <div class="description">
       You can render a muted note by replace the fret (or note name) with an <code>X</code>.
       <p/>
       Adding a <code>v</code> to the end of a note signifies
       a vibrato. A capital v (<code>V</code>) signifies a harsh vibrato. You
       can also add a vibrato to a bend.
+      <p/>
+      You can also add a <code>u</code> or a <code>d</code> to designate upstrokes or downstrokes respectively.
     </div>
 
     <div style="width:520; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=500 scale=1.0 editor="true"
       editor_height=110>tabstave notation=true
-notes 4-5-6b7v/3 10/1 | 5-4-X/3 2v/2
-
-tabstave
-notes 6-7b9b7/3 7/4 | 9-8-7-6V/2</div>
+notes 4-5-6b7v/3 10/1 | 5d-4u-Xd/3 2v/2
     </div>
 
     <h2>Step 7: Add some chords</h2>
@@ -409,6 +408,8 @@ options space=15</div>
 <h2>Step 13: Notate rhythms with slash notation.</h2>
     <div class="description">
       By suffixing a duration with <code>S</code> all following notes on the standard notation stave get rendered as slash notation. You can change the position of the note on the staff by changing the note name.
+      <p/>
+      You can also use the <code>u</code> or <code>d</code> suffixes to designate upstrokes or downstrokes, respectively.
      </div>
 
     <div style="width:570; margin-left: auto; margin-right: auto;">
@@ -417,7 +418,7 @@ options space=15</div>
       editor_height=120>options font-size=14 space=15
 
 tabstave notation=true tablature=false time=4/4 clef=percussion
-notes :2S B/4 :qS B/4 :q ## | :8S B/4 B/4 :qS B-B-B/4 ^3^
+notes :2S Bd/4 :qS Bd/4 :q ## | :8S Bd/4 Bu/4 :qS Bd-Bu-Bd/4 ^3^
 text :w, G Maj7, |, Am
 
 options space=10

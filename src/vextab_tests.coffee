@@ -19,6 +19,7 @@ class Vex.Flow.Test.VexTab
     test "Bar Test", @bar
     test "Bend Test", @bend
     test "Vibrato Test", @vibrato
+    test "Upstroke/Downstroke Test", @strokes
     test "Chord Test", @chord
     test "Tapping Test", @tapping
     test "Chord Ties Test", @chordTies
@@ -207,6 +208,22 @@ class Vex.Flow.Test.VexTab
     notEqual null, tab.parse("tabstave\n notes 10s11v-12/3")
     notEqual null, tab.parse("tabstave\n notes 10s11vs4s12vh15p10-1/2")
     catchError(tab, "tabstave\n notes 10v")
+    catchError(tab, "tabstave\n notes 10vb/1")
+    catchError(tab, "tabstave\n notes 10-b11/3")
+
+    ok(true, "all pass")
+
+  @strokes: ->
+    expect 10
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave\n notes 10d/3")
+    notEqual null, tab.parse("tabstave\n notes 10-11u-12d/3")
+    notEqual null, tab.parse("tabstave\n notes 10b11u-12/3")
+    notEqual null, tab.parse("tabstave\n notes 10b11b10d-12/3")
+    notEqual null, tab.parse("tabstave\n notes 10s11d-12/3")
+    notEqual null, tab.parse("tabstave\n notes 10s11us4s12vh15p10-1/2")
+    notEqual null, tab.parse("tabstave\n notes (10/2.10/1)d")
     catchError(tab, "tabstave\n notes 10vb/1")
     catchError(tab, "tabstave\n notes 10-b11/3")
 
