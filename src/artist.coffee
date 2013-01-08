@@ -39,7 +39,6 @@ class Vex.Flow.Artist
 
     # Generated elements
     @staves = []
-    @notes = []
     @tab_articulations = []
     @stave_articulations = []
 
@@ -127,7 +126,7 @@ class Vex.Flow.Artist
       _.each(beams, (beam) -> beam.setContext(ctx).draw()) if score?
       _.each(text_voices, (voice) -> voice.draw(ctx, text_stave)) if not _.isEmpty(text_notes)
 
-      if tab? and stave?
+      if tab? and score?
         (new Vex.Flow.StaveConnector(score.stave, tab.stave)).setContext(ctx).draw()
 
   render: (renderer) ->
