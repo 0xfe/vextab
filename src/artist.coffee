@@ -467,8 +467,8 @@ class Vex.Flow.Artist
     if decorator == "V"
       modifier = new Vex.Flow.Vibrato().setHarsh(true)
     if decorator == "u"
-      modifier = new Vex.Flow.Articulation("a^").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
-      score_modifier = new Vex.Flow.Articulation("a^").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
+      modifier = new Vex.Flow.Articulation("a|").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
+      score_modifier = new Vex.Flow.Articulation("a|").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
     if decorator == "d"
       modifier = new Vex.Flow.Articulation("am").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
       score_modifier = new Vex.Flow.Articulation("am").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
