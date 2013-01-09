@@ -117,10 +117,15 @@ class Vex.Flow.VexTab
 
     bartext = => @artist.addTextNote("", 0, justification, false, true)
     createNote = (text) =>
+      ignore_ticks = false
+      if text[0] == "|"
+        ignore_ticks = true
+        text = text[1..]
+
       try
-        @artist.addTextNote(text, position, justification, smooth)
+        @artist.addTextNote(text, position, justification, smooth, ignore_ticks)
       catch e
-        throw newError(str, "Bad text or duration. Did you forget a comma?")
+        throw newError(str, "Bad text or duration. Did you forget a comma?" + e)
 
     for str in text_line
       text = str.text.trim()

@@ -628,7 +628,6 @@ class Vex.Flow.Artist
       @addArticulations articulations[i]
       @addDecorator decorators[i] if decorators[i]?
 
-
     if chord_articulation?
       art = []
       art.push chord_articulation for num in [1..num_notes]
@@ -646,7 +645,6 @@ class Vex.Flow.Artist
     if font?
       parts = font.match(/([^-]*)-([^-]*)-([^.]*)/)
       if parts?
-        L "YES", parts
         @customizations["font-face"] = parts[1]
         @customizations["font-size"] = parseInt(parts[2], 10)
         @customizations["font-style"] = parts[3]
@@ -659,8 +657,6 @@ class Vex.Flow.Artist
     font_size = @customizations["font-size"]
     font_style = @customizations["font-style"]
 
-    L "FACE:", font_face, font_size, text, position
-
     just = switch justification
       when "center"
         Vex.Flow.TextNote.Justification.CENTER
@@ -672,17 +668,22 @@ class Vex.Flow.Artist
         Vex.Flow.TextNote.Justification.CENTER
 
     duration = if ignore_ticks then "b" else @current_duration
-    note = new Vex.Flow.TextNote({
-        text: text,
-        duration: duration,
-        smooth: smooth,
-        ignore_ticks: ignore_ticks,
-        font:
-          family: font_face
-          size: font_size
-          weight: font_style
-        }).setLine(position).setJustification(just)
-    L note
+
+    struct =
+      text: text
+      duration: duration
+      smooth: smooth
+      ignore_ticks: ignore_ticks
+      font:
+        family: font_face
+        size: font_size
+        weight: font_style
+
+    if text[0] == "#"
+      struct.glyph = text[1..]
+
+    note = new Vex.Flow.TextNote(struct).
+      setLine(position).setJustification(just)
 
     _.last(voices).push(note)
 
