@@ -57,7 +57,7 @@
     <h2>Step 2: Add some notes</h2>
     <div class="description">
       The <code>notes</code> keyword can be used to add notes. Notes can be represented as <code>note/octave</code> or as <code>fret/string</code>. To add a long line of notes on the same string (or the same octave), you can use the format
-      <code>fret-fret-fret/string</code> (or <code>note-note-note/octave</code>.
+      <code>fret-fret-fret/string</code> (or <code>note-note-note/octave</code>).
 
       <p/>
       Try editing the notation below. Notice how the notes are justified in the stave. Notes can be suffixed by the following accidentals: <code>#, ##, @, @@,</code> and <code>n</code> signifying sharp, double-sharp, flat, double-flat, and natural, respectively.
@@ -138,8 +138,7 @@ notes 4-5/6</div>
       You can render a rest on the notation stave by typing <code>##</code>. Rests are positioned automatically, but you can specify a position by inserting a number in between the hashes, e.g., <code>#4#</code>. The position ranges from <code>0</code> to <code>9</code> (bottom to top.)
       <p/>
       The <code>|</code> character places a bar-line between the notes. You
-      can add as many bars as you want to a stave. Note that a space is
-      required before and after the <code>|</code> character.
+      can add as many bars as you want to a stave.
     </div>
 
     <div style="width:520; margin-left: auto; margin-right: auto;">
@@ -150,6 +149,26 @@ notes 4-5-6/3 ## | 5-4-2/3 2/2
 
 tabstave notation=true tablature=false
 notes C-D-E/4 #0# | C-D-E-F/4</div>
+    </div>
+
+     <div class="description">
+      Bar-lines can get fancy. You can render double bars, repeats, end bars using the various barline codes.
+      <p/>
+      <code>=||</code> &nbsp; Double Bar <br/>
+      <code>=|:</code> &nbsp;Repeat Begin <br/>
+      <code>=:|</code> &nbsp;Repeat End <br/>
+      <code>=::</code> &nbsp;Double Repeat <br/>
+      <code>=|=</code> &nbsp;End Bar <br/>
+    </div>
+
+    <div style="width:520; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=500 scale=1.0 editor="true"
+      editor_height=110>tabstave notation=true tablature=false
+notes 4-5-6/3 ## =|: 5-4-2/3 2/2 =:|
+
+tabstave notation=true tablature=false
+notes C-D-E/4 #0# =:: C-D-E-F/4 =|=</div>
     </div>
 
     <h2>Step 5: Bend a few notes</h2>
@@ -193,7 +212,7 @@ notes 4-5-6b7v/3 10/1 | 5d-4u-Xd/3 2v/2
     <h2>Step 7: Add some chords</h2>
     <div class="description">
       To render chords, group notes in parenthesis and separate each
-      <code>string/fret</code> (or <code>note/octave</code> combination with a period. E.g., <code>(4/5.5/6)</code> or <code>C/4.E/4</code>.
+      <code>string/fret</code> (or <code>note/octave</code>) combination with a period. E.g., <code>(4/5.5/6)</code> or <code>C/4.E/4</code>.
       <p/>
       For tablature, you can bend, slide, etc. individual notes in a chord just like you would for single notes.
     </div>
@@ -249,10 +268,10 @@ notes t(12/5.12/4)s(5/5.5/4) 3b4/5 5V/6</div>
       a triplet out of three notes.
     </div>
 
-    <div style="width:570; margin-left: auto; margin-right: auto;">
+    <div style="width:520; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
-      width=550 scale=1.0 editor="true"
-      editor_height=100>tabstave notation=true time=4/4 key=Ab tuning=eb
+      width=500 scale=1.0 editor="true"
+      editor_height=80>tabstave notation=true time=4/4 key=Ab tuning=eb
 notes :8 5s7s8/5 ^3^ :q (5/2.6/3)h(7/3) :8d 5/4 :16 5/5</div>
     </div>
 
@@ -266,8 +285,8 @@ notes :8 5s7s8/5 ^3^ :q (5/2.6/3)h(7/3) :8d 5/4 :16 5/5</div>
 
     <div style="width:640; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
-      width=620 scale=1.0 editor="true"
-      editor_height=230>tabstave notation=true
+      width=520 scale=1.0 editor="true"
+      editor_height=100>tabstave notation=true
 notes :q (8/2.7b9b7/3) (5b6/2.5b6/3)v :8 7s12/4
 notes t:16:9s:8:3s:16:0/4</div>
   </div>
@@ -386,7 +405,7 @@ options space=10</div>
     </div>
 
     <div class="description">
-      If you have bars in your music, you will need to add a bar to your text so that the notes and text align correctly. Simply add a <code>|</code> between commas to indicate a bar.
+      If you have bars in your music, you will need to add a bar to your text so that the notes and text align correctly. Simply add a <code>|</code> between commas to indicate a bar. Bars can have text attached to them by suffixing the <code>|</code> symbol with your text, e.g., <code>|bar</code>.
       <p/>
       Also, you can use the <code>++</code> command in your span to create a new text line on the same stave. Here's an example of these features:
     </div>
@@ -403,6 +422,24 @@ text :h,G7,C
 text ++, .11, :w, This is a new text line.
 
 options space=15</div>
+    </div>
+
+    <div class="description">
+      Text lines can also contain various musical symbols, such as codas and segnos. Simply prefix the symbol name with a <code>#</code> to render a symbol instead of text, e.g., <code>text #coda</code>.
+    </div>
+
+    <div style="width:570; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=550 scale=1.0 editor="true"
+      editor_height=120>options space=20 font-size=12
+
+tabstave notation=true tablature=false time=4/4 key=Ab tuning=eb
+notes :q =|: C-D-E-F/4 =:| G-A-B/4 C/5
+text |#coda, :hd, , :q, #tr, |#segno
+text ++, .11, |, #f
+text ++, .0, .font=Times-12-italic, |, :w, ,|, :q, ,D.S. al coda
+
+options space=25</div>
     </div>
 
 <h2>Step 13: Notate rhythms with slash notation.</h2>
