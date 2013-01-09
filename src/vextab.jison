@@ -207,8 +207,14 @@ lingo
     { $$ = $1 }
   | time
     { $$ = $1 }
-  | '|'
-    { $$ = [{command: "bar"}] }
+  | bar
+    { $$ = [{
+        command: "bar",
+        type: $1,
+        _l: @1.first_line,
+        _c: @1.first_column
+        }]
+    }
   | '['
     { $$ = [{
         command: "open_beam",
@@ -225,27 +231,36 @@ lingo
     }
   | tuplets
     { $$ = [{
-          command: "tuplet",
-          params: $1,
-          _l: @1.first_line,
-          _c: @1.first_column
-        }]
-      }
+        command: "tuplet",
+        params: $1,
+        _l: @1.first_line,
+        _c: @1.first_column
+      }]
+    }
   | annotations
     { $$ = [{
-          command: "annotations",
-          params: $1,
-          _l: @1.first_line,
-          _c: @1.first_column
-        }]
-      }
+        command: "annotations",
+        params: $1,
+        _l: @1.first_line,
+        _c: @1.first_column
+      }]
+    }
   | rest
     {
-      $$ = [{
-          command: "rest",
-          params: $1
-        }]
+    $$ = [{
+        command: "rest",
+        params: $1
+      }]
     }
+  ;
+
+bar
+  : '|'         { $$ = 'single' }
+  | '=' '|' '|' { $$ = 'double' }
+  | '=' '|' '=' { $$ = 'end' }
+  | '=' ':' '|' { $$ = 'repeat-end' }
+  | '=' '|' ':' { $$ = 'repeat-begin' }
+  | '=' ':' ':' { $$ = 'repeat-both' }
   ;
 
 line

@@ -65,7 +65,7 @@ class Vex.Flow.VexTab
 
   parseCommand: (element) ->
     if element.command is "bar"
-      @artist.addBar()
+      @artist.addBar(element.type)
 
     if element.command is "tuplet"
       @artist.makeTuplets(element.params.tuplet, element.params.notes)

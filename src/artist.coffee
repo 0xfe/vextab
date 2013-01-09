@@ -139,8 +139,18 @@ class Vex.Flow.Artist
     ctx.clear()
     ctx.setFont(@options.font_face, @options.font_size, "")
 
+    setBar = (stave, notes) -> 
+      last_note = _.last(notes)
+      if last_note instanceof Vex.Flow.BarNote
+        notes.pop()
+        stave.setEndBarType(last_note.getType())
+
     for stave in @staves
       L "Rendering staves."
+      # If the last note is a bar, then remove it and render it as a stave modifier.
+      setBar(stave.tab, stave.tab_notes) if stave.tab?
+      setBar(stave.note, stave.note_notes) if stave.note?
+
       stave.tab.setContext(ctx).draw() if stave.tab?
       stave.note.setContext(ctx).draw() if stave.note?
 
@@ -225,12 +235,31 @@ class Vex.Flow.Artist
     L "setDuration: ", time, dot
     @current_duration = makeDuration(time, dot)
 
-  addBar: ->
-    L "addBar()"
+  addBar: (type) ->
+    L "addBar: ", type
     @closeBends()
     stave = _.last(@staves)
-    stave.tab_notes.push(new Vex.Flow.BarNote())
-    stave.note_notes.push(new Vex.Flow.BarNote()) if stave.note?
+
+    TYPE = Vex.Flow.Barline.type
+    type = switch type
+      when "single"
+        TYPE.SINGLE
+      when "double"
+        TYPE.DOUBLE
+      when "end"
+        TYPE.END
+      when "repeat-begin"
+        TYPE.REPEAT_BEGIN
+      when "repeat-end"
+        TYPE.REPEAT_END
+      when "repeat-both"
+        TYPE.REPEAT_BOTH
+      else
+        TYPE.SINGLE
+
+    bar_note = new Vex.Flow.BarNote().setType(type)
+    stave.tab_notes.push(bar_note)
+    stave.note_notes.push(bar_note) if stave.note?
 
   makeBend = (from_fret, to_fret) ->
     direction = Vex.Flow.Bend.UP
