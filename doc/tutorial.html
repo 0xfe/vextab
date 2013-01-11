@@ -221,11 +221,11 @@ notes 4-5-6b7v/3 10/1 | 5d-4u-Xd/3 2v/2
     <div class="vex-tabdiv"
       width=500 scale=1.0 editor="true"
       editor_height=130>tabstave notation=true tablature=false
-notes (C/4.E/4.G/4) C-E-G/4
+  notes (C/4.E/4.G/4) C-E-G/4
 
 tabstave notation=true
-notes (8/2.7b9b7/3) (5b6/2.5b6/3) 7/4 |
-notes (5/2.6/3.7/4)</div>
+  notes (8/2.7b9b7/3) (5b6/2.5b6/3) 7/4 |
+  notes (5/2.6/3.7/4)</div>
     </div>
 
     <h2>Step 8: Add some hammer-ons, pull-offs, taps, and slides</h2>
@@ -242,16 +242,16 @@ notes (5/2.6/3.7/4)</div>
     <div class="vex-tabdiv"
       width=500 scale=1.0 editor="true"
       editor_height=230>tabstave
-notes (5/2.5/3.7/4) 5h6/3 7/4 |
-notes t12p7p5h7/4 7/5 5s3/5
+  notes (5/2.5/3.7/4) 5h6/3 7/4 |
+  notes t12p7p5h7/4 7/5 5s3/5
 
 tabstave
-notes (8/2.7b9b7/3) (5b6/2.5b6/3)v 7s0/4 |
-notes (5/2.6/3.7/4)v
+  notes (8/2.7b9b7/3) (5b6/2.5b6/3)v 7s0/4 |
+  notes (5/2.6/3.7/4)v
 
 tabstave
-notes (5/4.5/5)s(7/4.7/5)s(5/4.5/5) (5/4.5/5)h(7/5) |
-notes t(12/5.12/4)s(5/5.5/4) 3b4/5 5V/6</div>
+  notes (5/4.5/5)s(7/4.7/5)s(5/4.5/5) (5/4.5/5)h(7/5) |
+  notes t(12/5.12/4)s(5/5.5/4) 3b4/5 5V/6</div>
     </div>
 
     <h2>Step 9: Add durations and tuplets.</h2>
@@ -287,6 +287,7 @@ notes :8 5s7s8/5 ^3^ :q (5/2.6/3)h(7/3) :8d 5/4 :16 5/5</div>
     <div class="vex-tabdiv"
       width=520 scale=1.0 editor="true"
       editor_height=100>tabstave notation=true
+
 notes :q (8/2.7b9b7/3) (5b6/2.5b6/3)v :8 7s12/4
 notes t:16:9s:8:3s:16:0/4</div>
   </div>
@@ -338,32 +339,38 @@ notes :8 7/4 $.italic.sweep$ 6/3 5/2 3v/1 :q 7v/5 $.Arial-10-bold.P.H$ :8 3s5/5<
     <div style="width:670; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=650 scale=1.0 editor="true"
-      editor_height=100>options space=20 font-style=italic font-face=times font-size=10
+      editor_height=100>options space=20 font-style=italic
+        font-face=times font-size=10
 
 tabstave notation=true tablature=false
-notes :q
-notes C/4 $.a./bottom.$
-notes E/4 $.av/bottom.$
-notes G/4 $.a>/bottom.$
-notes B/4 $.a-/bottom.$
-notes C/5 $.a^/top.$
-notes E/5 $.a+/top.$
-notes G/5 $.ao/top.$
+  notes :q
+  notes C/4 $.a./bottom.$
+  notes E/4 $.av/bottom.$
+  notes G/4 $.a>/bottom.$
+  notes B/4 $.a-/bottom.$
+  notes C/5 $.a^/top.$
+  notes E/5 $.a+/top.$
+  notes G/5 $.ao/top.$
 
-text :q,.-1,.strict,Stacatto,Staccatissimo,Accent,Tenuto,Marcato,LH pizzicato,Snap pizzicato
-text ++,.12,.font=courier-12-,:q,a.,av,a>,a-,a^,a+,ao
-options space=120 font-style=italic font-face=times font-size=10
+  text :q,.-1,.strict,Stacatto,Staccatissimo
+  text Accent,Tenuto,Marcato,LH pizzicato,Snap pizzicato
+  text ++,.12,.font=courier-12-,:q,a.,av,a>,a-,a^,a+,ao
+
+options space=120 font-style=italic
+        font-face=times font-size=10
 
 tabstave notation=true tablature=false
-notes :q
-notes C/4 $.ah/bottom.$
-notes E/4 $.a@a/top.$
-notes G/4 $.a@u/bottom.$
-notes B/4 $.a|/bottom.$
-notes C/5 $.am/top.$
+  notes :q
+  notes C/4 $.ah/bottom.$
+  notes E/4 $.a@a/top.$
+  notes G/4 $.a@u/bottom.$
+  notes B/4 $.a|/bottom.$
+  notes C/5 $.am/top.$
 
-text :q,.-1,.strict,Open Note,Up Fermata,Down Fermata,Bow Up,Bow Down
-text ++,.12,.font=courier-12-,:q,ah,a@a,a@u,a|,am
+  text :q,.-1,.strict,Open Note,Up Fermata
+  text Down Fermata,Bow Up,Bow Down
+  text ++,.12,.font=courier-12-,:q,ah,a@a,a@u,a|,am
+
 options space=40
 </div>
     </div>
@@ -415,11 +422,12 @@ options space=10</div>
       width=550 scale=1.0 editor="true"
       editor_height=120>options space=10 font-size=12
 
-tabstave notation=true tablature=false time=4/4 key=Ab tuning=eb
-notes :q C-D-E-F/4 | G-A-B/4 C/5
-text :h,.1,C,Em,|
-text :h,G7,C
-text ++, .11, :w, This is a new text line.
+tabstave notation=true tablature=false
+         time=4/4 key=Ab tuning=eb
+  notes :q C-D-E-F/4 | G-A-B/4 C/5
+  text :h,.1,C,Em,|
+  text :h,G7,C
+  text ++, .11, :w, This is a new text line.
 
 options space=15</div>
     </div>
@@ -433,11 +441,12 @@ options space=15</div>
       width=550 scale=1.0 editor="true"
       editor_height=120>options space=20 font-size=12
 
-tabstave notation=true tablature=false time=4/4 key=Ab tuning=eb
-notes :q =|: C-D-E-F/4 =:| G-A-B/4 C/5
-text |#coda, :hd, , :q, #tr, |#segno
-text ++, .11, |, #f
-text ++, .0, .font=Times-12-italic, |, :w, ,|, :q, ,D.S. al coda
+tabstave notation=true tablature=false
+         time=4/4 key=Ab tuning=eb
+  notes :q =|: C-D-E-F/4 =:| G-A-B/4 C/5
+  text |#coda, :hd, , :q, #tr, |#segno
+  text ++, .11, |, #f
+  text ++, .0, .font=Times-12-italic, |, :w, ,|, :q, ,D.S. al coda
 
 options space=25</div>
     </div>
@@ -454,9 +463,10 @@ options space=25</div>
       width=550 scale=1.0 editor="true"
       editor_height=120>options font-size=14 space=15
 
-tabstave notation=true tablature=false time=4/4 clef=percussion
-notes :2S Bd/4 :qS Bd/4 :q ## | :8S Bd/4 Bu/4 :qS Bd-Bu-Bd/4 ^3^
-text :w, G Maj7, |, Am
+tabstave notation=true tablature=false
+         time=4/4 clef=percussion
+  notes :2S Bd/4 :qS Bd/4 :q ## | :8S Bd/4 Bu/4 :qS Bd-Bu-Bd/4 ^3^
+  text :w, G Maj7, |, Am
 
 options space=10
 </div>

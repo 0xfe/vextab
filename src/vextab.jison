@@ -3,9 +3,6 @@
   Mohit Cheppudira <mohit@muthanna.com>
 
   Process with Jison: http://zaach.github.com/jison/
-
-  Note: This file is new. The current parser in vextab.js is
-  a hand-rolled recursive descent parser.
 */
 
 %{
@@ -330,9 +327,9 @@ time_values
 
 time_unit
   : NUMBER  { $$ = $1 }
-  | 'q'     { $$ = $1 }
-  | 'w'     { $$ = $1 }
-  | 'h'     { $$ = $1 }
+  | 'w'     { $$ = $1 }  // whole note
+  | 'h'     { $$ = $1 }  // half note
+  | 'q'     { $$ = $1 }  // quarter note
   ;
 
 maybe_dot
@@ -352,19 +349,19 @@ string
 
 articulation
   : '-' { $$ = '-' }
-  | 's' { $$ = 's' }
-  | 't' { $$ = 't' }
-  | 'T' { $$ = 'T' }
-  | 'b' { $$ = 'b' }
-  | 'h' { $$ = 'h' }
-  | 'p' { $$ = 'p' }
+  | 's' { $$ = 's' }  // slide
+  | 't' { $$ = 't' }  // tap
+  | 'T' { $$ = 'T' }  // tie
+  | 'b' { $$ = 'b' }  // bend
+  | 'h' { $$ = 'h' }  // hammer-on
+  | 'p' { $$ = 'p' }  // pull-off
   ;
 
 maybe_decorator
-  : 'v' { $$ = 'v' }
-  | 'd' { $$ = 'd' }
-  | 'u' { $$ = 'u' }
-  | 'V' { $$ = 'V' }
+  : 'v' { $$ = 'v' }  // vibrato
+  | 'V' { $$ = 'V' }  // harsh vibrato
+  | 'u' { $$ = 'u' }  // up stroke/bow
+  | 'd' { $$ = 'd' }  // down stroke/bow
   |     { $$ = null }
   ;
 
@@ -385,19 +382,19 @@ annotation_words
   ;
 
 rest
-  : '#' '#'                   { $$ = {position: 0} }
-  | '#' NUMBER '#'            { $$ = {position: $2} }
+  : '#' '#'             { $$ = {position: 0} }
+  | '#' NUMBER '#'      { $$ = {position: $2} }
   ;
 
 abc
-  : ABC abc_accidental        { $$ = {key: $1, accidental: $2} }
+  : ABC abc_accidental  { $$ = {key: $1, accidental: $2} }
   ;
 
 abc_accidental
-  : '#'                       { $$ = "#" }
-  | '#' '#'                   { $$ = "##" }
-  | '@'                       { $$ = "b" }
-  | '@' '@'                   { $$ = "bb" }
-  | 'n'                       { $$ = "n" }
+  : '#'                 { $$ = "#" }   // sharp
+  | '#' '#'             { $$ = "##" }  // double sharp
+  | '@'                 { $$ = "b" }   // flat
+  | '@' '@'             { $$ = "bb" }  // double flat
+  | 'n'                 { $$ = "n" }   // natural
   |
   ;

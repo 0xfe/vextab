@@ -69,7 +69,7 @@ Vex.Flow.TabDiv.prototype.init = function(sel) {
               that.code = that.text_area.val();
               that.redraw()
             }
-          }, 150);
+          }, 250);
     });
   } if (this.show_errors == "true") {
     this.editor_error = $('<div></div>').addClass("editor-error");
