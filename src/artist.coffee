@@ -42,6 +42,9 @@ class Vex.Flow.Artist
     @tab_articulations = []
     @stave_articulations = []
 
+    # Voices for player
+    @player_voices = []
+
     # Current state
     @last_y = @y
     @current_duration = "q"
@@ -49,6 +52,8 @@ class Vex.Flow.Artist
     @current_bends = {}
     @bend_start_index = null
     @bend_start_strings = null
+    @rendered = false
+    @renderer_context = null
 
   setOptions: (options) ->
     L "setOptions: ", options
@@ -60,6 +65,10 @@ class Vex.Flow.Artist
         throw new Vex.RERR("ArtistError", "Invalid option '#{k}'")
 
     @last_y += parseInt(@customizations.space, 10)
+
+  getPlayerData: ->
+    voices: @player_voices
+    context: @renderer_context
 
   formatAndRender = (ctx, tab, score, text_notes) ->
     tab_stave = tab.stave if tab?
@@ -129,6 +138,8 @@ class Vex.Flow.Artist
       if tab? and score?
         (new Vex.Flow.StaveConnector(score.stave, tab.stave)).setContext(ctx).draw()
 
+      if score? then score_voices else tab_voices
+
   render: (renderer) ->
     L "Render: ", @options
     @closeBends()
@@ -139,7 +150,9 @@ class Vex.Flow.Artist
     ctx.clear()
     ctx.setFont(@options.font_face, @options.font_size, "")
 
-    setBar = (stave, notes) -> 
+    @renderer_context = ctx
+
+    setBar = (stave, notes) ->
       last_note = _.last(notes)
       if last_note instanceof Vex.Flow.BarNote
         notes.pop()
@@ -154,10 +167,12 @@ class Vex.Flow.Artist
       stave.tab.setContext(ctx).draw() if stave.tab?
       stave.note.setContext(ctx).draw() if stave.note?
 
-      formatAndRender(ctx,
+      voices = formatAndRender(ctx,
                       if stave.tab? then {stave: stave.tab, voices: [stave.tab_notes]} else null,
                       if stave.note? then {stave: stave.note, voices: [stave.note_notes]} else null,
                       stave.text_voices)
+
+      @player_voices.push(voices)
 
     L "Rendering tab articulations."
     for articulation in @tab_articulations
@@ -166,6 +181,10 @@ class Vex.Flow.Artist
     L "Rendering note articulations."
     for articulation in @stave_articulations
       articulation.setContext(ctx).draw()
+
+    @rendered = true
+
+  isRendered: -> @rendered
 
   draw: (renderer) -> @render renderer
 
