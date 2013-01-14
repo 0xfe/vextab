@@ -10,14 +10,16 @@
 %}
 
 %lex
-%s notes text annotations
+%s notes text annotations options
 %%
 
-"notes"               { this.begin('notes'); return 'NOTES'; }
-"tabstave"            return 'TABSTAVE'
-"options"             return 'OPTIONS'
-"text"                { this.begin('text'); return 'TEXT'; }
-<INITIAL>[^\s=]+      return 'WORD'
+<INITIAL>"notes"      { this.begin('notes'); return 'NOTES'; }
+<INITIAL>"tabstave"   { this.begin('options'); return 'TABSTAVE'; }
+<INITIAL>"stave"      { this.begin('options'); return 'STAVE'; }
+<INITIAL>"voice"      { this.begin('options'); return 'VOICE'; }
+<INITIAL>"options"    { this.begin('options'); return 'OPTIONS'; }
+<INITIAL>"text"       { this.begin('text'); return 'TEXT'; }
+<options>[^\s=]+      return 'WORD'
 
 /* Annotations */
 <notes>[$]                { this.begin('annotations'); return "$" }
@@ -111,9 +113,9 @@ vextab
   ;
 
 stave
-  : TABSTAVE maybe_options stave_data
+  : voice maybe_options stave_data
     { $$ = {
-        element: "stave",
+        element: $1,
         options: $2,
         notes: $3.notes,
         text: $3.text,
@@ -121,9 +123,9 @@ stave
         _c: @1.first_column
       }
     }
-  | TABSTAVE maybe_options
+  | voice maybe_options
     { $$ = {
-        element: "stave",
+        element: $1,
         options: $2,
         _l: @1.first_line,
         _c: @1.first_column
@@ -137,6 +139,11 @@ stave
         _c: @1.first_column
       }
     }
+  ;
+
+voice
+  : TABSTAVE
+  | VOICE
   ;
 
 stave_data

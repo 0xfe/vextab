@@ -93,14 +93,20 @@ class Vex.Flow.Artist
       text_stave = tab_stave
 
     if score?
-      for notes in score.voices
+      multi_voice = if (score.voices.length > 1) then true else false
+      for notes, i in score.voices
         continue if _.isEmpty(notes)
         _.each(notes, (note) -> note.setStave(score_stave))
         voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4).
           setMode(Vex.Flow.Voice.Mode.SOFT)
         voice.addTickables notes
         score_voices.push voice
-        beams = Vex.Flow.Beam.applyAndGetBeams(voice)
+        if multi_voice
+          stem_direction = if i == 0 then 1 else -1
+          beams = beams.concat(Vex.Flow.Beam.applyAndGetBeams(voice, stem_direction))
+        else
+          beams = Vex.Flow.Beam.applyAndGetBeams(voice)
+
       format_stave = score_stave
       text_stave = score_stave
 
@@ -167,9 +173,12 @@ class Vex.Flow.Artist
       stave.tab.setContext(ctx).draw() if stave.tab?
       stave.note.setContext(ctx).draw() if stave.note?
 
+      stave.tab_voices.push(stave.tab_notes)
+      stave.note_voices.push(stave.note_notes)
+
       voices = formatAndRender(ctx,
-                      if stave.tab? then {stave: stave.tab, voices: [stave.tab_notes]} else null,
-                      if stave.note? then {stave: stave.note, voices: [stave.note_notes]} else null,
+                      if stave.tab? then {stave: stave.tab, voices: stave.tab_voices} else null,
+                      if stave.note? then {stave: stave.note, voices: stave.note_voices} else null,
                       stave.text_voices)
 
       @player_voices.push(voices)
@@ -706,6 +715,19 @@ class Vex.Flow.Artist
 
     _.last(voices).push(note)
 
+  addVoice: (options) ->
+    @closeBends()
+    stave = _.last(@staves)
+    return @addStave(options) unless stave?
+
+    unless _.isEmpty(stave.tab_notes)
+      stave.tab_voices.push(stave.tab_notes)
+      stave.tab_notes = []
+
+    unless _.isEmpty(stave.note_notes)
+      stave.note_voices.push(stave.note_notes)
+      stave.note_notes = []
+
   addStave: (options) ->
     opts =
       tuning: "standard"
@@ -742,6 +764,8 @@ class Vex.Flow.Artist
     @staves.push {
       tab: tab_stave,
       note: note_stave,
+      tab_voices: [],
+      note_voices: [],
       tab_notes: [],
       note_notes: [],
       text_voices: []

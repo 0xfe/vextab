@@ -45,6 +45,9 @@ class Vex.Flow.VexTab
         when "clef"
           clefs = ["treble", "bass", "tenor", "alto", "percussion"]
           throw error("'clef' must be one of #{clefs.join(', ')}") if option.value not in clefs
+        when "voice"
+          voices = ["top", "bottom", "new"]
+          throw error("'voice' must be one of #{voices.join(', ')}") if option.value not in voices
         when "time"
           try
             new Vex.Flow.TimeSignature(option.value)
@@ -157,8 +160,12 @@ class Vex.Flow.VexTab
   generate: ->
     for stave in @elements
       switch stave.element
-        when "stave"
+        when "stave", "tabstave"
           @artist.addStave(@parseStaveOptions(stave.options))
+          @parseStaveElements(stave.notes) if stave.notes?
+          @parseStaveText(stave.text) if stave.text?
+        when "voice"
+          @artist.addVoice(@parseStaveOptions(stave.options))
           @parseStaveElements(stave.notes) if stave.notes?
           @parseStaveText(stave.text) if stave.text?
         when "options"
