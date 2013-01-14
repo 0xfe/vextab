@@ -19,6 +19,7 @@
 <INITIAL>"voice"      { this.begin('options'); return 'VOICE'; }
 <INITIAL>"options"    { this.begin('options'); return 'OPTIONS'; }
 <INITIAL>"text"       { this.begin('text'); return 'TEXT'; }
+<INITIAL>[^\s=]+      return 'WORD'
 <options>[^\s=]+      return 'WORD'
 
 /* Annotations */
