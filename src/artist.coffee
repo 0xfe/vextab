@@ -234,28 +234,35 @@ class Vex.Flow.Artist
     accidental = abc.accidental
     return [key, octave, accidental]
 
-  addStaveNote: (spec, accidentals, is_rest=false) ->
+  addStaveNote: (note_params) ->
+    params =
+      is_rest: false
+      play_note: null
+
+    _.extend(params, note_params)
     stave_notes = _.last(@staves).note_notes
     stave_note = new Vex.Flow.StaveNote({
-            keys: spec
-            duration: @current_duration + (if is_rest then "r" else "")
+            keys: params.spec
+            duration: @current_duration + (if params.is_rest then "r" else "")
             clef: @current_clef
-            auto_stem: if is_rest then false else true
+            auto_stem: if params.is_rest then false else true
           })
-    for acc, index in accidentals
+    for acc, index in params.accidentals
       stave_note.addAccidental(index, new Vex.Flow.Accidental(acc)) if acc?
 
     if @current_duration[@current_duration.length - 1] == "d"
       stave_note.addDotToAll()
 
+    stave_note.setPlayNote(params.play_note) if params.play_note?
     stave_notes.push stave_note
 
-  addTabNote: (spec) ->
+  addTabNote: (spec, play_note=null) ->
     tab_notes = _.last(@staves).tab_notes
     new_tab_note = new Vex.Flow.TabNote(
       positions: spec
       duration: @current_duration
     )
+    new_tab_note.setPlayNote(play_note) if play_note?
     tab_notes.push new_tab_note
 
   makeDuration = (time, dot) -> time + (if dot then "d" else "")
@@ -586,20 +593,21 @@ class Vex.Flow.Artist
     @closeBends()
 
     if params["position"] == 0
-      @addStaveNote ["r/4"], [], true
+      @addStaveNote {spec: ["r/4"], accidentals: [], is_rest: true}
     else
       position = @tuning.getNoteForFret(parseInt(params["position"] * 2, 10), 4)
-      @addStaveNote [position], [], true
+      @addStaveNote {spec: [position], accidentals: [], is_rest: true}
 
     tab_notes = _.last(@staves).tab_notes
     tab_notes.push new Vex.Flow.GhostNote(@current_duration)
 
   addChord: (chord, chord_articulation, chord_decorator) ->
     return if _.isEmpty(chord)
-    L "addTabChord: ", chord
+    L "addChord: ", chord
     stave = _.last(@staves)
 
     specs = []          # The stave note specs
+    play_notes = []     # Notes to be played by audio players
     accidentals = []    # The stave accidentals
     articulations = []  # Articulations (ties, bends, taps)
     decorators = []     # Decorators (vibratos, harmonics)
@@ -623,6 +631,7 @@ class Vex.Flow.Artist
         # New position. Create new element arrays for this
         # position.
         specs[current_position] = []
+        play_notes[current_position] = []
         accidentals[current_position] = []
         tab_specs[current_position] = []
         articulations[current_position] = []
@@ -630,16 +639,20 @@ class Vex.Flow.Artist
 
       [new_note, new_octave, accidental] = [null, null, null]
 
+      play_note = null
       if note.fret?
         [new_note, new_octave, accidental] = @getNoteForFret(note.fret, note.string)
+        play_note = @tuning.getNoteForFret(note.fret, note.string)
       else if note.abc?
         [new_note, new_octave, accidental] = @getNoteForABC(note.abc, note.string)
+        play_note = "#{new_note}#{accidental}/#{new_octave}"
         note.fret = 'X'
       else
         throw new Vex.RERR("ArtistError", "No note specified")
 
       current_duration = if note.time? then {time: note.time, dot: note.dot} else null
       specs[current_position].push "#{new_note}/#{new_octave}"
+      play_notes[current_position].push "#{new_note}/#{new_octave}"
       accidentals[current_position].push accidental
       tab_specs[current_position].push {fret: note.fret, str: note.string}
       articulations[current_position].push note.articulation if note.articulation?
@@ -651,8 +664,8 @@ class Vex.Flow.Artist
     for spec, i in specs
       saved_duration = @current_duration
       @setDuration(durations[i].time, durations[i].dot) if durations[i]?
-      @addTabNote tab_specs[i]
-      @addStaveNote spec, accidentals[i] if stave.note?
+      @addTabNote tab_specs[i], play_notes[i]
+      @addStaveNote {spec: spec, accidentals: accidentals[i], play_note: play_notes[i]} if stave.note?
       @addArticulations articulations[i]
       @addDecorator decorators[i] if decorators[i]?
 

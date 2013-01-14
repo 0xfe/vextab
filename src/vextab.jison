@@ -13,14 +13,14 @@
 %s notes text annotations options
 %%
 
-<INITIAL>"notes"      { this.begin('notes'); return 'NOTES'; }
-<INITIAL>"tabstave"   { this.begin('options'); return 'TABSTAVE'; }
-<INITIAL>"stave"      { this.begin('options'); return 'STAVE'; }
-<INITIAL>"voice"      { this.begin('options'); return 'VOICE'; }
-<INITIAL>"options"    { this.begin('options'); return 'OPTIONS'; }
-<INITIAL>"text"       { this.begin('text'); return 'TEXT'; }
-<INITIAL>[^\s=]+      return 'WORD'
-<options>[^\s=]+      return 'WORD'
+<INITIAL>"notes"              { this.begin('notes'); return 'NOTES'; }
+<INITIAL>"tabstave"           { this.begin('options'); return 'TABSTAVE'; }
+<INITIAL>"stave"              { this.begin('options'); return 'STAVE'; }
+<INITIAL>"voice"              { this.begin('options'); return 'VOICE'; }
+<INITIAL>"options"            { this.begin('options'); return 'OPTIONS'; }
+<INITIAL>"text"               { this.begin('text'); return 'TEXT'; }
+<INITIAL,options>[^\s=]+      return 'WORD'
+
 
 /* Annotations */
 <notes>[$]                { this.begin('annotations'); return "$" }
