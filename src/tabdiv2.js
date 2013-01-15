@@ -19,6 +19,9 @@ Vex.Flow.TabDiv.prototype.init = function(sel) {
   // Grab code and clear tabdiv
   this.code = $(sel).text();
   $(sel).empty();
+  if ($(sel).css("position") == "static") {
+    $(sel).css("position", "relative");
+  }
 
   // Get tabdiv properties
   this.width = $(sel).attr("width") || 400;
@@ -79,6 +82,9 @@ Vex.Flow.TabDiv.prototype.init = function(sel) {
   // Initialize parser.
   this.artist = new Vex.Flow.Artist(10, 0, this.width, {scale: this.scale});
   this.parser = new Vex.Flow.VexTab(this.artist);
+  if (Vex.Flow.Player) {
+    this.player = new Vex.Flow.Player(this.artist);
+  }
 
   if (!Vex.Flow.TabDiv.NOLOGO) {
     this.message = "vexflow.com";

@@ -36,6 +36,8 @@ class Vex.Flow.Artist
       "width": @width
       "stave-distance": 0
       "space": 0
+      "player": "false"
+      "tempo": 120
 
     # Generated elements
     @staves = []
@@ -55,6 +57,9 @@ class Vex.Flow.Artist
     @rendered = false
     @renderer_context = null
 
+  attachPlayer: (player) ->
+    @player = player
+
   setOptions: (options) ->
     L "setOptions: ", options
     valid_options = _.keys(@customizations)
@@ -69,6 +74,7 @@ class Vex.Flow.Artist
   getPlayerData: ->
     voices: @player_voices
     context: @renderer_context
+    scale: @customizations.scale
 
   formatAndRender = (ctx, tab, score, text_notes) ->
     tab_stave = tab.stave if tab?
@@ -191,6 +197,12 @@ class Vex.Flow.Artist
     for articulation in @stave_articulations
       articulation.setContext(ctx).draw()
 
+    if @player?
+      if @customizations.player is "true"
+        @player.setTempo(parseInt(@customizations.tempo, 10))
+        @player.render()
+      else
+        @player.removeControls()
     @rendered = true
 
   isRendered: -> @rendered
