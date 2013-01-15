@@ -130,7 +130,7 @@ class Vex.Flow.Artist
         formatter.joinVoices(score_voices) unless _.isEmpty(score_voices)
         format_voices = format_voices.concat(score_voices)
 
-      if not _.isEmpty(text_notes)
+      if not _.isEmpty(text_notes) and not _.isEmpty(text_voices)
         formatter.joinVoices(text_voices)
         format_voices = format_voices.concat(text_voices)
 
@@ -267,8 +267,9 @@ class Vex.Flow.Artist
 
   makeDuration = (time, dot) -> time + (if dot then "d" else "")
   setDuration: (time, dot=false) ->
-    L "setDuration: ", time, dot
-    @current_duration = makeDuration(time, dot)
+    t = time.split(/\s+/)
+    L "setDuration: ", t[0], dot
+    @current_duration = makeDuration(t[0], dot)
 
   addBar: (type) ->
     L "addBar: ", type
