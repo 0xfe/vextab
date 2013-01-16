@@ -33,6 +33,8 @@ class Vex.Flow.Test.VexTab
     test "ABC Notes Test", @abcNotes
     test "Rhythm/Slash Notation Test", @rhythmNotation
     test "Text Lines", @textLines
+    test "Sweep Strokes", @sweepStrokes
+    test "Voices", @voices
 
   # Private method
   catchError = (tab, code, error_type="ParseError") ->
@@ -371,4 +373,35 @@ class Vex.Flow.Test.VexTab
     notEqual null, tab.parse("tabstave notation=true\n text .4, .strict, Blah,++, :16, .smooth, Boo")
 
     ok(true, "all pass")
+
+  @sweepStrokes: ->
+    expect 8
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/rd.$")
+    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/ru.$")
+    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/bu.$")
+    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/bd.$")
+    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/qu.$")
+    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/qd.$")
+    catchError tab, "tabstave\n notes :q (5/2.5/3.7/4) $.stroke/xd.$", "ArtistError"
+
+    ok(true, "all pass")
+
+  @voices: ->
+    expect 1
+    tab = makeParser()
+    code = """
+    options stave-distance=30
+    tabstave notation=true
+             key=A
+             time=4/4
+    voice
+        notes :q (5/2.5/3.7/4) :8 7p5h6/3 ^3^ 5h6h7/5 ^3^ :q 7V/4 |
+        notes :8 t12p7/4 s5s3/4 :8 3s:16:5-7/5 :q p5/4
+    voice
+        notes :h 5/6 :q 5/6 :8 4-5/5 | :w 5/5
+    """
+    notEqual null, tab.parse(code)
+
 

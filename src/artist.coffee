@@ -70,6 +70,7 @@ class Vex.Flow.Artist
         throw new Vex.RERR("ArtistError", "Invalid option '#{k}'")
 
     @last_y += parseInt(@customizations.space, 10)
+    @last_y += 15 if @customizations.player is "true"
 
   getPlayerData: ->
     voices: @player_voices
@@ -378,6 +379,32 @@ class Vex.Flow.Artist
     # Throw away tab tuplet because it can't be rendered
     new Vex.Flow.Tuplet(tab_notes[tab_notes.length - notes..])
 
+  getStrokeParts = (text) -> text.match(/^\.stroke\/([^.]+)\./)
+  makeStroke: (text) ->
+    parts = getStrokeParts(text)
+    TYPE = Vex.Flow.Stroke.Type
+    type = null
+
+    if parts?
+      switch parts[1]
+        when "bu"
+          type = TYPE.BRUSH_UP
+        when "bd"
+          type = TYPE.BRUSH_DOWN
+        when "ru"
+          type = TYPE.ROLL_UP
+        when "rd"
+          type = TYPE.ROLL_DOWN
+        when "qu"
+          type = TYPE.RASQUEDO_UP
+        when "qd"
+          type = TYPE.RASQUEDO_DOWN
+        else
+          throw new Vex.RERR("ArtistError", "Invalid stroke type: #{parts[1]}")
+      return new Vex.Flow.Stroke(type)
+    else
+      return null
+
   getScoreArticulationParts = (text) -> text.match(/^\.(a[^\/]*)\/(t|b)[^.]*\./)
   makeScoreArticulation: (text) ->
     parts = getScoreArticulationParts(text)
@@ -449,6 +476,9 @@ class Vex.Flow.Artist
         if getScoreArticulationParts(annotations[i])
           score_articulation = @makeScoreArticulation(annotations[i])
           tab_note.addModifier(score_articulation, 0)
+        else if getStrokeParts(annotations[i])
+          stroke = @makeStroke(annotations[i])
+          tab_note.addModifier(stroke, 0)
         else
           annotation = @makeAnnotation(annotations[i])
           tab_note.addModifier(@makeAnnotation(annotations[i]), 0) if annotation
@@ -463,6 +493,9 @@ class Vex.Flow.Artist
       for note, i in stave_notes[stave_notes.length - annotations.length..]
         score_articulation = @makeScoreArticulation(annotations[i])
         note.addArticulation(0, score_articulation) if score_articulation?
+
+        stroke = @makeStroke(annotations[i])
+        note.addStroke(0, stroke) if stroke?
 
   addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
     L "addTabArticulations: ", type, first_note, last_note, first_indices, last_indices
