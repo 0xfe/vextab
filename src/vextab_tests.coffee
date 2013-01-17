@@ -35,6 +35,7 @@ class Vex.Flow.Test.VexTab
     test "Text Lines", @textLines
     test "Sweep Strokes", @sweepStrokes
     test "Voices", @voices
+    test "Fingering and String Numbers", @fingering
 
   # Private method
   catchError = (tab, code, error_type="ParseError") ->
@@ -405,4 +406,15 @@ class Vex.Flow.Test.VexTab
     """
     notEqual null, tab.parse(code)
 
+  @fingering: ->
+    expect 7
+    tab = makeParser()
 
+    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:r:s:1.$")
+    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:l:f:1.$")
+    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:a:s:1.$")
+    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:b:s:1.$")
+    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:l:f:1.$")
+    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:r:s:1.$")
+
+    ok(true, "all pass")

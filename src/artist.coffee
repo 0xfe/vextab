@@ -379,6 +379,48 @@ class Vex.Flow.Artist
     # Throw away tab tuplet because it can't be rendered
     new Vex.Flow.Tuplet(tab_notes[tab_notes.length - notes..])
 
+  getFingering = (text) -> text.match(/^\.fingering\/([^.]+)\./)
+  makeFingering: (text) ->
+    parts = getFingering(text)
+    POS = Vex.Flow.Modifier.Position
+    fingers = []
+    fingering = []
+
+    if parts?
+      fingers = (p.trim() for p in parts[1].split(/-/))
+    else
+      return null
+
+    badFingering = -> new Vex.RERR("ArtistError", "Bad fingering: #{parts[1]}")
+
+    for finger in fingers
+      pieces = finger.match(/(\d+):([ablr]):([fs]):(\d+)/)
+      throw badFingering() unless pieces?
+
+      note_number = parseInt(pieces[1], 10)
+      position = POS.RIGHT
+      switch pieces[2]
+        when "l"
+          position = POS.LEFT
+        when "r"
+          position = POS.RIGHT
+        when "a"
+          position = POS.ABOVE
+        when "b"
+          position = POS.BELOW
+
+      modifier = null
+      number = pieces[4]
+      switch pieces[3]
+        when "s"
+          modifier = new Vex.Flow.StringNumber(number).setPosition(position)
+        when "f"
+          modifier = new Vex.Flow.FretHandFinger(number).setPosition(position)
+
+      fingering.push({num: note_number, modifier: modifier})
+
+    return fingering
+
   getStrokeParts = (text) -> text.match(/^\.stroke\/([^.]+)\./)
   makeStroke: (text) ->
     parts = getStrokeParts(text)
@@ -488,7 +530,7 @@ class Vex.Flow.Artist
           annotation = @makeAnnotation(annotations[i])
           note.addAnnotation(0, @makeAnnotation(annotations[i])) if annotation
 
-    # Add glyph articulations on score
+    # Add glyph articulations, strokes, or fingerings on score
     if stave.note
       for note, i in stave_notes[stave_notes.length - annotations.length..]
         score_articulation = @makeScoreArticulation(annotations[i])
@@ -496,6 +538,10 @@ class Vex.Flow.Artist
 
         stroke = @makeStroke(annotations[i])
         note.addStroke(0, stroke) if stroke?
+
+        fingerings = @makeFingering(annotations[i])
+        if fingerings?
+          (note.addModifier(fingering.num, fingering.modifier) for fingering in fingerings)
 
   addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
     L "addTabArticulations: ", type, first_note, last_note, first_indices, last_indices
