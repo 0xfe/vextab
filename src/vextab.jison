@@ -286,9 +286,9 @@ chord_line
 
 chord
   : '(' chord_line ')' maybe_decorator
-    { $$ = {chord: $2, decorator: $4} }
+    { $$ = [{chord: $2, decorator: $4}] }
   | articulation '(' chord_line ')' maybe_decorator
-    { $$ = {chord: $3, articulation: $1, decorator: $5} }
+    { $$ = [{chord: $3, articulation: $1, decorator: $5}] }
   ;
 
 frets

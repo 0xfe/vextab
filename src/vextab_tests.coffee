@@ -232,15 +232,16 @@ class Vex.Flow.Test.VexTab
     ok(true, "all pass");
 
   @chord: ->
-    expect 7
+    expect 8
     tab = makeParser()
 
     notEqual null, tab.parse("tabstave\n notes (4/6)")
-    notEqual null, tab.parse("tabstave\n notes (4/5.6/7)")
-    catchError(tab, "tabstave\n notes (4")
-    catchError(tab, "tabstave\n notes (4/)")
-    catchError(tab, "tabstave\n notes (/5)")
-    catchError(tab, "tabstave\n notes (4/5.)")
+    notEqual null, tab.parse("tabstave\n notes (4/5.6/6)")
+    catchError tab, "tabstave\n notes (4/5.6/7)", "BadArguments"
+    catchError tab, "tabstave\n notes (4"
+    catchError tab, "tabstave\n notes (4/)"
+    catchError tab, "tabstave\n notes (/5)"
+    catchError tab, "tabstave\n notes (4/5.)"
 
     ok(true, "all pass")
 

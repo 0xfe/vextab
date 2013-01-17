@@ -80,6 +80,7 @@ class Vex.Flow.VexTab
       @artist.addRest(element.params)
 
   parseChord: (element) ->
+    L "parseChord:", element
     @artist.addChord(
       _.map(element.chord,
             (note)-> _.pick(note, 'time', 'dot', 'fret', 'abc', 'string', 'articulation', 'decorator')),
@@ -94,6 +95,7 @@ class Vex.Flow.VexTab
       note, 'time', 'dot', 'abc', 'string', 'articulation', 'decorator'))
 
   parseStaveElements: (notes) ->
+    L "parseStaveElements:", notes
     for element in notes
       if element.time
         @artist.setDuration(element.time, element.dot)
