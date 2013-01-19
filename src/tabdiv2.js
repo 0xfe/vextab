@@ -3,8 +3,8 @@
  * Copyright Mohit Muthanna 2010 <mohit@muthanna.com>
  */
 
-Vex.Flow.TabDiv = function(sel) {
-  if (arguments.length > 0) this.init(sel);
+Vex.Flow.TabDiv = function(sel, options) {
+  if (arguments.length > 0) this.init(sel, options);
 }
 
 Vex.Flow.TabDiv.SEL = ".vex-tabdiv";
@@ -13,7 +13,7 @@ Vex.Flow.TabDiv.ERROR_NOCANVAS =
   "Please use a modern browser such as <a href='http://google.com/chrome'>" +
   "Google Chrome</a> or <a href='http://firefox.com'>Firefox</a>.";
 
-Vex.Flow.TabDiv.prototype.init = function(sel) {
+Vex.Flow.TabDiv.prototype.init = function(sel, options) {
   this.sel = sel;
 
   // Grab code and clear tabdiv
@@ -82,8 +82,11 @@ Vex.Flow.TabDiv.prototype.init = function(sel) {
   // Initialize parser.
   this.artist = new Vex.Flow.Artist(10, 0, this.width, {scale: this.scale});
   this.parser = new Vex.Flow.VexTab(this.artist);
+
   if (Vex.Flow.Player) {
-    this.player = new Vex.Flow.Player(this.artist);
+    opts = {};
+    if (options) opts.soundfont_url = options.soundfont_url;
+    this.player = new Vex.Flow.Player(this.artist, opts);
   }
 
   if (!Vex.Flow.TabDiv.NOLOGO) {

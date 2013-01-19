@@ -394,10 +394,10 @@ class Vex.Flow.Artist
     badFingering = -> new Vex.RERR("ArtistError", "Bad fingering: #{parts[1]}")
 
     for finger in fingers
-      pieces = finger.match(/(\d+):([ablr]):([fs]):(\d+)/)
+      pieces = finger.match(/(\d+):([ablr]):([fs]):([^-.]+)/)
       throw badFingering() unless pieces?
 
-      note_number = parseInt(pieces[1], 10)
+      note_number = parseInt(pieces[1], 10) - 1
       position = POS.RIGHT
       switch pieces[2]
         when "l"
@@ -541,7 +541,10 @@ class Vex.Flow.Artist
 
         fingerings = @makeFingering(annotations[i])
         if fingerings?
-          (note.addModifier(fingering.num, fingering.modifier) for fingering in fingerings)
+          try
+            (note.addModifier(fingering.num, fingering.modifier) for fingering in fingerings)
+          catch e
+            throw new Vex.RERR("ArtistError", "Bad note number in fingering: #{annotations[i]}")
 
   addTabArticulation: (type, first_note, last_note, first_indices, last_indices) ->
     L "addTabArticulations: ", type, first_note, last_note, first_indices, last_indices
