@@ -75,6 +75,7 @@
 /* ABC */
 <notes>[A-GX]             return 'ABC'
 <notes>[n]                return 'n'
+<notes>[~]                return '~'
 
 /* Newlines reset your state */
 [\r\n]+               { this.begin('INITIAL'); }
@@ -395,7 +396,8 @@ rest
   ;
 
 abc
-  : ABC abc_accidental  { $$ = {key: $1, accidental: $2} }
+  : ABC abc_accidental accidental_type
+    { $$ = {key: $1, accidental: $2, accidental_type: $3} }
   ;
 
 abc_accidental
@@ -405,4 +407,9 @@ abc_accidental
   | '@' '@'             { $$ = "bb" }  // double flat
   | 'n'                 { $$ = "n" }   // natural
   |
+  ;
+
+accidental_type
+  :                    { $$ = null; }   // standard
+  | '~'                { $$ = "c" }    // cautionary
   ;

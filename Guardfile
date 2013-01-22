@@ -9,7 +9,7 @@ guard :bundler do
 end
 
 guard :shell do
-  watch(/^(src\/|doc\/)/) do |f|
+  watch(/^(src\/|doc\/|support\/)/) do |f|
     puts "Rebuilding on: #{f}"
     `rake make`
   end

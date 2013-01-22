@@ -38,6 +38,7 @@ class Vex.Flow.Artist
       "space": 0
       "player": "false"
       "tempo": 120
+      "accidentals": "standard"  # standard / cautionary
 
     # Generated elements
     @staves = []
@@ -62,6 +63,7 @@ class Vex.Flow.Artist
 
   setOptions: (options) ->
     L "setOptions: ", options
+    # Set @customizations
     valid_options = _.keys(@customizations)
     for k, v of options
       if k in valid_options
@@ -222,8 +224,17 @@ class Vex.Flow.Artist
     accidental = null
 
     # Do we need to specify an explicit accidental?
-    if selected_note.change
-      accidental = unless selected_note.accidental? then "n" else selected_note.accidental
+    switch @customizations.accidentals
+      when "standard"
+        if selected_note.change
+          accidental = if selected_note.accidental? then selected_note.accidental else "n"
+      when "cautionary"
+        if selected_note.change
+          accidental = if selected_note.accidental? then selected_note.accidental else "n"
+        else
+          accidental = if selected_note.accidental? then selected_note.accidental + "_c"
+      else
+        throw new Vex.RERR("ArtistError", "Invalid value for option 'accidentals': #{@customizations.accidentals}")
 
     new_note = selected_note.note
     new_octave = spec_props.octave
@@ -245,6 +256,7 @@ class Vex.Flow.Artist
     key = abc.key
     octave = string
     accidental = abc.accidental
+    accidental += "_#{abc.accidental_type}" if abc.accidental_type?
     return [key, octave, accidental]
 
   addStaveNote: (note_params) ->
@@ -261,7 +273,14 @@ class Vex.Flow.Artist
             auto_stem: if params.is_rest then false else true
           })
     for acc, index in params.accidentals
-      stave_note.addAccidental(index, new Vex.Flow.Accidental(acc)) if acc?
+      if acc?
+        parts = acc.split("_")
+        new_accidental = new Vex.Flow.Accidental(parts[0])
+
+        if parts.length > 1 and parts[1] == "c"
+          new_accidental.setAsCautionary()
+
+        stave_note.addAccidental(index, new_accidental)
 
     if @current_duration[@current_duration.length - 1] == "d"
       stave_note.addDotToAll()
