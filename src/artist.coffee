@@ -38,6 +38,7 @@ class Vex.Flow.Artist
       "space": 0
       "player": "false"
       "tempo": 120
+      "instrument": "acoustic_grand_piano"
       "accidentals": "standard"  # standard / cautionary
 
     # Generated elements
@@ -203,6 +204,7 @@ class Vex.Flow.Artist
     if @player?
       if @customizations.player is "true"
         @player.setTempo(parseInt(@customizations.tempo, 10))
+        @player.setInstrument(@customizations.instrument)
         @player.render()
       else
         @player.removeControls()
