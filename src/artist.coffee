@@ -106,13 +106,16 @@ class Vex.Flow.Artist
       multi_voice = if (score.voices.length > 1) then true else false
       for notes, i in score.voices
         continue if _.isEmpty(notes)
-        _.each(notes, (note) -> note.setStave(score_stave))
+        stem_direction = if i == 0 then 1 else -1
+        _.each(notes, (note) ->
+          note.setStave(score_stave)
+          note.setStemDirection(stem_direction) if note.setStemDirection?)
+
         voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4).
           setMode(Vex.Flow.Voice.Mode.SOFT)
         voice.addTickables notes
         score_voices.push voice
         if multi_voice
-          stem_direction = if i == 0 then 1 else -1
           beams = beams.concat(Vex.Flow.Beam.applyAndGetBeams(voice, stem_direction))
         else
           beams = Vex.Flow.Beam.applyAndGetBeams(voice)
