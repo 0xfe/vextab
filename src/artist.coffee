@@ -308,6 +308,7 @@ class Vex.Flow.Artist
   addBar: (type) ->
     L "addBar: ", type
     @closeBends()
+    @key_manager.reset()
     stave = _.last(@staves)
 
     TYPE = Vex.Flow.Barline.type
@@ -395,10 +396,10 @@ class Vex.Flow.Artist
     tab_notes = _.last(@staves).tab_notes
 
     throw new Vex.RERR("ArtistError", "Not enough notes for tuplet") if stave_notes.length < notes
-    modifier = new Vex.Flow.Tuplet(stave_notes[stave_notes.length - notes..])
+    modifier = new Vex.Flow.Tuplet(stave_notes[stave_notes.length - notes..], {num_notes: tuplets})
     @stave_articulations.push modifier
     # Throw away tab tuplet because it can't be rendered
-    new Vex.Flow.Tuplet(tab_notes[tab_notes.length - notes..])
+    new Vex.Flow.Tuplet(tab_notes[tab_notes.length - notes..], {num_notes: tuplets})
 
   getFingering = (text) -> text.match(/^\.fingering\/([^.]+)\./)
   makeFingering: (text) ->
@@ -761,14 +762,19 @@ class Vex.Flow.Artist
         play_note = @tuning.getNoteForFret(note.fret, note.string)
       else if note.abc?
         [new_note, new_octave, accidental] = @getNoteForABC(note.abc, note.string)
-        play_note = "#{new_note}#{accidental}/#{new_octave}"
+        if accidental?
+          acc = accidental.split("_")[0]
+        else
+          acc = ""
+
+        play_note = "#{new_note}#{acc}/#{new_octave}"
         note.fret = 'X'
       else
         throw new Vex.RERR("ArtistError", "No note specified")
 
       current_duration = if note.time? then {time: note.time, dot: note.dot} else null
       specs[current_position].push "#{new_note}/#{new_octave}"
-      play_notes[current_position].push "#{new_note}/#{new_octave}"
+      play_notes[current_position].push "#{play_note}/#{new_octave}"
       accidentals[current_position].push accidental
       tab_specs[current_position].push {fret: note.fret, str: note.string}
       articulations[current_position].push note.articulation if note.articulation?
