@@ -107,9 +107,8 @@ class Vex.Flow.Artist
       for notes, i in score.voices
         continue if _.isEmpty(notes)
         stem_direction = if i == 0 then 1 else -1
-        _.each(notes, (note) ->
-          note.setStave(score_stave)
-          note.setStemDirection(stem_direction) if note.setStemDirection?)
+        _.each(notes, (note) -> note.setStave(score_stave))
+        # _.each(notes, (note) -> note.setStemDirection(stem_direction) if note.setStemDirection?)
 
         voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4).
           setMode(Vex.Flow.Voice.Mode.SOFT)
