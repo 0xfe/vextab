@@ -393,6 +393,7 @@ annotation_words
 rest
   : '#' '#'             { $$ = {position: 0} }
   | '#' NUMBER '#'      { $$ = {position: $2} }
+  | '#' '-' NUMBER '#'      { $$ = {position: $3 * -1} }
   ;
 
 abc

@@ -273,7 +273,7 @@ class Vex.Flow.Artist
     stave_note = new Vex.Flow.StaveNote({
             keys: params.spec
             duration: @current_duration + (if params.is_rest then "r" else "")
-            clef: @current_clef
+            clef: if params.is_rest then "treble" else @current_clef
             auto_stem: if params.is_rest then false else true
           })
     for acc, index in params.accidentals
@@ -678,7 +678,6 @@ class Vex.Flow.Artist
 
       if valid_articulation is "b" then has_bends = true
       prev_index = @getPreviousNoteIndex()
-      L "prev_tab_note: ", prev_tab_note
       if prev_index is -1
         prev_tab_note = null
         prev_indices = null
@@ -712,10 +711,16 @@ class Vex.Flow.Artist
     @closeBends()
 
     if params["position"] == 0
-      @addStaveNote {spec: ["r/4"], accidentals: [], is_rest: true}
+      @addStaveNote
+        spec: ["r/4"]
+        accidentals: []
+        is_rest: true
     else
-      position = @tuning.getNoteForFret(parseInt(params["position"] * 2, 10), 4)
-      @addStaveNote {spec: [position], accidentals: [], is_rest: true}
+      position = @tuning.getNoteForFret((parseInt(params["position"], 10) + 5) * 2, 6)
+      @addStaveNote
+        spec: [position]
+        accidentals: []
+        is_rest: true
 
     tab_notes = _.last(@staves).tab_notes
     tab_notes.push new Vex.Flow.GhostNote(@current_duration)
