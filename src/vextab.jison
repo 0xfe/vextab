@@ -10,7 +10,7 @@
 %}
 
 %lex
-%s notes text annotations options
+%s notes text annotations options command
 %%
 
 <INITIAL>"notes"              { this.begin('notes'); return 'NOTES'; }
@@ -26,6 +26,11 @@
 <notes>[$]                { this.begin('annotations'); return "$" }
 <annotations>[$]          { this.begin('notes'); return "$" }
 <annotations>[^,$]+       return 'WORD'
+
+/* Commands */
+<notes>[!]                { this.begin('command'); return "!" }
+<command>[!]              { this.begin('notes'); return "!" }
+<command>[^!]+            return 'COMMAND'
 
 /* Text Lines */
 <text>[^,\r\n]+           return 'STR'
@@ -251,6 +256,14 @@ lingo
         _c: @1.first_column
       }]
     }
+  | command
+    { $$ = [{
+        command: "command",
+        params: $1,
+        _l: @1.first_line,
+        _c: @1.first_column
+      }]
+    }
   | rest
     {
     $$ = [{
@@ -390,10 +403,14 @@ annotation_words
     { $$ = [].concat($1, $3) }
   ;
 
+command
+  : '!' COMMAND '!'  { $$ = $2 }
+  ;
+
 rest
   : '#' '#'             { $$ = {position: 0} }
   | '#' NUMBER '#'      { $$ = {position: $2} }
-  | '#' '-' NUMBER '#'      { $$ = {position: $3 * -1} }
+  | '#' '-' NUMBER '#'  { $$ = {position: $3 * -1} }
   ;
 
 abc

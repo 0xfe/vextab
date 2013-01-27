@@ -79,6 +79,9 @@ class Vex.Flow.VexTab
     if element.command is "rest"
       @artist.addRest(element.params)
 
+    if element.command is "command"
+      @artist.runCommand(element.params, element._l, element._c)
+
   parseChord: (element) ->
     L "parseChord:", element
     @artist.addChord(

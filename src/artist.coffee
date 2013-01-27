@@ -54,6 +54,7 @@ class Vex.Flow.Artist
     @current_duration = "q"
     @current_clef = "treble"
     @current_bends = {}
+    @current_octave_shift = 0
     @bend_start_index = null
     @bend_start_strings = null
     @rendered = false
@@ -766,7 +767,7 @@ class Vex.Flow.Artist
       play_note = null
       if note.fret?
         [new_note, new_octave, accidental] = @getNoteForFret(note.fret, note.string)
-        play_note = @tuning.getNoteForFret(note.fret, note.string)
+        play_note = @tuning.getNoteForFret(note.fret, note.string).split("/")[0]
       else if note.abc?
         [new_note, new_octave, accidental] = @getNoteForABC(note.abc, note.string)
         if accidental?
@@ -774,14 +775,16 @@ class Vex.Flow.Artist
         else
           acc = ""
 
-        play_note = "#{new_note}#{acc}/#{new_octave}"
+        play_note = "#{new_note}#{acc}"
         note.fret = 'X'
       else
         throw new Vex.RERR("ArtistError", "No note specified")
 
+      play_octave = parseInt(new_octave, 10) + @current_octave_shift
+
       current_duration = if note.time? then {time: note.time, dot: note.dot} else null
       specs[current_position].push "#{new_note}/#{new_octave}"
-      play_notes[current_position].push "#{play_note}/#{new_octave}"
+      play_notes[current_position].push "#{play_note}/#{play_octave}"
       accidentals[current_position].push accidental
       tab_specs[current_position].push {fret: note.fret, str: note.string}
       articulations[current_position].push note.articulation if note.articulation?
@@ -917,3 +920,13 @@ class Vex.Flow.Artist
     @key_manager.setKey(opts.key)
 
     return
+
+  runCommand: (line, _l=0, _c=0) ->
+    L "runCommand: ", line
+    words = line.split(/\s+/)
+    switch words[0]
+      when "octave-shift"
+        @current_octave_shift = parseInt(words[1], 10)
+        L "Octave shift: ", @current_octave_shift
+      else
+        throw new Vex.RERR("ArtistError", "Invalid command '#{words[0]}' at line #{_l} column #{_c}")
