@@ -134,6 +134,7 @@ class Vex.Flow.Artist
     if format_stave?
       format_voices = []
       formatter = new Vex.Flow.Formatter()
+      align_rests = false
 
       if tab?
         formatter.joinVoices(tab_voices) unless _.isEmpty(tab_voices)
@@ -142,12 +143,13 @@ class Vex.Flow.Artist
       if score?
         formatter.joinVoices(score_voices) unless _.isEmpty(score_voices)
         format_voices = format_voices.concat(score_voices)
+        align_rests = true if score_voices.length > 1
 
       if not _.isEmpty(text_notes) and not _.isEmpty(text_voices)
         formatter.joinVoices(text_voices)
         format_voices = format_voices.concat(text_voices)
 
-      formatter.formatToStave(format_voices, format_stave) unless _.isEmpty(format_voices)
+      formatter.formatToStave(format_voices, format_stave, {align_rests: align_rests}) unless _.isEmpty(format_voices)
 
       _.each(tab_voices, (voice) -> voice.draw(ctx, tab_stave)) if tab?
       _.each(score_voices, (voice) -> voice.draw(ctx, score_stave)) if score?
