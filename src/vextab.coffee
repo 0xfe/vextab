@@ -91,11 +91,11 @@ class Vex.Flow.VexTab
 
   parseFret: (note) ->
     @artist.addNote(_.pick(
-      note, 'time', 'dot', 'fret', 'octave', 'string', 'articulation', 'decorator'))
+      note, 'time', 'dot', 'fret', 'string', 'articulation', 'decorator'))
 
   parseABC: (note) ->
     @artist.addNote(_.pick(
-      note, 'time', 'dot', 'abc', 'octave', 'string', 'articulation', 'decorator'))
+      note, 'time', 'dot', 'fret', 'abc', 'octave', 'string', 'articulation', 'decorator'))
 
   parseStaveElements: (notes) ->
     L "parseStaveElements:", notes
@@ -109,11 +109,10 @@ class Vex.Flow.VexTab
       if element.chord
         @parseChord(element)
 
-      if element.fret
-        @parseFret(element)
-
       if element.abc
         @parseABC(element)
+      else if element.fret
+        @parseFret(element)
 
   parseStaveText: (text_line) ->
     @artist.addTextVoice() unless _.isEmpty(text_line)
