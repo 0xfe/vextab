@@ -60,6 +60,7 @@
 <notes>[t]                return 't'
 <notes>[T]                return 'T'
 <notes>[-]                return '-'
+<notes>[_]                return '_'
 
 /* Decorators */
 <notes>[v]                return 'v'
@@ -314,6 +315,9 @@ frets
     }
   | abc
     { $$ = [{abc: $1, _l: @1.first_line, _c: @1.first_column}]}
+  | abc NUMBER '_' NUMBER
+    { $$ = [{abc: $1, octave: $2,
+             fret: $4, _l: @1.first_line, _c: @1.first_column}]}
   | articulation timed_fret
     { $$ = [_.extend($2, {articulation: $1})] }
   | frets maybe_decorator articulation timed_fret
@@ -330,12 +334,17 @@ timed_fret
     { $$ = {
       time: $2, dot: $3, fret: $5,
       _l: @1.first_line, _c: @1.first_column}}
-  |  NUMBER
+  | NUMBER
     { $$ = {fret: $1, _l: @1.first_line, _c: @1.first_column} }
   | ':' time_values maybe_dot ':' abc
     { $$ = {time: $2, dot: $3, abc: $5}}
-  |  abc
+  | ':' time_values maybe_dot ':' abc NUMBER '_' NUMBER
+    { $$ = {time: $2, dot: $3, abc: $5, octave: $6, fret: $8}}
+  | abc
     { $$ = {abc: $1, _l: @1.first_line, _c: @1.first_column} }
+  | abc NUMBER '_' NUMBER
+    { $$ = {abc: $1, octave: $2,
+            fret: $4, _l: @1.first_line, _c: @1.first_column} }
   ;
 
 time

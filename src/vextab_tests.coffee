@@ -31,6 +31,7 @@ class Vex.Flow.Test.VexTab
     test "Rest Test", @rest
     test "Options Test", @options
     test "ABC Notes Test", @abcNotes
+    test "ABC Notes with Frets Test", @abcNotesWithFrets
     test "Rhythm/Slash Notation Test", @rhythmNotation
     test "Text Lines", @textLines
     test "Sweep Strokes", @sweepStrokes
@@ -351,6 +352,18 @@ class Vex.Flow.Test.VexTab
     notEqual null, tab.parse("tabstave\n notes :q (A/5.A/4)T(A/5.A/4)")
     notEqual null, tab.parse("tabstave notation=true tablature=false\n notes A#/5 C##-D@@-E/5")
     notEqual null, tab.parse("tabstave\n notes An/5 C-D@-E/5")
+
+    ok(true, "all pass")
+
+  @abcNotesWithFrets: ->
+    expect 6
+    tab = makeParser()
+
+    notEqual null, tab.parse("tabstave notation=true\n notes A5_5/5 Cn~4_4-5-6/5")
+    notEqual null, tab.parse("tabstave\n notes :q A/5 C-D-:h:A4_6/5")
+    notEqual null, tab.parse("tabstave\n notes :q (E@2_6/5.A/4)T(A/5.A/4)")
+    notEqual null, tab.parse("tabstave notation=true tablature=false\n notes A#3_4/5 C##-D@@-E/5")
+    notEqual null, tab.parse("tabstave\n notes A@~3_6/5 C-D@-E/5")
 
     ok(true, "all pass")
 

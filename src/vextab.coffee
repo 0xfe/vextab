@@ -86,16 +86,16 @@ class Vex.Flow.VexTab
     L "parseChord:", element
     @artist.addChord(
       _.map(element.chord,
-            (note)-> _.pick(note, 'time', 'dot', 'fret', 'abc', 'string', 'articulation', 'decorator')),
+            (note)-> _.pick(note, 'time', 'dot', 'fret', 'abc', 'octave', 'string', 'articulation', 'decorator')),
       element.articulation, element.decorator)
 
   parseFret: (note) ->
     @artist.addNote(_.pick(
-      note, 'time', 'dot', 'fret', 'string', 'articulation', 'decorator'))
+      note, 'time', 'dot', 'fret', 'octave', 'string', 'articulation', 'decorator'))
 
   parseABC: (note) ->
     @artist.addNote(_.pick(
-      note, 'time', 'dot', 'abc', 'string', 'articulation', 'decorator'))
+      note, 'time', 'dot', 'abc', 'octave', 'string', 'articulation', 'decorator'))
 
   parseStaveElements: (notes) ->
     L "parseStaveElements:", notes

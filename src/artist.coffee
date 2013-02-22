@@ -767,18 +767,20 @@ class Vex.Flow.Artist
       [new_note, new_octave, accidental] = [null, null, null]
 
       play_note = null
-      if note.fret?
-        [new_note, new_octave, accidental] = @getNoteForFret(note.fret, note.string)
-        play_note = @tuning.getNoteForFret(note.fret, note.string).split("/")[0]
-      else if note.abc?
-        [new_note, new_octave, accidental] = @getNoteForABC(note.abc, note.string)
+
+      if note.abc?
+        octave = if note.octave? then note.octave else note.string
+        [new_note, new_octave, accidental] = @getNoteForABC(note.abc, octave)
         if accidental?
           acc = accidental.split("_")[0]
         else
           acc = ""
 
         play_note = "#{new_note}#{acc}"
-        note.fret = 'X'
+        note.fret = 'X' unless note.fret?
+      else if note.fret?
+        [new_note, new_octave, accidental] = @getNoteForFret(note.fret, note.string)
+        play_note = @tuning.getNoteForFret(note.fret, note.string).split("/")[0]
       else
         throw new Vex.RERR("ArtistError", "No note specified")
 
