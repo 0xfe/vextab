@@ -9,12 +9,14 @@ class Vex.Flow.Artist
   @DEBUG = false
   L = (args...) -> console?.log("(Vex.Flow.Artist)", args...) if Vex.Flow.Artist.DEBUG
 
+  @NOLOGO = false
+
   constructor: (@x, @y, @width, options) ->
     @options =
       font_face: "Arial"
       font_size: 10
       font_style: null
-      bottom_spacing: 20
+      bottom_spacing: 20 + (if Vex.Flow.Artist.NOLOGO then 0 else 10)
       tab_stave_lower_spacing: 10
       note_stave_lower_spacing: 0
       scale: 1.0
@@ -214,6 +216,14 @@ class Vex.Flow.Artist
       else
         @player.removeControls()
     @rendered = true
+
+    unless Vex.Flow.Artist.NOLOGO
+      LOGO = "vexflow.com"
+      width = ctx.measureText(LOGO).width
+      ctx.save()
+      ctx.setFont("Times", 10, "italic")
+      ctx.fillText(LOGO, (@customizations.width - width) / 2, @last_y + 25)
+      ctx.restore()
 
   isRendered: -> @rendered
 

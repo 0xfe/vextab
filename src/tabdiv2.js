@@ -89,17 +89,6 @@ Vex.Flow.TabDiv.prototype.init = function(sel, options) {
     this.player = new Vex.Flow.Player(this.artist, opts);
   }
 
-  if (!Vex.Flow.TabDiv.NOLOGO) {
-    this.message = "vexflow.com";
-    this.extra_height = 20;
-  } else {
-    this.extra_height = 10;
-  }
-
-  if (Vex.Flow.TabDiv.HEIGHT_ADJUSTMENT) {
-    this.extra_height += Vex.Flow.TabDiv.HEIGHT_ADJUSTMENT;
-  }
-
   this.redraw();
 }
 
