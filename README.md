@@ -17,27 +17,18 @@ If you want to save and share your VexTab, try out [My Vexflow](http://my.vexflo
 
 VexTab 2.0 now supports all VexTab 1.0 features, and [includes a few new ones](http://my.vexflow.com/articles/53?source=enabled).
 
-## Why 2.0?
-
-The original version of VexTab is chock full of suck. It's basically a hand-rolled
-recursive descent parser that generates VexFlow elements inline. It's also a
-convoluted piece of JavaScript that is very difficult to read and modify.
-
-Oh, and I really hate JavaScript.
-
-VexFlow was built to run with no dependencies at all (not even jQuery.) Although
-it works well, I've had to re-implement half-assed versions of useful routines to
-make JavaScript easier to work with (each, merge, min, max, sortby, etc.)
-
-With this version of VexTab I'm going to relax my "no dependency" restriction and
-experiment with some technologies that make in-browser programming simpler to
-work with.
+## Dependencies
 
 This rewrite of VexTab has three key dependencies:
 
   * [CoffeeScript](http://coffeescript.org/) - A *nicer* JavaScript.
   * [Jison](http://zaach.github.com/jison/) - An LALR(1) parser modeled on Bison.
   * [Underscore.js](http://underscorejs.org/) - A utility-belt library for JavaScript.
+
+For the audio player feature, you need:
+
+  * [MIDI.js](https://github.com/mudcube/MIDI.js) - A soundfont renderer for the web.
+  * Soundfonts for various instruments - See MIDI.js for more information.
 
 ## Prerequisites (for VexTab developers)
 
