@@ -43,7 +43,7 @@ class Vex.Flow.VexTab
         when "key"
           throw error("Invalid key signature '#{option.value}'") unless _.has(Vex.Flow.keySignature.keySpecs, option.value)
         when "clef"
-          clefs = ["treble", "bass", "tenor", "alto", "percussion"]
+          clefs = ["treble", "bass", "tenor", "alto", "percussion", "none"]
           throw error("'clef' must be one of #{clefs.join(', ')}") if option.value not in clefs
         when "voice"
           voices = ["top", "bottom", "new"]
