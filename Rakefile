@@ -64,19 +64,19 @@ end
 file 'build/tabdiv-min.js' => generated_sources do
   require 'uglifier'
   files = generated_sources
-  File.open("build/tabdiv-min.js", "w") do |f|
-    files.each do |file|
-      min = Uglifier.new.compile(File.read(file))
-      f.write(min)
-    end
+
+  raw_file = File.open("build/tabdiv-debug.js", "w")
+  min_file = File.open("build/tabdiv-min.js", "w")
+
+  files.each do |file|
+    contents = File.read(file)
+    min = Uglifier.new.compile(contents)
+    raw_file.write(contents)
+    min_file.write(min)
   end
 
-  File.open("build/tabdiv-raw.js", "w") do |f|
-    files.each do |file|
-      min = File.read(file)
-      f.write(min)
-    end
-  end
+  raw_file.close
+  min_file.close
 
   # Create a copy in support/
   sh 'cp build/tabdiv-min.js build/support'
