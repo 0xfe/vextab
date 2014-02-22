@@ -24,9 +24,9 @@ Vex.Flow.TabDiv.prototype.init = function(sel, options) {
   }
 
   // Get tabdiv properties
-  this.width = $(sel).attr("width") || 400;
-  this.height = $(sel).attr("height") || 200;
-  this.scale = $(sel).attr("scale") || 1.0;
+  this.width = parseInt($(sel).attr("width")) || 400;
+  this.height = parseInt($(sel).attr("height")) || 200;
+  this.scale = parseFloat($(sel).attr("scale")) || 1.0;
 
   // If the Raphael.js sources are included, then use Raphael, else
   // resort to HTML5 Canvas.

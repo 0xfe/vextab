@@ -71,6 +71,13 @@ file 'build/tabdiv-min.js' => generated_sources do
     end
   end
 
+  File.open("build/tabdiv-raw.js", "w") do |f|
+    files.each do |file|
+      min = File.read(file)
+      f.write(min)
+    end
+  end
+
   # Create a copy in support/
   sh 'cp build/tabdiv-min.js build/support'
 end
