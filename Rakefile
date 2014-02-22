@@ -80,6 +80,7 @@ file 'build/tabdiv-min.js' => generated_sources do
 
   # Create a copy in support/
   sh 'cp build/tabdiv-min.js build/support'
+  sh 'cp build/tabdiv-debug.js build/support'
 end
 
 copy_path("src/*", "build/src", :build_copy)
@@ -98,9 +99,11 @@ task :make => [:build_copy, :coffee, 'build/tabdiv-min.js']
 
 task :deploy => :make do
   sh "scp build/tabdiv-min.js #{DEPLOY_SSH_DIR}/support"
+  sh "scp build/tabdiv-debug.js #{DEPLOY_SSH_DIR}/support"
   sh "scp -r support #{DEPLOY_SSH_DIR}"
   sh "scp -r support #{DEPLOY_VEXFLOW_DIR}"
   sh "scp build/tabdiv-min.js #{DEPLOY_VEXFLOW_DIR}/support"
+  sh "scp build/tabdiv-debug.js #{DEPLOY_VEXFLOW_DIR}/support"
   sh "scp doc/* #{DEPLOY_SSH_DIR}"
 end
 

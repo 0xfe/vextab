@@ -4,7 +4,6 @@
 # This class is responsible for rendering the elements
 # parsed by Vex.Flow.VexTab.
 
-
 class Vex.Flow.Artist
   @DEBUG = false
   L = (args...) -> console?.log("(Vex.Flow.Artist)", args...) if Vex.Flow.Artist.DEBUG
@@ -42,6 +41,8 @@ class Vex.Flow.Artist
       "tempo": 120
       "instrument": "acoustic_grand_piano"
       "accidentals": "standard"  # standard / cautionary
+      "tab-stems": "false"
+      "tab-stem-direction": "up"
 
     # Generated elements
     @staves = []
@@ -102,6 +103,9 @@ class Vex.Flow.Artist
           setMode(Vex.Flow.Voice.Mode.SOFT)
         voice.addTickables notes
         tab_voices.push voice
+        # TODO(0xfe): Figure out why auto-beaming doesn't work
+        # beams = beams.concat(Vex.Flow.Beam.applyAndGetBeams(voice))
+
       format_stave = tab_stave
       text_stave = tab_stave
 
@@ -111,7 +115,6 @@ class Vex.Flow.Artist
         continue if _.isEmpty(notes)
         stem_direction = if i == 0 then 1 else -1
         _.each(notes, (note) -> note.setStave(score_stave))
-        # _.each(notes, (note) -> note.setStemDirection(stem_direction) if note.setStemDirection?)
 
         voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4).
           setMode(Vex.Flow.Voice.Mode.SOFT)
@@ -120,7 +123,7 @@ class Vex.Flow.Artist
         if multi_voice
           beams = beams.concat(Vex.Flow.Beam.applyAndGetBeams(voice, stem_direction))
         else
-          beams = Vex.Flow.Beam.applyAndGetBeams(voice)
+          beams = beams.concat(Vex.Flow.Beam.applyAndGetBeams(voice))
 
       format_stave = score_stave
       text_stave = score_stave
@@ -307,12 +310,17 @@ class Vex.Flow.Artist
 
   addTabNote: (spec, play_note=null) ->
     tab_notes = _.last(@staves).tab_notes
-    new_tab_note = new Vex.Flow.TabNote(
-      positions: spec
+    new_tab_note = new Vex.Flow.TabNote({
+      positions: spec,
       duration: @current_duration
+      }, (@customizations["tab-stems"] == "true")
     )
     new_tab_note.setPlayNote(play_note) if play_note?
+    new_tab_note.setStemDirection(-1) if (@customizations["tab-stem-direction"] == "down")
     tab_notes.push new_tab_note
+
+    if @current_duration[@current_duration.length - 1] == "d"
+      new_tab_note.addDot()
 
   makeDuration = (time, dot) -> time + (if dot then "d" else "")
   setDuration: (time, dot=false) ->
@@ -896,7 +904,7 @@ class Vex.Flow.Artist
       tablature: "true"
 
     _.extend(opts, options)
-    L "addTabStave: ", options
+    L "addStave: ", options
 
     tab_stave = null
     note_stave = null
