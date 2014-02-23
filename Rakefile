@@ -69,6 +69,7 @@ file 'build/tabdiv-min.js' => generated_sources do
   min_file = File.open("build/tabdiv-min.js", "w")
 
   files.each do |file|
+    puts "Uglifying: " + file
     contents = File.read(file)
     min = Uglifier.new.compile(contents)
     raw_file.write(contents)
@@ -101,7 +102,6 @@ task :deploy => :make do
   sh "scp build/tabdiv-min.js #{DEPLOY_SSH_DIR}/support"
   sh "scp build/tabdiv-debug.js #{DEPLOY_SSH_DIR}/support"
   sh "scp -r support #{DEPLOY_SSH_DIR}"
-  sh "scp -r support #{DEPLOY_VEXFLOW_DIR}"
   sh "scp build/tabdiv-min.js #{DEPLOY_VEXFLOW_DIR}/support"
   sh "scp build/tabdiv-debug.js #{DEPLOY_VEXFLOW_DIR}/support"
   sh "scp doc/* #{DEPLOY_SSH_DIR}"
