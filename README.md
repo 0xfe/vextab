@@ -72,9 +72,9 @@ The above copyright notice shall be included in all copies or substantial portio
 
 ## Links
 
-* [VexTab Home](http://vexflow.com/vextab)
+* [VexTab Home](http://vexflow.com/vextab/)
 * [The VexTab Tutorial](http://vexflow.com/vextab/tutorial.html)
 * [Google Group](https://groups.google.com/forum/?fromgroups#!forum/vexflow)
-* [VexFlow Home](http://vextab.com)
+* [VexFlow Home](http://vexflow.com)
 * [My VexFlow](http://my.vexflow.com)
 * [Me](http://0xfe.muthanna.com)
