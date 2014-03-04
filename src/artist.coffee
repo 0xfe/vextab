@@ -428,8 +428,10 @@ class Vex.Flow.Artist
     throw new Vex.RERR("ArtistError", "Not enough notes for tuplet") if stave_notes.length < notes
     modifier = new Vex.Flow.Tuplet(stave_notes[stave_notes.length - notes..], {num_notes: tuplets})
     @stave_articulations.push modifier
-    # Throw away tab tuplet because it can't be rendered
 
+    # Creating a Vex.Flow.Tuplet corrects the ticks for the notes, so it needs to
+    # be created whether or not it gets rendered. Below, if tab stems are not required
+    # the created tuplet is simply thrown away.
     tab_modifier = new Vex.Flow.Tuplet(tab_notes[tab_notes.length - notes..], {num_notes: tuplets})
     if @customizations["tab-stems"] == "true"
       @tab_articulations.push tab_modifier
