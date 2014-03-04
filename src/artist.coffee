@@ -165,7 +165,7 @@ class Vex.Flow.Artist
 
       _.each(tab_voices, (voice) -> voice.draw(ctx, tab_stave)) if tab?
       _.each(score_voices, (voice) -> voice.draw(ctx, score_stave)) if score?
-      _.each(beams, (beam) -> beam.setContext(ctx).draw()) if score?
+      _.each(beams, (beam) -> beam.setContext(ctx).draw())
       _.each(text_voices, (voice) -> voice.draw(ctx, text_stave)) if not _.isEmpty(text_notes)
 
       if tab? and score?
