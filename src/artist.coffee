@@ -84,7 +84,7 @@ class Vex.Flow.Artist
     context: @renderer_context
     scale: @customizations.scale
 
-  formatAndRender = (ctx, tab, score, text_notes) ->
+  formatAndRender = (ctx, tab, score, text_notes, customizations) ->
     tab_stave = tab.stave if tab?
     score_stave = score.stave if score?
 
@@ -96,15 +96,21 @@ class Vex.Flow.Artist
     text_stave = null
 
     if tab?
-      for notes in tab.voices
+      multi_voice = if (tab.voices.length > 1) then true else false
+      for notes, i in tab.voices
         continue if _.isEmpty(notes)
         _.each(notes, (note) -> note.setStave(tab_stave))
         voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4).
           setMode(Vex.Flow.Voice.Mode.SOFT)
         voice.addTickables notes
         tab_voices.push voice
-        # TODO(0xfe): Figure out why auto-beaming doesn't work
-        # beams = beams.concat(Vex.Flow.Beam.applyAndGetBeams(voice))
+
+        if multi_voice
+          stem_direction = if i == 0 then 1 else -1
+        else
+          stem_direction = if customizations["tab-stem-direction"] == "down" then -1 else 1
+
+        beams = beams.concat(Vex.Flow.Beam.applyAndGetBeams(voice, stem_direction))
 
       format_stave = tab_stave
       text_stave = tab_stave
@@ -199,7 +205,8 @@ class Vex.Flow.Artist
       voices = formatAndRender(ctx,
                       if stave.tab? then {stave: stave.tab, voices: stave.tab_voices} else null,
                       if stave.note? then {stave: stave.note, voices: stave.note_voices} else null,
-                      stave.text_voices)
+                      stave.text_voices,
+                      @customizations)
 
       @player_voices.push(voices)
 
@@ -316,7 +323,6 @@ class Vex.Flow.Artist
       }, (@customizations["tab-stems"] == "true")
     )
     new_tab_note.setPlayNote(play_note) if play_note?
-    new_tab_note.setStemDirection(-1) if (@customizations["tab-stem-direction"] == "down")
     tab_notes.push new_tab_note
 
     if @current_duration[@current_duration.length - 1] == "d"

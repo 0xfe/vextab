@@ -26,8 +26,8 @@
  *
  * This library makes use of Simon Tatham's awesome font - Gonville.
  *
- * Build ID: 0xFE@a950d7f88be8c76c84e831aff34771e538a15d77
- * Build date: 2014-02-23 13:06:51 -0500
+ * Build ID: 0xFE@72224b171cb7c81ea61981b32f9b382473dd399a
+ * Build date: 2014-03-04 10:47:44 -0500
  */
 // Vex Base Libraries.
 // Mohit Muthanna Cheppudira <mohit@muthanna.com>
@@ -3298,6 +3298,7 @@ Vex.Flow.Note = (function() {
 
     getDuration: function() { return this.duration; },
     isDotted: function() { return (this.dots > 0); },
+    hasStem: function() { return false; },
     getDots: function() { return this.dots; },
     getNoteType: function() { return this.noteType; },
     setModifierContext: function(mc) { this.modifierContext = mc; return this; },
@@ -4424,7 +4425,7 @@ Vex.Flow.TabNote = (function() {
     },
 
     hasStem: function() {
-      return this.glyph.stem;
+      return this.render_options.draw_stem;
     },
 
     getGlyph: function() {
@@ -4831,18 +4832,29 @@ Vex.Flow.Beam = (function() {
 
       var stem_direction = -1;
 
-      if (auto_stem)  {
-        // Figure out optimal stem direction based on given notes
+      // Figure out optimal stem direction based on given notes
+      if (auto_stem && notes[0].getCategory() === 'stavenotes')  {
+        // Auto Stem StaveNotes
         this.min_line = 1000;
 
         for (i = 0; i < notes.length; ++i) {
           note = notes[i];
-          this.min_line = Vex.Min(note.getKeyProps()[0].line, this.min_line);
+          if (note.getKeyProps) {
+            this.min_line = Vex.Min(note.getKeyProps()[0].line, this.min_line);
+          }
         }
 
         if (this.min_line < 3) stem_direction = 1;
+      } else if (auto_stem && notes[0].getCategory() === 'tabnotes') {
+        // Auto Stem TabNotes
+        var stem_weight = notes.reduce(function(memo, note) {
+          return memo + note.stem_direction;
+        }, 0);
+
+        stem_direction = stem_weight > -1 ? 1 : -1;
       }
 
+      // Apply stem directions and attach beam to notes
       for (i = 0; i < notes.length; ++i) {
         note = notes[i];
         if (auto_stem) {
@@ -5118,9 +5130,11 @@ Vex.Flow.Beam = (function() {
       var lineSum = 0;
 
       group.forEach(function(note) {
-        note.keyProps.forEach(function(keyProp){
-          lineSum += (keyProp.line - 3);
-        });
+        if (note.keyProps) {
+          note.keyProps.forEach(function(keyProp){
+            lineSum += (keyProp.line - 3);
+          });
+        }
       });
 
       if (lineSum > 0)
@@ -5130,7 +5144,7 @@ Vex.Flow.Beam = (function() {
 
     function applyStemDirection(group, direction) {
       group.forEach(function(note){
-        note.setStemDirection(direction);
+        if (note.hasStem()) note.setStemDirection(direction);
       });
     }
 
@@ -7684,15 +7698,19 @@ Vex.Flow.Annotation = (function() {
       }
 
       var stem_ext, spacing;
-      if (this.note.getStemExtents) {
+      var stemless = this.note.hasStem();
+      var has_stem = !stemless;
+
+      if (has_stem) {
         stem_ext = this.note.getStemExtents();
-        spacing = this.note.stave.options.spacing_between_lines_px;
+        spacing = this.note.getStave().options.spacing_between_lines_px;
       }
 
       if (this.vert_justification == Annotation.VerticalJustify.BOTTOM) {
         y = this.note.stave.getYForBottomText(this.text_line);
-        if (stem_ext) {
-          y = Vex.Max(y, (stem_ext.baseY) + (spacing * (this.text_line + 2)));
+        if (has_stem) {
+          var stem_base = (this.note.stem_direction === 1 ? stem_ext.baseY : stem_ext.topY);
+          y = Vex.Max(y, stem_base + (spacing * (this.text_line + 2)));
         }
       } else if (this.vert_justification ==
                  Annotation.VerticalJustify.CENTER) {
@@ -7701,9 +7719,10 @@ Vex.Flow.Annotation = (function() {
         y = yt + ( yb - yt ) / 2 + text_height / 2;
       } else if (this.vert_justification ==
                  Annotation.VerticalJustify.TOP) {
-        y = this.note.stave.getYForTopText(this.text_line);
-        if (stem_ext)
+        y = Vex.Min(this.note.stave.getYForTopText(this.text_line), this.note.ys[0] - 10);
+        if (has_stem) {
           y = Vex.Min(y, (stem_ext.topY - 5) - (spacing * this.text_line));
+        }
       } else /* CENTER_STEM */{
         var extents = this.note.getStemExtents();
         y = extents.topY + ( extents.baseY - extents.topY ) / 2 +
@@ -7773,10 +7792,12 @@ Vex.Flow.Articulation = (function() {
       if (!(this.note && (this.index !== null))) throw new Vex.RERR("NoAttachedNote",
         "Can't draw Articulation without a note and index.");
 
+      var stem_direction = this.note.stem_direction;
+
       var is_on_head = (this.position === Modifier.Position.ABOVE &&
-                        this.note.stem_direction === Vex.Flow.StaveNote.STEM_DOWN) ||
+                        stem_direction === Vex.Flow.StaveNote.STEM_DOWN) ||
                        (this.position === Modifier.Position.BELOW &&
-                        this.note.stem_direction === Vex.Flow.StaveNote.STEM_UP);
+                        stem_direction === Vex.Flow.StaveNote.STEM_UP);
 
       var needsLineAdjustment = function(articulation, note_line, line_spacing){
         var offset_direction = (articulation.position === Modifier.Position.ABOVE) ? 1 : -1;
@@ -7797,21 +7818,35 @@ Vex.Flow.Articulation = (function() {
       };
 
       // Articulations are centered over/under the note head
-      var stave = this.note.stave;
+      var stave = this.note.getStave();
       var start = this.note.getModifierStartXY(this.position, this.index);
       var glyph_y = start.y;
       var shiftY = 0;
       var line_spacing = 1;
       var spacing = stave.options.spacing_between_lines_px;
-      var top, bottom;
+      var is_tabnote = this.note.getCategory() === 'tabnotes';
+      var stem_ext = this.note.getStemExtents();
 
-      if (this.note.getStemExtents) {
-        var stem_ext = this.note.getStemExtents();
-        top = stem_ext.topY;
-        bottom = stem_ext.baseY;
-        if (this.note.stem_direction === Vex.Flow.StaveNote.STEM_DOWN) {
-          top = stem_ext.baseY;
-          bottom = stem_ext.topY;
+      var top = stem_ext.topY;
+      var bottom = stem_ext.baseY;
+
+      if (stem_direction === Vex.Flow.StaveNote.STEM_DOWN) {
+        top = stem_ext.baseY;
+        bottom = stem_ext.topY;
+      }
+
+      // TabNote specific positioning
+      if (is_tabnote) {
+        // Determine position if rendering with a stem
+        if (this.note.hasStem()){
+          if (stem_direction === Vex.Flow.StaveNote.STEM_UP) {
+            bottom = stave.getYForBottomText(this.text_line - 2);
+          } else if (stem_direction === Vex.Flow.StaveNote.STEM_DOWN ) {
+            top = stave.getYForTopText(this.text_line - 1.5);
+          }
+        } else { // Without a stem
+          top = stave.getYForTopText(this.text_line - 1);
+          bottom = stave.getYForBottomText(this.text_line - 2);
         }
       }
 
@@ -9419,7 +9454,9 @@ Vex.Flow.CanvasContext = (function() {
     },
 
     resize: function(width, height) {
-      return this.vexFlowCanvasContext.resize(parseInt(width), parseInt(height)); },
+      return this.vexFlowCanvasContext.resize(
+          parseInt(width, 10), parseInt(height, 10));
+    },
 
     rect: function(x, y, width, height) {
       return this.vexFlowCanvasContext.rect(x, y, width, height);
@@ -9531,7 +9568,7 @@ Vex.Flow.Barline = (function() {
     getCategory: function() { return "barlines"; },
     setX: function(x) { this.x = x; return this; },
 
-  // Draw barlines
+    // Draw barlines
     draw: function(stave, x_shift) {
       x_shift = typeof x_shift !== 'number' ? 0 : x_shift;
 
