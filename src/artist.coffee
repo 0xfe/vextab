@@ -105,12 +105,13 @@ class Vex.Flow.Artist
         voice.addTickables notes
         tab_voices.push voice
 
-        if multi_voice
-          stem_direction = if i == 0 then 1 else -1
-        else
-          stem_direction = if customizations["tab-stem-direction"] == "down" then -1 else 1
+        if customizations["tab-stems"] == "true"
+          if multi_voice
+            stem_direction = if i == 0 then 1 else -1
+          else
+            stem_direction = if customizations["tab-stem-direction"] == "down" then -1 else 1
 
-        beams = beams.concat(Vex.Flow.Beam.applyAndGetBeams(voice, stem_direction))
+          beams = beams.concat(Vex.Flow.Beam.applyAndGetBeams(voice, stem_direction))
 
       format_stave = tab_stave
       text_stave = tab_stave
