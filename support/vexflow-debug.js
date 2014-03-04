@@ -26,8 +26,8 @@
  *
  * This library makes use of Simon Tatham's awesome font - Gonville.
  *
- * Build ID: 0xFE@72224b171cb7c81ea61981b32f9b382473dd399a
- * Build date: 2014-03-04 10:47:44 -0500
+ * Build ID: 0xFE@dd7f43d0c29fda58fa3b94737e8aec78753e7596
+ * Build date: 2014-03-04 12:59:10 -0500
  */
 // Vex Base Libraries.
 // Mohit Muthanna Cheppudira <mohit@muthanna.com>
@@ -3229,6 +3229,9 @@ Vex.Flow.Note = (function() {
       // Drawing
       this.context = null;
       this.stave = null;
+      this.render_options = {
+        annotation_spacing: 5
+      };
     },
 
     setPlayNote: function(note) { this.playNote = note; return this; },
@@ -3770,6 +3773,26 @@ Vex.Flow.StemmableNote = (function(){
       return this;
     },
 
+    getYForTopText: function(text_line) {
+      var extents = this.getStemExtents();
+      if (this.hasStem()) {
+        return Vex.Min(this.stave.getYForTopText(text_line),
+            extents.topY - (this.render_options.annotation_spacing * (text_line + 1)));
+      } else {
+        return this.stave.getYForTopText(text_line);
+      }
+    },
+
+    getYForBottomText: function(text_line) {
+      var extents = this.getStemExtents();
+      if (this.hasStem()) {
+        return Vex.Max(this.stave.getYForTopText(text_line),
+          extents.baseY + (this.render_options.annotation_spacing * (text_line)));
+      } else {
+        return this.stave.getYForBottomText(text_line);
+      }
+    },
+
     drawStem: function(stem_struct){
       if (!this.context) throw new Vex.RERR("NoCanvasContext",
           "Can't draw without a canvas context.");
@@ -3865,12 +3888,11 @@ Vex.Flow.StaveNote = (function() {
       // Drawing
       this.modifiers = [];
 
-      this.render_options = {
+      Vex.Merge(this.render_options, {
         glyph_font_scale: 35, // font size for note heads and rests
         stroke_px: 3,         // number of stroke px to the left and right of head
-        stroke_spacing: 10,    // spacing between strokes (TODO: take from stave)
-        annotation_spacing: 5 // spacing above note for annotations
-      };
+        stroke_spacing: 10    // spacing between strokes (TODO: take from stave)
+      });
 
       switch (this.duration) {
         case "w":                 // Whole note alias
@@ -4389,11 +4411,11 @@ Vex.Flow.TabNote = (function() {
 
       // Note properties
       this.positions = tab_struct.positions; // [{ str: X, fret: X }]
-      this.render_options = {
+      Vex.Merge(this.render_options, {
         glyph_font_scale: 30, // font size for note heads and rests
         draw_stem: draw_stem,
         draw_dots: draw_stem
-      };
+      });
 
       this.glyph =
         Vex.Flow.durationToGlyph(this.duration, this.noteType);
@@ -4823,7 +4845,7 @@ Vex.Flow.Beam = (function() {
       if (!auto_stem) {
         for (i = 1; i < notes.length; ++i) {
           note = notes[i];
-          if (note.getStemDirection() != this.stem_direction) {
+          if (note.hasStem() && (note.getStemDirection() != this.stem_direction)) {
             throw new Vex.RuntimeError("BadArguments",
                 "Notes in a beam all have the same stem direction");
           }
@@ -7584,7 +7606,7 @@ Vex.Flow.Vibrato = (function() {
       }
 
       var vx = start.x + this.x_shift;
-      var vy = this.note.getStave().getYForTopText(this.text_line) + 2;
+      var vy = this.note.getYForTopText(this.text_line) + 2;
 
       renderVibrato(vx, vy);
     }
@@ -7698,7 +7720,7 @@ Vex.Flow.Annotation = (function() {
       }
 
       var stem_ext, spacing;
-      var stemless = this.note.hasStem();
+      var stemless = !this.note.hasStem();
       var has_stem = !stemless;
 
       if (has_stem) {
