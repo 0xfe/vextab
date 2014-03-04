@@ -543,6 +543,27 @@ tabstave notation=true key=A
 notes :q (5/2.5/3.7/4) ## 0h1/6 0/1
 </div>
 
+<h2>Step 15: Tablature can have stems too.</h2>
+    <div class="description">
+      Use the <code>tab-stems</code> option to show stems in tablature. For
+      single-voice tab, you can set the stem direction with the <code>tab-stem-direction</code> option.
+      <p/>
+      Note that you might need to add some spacing using the <code>space</code> and <code>stave-distance</code> options to prevent overlap.
+     </div>
+
+    <div style="width:570; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=550 scale=1.0 editor="true"
+      editor_height=120>options space=12 font-size=14
+        tab-stems=true tab-stem-direction=down
+
+tabstave notation=true time=4/4 key=A
+notes :8 5/5 5/4 5/3 ^3^ :16 5-6-7-8/1 :8 9s10/1 :h s9v/1
+
+options space=60</div>
+    </div>
+
+
     <center>
     <h2>Step N + 1: Coming soon</h2>
       <p/>
