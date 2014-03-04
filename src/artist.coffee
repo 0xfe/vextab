@@ -429,8 +429,10 @@ class Vex.Flow.Artist
     modifier = new Vex.Flow.Tuplet(stave_notes[stave_notes.length - notes..], {num_notes: tuplets})
     @stave_articulations.push modifier
     # Throw away tab tuplet because it can't be rendered
+
+    tab_modifier = new Vex.Flow.Tuplet(tab_notes[tab_notes.length - notes..], {num_notes: tuplets})
     if @customizations["tab-stems"] == "true"
-      @tab_articulations.push new Vex.Flow.Tuplet(tab_notes[tab_notes.length - notes..], {num_notes: tuplets})
+      @tab_articulations.push tab_modifier
 
   getFingering = (text) -> text.match(/^\.fingering\/([^.]+)\./)
   makeFingering: (text) ->
