@@ -366,7 +366,7 @@ class Vex.Flow.Artist
     direction = Vex.Flow.Bend.UP
     text = ""
 
-    if from_fret > to_fret
+    if parseInt(from_fret, 10) > parseInt(to_fret, 10)
       direction = Vex.Flow.Bend.DOWN
     else
       text = switch Math.abs(to_fret - from_fret)
