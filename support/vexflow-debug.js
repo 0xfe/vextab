@@ -26,8 +26,8 @@
  *
  * This library makes use of Simon Tatham's awesome font - Gonville.
  *
- * Build ID: 0xFE@dd7f43d0c29fda58fa3b94737e8aec78753e7596
- * Build date: 2014-03-04 12:59:10 -0500
+ * Build ID: 0xFE@d6a2ee23bdea851391d916cec58dba770e81a08a
+ * Build date: 2014-03-15 15:30:53 -0400
  */
 // Vex Base Libraries.
 // Mohit Muthanna Cheppudira <mohit@muthanna.com>
@@ -563,8 +563,8 @@ Vex.Flow.Fraction = (function() {
     // Parses a fraction string
     parse: function(str) {
       var i = str.split('/');
-      var n = parseInt(i[0], 0);
-      var d = (i[1]) ? parseInt(i[1], 0) : 1;
+      var n = parseInt(i[0], 10);
+      var d = (i[1]) ? parseInt(i[1], 10) : 1;
 
       return this.set(n, d);
     }
@@ -2318,6 +2318,10 @@ Vex.Flow.Stave = (function() {
       return this;
     },
 
+    getWidth: function() {
+      return this.width;
+    },
+
     setMeasure: function(measure) { this.measure = measure; return this; },
 
       // Bar Line functions
@@ -2393,6 +2397,12 @@ Vex.Flow.Stave = (function() {
       return this;
     },
 
+    // Text functions
+    setText: function(text, position, options) {
+      this.modifiers.push(new Vex.Flow.StaveText(text, position, options));
+      return this;
+    },
+
     getHeight: function() {
       return this.height;
     },
@@ -2413,6 +2423,10 @@ Vex.Flow.Stave = (function() {
          (options.space_below_staff_ln * spacing);
 
       return score_bottom;
+    },
+
+    getBottomLineY: function() {
+      return this.getYForLine(this.options.num_lines);
     },
 
     getYForLine: function(line) {
@@ -2721,6 +2735,26 @@ Vex.Flow.StaveConnector = (function() {
       return this;
     },
 
+    setText: function(text, text_options) {
+      this.text = text;
+      this.text_options = {
+        shift_x: 0,
+        shift_y: 0
+      };
+      Vex.Merge(this.text_options, text_options);
+
+      this.font = {
+        family: "times",
+        size: 16,
+        weight: "normal"
+      };
+      return this;
+    },
+
+    setFont: function(font) {
+      Vex.Merge(this.font, font);
+    },
+
     setXShift: function(x_shift){
       if (typeof x_shift !== 'number') {
         throw Vex.RERR("InvalidType", "x_shift must be a Number");
@@ -2825,6 +2859,21 @@ Vex.Flow.StaveConnector = (function() {
       // If the connector is a thin double barline, draw the paralell line
       if (this.type === StaveConnector.type.THIN_DOUBLE) {
         this.ctx.fillRect(topX - 3, topY, width, attachment_height);
+      }
+
+      // Add stave connector text
+      if (this.text !== undefined) {
+        this.ctx.save();
+        this.ctx.lineWidth = 2;
+        this.ctx.setFont(this.font.family, this.font.size, this.font.weight);
+        var text_width = this.ctx.measureText("" + this.text).width;
+
+        var x = this.top_stave.getX() - text_width - 24 + this.text_options.shift_x;
+        var y = (this.top_stave.getYForLine(0) + this.bottom_stave.getBottomLineY()) / 2 +
+          this.text_options.shift_y;
+
+        this.ctx.fillText("" + this.text, x, y + 4);
+        this.ctx.restore();
       }
     }
   };
@@ -3734,6 +3783,11 @@ Vex.Flow.StemmableNote = (function(){
       return stem_x;
     },
 
+    // Used for TabNote stems and Stemlets over rests
+    getCenterGlyphX: function(){
+      return this.getAbsoluteX() + this.x_shift + (this.glyph.head_width / 2);
+    },
+
     // Manuallly set note stem length
     setStemLength: function(height) {
       this.stem_extension = (height - Stem.HEIGHT);
@@ -4564,7 +4618,7 @@ Vex.Flow.TabNote = (function() {
     },
 
     getStemX: function() {
-      return this.getAbsoluteX() + this.x_shift + (this.glyph.head_width / 2);
+      return this.getCenterGlyphX();
     },
 
     getStemY: function(){
@@ -4824,13 +4878,6 @@ Vex.Flow.Beam = (function() {
         throw new Vex.RuntimeError("BadArguments", "Too few notes for beam.");
       }
 
-      this.unbeamable = false;
-      // Quit if first or last note is a rest.
-      if (!notes[0].hasStem() || !notes[notes.length-1].hasStem()) {
-        this.unbeamable = true;
-        return;
-      }
-
       // Validate beam line, direction and ticks.
       this.stem_direction = notes[0].getStemDirection();
       this.ticks = notes[0].getIntrinsicTicks();
@@ -4887,13 +4934,15 @@ Vex.Flow.Beam = (function() {
       }
 
       this.notes = notes;
-      this.beam_count = this.notes[0].getGlyph().beam_count;
+      this.beam_count = this.getBeamCount();
       this.render_options = {
         beam_width: 5,
         max_slope: 0.25,
         min_slope: -0.25,
         slope_iterations: 20,
-        slope_cost: 25
+        slope_cost: 25,
+        show_stemlets: false,
+        stemlet_extension: 7
       };
     },
 
@@ -4903,6 +4952,18 @@ Vex.Flow.Beam = (function() {
      * @return {Array.<Vex.Flow.Note>} Returns notes in this beam.
      */
     getNotes: function() { return this.notes; },
+
+    getBeamCount: function(){
+      var beamCounts =  this.notes.map(function(note) {
+        return note.getGlyph().beam_count;
+      });
+
+      var maxBeamCount =  beamCounts.reduce(function(max, beamCount) {
+          return beamCount > max ? beamCount : max;
+      });
+
+      return maxBeamCount;
+    },
 
     draw: function() {
       if (!this.context) throw new Vex.RERR("NoCanvasContext",
@@ -4974,11 +5035,6 @@ Vex.Flow.Beam = (function() {
       for (i = 0; i < this.notes.length; ++i) {
         note = this.notes[i];
 
-        // Do not draw stem for rests
-        if (!note.hasStem()) {
-          continue;
-        }
-
         x_px = note.getStemX();
         var y_extents = note.getStemExtents();
         var base_y_px = y_extents.baseY;
@@ -4988,6 +5044,35 @@ Vex.Flow.Beam = (function() {
 
         // Don't go all the way to the top (for thicker stems)
         var y_displacement = Vex.Flow.STEM_WIDTH;
+
+        if (!note.hasStem()) {
+          if (note.isRest() && this.render_options.show_stemlets) {
+            var centerGlyphX = note.getCenterGlyphX();
+
+            var width = this.render_options.beam_width;
+            var total_width = ((this.beam_count - 1)* width * 1.5) + width;
+
+            var stemlet_height = (total_width - y_displacement +
+              this.render_options.stemlet_extension);
+
+            var beam_y = (getSlopeY(centerGlyphX) + y_shift);
+            var start_y = beam_y + (Vex.Flow.Stem.HEIGHT * this.stem_direction);
+            var end_y = beam_y + (stemlet_height * this.stem_direction);
+
+            // Draw Stemlet
+            note.drawStem({
+              x_begin: centerGlyphX,
+              x_end: centerGlyphX,
+              y_bottom: this.stem_direction === 1 ? end_y : start_y,
+              y_top: this.stem_direction === 1 ? start_y : end_y,
+              y_extend: y_displacement,
+              stem_extension: 0,
+              stem_direction: this.stem_direction
+            });
+          }
+
+          continue;
+        }
 
         note.drawStem({
           x_begin: x_px,
@@ -5011,14 +5096,16 @@ Vex.Flow.Beam = (function() {
           var note = that.notes[i];
           var ticks = note.getIntrinsicTicks();
 
+          var stem_x = note.isRest() ? note.getCenterGlyphX() : note.getStemX();
+
           // Check whether to apply beam(s)
           if (ticks < Vex.Flow.durationToTicks(duration)) {
             if (!beam_started) {
-              beam_lines.push({start: note.getStemX(), end: null});
+              beam_lines.push({start: stem_x, end: null});
               beam_started = true;
             } else {
               current_beam = beam_lines[beam_lines.length - 1];
-              current_beam.end = note.getStemX();
+              current_beam.end = stem_x;
             }
           } else {
             if (!beam_started) {
@@ -5080,18 +5167,108 @@ Vex.Flow.Beam = (function() {
     }
   };
 
+  Beam.getDefaultBeamGroups = function(time_sig){
+    if (!time_sig || time_sig == "c") time_sig = "4/4";
+
+    var defaults = {
+      '1/2' :  ['1/2'],
+      '2/2' :  ['1/2'],
+      '3/2' :  ['1/2'],
+      '4/2' :  ['1/2'],
+
+      '1/4' :  ['1/4'],
+      '2/4' :  ['1/4'],
+      '3/4' :  ['1/4'],
+      '4/4' :  ['1/4'],
+
+      '1/8' :  ['1/8'],
+      '2/8' :  ['2/8'],
+      '3/8' :  ['3/8'],
+      '4/8' :  ['2/8'],
+
+      '1/16' : ['1/16'],
+      '2/16' : ['2/16'],
+      '3/16' : ['3/16'],
+      '4/16' : ['2/16']
+    };
+
+    var Fraction = Vex.Flow.Fraction;
+    var groups = defaults[time_sig];
+
+    if (!groups) {
+      // If no beam groups found, naively determine
+      // the beam groupings from the time signature
+      var beatTotal = parseInt(time_sig.split('/')[0], 10);
+      var beatValue = parseInt(time_sig.split('/')[1], 10);
+
+      var tripleMeter = beatTotal % 3 === 0;
+
+      if (tripleMeter) {
+        return [new Fraction(3, beatValue)];
+      } else if (beatValue > 4) {
+        return [new Fraction(2, beatValue)];
+      } else if (beatValue <= 4) {
+        return [new Fraction(1, beatValue)];
+      }
+    } else {
+      return groups.map(function(group) {
+        return new Fraction().parse(group);
+      });
+    }
+  };
+
   // Static method: Automatically beam notes in "voice". If "stem_direction"
   // is set, then force all stems to that direction (used for multi-voice music).
-  Beam.applyAndGetBeams = function(voice, stem_direction) {
-    var unprocessedNotes = voice.tickables;
-    var ticksPerGroup    = 4096;
+  Beam.applyAndGetBeams = function(voice, stem_direction, groups) {
+    return Beam.generateBeams(voice.getTickables(), {
+      groups: groups,
+      stem_direction: stem_direction
+    });
+  };
+
+  Beam.generateBeams = function(notes, config) {
+    // Example configuration object:
+    //
+    // config = {
+    //   groups: [new Vex.Flow.Fraction(2, 8)],   // Beam groups
+    //   stem_direction: -1,                     // leave undefined for auto
+    //   beam_rests: true,
+    //   beam_middle_only: true,
+    //   show_stemlets: false
+    // };
+
+    if (!config) config = {};
+
+    if (!config.groups || !config.groups.length) {
+      config.groups = [new Vex.Flow.Fraction(2, 8)];
+    }
+
+    // Convert beam groups to tick amounts
+    var tickGroups = config.groups.map(function(group) {
+      if (!group.multiply) {
+        throw new Vex.RuntimeError("InvalidBeamGroups",
+          "The beam groups must be an array of Vex.Flow.Fractions");
+      }
+      return group.clone().multiply(Vex.Flow.RESOLUTION, 1);
+    });
+
+    var unprocessedNotes = notes;
+    var currentTickGroup = 0;
     var noteGroups       = [];
     var currentGroup     = [];
 
     function getTotalTicks(vf_notes){
       return vf_notes.reduce(function(memo,note){
-        return note.getTicks().value() + memo;
-      }, 0);
+        return note.getTicks().clone().add(memo);
+      }, new Vex.Flow.Fraction(0, 1));
+    }
+
+    function nextTickGroup() {
+      if (tickGroups.length - 1 > currentTickGroup) {
+        currentTickGroup += 1;
+      } else {
+        currentTickGroup = 0;
+      }
     }
 
     function createGroups(){
@@ -5106,15 +5283,24 @@ Vex.Flow.Beam = (function() {
         }
 
         currentGroup.push(unprocessedNote);
+        var ticksPerGroup = tickGroups[currentTickGroup].value();
+        var totalTicks = getTotalTicks(currentGroup).value();
+
+        // Double the amount of ticks in a group, if it's an unbeamable tuplet
+        if (parseInt(unprocessedNote.duration, 10) < 8 && unprocessedNote.tuplet) {
+          ticksPerGroup *= 2;
+        }
 
         // If the note that was just added overflows the group tick total
-        if (getTotalTicks(currentGroup) > ticksPerGroup) {
+        if (totalTicks > ticksPerGroup) {
           nextGroup.push(currentGroup.pop());
           noteGroups.push(currentGroup);
           currentGroup = nextGroup;
-        } else if (getTotalTicks(currentGroup) == ticksPerGroup) {
+          nextTickGroup();
+        } else if (totalTicks == ticksPerGroup) {
           noteGroups.push(currentGroup);
           currentGroup = nextGroup;
+          nextTickGroup();
         }
       });
 
@@ -5138,6 +5324,38 @@ Vex.Flow.Beam = (function() {
       });
     }
 
+    // Splits up groups by Rest
+    function sanitizeGroups() {
+      var sanitizedGroups = [];
+      noteGroups.forEach(function(group) {
+        var tempGroup = [];
+        group.forEach(function(note, index, group) {
+          var isFirstOrLast = index === 0 || index === group.length - 1;
+
+          var breaksOnEachRest = !config.beam_rests && note.isRest();
+          var breaksOnFirstOrLastRest = (config.beam_rests &&
+            config.beam_middle_only && note.isRest() && isFirstOrLast);
+
+          var shouldBreak = breaksOnEachRest || breaksOnFirstOrLastRest;
+
+          if (shouldBreak) {
+            if (tempGroup.length > 0) {
+              sanitizedGroups.push(tempGroup);
+            }
+            tempGroup = [];
+          } else {
+            tempGroup.push(note);
+          }
+        });
+
+        if (tempGroup.length > 0) {
+          sanitizedGroups.push(tempGroup);
+        }
+      });
+
+      noteGroups = sanitizedGroups;
+    }
+
     function formatStems() {
       noteGroups.forEach(function(group){
         var stemDirection = determineStemDirection(group);
@@ -5147,7 +5365,7 @@ Vex.Flow.Beam = (function() {
     }
 
     function determineStemDirection(group) {
-      if (stem_direction) return stem_direction;
+      if (config.stem_direction) return config.stem_direction;
 
       var lineSum = 0;
 
@@ -5176,10 +5394,12 @@ Vex.Flow.Beam = (function() {
       });
     }
 
+
     // Using closures to store the variables throughout the various functions
     // IMO Keeps it this process lot cleaner - but not super consistent with
     // the rest of the API's style - Silverwolf90 (Cyril)
     createGroups();
+    sanitizeGroups();
     formatStems();
 
     // Get the notes to be beamed
@@ -5191,7 +5411,13 @@ Vex.Flow.Beam = (function() {
     // Create a Vex.Flow.Beam from each group of notes to be beamed
     var beams = [];
     beamedNoteGroups.forEach(function(group){
-      beams.push(new Vex.Flow.Beam(group));
+      var beam = new Vex.Flow.Beam(group);
+
+      if (config.show_stemlets) {
+        beam.render_options.show_stemlets = true;
+      }
+
+      beams.push(beam);
     });
 
     // Reformat tuplets
@@ -10262,6 +10488,109 @@ Vex.Flow.StaveTempo = (function() {
 
   return StaveTempo;
 }());
+// VexFlow - Music Engraving for HTML5
+// Copyright Mohit Muthanna 2010
+//
+// Author Taehoon Moon 2014
+
+/**
+ * @constructor
+ */
+Vex.Flow.StaveText = (function() {
+  function StaveText(text, position, options) {
+    if (arguments.length > 0) this.init(text, position, options);
+  }
+
+  var Modifier = Vex.Flow.Modifier;
+  Vex.Inherit(StaveText, Modifier, {
+    init: function(text, position, options) {
+      StaveText.superclass.init.call(this);
+
+      this.setWidth(16);
+      this.text = text;
+      this.position = position;
+      this.options = {
+        shift_x: 0,
+        shift_y: 0,
+        justification: Vex.Flow.TextNote.Justification.CENTER
+      };
+      Vex.Merge(this.options, options);
+
+      this.font = {
+        family: "times",
+        size: 16,
+        weight: "normal"
+      };
+    },
+
+    getCategory: function() { return "stavetext"; },
+    setStaveText: function(text) { this.text = text; return this; },
+    setShiftX: function(x) { this.shift_x = x; return this; },
+    setShiftY: function(y) { this.shift_y = y; return this; },
+
+    setFont: function(font) {
+      Vex.Merge(this.font, font);
+    },
+
+    setText: function(text) {
+      this.text = text;
+    },
+
+    draw: function(stave) {
+      if (!stave.context) throw new Vex.RERR("NoContext",
+        "Can't draw stave text without a context.");
+
+      var ctx = stave.context;
+
+      ctx.save();
+      ctx.lineWidth = 2;
+      ctx.setFont(this.font.family, this.font.size, this.font.weight);
+      var text_width = ctx.measureText("" + this.text).width;
+
+      var x, y;
+      var Modifier = Vex.Flow.Modifier;
+      switch(this.position) {
+        case Modifier.Position.LEFT:
+        case Modifier.Position.RIGHT:
+          y = (stave.getYForLine(0) + stave.getBottomLineY()) / 2 + this.options.shift_y;
+          if(this.position == Modifier.Position.LEFT) {
+            x = stave.getX() - text_width - 24 + this.options.shift_x;
+          }
+          else {
+            x = stave.getX() + stave.getWidth() + 24 + this.options.shift_x;
+          }
+          break;
+        case Modifier.Position.ABOVE:
+        case Modifier.Position.BELOW:
+          var Justification = Vex.Flow.TextNote.Justification;
+          x = stave.getX() + this.options.shift_x;
+          if(this.options.justification == Justification.CENTER) {
+            x += stave.getWidth() / 2 - text_width / 2;
+          }
+          else if(this.options.justification == Justification.RIGHT) {
+            x += stave.getWidth() - text_width;
+          }
+          
+          if(this.position == Modifier.Position.ABOVE) {
+            y = stave.getYForTopText(2) + this.options.shift_y;
+          }
+          else {
+            y = stave.getYForBottomText(2) + this.options.shift_y;
+          }
+          break;
+        default:
+          throw new Vex.RERR("InvalidPosition",
+            "Value Must be in Modifier.Position.");
+      }
+
+      ctx.fillText("" + this.text, x, y + 4);
+      ctx.restore();
+      return this;
+    }
+  });
+
+  return StaveText;
+}());
 // Vex Flow Notation
 // Mohit Muthanna <mohit@muthanna.com>
 //
@@ -10645,6 +10974,8 @@ Vex.Flow.Tuplet = (function() {
 /** @constructor */
 Vex.Flow.BoundingBox = (function() {
   function BoundingBox(x, y, w, h) { this.init(x, y, w, h); }
+  BoundingBox.copy = function(that) {
+    return new BoundingBox(that.x, that.y, that.w, that.h); };
 
   BoundingBox.prototype = {
     init: function(x, y, w, h) {
@@ -10663,6 +10994,9 @@ Vex.Flow.BoundingBox = (function() {
     setY: function(y) { this.y = y; return this; },
     setW: function(w) { this.w = w; return this; },
     setH: function(h) { this.h = h; return this; },
+
+    move: function(x, y) { this.x += x; this.y += y; },
+    clone: function() { return BoundingBox.copy(this); },
 
     // Merge my box with given box. Creates a bigger bounding box unless
     // the given box is contained in this one.
@@ -10683,8 +11017,10 @@ Vex.Flow.BoundingBox = (function() {
       return this;
     },
 
-    draw: function(ctx) {
-      ctx.rect(this.x, this.y, this.w, this.h);
+    draw: function(ctx, x, y) {
+      if (!x) x = 0;
+      if (!y) y = 0;
+      ctx.rect(this.x + x, this.y + y, this.w, this.h);
       ctx.stroke();
     }
   };
@@ -11279,4 +11615,42 @@ Vex.Flow.Stroke = (function() {
   });
 
   return Stroke;
+}());// Vex Flow Notation
+// Mohit Muthanna <mohit@muthanna.com>
+//
+// Copyright Mohit Muthanna 2013
+
+/** @constructor */
+Vex.Flow.Container = (function() {
+  function GenerateUniqueString() {
+    return "000";
+  }
+
+  function Container() {
+    if (arguments.length > 0) this.init(arguments);
+  }
+
+  BoundingBox = Vex.Flow.BoundingBox;
+
+  Container.prototype = {
+    init: function() {
+      this.id = GenerateUniqueString();
+      this.bb = new BoundingBox(0, 0, 0, 0);
+      this.extension = new BoundingBox(0, 0, 0, 0);
+      this.anchorpoints = {
+        "left-corner": {x: 0, y: 0}
+      };
+      this.members = [];
+    },
+
+    join: function(thisAnchor, container, thatAnchor) {
+      // 
+    },
+
+    add: function(container) {
+      this.members.append(container);
+    }
+  };
+
+  return Container;
 }());

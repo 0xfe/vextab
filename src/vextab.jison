@@ -79,7 +79,7 @@
 <notes>[S]                return 'S'
 
 /* ABC */
-<notes>[A-GX]             return 'ABC'
+<notes>[A-GXLR]           return 'ABC'
 <notes>[n]                return 'n'
 <notes>[~]                return '~'
 

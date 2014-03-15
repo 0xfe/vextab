@@ -43,6 +43,9 @@ class Vex.Flow.Artist
       "accidentals": "standard"  # standard / cautionary
       "tab-stems": "false"
       "tab-stem-direction": "up"
+      "beam-rests": "true"
+      "beam-stemlets": "true"
+      "beam-middle-only": "false"
 
     # Generated elements
     @staves = []
@@ -84,7 +87,10 @@ class Vex.Flow.Artist
     context: @renderer_context
     scale: @customizations.scale
 
-  formatAndRender = (ctx, tab, score, text_notes, customizations) ->
+  parseBool = (str) ->
+    return (str == "true")
+
+  formatAndRender = (ctx, tab, score, text_notes, customizations, options) ->
     tab_stave = tab.stave if tab?
     score_stave = score.stave if score?
 
@@ -94,6 +100,12 @@ class Vex.Flow.Artist
     beams = []
     format_stave = null
     text_stave = null
+
+    beam_config =
+      beam_rests: parseBool(customizations["beam-rests"])
+      show_stemlets: parseBool(customizations["beam-stemlets"])
+      beam_middle_only: parseBool(customizations["beam-middle-only"])
+      groups: options.beam_groups
 
     if tab?
       multi_voice = if (tab.voices.length > 1) then true else false
@@ -107,11 +119,11 @@ class Vex.Flow.Artist
 
         if customizations["tab-stems"] == "true"
           if multi_voice
-            stem_direction = if i == 0 then 1 else -1
+            beam_config.stem_direction = if i == 0 then 1 else -1
           else
-            stem_direction = if customizations["tab-stem-direction"] == "down" then -1 else 1
+            beam_config.stem_direction = if customizations["tab-stem-direction"] == "down" then -1 else 1
 
-          beams = beams.concat(Vex.Flow.Beam.applyAndGetBeams(voice, stem_direction))
+          beams = beams.concat(Vex.Flow.Beam.generateBeams(voice.getTickables(), beam_config))
 
       format_stave = tab_stave
       text_stave = tab_stave
@@ -128,9 +140,11 @@ class Vex.Flow.Artist
         voice.addTickables notes
         score_voices.push voice
         if multi_voice
-          beams = beams.concat(Vex.Flow.Beam.applyAndGetBeams(voice, stem_direction))
+          beam_config.stem_direction = stem_direction
+          beams = beams.concat(Vex.Flow.Beam.generateBeams(notes, beam_config))
         else
-          beams = beams.concat(Vex.Flow.Beam.applyAndGetBeams(voice))
+          beam_config.stem_direction = null
+          beams = beams.concat(Vex.Flow.Beam.generateBeams(notes, beam_config))
 
       format_stave = score_stave
       text_stave = score_stave
@@ -207,7 +221,8 @@ class Vex.Flow.Artist
                       if stave.tab? then {stave: stave.tab, voices: stave.tab_voices} else null,
                       if stave.note? then {stave: stave.note, voices: stave.note_voices} else null,
                       stave.text_voices,
-                      @customizations)
+                      @customizations,
+                      {beam_groups: stave.beam_groups})
 
       @player_voices.push(voices)
 
@@ -940,6 +955,7 @@ class Vex.Flow.Artist
       @last_y += tab_stave.getHeight() + @options.tab_stave_lower_spacing
 
     @closeBends()
+    beam_groups = Vex.Flow.Beam.getDefaultBeamGroups(opts.time)
     @staves.push {
       tab: tab_stave,
       note: note_stave,
@@ -947,7 +963,8 @@ class Vex.Flow.Artist
       note_voices: [],
       tab_notes: [],
       note_notes: [],
-      text_voices: []
+      text_voices: [],
+      beam_groups: beam_groups
     }
 
     @tuning.setTuning(opts.tuning)
