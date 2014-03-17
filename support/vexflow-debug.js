@@ -26,8 +26,8 @@
  *
  * This library makes use of Simon Tatham's awesome font - Gonville.
  *
- * Build ID: 0xFE@d6a2ee23bdea851391d916cec58dba770e81a08a
- * Build date: 2014-03-15 15:30:53 -0400
+ * Build ID: 0xFE@ee6497ce0ae2fea6a300e70d57f96ccae8bdf9f8
+ * Build date: 2014-03-17 10:53:00 -0400
  */
 // Vex Base Libraries.
 // Mohit Muthanna Cheppudira <mohit@muthanna.com>
@@ -2277,19 +2277,22 @@ Vex.Flow.Stave = (function() {
       this.bounds = {x: this.x, y: this.y, w: this.width, h: 0};
       Vex.Merge(this.options, options);
 
-      this.options.line_config = [];
-      for (var i = 0; i < this.options.num_lines; i++) {
-        this.options.line_config.push({ visible: true });
-      }
+      this.resetLines();
 
-      this.height =
-        (this.options.num_lines + this.options.space_above_staff_ln) *
-         this.options.spacing_between_lines_px;
       this.modifiers.push(
           new Vex.Flow.Barline(Vex.Flow.Barline.type.SINGLE, this.x)); // beg bar
       this.modifiers.push(
           new Vex.Flow.Barline(Vex.Flow.Barline.type.SINGLE,
           this.x + this.width)); // end bar
+    },
+
+    resetLines: function() {
+      this.options.line_config = [];
+      for (var i = 0; i < this.options.num_lines; i++) {
+        this.options.line_config.push({visible: true});
+      }
+      this.height = (this.options.num_lines + this.options.space_above_staff_ln) *
+         this.options.spacing_between_lines_px;
     },
 
     setNoteStartX: function(x) { this.start_x = x; return this; },
@@ -2926,7 +2929,13 @@ Vex.Flow.TabStave = (function() {
     },
 
     setNumberOfLines: function(lines) {
-      this.options.num_lines = lines; return this;
+      this.options.num_lines = parseInt(lines, 10);
+      this.resetLines();
+      return this;
+    },
+
+    getNumberOfLines: function() {
+      return this.options.num_lines;
     },
 
     getYForGlyphs: function() {
@@ -2938,9 +2947,17 @@ Vex.Flow.TabStave = (function() {
       var glyphOffset;
 
       switch(this.options.num_lines) {
+        case 8:
+          glyphScale = 55;
+          glyphOffset = 14;
+          break;
+        case 7:
+          glyphScale = 47;
+          glyphOffset = 8;
+          break;
         case 6:
           glyphScale = 40;
-          glyphOffset = 0;
+          glyphOffset = 1;
           break;
         case 5:
           glyphScale = 30;
@@ -4940,7 +4957,7 @@ Vex.Flow.Beam = (function() {
         max_slope: 0.25,
         min_slope: -0.25,
         slope_iterations: 20,
-        slope_cost: 25,
+        slope_cost: 20,
         show_stemlets: false,
         stemlet_extension: 7
       };
@@ -5018,8 +5035,15 @@ Vex.Flow.Beam = (function() {
           }
 
         }
-        var cost = this.render_options.slope_cost * Math.abs(slope) +
-          Math.abs(total_stem_extension);
+        /*
+          // This causes too many zero-slope beams.
+
+          var cost = this.render_options.slope_cost * Math.abs(slope) +
+            Math.abs(total_stem_extension);
+        */
+
+        // Pick a beam that minimizes stem extension.
+        var cost = Math.abs(total_stem_extension);
 
         // update state when a more ideal slope is found
         if (cost < min_cost) {
@@ -8516,7 +8540,7 @@ Vex.Flow.TimeSignature = (function() {
         for (i = 0; i < this.topGlyphs.length; ++i) {
           g = this.topGlyphs[i];
           Vex.Flow.Glyph.renderOutline(this.context, g.metrics.outline,
-              g.scale, start_x + g.x_shift, this.stave.getYForLine(that.topLine));
+              g.scale, start_x + g.x_shift, this.stave.getYForLine(that.topLine) + 1);
           start_x += g.getMetrics().width;
         }
 
@@ -8525,7 +8549,7 @@ Vex.Flow.TimeSignature = (function() {
           g = this.botGlyphs[i];
           that.placeGlyphOnLine(g, this.stave, g.line);
           Vex.Flow.Glyph.renderOutline(this.context, g.metrics.outline,
-              g.scale, start_x + g.x_shift, this.stave.getYForLine(that.bottomLine));
+              g.scale, start_x + g.x_shift, this.stave.getYForLine(that.bottomLine) + 1);
           start_x += g.getMetrics().width;
         }
       };
@@ -11615,42 +11639,4 @@ Vex.Flow.Stroke = (function() {
   });
 
   return Stroke;
-}());// Vex Flow Notation
-// Mohit Muthanna <mohit@muthanna.com>
-//
-// Copyright Mohit Muthanna 2013
-
-/** @constructor */
-Vex.Flow.Container = (function() {
-  function GenerateUniqueString() {
-    return "000";
-  }
-
-  function Container() {
-    if (arguments.length > 0) this.init(arguments);
-  }
-
-  BoundingBox = Vex.Flow.BoundingBox;
-
-  Container.prototype = {
-    init: function() {
-      this.id = GenerateUniqueString();
-      this.bb = new BoundingBox(0, 0, 0, 0);
-      this.extension = new BoundingBox(0, 0, 0, 0);
-      this.anchorpoints = {
-        "left-corner": {x: 0, y: 0}
-      };
-      this.members = [];
-    },
-
-    join: function(thisAnchor, container, thatAnchor) {
-      // 
-    },
-
-    add: function(container) {
-      this.members.append(container);
-    }
-  };
-
-  return Container;
 }());

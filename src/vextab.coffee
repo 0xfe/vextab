@@ -58,6 +58,9 @@ class Vex.Flow.VexTab
             new Vex.Flow.Tuning(option.value)
           catch e
             throw error("Invalid tuning: '#{option.value}'")
+        when "strings"
+          num_strings = parseInt(option.value)
+          throw error("Invalid number of strings: #{num_strings}") if (num_strings < 4 or num_strings > 8)
         else
           throw error("Invalid option '#{option.key}'")
 

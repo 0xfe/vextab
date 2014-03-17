@@ -46,6 +46,7 @@ class Vex.Flow.Artist
       "beam-rests": "true"
       "beam-stemlets": "true"
       "beam-middle-only": "false"
+      "connector-space": 0
 
     # Generated elements
     @staves = []
@@ -929,6 +930,7 @@ class Vex.Flow.Artist
       key: "C"
       notation: "false"
       tablature: "true"
+      strings: 6
 
     _.extend(opts, options)
     L "addStave: ", options
@@ -937,10 +939,11 @@ class Vex.Flow.Artist
     note_stave = null
 
     # This is used to line up tablature and notation.
+    start_x = @x + @customizations["connector-space"]
     tabstave_start_x = 40
 
     if opts.notation is "true"
-      note_stave = new Vex.Flow.Stave(@x, @last_y, @customizations.width - 20).
+      note_stave = new Vex.Flow.Stave(start_x, @last_y, @customizations.width - 20).
         addClef(opts.clef).addKeySignature(opts.key)
       note_stave.addTimeSignature(opts.time) if opts.time?
       @last_y += note_stave.getHeight() +
@@ -950,8 +953,10 @@ class Vex.Flow.Artist
       @current_clef = opts.clef
 
     if opts.tablature is "true"
-      tab_stave = new Vex.Flow.TabStave(@x, @last_y, @customizations.width - 20).
-        addTabGlyph().setNoteStartX(tabstave_start_x)
+      tab_stave = new Vex.Flow.TabStave(start_x, @last_y, @customizations.width - 20)
+        .setNumberOfLines(opts.strings)
+        .addTabGlyph()
+        .setNoteStartX(tabstave_start_x)
       @last_y += tab_stave.getHeight() + @options.tab_stave_lower_spacing
 
     @closeBends()
