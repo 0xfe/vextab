@@ -26,8 +26,8 @@
  *
  * This library makes use of Simon Tatham's awesome font - Gonville.
  *
- * Build ID: 0xFE@1874c731e983719d2c38b1ccb394e84a6640206e
- * Build date: 2014-03-18 11:07:31 -0400
+ * Build ID: 0xFE@faf89b9b684e153e87fffcbdd57392d0ec8f07c0
+ * Build date: 2014-03-18 12:44:28 -0400
  */
 // Vex Base Libraries.
 // Mohit Muthanna Cheppudira <mohit@muthanna.com>
@@ -2271,8 +2271,7 @@ Vex.Flow.Stave = (function() {
         spacing_between_lines_px: 10, // in pixels
         space_above_staff_ln: 4,      // in staff lines
         space_below_staff_ln: 4,      // in staff lines
-        top_text_position: 1,         // in staff lines
-        bottom_text_position: 6       // in staff lines
+        top_text_position: 1          // in staff lines
       };
       this.bounds = {x: this.x, y: this.y, w: this.width, h: 0};
       Vex.Merge(this.options, options);
@@ -2293,6 +2292,7 @@ Vex.Flow.Stave = (function() {
       }
       this.height = (this.options.num_lines + this.options.space_above_staff_ln) *
          this.options.spacing_between_lines_px;
+      this.options.bottom_text_position = this.options.num_lines + 1;
     },
 
     setNoteStartX: function(x) { this.start_x = x; return this; },
@@ -2312,6 +2312,11 @@ Vex.Flow.Stave = (function() {
     getContext: function() { return this.context; },
     getX: function() { return this.x; },
     getNumLines: function() { return this.options.num_lines; },
+    setNumLines: function(lines) {
+      this.options.num_lines = parseInt(lines, 10);
+      this.resetLines();
+      return this;
+    },
     setY: function(y) { this.y = y; return this; },
 
     setWidth: function(width) {
@@ -2920,22 +2925,11 @@ Vex.Flow.TabStave = (function() {
       var tab_options = {
         spacing_between_lines_px: 13,
         num_lines: 6,
-        top_text_position: 1,
-        bottom_text_position: 7
+        top_text_position: 1
       };
 
       Vex.Merge(tab_options, options);
       TabStave.superclass.init.call(this, x, y, width, tab_options);
-    },
-
-    setNumberOfLines: function(lines) {
-      this.options.num_lines = parseInt(lines, 10);
-      this.resetLines();
-      return this;
-    },
-
-    getNumberOfLines: function() {
-      return this.options.num_lines;
     },
 
     getYForGlyphs: function() {
@@ -4111,10 +4105,6 @@ Vex.Flow.StaveNote = (function() {
       return { x: this.getAbsoluteX() + x, y: this.ys[index] };
     },
 
-    getGlyph: function() {
-      return this.glyph;
-    },
-
     setKeyStyle: function(index, style) {
       this.keyStyles[index] = style;
       return this;
@@ -4175,7 +4165,7 @@ Vex.Flow.StaveNote = (function() {
         this.addDot(i);
       return this;
     },
-    
+
     getAccidentals: function() {
       return this.modifierContext.getModifiers("accidentals");
     },
@@ -8159,6 +8149,7 @@ Vex.Flow.Articulation = (function() {
         "Can't draw Articulation without a note and index.");
 
       var stem_direction = this.note.stem_direction;
+      var stave = this.note.getStave();
 
       var is_on_head = (this.position === Modifier.Position.ABOVE &&
                         stem_direction === Vex.Flow.StaveNote.STEM_DOWN) ||
@@ -8184,7 +8175,6 @@ Vex.Flow.Articulation = (function() {
       };
 
       // Articulations are centered over/under the note head
-      var stave = this.note.getStave();
       var start = this.note.getModifierStartXY(this.position, this.index);
       var glyph_y = start.y;
       var shiftY = 0;
@@ -8278,7 +8268,7 @@ Vex.Flow.Tuning = (function() {
   Tuning.prototype = {
     init: function(tuningString) {
       // Default to standard tuning.
-      this.setTuning(tuningString || "E/5,B/4,G/4,D/4,A/3,E/3");
+      this.setTuning(tuningString || "E/5,B/4,G/4,D/4,A/3,E/3,B/2,E/2");
     },
 
     noteToInteger: function(noteString) {

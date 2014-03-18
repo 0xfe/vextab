@@ -965,7 +965,7 @@ class Vex.Flow.Artist
 
     if opts.tablature is "true"
       tab_stave = new Vex.Flow.TabStave(start_x, @last_y, @customizations.width - 20)
-        .setNumberOfLines(opts.strings)
+        .setNumLines(opts.strings)
         .addTabGlyph()
         .setNoteStartX(tabstave_start_x)
       @last_y += tab_stave.getHeight() + @options.tab_stave_lower_spacing
