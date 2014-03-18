@@ -26,8 +26,8 @@
  *
  * This library makes use of Simon Tatham's awesome font - Gonville.
  *
- * Build ID: 0xFE@ee6497ce0ae2fea6a300e70d57f96ccae8bdf9f8
- * Build date: 2014-03-17 10:53:00 -0400
+ * Build ID: 0xFE@1874c731e983719d2c38b1ccb394e84a6640206e
+ * Build date: 2014-03-18 11:07:31 -0400
  */
 // Vex Base Libraries.
 // Mohit Muthanna Cheppudira <mohit@muthanna.com>
@@ -3266,6 +3266,7 @@ Vex.Flow.Note = (function() {
       this.noteType = initData.type;
       this.setIntrinsicTicks(initData.ticks);
       this.modifiers = [];
+      this.glyph = Vex.Flow.durationToGlyph(this.duration, this.noteType);
 
       if (this.positions &&
           (typeof(this.positions) != "object" || !this.positions.length)) {
@@ -3331,6 +3332,7 @@ Vex.Flow.Note = (function() {
     setExtraRightPx: function(x) { this.extraRightPx = x; return this; },
     shouldIgnoreTicks: function() { return this.ignore_ticks; },
     getLineNumber: function() { return 0; },
+    getGlyph: function() { return this.glyph; },
 
     setYs: function(ys) { this.ys = ys; return this; },
     getYs: function() {
@@ -3338,7 +3340,6 @@ Vex.Flow.Note = (function() {
           "No Y-values calculated for this note.");
       return this.ys;
     },
-
     getYForTopText: function(text_line) {
       if (!this.stave) throw new Vex.RERR("NoStave",
           "No stave attached to this note.");
@@ -3371,6 +3372,7 @@ Vex.Flow.Note = (function() {
     getDots: function() { return this.dots; },
     getNoteType: function() { return this.noteType; },
     setModifierContext: function(mc) { this.modifierContext = mc; return this; },
+    setBeam: function(beam) { return this; },
 
     addModifier: function(modifier, index) {
       modifier.setNote(this);
@@ -3423,13 +3425,24 @@ Vex.Flow.Note = (function() {
       return this;
     },
 
+    setX: function(x) {
+      if (isNaN(x)) {
+        throw new Vex.RERR('Invalid x coordinate attempted: ' + x.toString());
+      }
+      this.x = x; return this;
+    },
+
     getX: function() {
+      if (this.x) return this.x;
+
       if (!this.tickContext) throw new Vex.RERR("NoTickContext",
           "Note needs a TickContext assigned for an X-Value");
       return this.tickContext.getX() + this.x_shift;
     },
 
     getAbsoluteX: function() {
+      if (this.x) return this.x;
+
       if (!this.tickContext) throw new Vex.RERR("NoTickContext",
           "Note needs a TickContext assigned for an X-Value");
 
@@ -3454,74 +3467,7 @@ Vex.Flow.Note = (function() {
   });
 
   return Note;
-}());// Vex Flow Notation
-// Mohit Muthanna <mohit@muthanna.com>
-//
-// Copyright Mohit Muthanna 2010
-//
-// Requires vex.js.
-
-/** @constructor */
-Vex.Flow.GhostNote = (function() {
-  function GhostNote(duration) {
-    if (arguments.length > 0) this.init(duration);
-  }
-
-  Vex.Inherit(GhostNote, Vex.Flow.Note, {
-    init: function(parameter) {
-      // Sanity check
-      if (!parameter) {
-        throw new Vex.RuntimeError("BadArguments",
-            "Ghost note must have valid initialization data to identify " +
-            "duration.");
-      }
-
-      var note_struct;
-
-      // Preserve backwards-compatibility
-      if (typeof(parameter) === "string") {
-        note_struct = { duration: parameter };
-      } else if (typeof(parameter) === "object") {
-        note_struct = parameter;
-      } else {
-        throw new Vex.RuntimeError("BadArguments",
-            "Ghost note must have valid initialization data to identify " +
-            "duration.");
-      }
-
-      GhostNote.superclass.init.call(this, note_struct);
-
-      // Note properties
-      this.setWidth(0);
-    },
-
-    isRest: function() { return true; },
-
-    setStave: function(stave) { GhostNote.superclass.setStave.call(this, stave); },
-
-    addToModifierContext: function()
-      { /* intentionally overridden */ return this; },
-
-    preFormat: function() {
-      this.setPreFormatted(true);
-      return this;
-    },
-
-    draw: function() {
-      if (!this.stave) throw new Vex.RERR("NoStave", "Can't draw without a stave.");
-
-      // Draw the modifiers
-      for (var i = 0; i < this.modifiers.length; ++i) {
-        var modifier = this.modifiers[i];
-        modifier.setContext(this.context);
-        modifier.draw();
-      }
-    }
-  });
-
-  return GhostNote;
-}());
-// Vex Flow - Note head implementation
+}());// Vex Flow - Note head implementation
 // Mohit Muthanna <mohit@muthanna.com>
 //
 // Copyright Mohit Muthanna 2010
@@ -4215,6 +4161,7 @@ Vex.Flow.StaveNote = (function() {
       return this.addModifier(index, annotation);
     },
 
+
     addDot: function(index) {
       var dot = new Vex.Flow.Dot();
       dot.setDotShiftY(this.glyph.dot_shiftY);
@@ -4228,7 +4175,7 @@ Vex.Flow.StaveNote = (function() {
         this.addDot(i);
       return this;
     },
-
+    
     getAccidentals: function() {
       return this.modifierContext.getModifiers("accidentals");
     },
@@ -4521,10 +4468,6 @@ Vex.Flow.TabNote = (function() {
       return this.render_options.draw_stem;
     },
 
-    getGlyph: function() {
-      return this.glyph;
-    },
-
     addDot: function() {
       var dot = new Vex.Flow.Dot();
       this.dots++;
@@ -4624,6 +4567,10 @@ Vex.Flow.TabNote = (function() {
       }
 
       return {x: this.getAbsoluteX() + x, y: this.ys[index]};
+    },
+
+    getLineForRest: function() {
+      return this.positions[0].str;
     },
 
     // Pre-render formatting
@@ -4736,6 +4683,73 @@ Vex.Flow.TabNote = (function() {
   });
 
   return TabNote;
+}());
+// Vex Flow Notation
+// Mohit Muthanna <mohit@muthanna.com>
+//
+// Copyright Mohit Muthanna 2010
+//
+// Requires vex.js.
+
+/** @constructor */
+Vex.Flow.GhostNote = (function() {
+  function GhostNote(duration) {
+    if (arguments.length > 0) this.init(duration);
+  }
+
+  Vex.Inherit(GhostNote, Vex.Flow.StemmableNote, {
+    init: function(parameter) {
+      // Sanity check
+      if (!parameter) {
+        throw new Vex.RuntimeError("BadArguments",
+            "Ghost note must have valid initialization data to identify " +
+            "duration.");
+      }
+
+      var note_struct;
+
+      // Preserve backwards-compatibility
+      if (typeof(parameter) === "string") {
+        note_struct = { duration: parameter };
+      } else if (typeof(parameter) === "object") {
+        note_struct = parameter;
+      } else {
+        throw new Vex.RuntimeError("BadArguments",
+            "Ghost note must have valid initialization data to identify " +
+            "duration.");
+      }
+
+      GhostNote.superclass.init.call(this, note_struct);
+
+      // Note properties
+      this.setWidth(0);
+    },
+
+    isRest: function() { return true; },
+
+    setStave: function(stave) { GhostNote.superclass.setStave.call(this, stave); },
+
+    addToModifierContext: function()
+      { /* intentionally overridden */ return this; },
+
+    preFormat: function() {
+      this.setPreFormatted(true);
+      return this;
+    },
+
+    draw: function() {
+      if (!this.stave) throw new Vex.RERR("NoStave", "Can't draw without a stave.");
+
+      // Draw the modifiers
+      for (var i = 0; i < this.modifiers.length; ++i) {
+        var modifier = this.modifiers[i];
+        modifier.setContext(this.context);
+        modifier.draw();
+      }
+    }
+  });
+
+  return GhostNote;
 }());
 // Vex Flow Notation
 // Copyright Mohit Muthanna 2010
@@ -4896,7 +4910,6 @@ Vex.Flow.Beam = (function() {
       }
 
       // Validate beam line, direction and ticks.
-      this.stem_direction = notes[0].getStemDirection();
       this.ticks = notes[0].getIntrinsicTicks();
 
       if (this.ticks >= Vex.Flow.durationToTicks("4")) {
@@ -4906,13 +4919,14 @@ Vex.Flow.Beam = (function() {
 
       var i; // shared iterator
       var note;
-      if (!auto_stem) {
-        for (i = 1; i < notes.length; ++i) {
-          note = notes[i];
-          if (note.hasStem() && (note.getStemDirection() != this.stem_direction)) {
-            throw new Vex.RuntimeError("BadArguments",
-                "Notes in a beam all have the same stem direction");
-          }
+
+      this.stem_direction = 1;
+
+      for (i = 0; i < notes.length; ++i) {
+        note = notes[i];
+        if (note.hasStem()) {
+          this.stem_direction = note.getStemDirection();
+          break;
         }
       }
 
@@ -4957,9 +4971,10 @@ Vex.Flow.Beam = (function() {
         max_slope: 0.25,
         min_slope: -0.25,
         slope_iterations: 20,
-        slope_cost: 20,
+        slope_cost: 25,
         show_stemlets: false,
-        stemlet_extension: 7
+        stemlet_extension: 7,
+        partial_beam_length: 10
       };
     },
 
@@ -5138,7 +5153,8 @@ Vex.Flow.Beam = (function() {
               current_beam = beam_lines[beam_lines.length - 1];
               if (current_beam.end == null) {
                 // single note
-                current_beam.end = current_beam.start + 10; // TODO
+                current_beam.end = current_beam.start +
+                                   that.render_options.partial_beam_length;
               } else {
                 // we don't care
               }
@@ -5152,7 +5168,8 @@ Vex.Flow.Beam = (function() {
           current_beam = beam_lines[beam_lines.length - 1];
           if (current_beam.end == null) {
             // single note
-            current_beam.end = current_beam.start - 10; // TODO
+            current_beam.end = current_beam.start -
+                that.render_options.partial_beam_length - Vex.Flow.STEM_WIDTH;
           }
         }
 
@@ -5383,7 +5400,6 @@ Vex.Flow.Beam = (function() {
     function formatStems() {
       noteGroups.forEach(function(group){
         var stemDirection = determineStemDirection(group);
-
         applyStemDirection(group, stemDirection);
       });
     }
@@ -5392,7 +5408,6 @@ Vex.Flow.Beam = (function() {
       if (config.stem_direction) return config.stem_direction;
 
       var lineSum = 0;
-
       group.forEach(function(note) {
         if (note.keyProps) {
           note.keyProps.forEach(function(keyProp){
@@ -5447,6 +5462,13 @@ Vex.Flow.Beam = (function() {
     // Reformat tuplets
     tupletGroups.forEach(function(group){
       var firstNote = group[0];
+      for (var i=0; i<group.length; ++i) {
+        if (group[i].hasStem()) {
+          firstNote = group[i];
+          break;
+        }
+      }
+
       var tuplet = firstNote.tuplet;
 
       if (firstNote.beam) tuplet.setBracketed(false);
@@ -6503,6 +6525,50 @@ Vex.Flow.ModifierContext = (function() {
       return this;
     },
 
+    formatGraceNoteGroups: function(){
+      var gracenote_groups = this.modifiers['gracenotegroups'];
+      var gracenote_spacing = 4;
+
+      if (!gracenote_groups || gracenote_groups.length === 0) return this;
+
+      var group_list = [];
+      var hasStave = false;
+      var prev_note = null;
+      var shiftL = 0;
+
+      var i, gracenote_group, props_tmp;
+      for (i = 0; i < gracenote_groups.length; ++i) {
+        gracenote_group = gracenote_groups[i];
+        var note = gracenote_group.getNote();
+        var stave = note.getStave();
+        if (note != prev_note) {
+           // Iterate through all notes to get the displaced pixels
+           for (var n = 0; n < note.keys.length; ++n) {
+              props_tmp = note.getKeyProps()[n];
+              shiftL = (props_tmp.displaced ? note.getExtraLeftPx() : shiftL);
+            }
+            prev_note = note;
+        }
+        if (stave != null) {
+          hasStave = true;
+          group_list.push({shift: shiftL, gracenote_group: gracenote_group});
+        } else {
+          group_list.push({shift: shiftL, gracenote_group: gracenote_group });
+        }
+      }
+
+      // If first note left shift in case it is displaced
+      var group_shift = group_list[0].shift;
+      for (i = 0; i < group_list.length; ++i) {
+        gracenote_group = group_list[i].gracenote_group;
+        gracenote_group.preFormat();
+        group_shift = gracenote_group.getWidth() + gracenote_spacing;
+      }
+
+      this.state.left_shift += group_shift;
+      return this;
+    },
+
     preFormat: function() {
       if (this.preFormatted) return;
 
@@ -6511,6 +6577,7 @@ Vex.Flow.ModifierContext = (function() {
            formatDots().
            formatFretHandFingers().
            formatAccidentals().
+           formatGraceNoteGroups().
            formatStrokes().
            formatStringNumbers().
            formatArticulations().
@@ -6564,6 +6631,24 @@ Vex.Flow.Accidental = (function(){
     },
 
     getCategory: function() { return "accidentals"; },
+
+    setNote: function(note){
+      this.note = note;
+
+      // For accidentals attached to grace notes
+      if (this.note.getCategory() === 'gracenotes') {
+        var gracenote_widths = {
+          '#': 4.5,
+          'b' : 4.5,
+          'n' : 4.5,
+          '##' : 6,
+          'bb' : 8
+        };
+
+        this.render_options.font_scale = 25;
+        this.setWidth(gracenote_widths[this.type]);
+      }
+    },
 
     setAsCautionary: function() {
       this.cautionary = true;
@@ -6630,6 +6715,15 @@ Vex.Flow.Dot = (function() {
       this.radius = 2;
       this.setWidth(5);
       this.dot_shiftY = 0;
+    },
+
+    setNote: function(note){
+      this.note = note;
+
+      if (this.note.getCategory() === 'gracenotes') {
+        this.radius *= 0.50;
+        this.setWidth(3);
+      }
     },
 
     getCategory: function() { return "dots"; },
@@ -11639,4 +11733,200 @@ Vex.Flow.Stroke = (function() {
   });
 
   return Stroke;
+}());Vex.Flow.GraceNote = (function() {
+  var GraceNote = function(note_struct) {
+    if (arguments.length > 0) this.init(note_struct);
+  };
+
+  // Stem directions
+  var Stem = Vex.Flow.Stem;
+  Vex.Inherit(GraceNote, Vex.Flow.StaveNote, {
+    init: function(note_struct) {
+      GraceNote.superclass.init.call(this, note_struct);
+
+      this.render_options.glyph_font_scale = 22;
+      this.render_options.stem_height = 20;
+      this.render_options.stroke_px = 2;
+      this.glyph.head_width = 6;
+
+      this.slash = note_struct.slash;
+      this.slur = true;
+
+      this.stem_extension = 0;
+
+      switch (this.duration) {
+        case "w":                 // Whole note alias
+        case "1": this.stem_extension = -1 * Stem.HEIGHT; break;
+        case "32": this.stem_extension = -12; break;
+        case "64": this.stem_extension = -10; break;
+        case "128": this.stem_extension = -8; break;
+        default: this.stem_extension = -14;
+      }
+
+      this.width = 3;
+    },
+
+    getCategory: function() { return 'gracenotes'; },
+
+    drawStem: function(stem_struct){
+      if (!this.context) throw new Vex.RERR("NoCanvasContext",
+          "Can't draw without a canvas context.");
+      stem_struct.y_bottom -= 1;
+
+      this.stem = new Stem(stem_struct);
+      this.stem.setContext(this.context).draw();
+    },
+
+    draw: function(){
+      GraceNote.superclass.draw.call(this);
+      var ctx = this.context;
+      var stem_direction = this.getStemDirection();
+
+      if (this.slash) {
+        ctx.beginPath();
+
+        var x = this.getAbsoluteX();
+        var y = this.getYs()[0] - (this.stem.getHeight() / 2.8);
+        if (stem_direction === 1) {
+          x += 1;
+          ctx.lineTo(x, y);
+          ctx.lineTo(x + 13, y - 9);
+        } else if (stem_direction === -1) {
+          x -= 4;
+          y += 1;
+          ctx.lineTo(x, y);
+          ctx.lineTo(x + 13, y + 9);
+        }
+
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+  });
+
+  return GraceNote;
+}());
+Vex.Flow.GraceNoteGroup = (function(){
+  var GraceNoteGroup = function(grace_notes, config) {
+    if (arguments.length > 0) this.init(grace_notes, config);
+  };
+
+  Vex.Inherit(GraceNoteGroup, Vex.Flow.Modifier, {
+    init: function(grace_notes, show_slur) {
+      var superclass = GraceNoteGroup.superclass;
+      superclass.init.call(this);
+
+      this.note = null;
+      this.index = null;
+      this.position = Vex.Flow.Modifier.Position.LEFT;
+      this.grace_notes = grace_notes;
+      this.width = 0;
+
+      this.preFormatted = false;
+
+      this.show_slur = show_slur;
+      this.slur = null;
+
+      this.formatter = new Vex.Flow.Formatter();
+      this.voice = new Vex.Flow.Voice({
+        num_beats: 4,
+        beat_value: 4,
+        resolution: Vex.Flow.RESOLUTION
+      }).setStrict(false);
+
+      this.voice.addTickables(this.grace_notes);
+
+      return this;
+    },
+
+    preFormat: function(){
+      if (this.preFormatted) return;
+
+      this.formatter.joinVoices([this.voice]).format([this.voice], 0);
+      this.setWidth(this.formatter.getMinTotalWidth());
+
+      this.preFormatted = true;
+    },
+
+    beamNotes: function(){
+      if (this.grace_notes.length > 1) {
+        var beam = new Vex.Flow.Beam(this.grace_notes);
+
+        beam.render_options.beam_width = 3;
+        beam.render_options.partial_beam_length = 4;
+
+        this.beam = beam;
+      }
+
+      return this;
+    },
+
+    setNote: function(note) {
+      this.note = note;
+    },
+    getCategory: function() { return "gracenotegroups"; },
+    setWidth: function(width){
+      this.width = width;
+    },
+    getWidth: function(){
+      return this.width;
+    },
+    setXShift: function(x_shift) {
+        this.x_shift = x_shift;
+    },
+    draw: function() {
+      if (!this.context)  {
+        throw new Vex.RuntimeError("NoContext",
+          "Can't draw Grace note without a context.");
+      }
+
+      var note = this.getNote();
+
+      if (!(note && (this.index !== null))) {
+        throw new Vex.RuntimeError("NoAttachedNote",
+          "Can't draw grace note without a parent note and parent note index.");
+      }
+
+      function alignGraceNotesWithNote(grace_notes, note) {
+        // Shift over the tick contexts of each note
+        // So that th aligned with the note
+        var tickContext = note.getTickContext();
+        var extraPx = tickContext.getExtraPx();
+        var x = tickContext.getX() - extraPx.left - extraPx.extraLeft;
+        grace_notes.forEach(function(graceNote) {
+            var tick_context = graceNote.getTickContext();
+            var x_offset = tick_context.getX();
+            graceNote.setStave(note.stave);
+            tick_context.setX(x + x_offset);
+        });
+      }
+
+      alignGraceNotesWithNote(this.grace_notes, note);
+
+      // Draw notes
+      this.grace_notes.forEach(function(graceNote) {
+        graceNote.setContext(this.context).draw();
+      }, this);
+
+      // Draw beam
+      if (this.beam) {
+        this.beam.setContext(this.context).draw();
+      }
+
+      if (this.show_slur) {
+        // Create and draw slur
+        this.slur = new Vex.Flow.StaveTie({
+          last_note: this.grace_notes[0],
+          first_note: note,
+          first_indices: [0],
+          last_indices: [0]
+        });
+
+        this.slur.render_options.cp2 = 12;
+        this.slur.setContext(this.context).draw();
+      }
+    }
+  });
+
+return GraceNoteGroup;
 }());

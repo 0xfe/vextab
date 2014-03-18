@@ -772,7 +772,18 @@ class Vex.Flow.Artist
         is_rest: true
 
     tab_notes = _.last(@staves).tab_notes
-    tab_notes.push new Vex.Flow.GhostNote(@current_duration)
+    if @customizations["tab-stems"] == "true"
+      tab_note = new Vex.Flow.StaveNote({
+            keys: [position || "r/4"]
+            duration: @current_duration + "r"
+            clef: "treble"
+            auto_stem: false
+          })
+      if @current_duration[@current_duration.length - 1] == "d"
+        tab_note.addDot(0)
+      tab_notes.push tab_note
+    else
+      tab_notes.push new Vex.Flow.GhostNote(@current_duration)
 
   addChord: (chord, chord_articulation, chord_decorator) ->
     return if _.isEmpty(chord)
