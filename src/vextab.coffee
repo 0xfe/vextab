@@ -26,10 +26,7 @@ class Vex.Flow.VexTab
   isValid: -> @valid
 
   parseStaveOptions: (options) ->
-    params =
-      notation: "false"
-      tablature: "true"
-
+    params = {}
     return params unless options?
 
     notation_option = null
@@ -168,7 +165,7 @@ class Vex.Flow.VexTab
     for stave in @elements
       switch stave.element
         when "stave", "tabstave"
-          @artist.addStave(@parseStaveOptions(stave.options))
+          @artist.addStave(stave.element, @parseStaveOptions(stave.options))
           @parseStaveElements(stave.notes) if stave.notes?
           @parseStaveText(stave.text) if stave.text?
         when "voice"

@@ -151,6 +151,7 @@ stave
 
 voice
   : TABSTAVE
+  | STAVE
   | VOICE
   ;
 

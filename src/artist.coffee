@@ -937,17 +937,17 @@ class Vex.Flow.Artist
       stave.note_voices.push(stave.note_notes)
       stave.note_notes = []
 
-  addStave: (options) ->
+  addStave: (element, options) ->
     opts =
       tuning: "standard"
       clef: "treble"
       key: "C"
-      notation: "false"
-      tablature: "true"
+      notation: if element == "tabstave" then "false" else "true"
+      tablature: if element == "stave" then "false" else "true"
       strings: 6
 
     _.extend(opts, options)
-    L "addStave: ", options
+    L "addStave: ", element, opts
 
     tab_stave = null
     note_stave = null
