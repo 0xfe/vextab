@@ -124,10 +124,13 @@ class Vex.Flow.Artist
           else
             beam_config.stem_direction = if customizations["tab-stem-direction"] == "down" then -1 else 1
 
+          beam_config.beam_rests = false
           beams = beams.concat(Vex.Flow.Beam.generateBeams(voice.getTickables(), beam_config))
 
       format_stave = tab_stave
       text_stave = tab_stave
+
+    beam_config.beam_rests = parseBool(customizations["beam-rests"])
 
     if score?
       multi_voice = if (score.voices.length > 1) then true else false
