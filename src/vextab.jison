@@ -10,7 +10,7 @@
 %}
 
 %lex
-%s notes text annotations options command
+%s notes text slur annotations options command
 %%
 
 <INITIAL>"notes"              { this.begin('notes'); return 'NOTES'; }
@@ -19,6 +19,7 @@
 <INITIAL>"voice"              { this.begin('options'); return 'VOICE'; }
 <INITIAL>"options"            { this.begin('options'); return 'OPTIONS'; }
 <INITIAL>"text"               { this.begin('text'); return 'TEXT'; }
+<INITIAL>"slur"               { this.begin('options'); return 'SLUR'; }
 <INITIAL,options>[^\s=]+      return 'WORD'
 
 
@@ -162,15 +163,18 @@ stave_data
     {
       var text = [].concat($1.text, $2.text);
       var notes = [].concat($1.notes, $2.notes);
-      $$ = {text: text, notes: notes};
+      var slurs = [].concat($1.slurs, $2.slurs)
+      $$ = {text: text, notes: notes, slurs: slurs};
     }
   ;
 
 stave_additions
   : TEXT text
-    {$$ = {text: $2, notes: []}}
+    {$$ = {text: $2, notes: [], slurs: []}}
   | NOTES notes
-    {$$ = {notes: $2, text: []}}
+    {$$ = {notes: $2, text: [], slurs: []}}
+  | SLUR maybe_options
+    {$$ = {slurs: $2, notes: [], text: []}}
   ;
 
 maybe_options

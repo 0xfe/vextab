@@ -55,7 +55,7 @@
           $("#error").text("");
         } catch (e) {
           console.log(e);
-          $("#error").text(e.message);
+          $("#error").html(e.message.replace(/[\n]/g, '<br/>'));
         }
       }
 
