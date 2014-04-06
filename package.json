@@ -1,0 +1,15 @@
+{
+    "name": "vextab",
+    "version": "2.0.0",
+    "author": "Muthanna Cheppudira",
+    "description": "A VexTab Parser for VexFlow",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/0xfe/vextab.git"
+    },
+    "licence": "MIT",
+    "devDependencies": {
+        "coffee-script": "*",
+        "jison": "*"
+    }
+}
