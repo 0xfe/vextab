@@ -37,9 +37,9 @@ First install Node:
     $ brew install node (on OSX)
     $ sudo apt-get install node (on Linux)
 
-Then install CoffeScript and Jison. Do this from the root VexTab directory so it creates a sub-directory called `node-modules`.
+Then install the depdencies managed in the `package.json`:
 
-    $ npm install jison coffee-script
+    $ npm install
 
 Next, install Ruby and the `bundler` gem. Then install all the dependencies
 by typing:
