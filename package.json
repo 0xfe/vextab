@@ -18,7 +18,6 @@
   "licence": "MIT",
   "devDependencies": {
     "coffee-script": "*",
-    "jison": "*",
     "docpad": "~6.64.0",
     "docpad-plugin-coffeescript": "~2.4.0",
     "docpad-plugin-jison": "git+https://github.com/timaschew/docpad-plugin-jison",
