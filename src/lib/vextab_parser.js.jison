@@ -1,3 +1,7 @@
+---
+moduleName: 'vextab_parser'
+---
+
 /*
   LALR(1) Grammar for VexTab
   Mohit Cheppudira <mohit@muthanna.com>
