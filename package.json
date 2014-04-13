@@ -7,6 +7,10 @@
     "type": "git",
     "url": "https://github.com/0xfe/vextab.git"
   },
+  "scripts" : { 
+    "compile" : "./node_modules/.bin/docpad generate",
+    "watch" : "./node_modules/.bin/docpad watch"
+  },
   "licence": "MIT",
   "devDependencies": {
     "coffee-script": "*",
