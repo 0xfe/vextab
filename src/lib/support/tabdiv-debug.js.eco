@@ -1,0 +1,4 @@
+<%- @include('../vextab_parser.js') %>
+<%- @include('../tabdiv2.js') %>
+<%- @include('../artist.js') %>
+<%- @include('../vextab.js') %>
