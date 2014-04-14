@@ -41,20 +41,15 @@ Then install the depdencies managed in the `package.json`:
 
     $ npm install
 
-Next, install Ruby and the `bundler` gem. Then install all the dependencies
-by typing:
-
-    $ bundle install
-
 Quesions? Ask the [VexFlow Google Group](https://groups.google.com/forum/?fromgroups#!forum/vexflow).
 
 ## Build and Test
 
-Run `rake` and pull up `build/src/runtest.html` in your browser.
+Run `npm run compile` and pull up `build/runtest.html` in your browser.
 
 If you want to auto-build on changes to source files type:
 
-    $ rake watch
+    $ npm run watch
 
 ## License
 

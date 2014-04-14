@@ -1,7 +1,5 @@
-###
-VexTab Tests
-Copyright Mohit Cheppudira 2010 <mohit@muthanna.com>
-###
+# VexTab Tests
+# Copyright Mohit Cheppudira 2010 <mohit@muthanna.com>
 
 Vex.Flow.Test ?= {}
 

@@ -1,15 +1,27 @@
 {
-    "name": "vextab",
-    "version": "2.0.0",
-    "author": "Muthanna Cheppudira",
-    "description": "A VexTab Parser for VexFlow",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/0xfe/vextab.git"
-    },
-    "licence": "MIT",
-    "devDependencies": {
-        "coffee-script": "*",
-        "jison": "*"
-    }
+  "name": "vextab",
+  "version": "2.0.0",
+  "homepage": "http://www.vexflow.com/vextab/",
+  "author": "Muthanna Cheppudira",
+  "description": "A VexTab Parser for VexFlow",
+  "bugs": {
+    "url": "https://github.com/0xfe/vextab/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0xfe/vextab.git"
+  },
+  "scripts" : { 
+    "compile" : "./node_modules/.bin/docpad generate",
+    "watch" : "./node_modules/.bin/docpad watch"
+  },
+  "licence": "MIT",
+  "devDependencies": {
+    "coffee-script": "*",
+    "docpad": "~6.64.0",
+    "docpad-plugin-coffeescript": "~2.4.0",
+    "docpad-plugin-jison": "git+https://github.com/timaschew/docpad-plugin-jison",
+    "docpad-plugin-uglify": "~2.4.0",
+    "docpad-plugin-eco": "~2.0.3"
+  }
 }
