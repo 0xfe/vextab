@@ -37,6 +37,8 @@ class Vex.Flow.Test.VexTab
     test "Sweep Strokes", @sweepStrokes
     test "Voices", @voices
     test "Fingering and String Numbers", @fingering
+    test "Render", @render
+    test "Render Complex", @renderComplex
 
   # Private method
   catchError = (tab, code, error_type="ParseError") ->
@@ -54,7 +56,24 @@ class Vex.Flow.Test.VexTab
     # equal(error.code, error_type, error.message)
     equal(true, caught)
 
-  makeParser = -> new Vex.Flow.VexTab(new Vex.Flow.Artist(0, 0, 600))
+  makeParser = -> new Vex.Flow.VexTab(new Vex.Flow.Artist(0, 0, 600, {scale: 0.8}))
+  makeRenderer = (test_name)->
+    test_div = $('<div></div>').addClass("testcanvas")
+    test_div.append($('<div></div>').addClass("name").text(test_name))
+    canvas = $('<canvas></canvas>').addClass("vex-tabdiv")
+    test_div.append(canvas)
+    $("body").append(test_div)
+
+    renderer = new Vex.Flow.Renderer(canvas[0], Vex.Flow.Renderer.Backends.CANVAS)
+    return renderer
+
+  renderTest = (title, code) ->
+    expect 2
+    tab = makeParser()
+    renderer = makeRenderer(title)
+    notEqual null, tab.parse(code)
+    tab.getArtist().render(renderer)
+    ok(true, "all pass")
 
   @basic: ->
     expect 3
@@ -434,3 +453,32 @@ class Vex.Flow.Test.VexTab
     notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:r:s:1.$")
 
     ok(true, "all pass")
+
+  @render: ->
+    tab = makeParser()
+    renderer = makeRenderer("Render")
+    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:r:s:1.$")
+    tab.getArtist().render(renderer)
+    ok(true, "all pass")
+
+  @renderComplex: ->
+    code = """
+    options space=20 tab-stems=true stave-distance=40 tab-stem-direction=down
+    tabstave notation=true key=A time=4/4
+        notes :q =|: (5/2.5/3.7/4) :8 7-5h6/3 ^3^ 5h6-7/5 ^3^ :q 7V/4 |
+        notes :8 t12p7/4 s5s3/4 :8 3s:16:5-7/5 :h p5/4
+        text :w, |#segno, ,|, :hd, , #tr
+
+    options space=65
+    tabstave notation=true
+        notes :q (5/4.5/5) (7/4.7/5)s(5/4.5/5) ^3^
+        notes :8 7-5/4 $.a./b.$ (5/4.5/5)h(7/5) =:|
+        notes :8 (12/5.12/4)ds(5/5.5/4)u 3b4/5
+        notes :h (5V/6.5/4.6/3.7/2) $.italic.let ring$ =|=
+        text :h, ,.font=Times-12-italic, D.S. al coda, |#coda
+        text :h, ,.-1, .font=Arial-14-bold,A13
+        text ++, .30, #f
+
+    options space=70
+    """
+    renderTest "Render Complex", code

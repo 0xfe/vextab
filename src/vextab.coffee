@@ -25,6 +25,8 @@ class Vex.Flow.VexTab
 
   isValid: -> @valid
 
+  getArtist: -> return @artist
+
   parseStaveOptions: (options) ->
     params = {}
     return params unless options?
