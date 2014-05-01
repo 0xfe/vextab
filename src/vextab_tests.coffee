@@ -39,6 +39,14 @@ class Vex.Flow.Test.VexTab
     test "Fingering and String Numbers", @fingering
     test "Render", @render
     test "Render Complex", @renderComplex
+    test "Tab Stems", @tabStems
+    test "Rests in Tab", @restsInTab
+    test "Multi String Tab", @multiStringTab
+    test "Time Signature based Beaming", @timeSigBeaming
+    test "Override Fret-Note", @overrideFretNote
+    test "Mixed Tuplets", @mixedTuplets
+    test "Accidental Strategies", @accidentalStrategies
+    test "Fret-hand Fingering and String Numbers", @fingeringAndStrings
 
   # Private method
   catchError = (tab, code, error_type="ParseError") ->
@@ -68,7 +76,6 @@ class Vex.Flow.Test.VexTab
     return renderer
 
   renderTest = (title, code) ->
-    expect 2
     tab = makeParser()
     renderer = makeRenderer(title)
     notEqual null, tab.parse(code)
@@ -482,3 +489,126 @@ class Vex.Flow.Test.VexTab
     options space=70
     """
     renderTest "Render Complex", code
+
+  @tabStems: ->
+    code = """
+    options tab-stems=true
+    tabstave key=A
+    notes :q (5/2.5/3.7/4) $.a./b.$ :8 5h6/3 7/4 $.a>/b.$
+    notes :16 5h6/3 7/4 $.a>/b.$
+    notes :8d 5/5
+    """
+    renderTest "Tab Stems", code
+
+    code = """
+    options tab-stems=true tab-stem-direction=down
+    tabstave key=A notation=true
+    notes :q (5/2.5/3.7/4) $.a./b.$ :8 5h6/3 7/4 $.a>/b.$
+    notes :16 5h6/3 7/4 $.a>/b.$
+    notes :8d 5/5
+    """
+    renderTest "Tab Stem Direction", code
+
+  @restsInTab: ->
+    code = """
+    options tab-stems=true
+    tabstave key=A
+    notes :q (5/2.5/3.7/4) $.a./b.$ :8 5h6/3 7/4 $.a>/b.$
+    notes :16 5h6/3 7/4 $.a>/b.$
+    notes :8d ##
+    """
+    renderTest "Rests in Tab", code
+
+  @timeSigBeaming: ->
+    code = """
+    tabstave notation=true tablature=false time=4/4
+    notes :8 ## D-E-F-G-A-B/4 C/5
+
+    tabstave notation=true tablature=false time=6/8
+    notes :8 C-D-E-F/4 ## A-B/4 C-D-E-F-:16:G-F/5
+    """
+    renderTest "Time Signature based Beaming", code
+
+  @multiStringTab: ->
+    code = """
+    tabstave key=A strings=4
+    notes :q (5/2.5/3.7/4) $.a./b.$ :8 5h6/3 7/4 $.a>/b.$
+    notes :16 5h6/3 7/4 $.a>/b.$
+    options space=20
+    """
+    renderTest "Bass Tab", code
+
+    code = """
+    tabstave key=A strings=8 tuning=E/5,B/4,G/4,D/4,A/3,E/3,B/2,G/2
+    notes :q (5/2.5/3.7/8) :8 5h6/3 7/8
+    notes :16 5h6/3 7/7
+    """
+    renderTest "8-string Tab", code
+
+  @overrideFretNote: ->
+    code = """
+    options stave-distance=30 space=20
+    options font-face=courier font-style=bold
+    tabstave notation=true key=A time=5/4
+    notes :q 8/4 $8/4$
+    notes B@4_8/4 $B@4_8/4$
+    notes B@~4_8/4 $B@~4_8/4$
+    notes C@@5_8/4 $C@@5_8/4$
+    notes G##5_5/1 $G##5_5/1$
+    text .font=Times-15-italic,|8va
+    """
+    renderTest "Override Fret Note", code
+
+  @mixedTuplets: ->
+    code = """
+    tabstave notation=true tablature=false key=G time=4/4
+    notes :q E/5 :8 E/5 ^3,2^ :8 E/5 :q E/5 ^3,2^
+    notes :8 E-E-E/5 ^3^ ## E-E/5 ^3^
+
+    options space=20
+    """
+    renderTest "Mixed Tuplets", code
+
+  @accidentalStrategies: ->
+    code = """
+    options player=true tempo=80
+    tabstave notation=true key=G time=4/4
+    notes :8 5-5-6-6-5-5-3-3/3
+    """
+    renderTest "Standard Accidental Strategy", code
+
+    code = """
+    options player=true tempo=80 accidentals=cautionary
+    tabstave notation=true key=G time=4/4
+    notes :8 5-5-6-6-5-5-3-3/3
+    """
+    renderTest "Cautionary Accidental Strategy", code
+
+  @fingeringAndStrings: ->
+    code = """
+    options space=40 player=true tempo=80 instrument=acoustic_guitar_nylon
+    tabstave notation=true tablature=false key=G time=4/4
+    voice
+        notes !octave-shift -1!
+        notes :8 ## (D/4.G/4.D/5.G/5)
+        notes $.fingering/4:r:f:4-3:r:f:3.$
+        notes $.fingering/4:l:s:1-3:r:s:2.$
+
+        notes :h (E/4.G/4.C/5.E/5)
+        notes $.fingering/1:r:f:2-3:r:f:1.$
+        notes $.fingering/1:l:s:4-3:r:s:2.$
+        notes :q ##
+    voice
+        notes :8 G/3 $.fingering/1:r:f:2-1:r:s:6.$
+        notes :8 F/3 $.fingering/1:r:f:1-1:r:s:6.$
+        notes :q G/3 $.fingering/1:r:f:2-1:r:s:6.$
+        notes :q G/3 $.fingering/1:r:f:2-1:r:s:6.$
+        notes :q G/3 $.fingering/1:r:f:2-1:r:s:6.$
+
+    text .font=Arial-14-Bold,.-2
+    text :8,G,G/F,:h,Am/G
+
+    options space=60
+    """
+    renderTest "Fret Hand Fingering and String Numbers", code
+
