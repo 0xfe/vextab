@@ -137,7 +137,7 @@ Vex.Flow.TabDiv.prototype.draw = function() {
 // Automatic initialization.
 Vex.Flow.TabDiv.start = function() {
   $(Vex.Flow.TabDiv.SEL).each(function(index) {
-      new Vex.Flow.TabDiv(this);
+      new Vex.Flow.TabDiv(this, {soundfont_url: 'soundfont/7/'});
   });
 }
 

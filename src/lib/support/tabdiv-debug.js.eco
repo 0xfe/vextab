@@ -2,3 +2,4 @@
 <%- @include('../tabdiv2.js') %>
 <%- @include('../artist.js') %>
 <%- @include('../vextab.js') %>
+<%- @include('../player.js') %>
