@@ -77,20 +77,35 @@ class Vex.Flow.Player
     @stop()
 
   getOverlay = (context, scale, overlay_class) ->
-    canvas = context.canvas
-    height = canvas.height
-    width = canvas.width
+    
+    if context.canvas?
+      canvas = context.canvas
+      height = canvas.height
+      width = canvas.width
+      overlay = $('<canvas>')
+      overlay.css("position", "absolute")
+      overlay.css("left", 0)
+      overlay.css("top", 0)
+      overlay.addClass(overlay_class)
 
-    overlay = $('<canvas>')
-    overlay.css("position", "absolute")
-    overlay.css("left", 0)
-    overlay.css("top", 0)
-    overlay.addClass(overlay_class)
+      console.log "setting up overlay in canvas"
+      $(canvas).after(overlay)
+      ctx = Vex.Flow.Renderer.getCanvasContext(overlay.get(0), width, height)
+      ctx.scale(scale, scale)
+    
+    else
+      canvas = context
+      height = context.height
+      width = context.width
+        
+      overlay = $('<canvas>')
+      overlay.css("position", "absolute")
+      overlay.css("left", 0)
+      overlay.css("top", 0)
+      overlay.addClass(overlay_class)
 
-    $(canvas).after(overlay)
-    ctx = Vex.Flow.Renderer.getCanvasContext(overlay.get(0), width, height)
-    ctx.scale(scale, scale)
-
+      $(canvas.element).after(overlay)
+    
     ps = new paper.PaperScope()
     ps.setup(overlay.get(0))
 
