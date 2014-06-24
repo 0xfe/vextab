@@ -19,8 +19,8 @@ class Vex.Flow.Artist
       tab_stave_lower_spacing: 10
       note_stave_lower_spacing: 0
       scale: 1.0
-    _.extend(@options, options) if options?
     @reset()
+    _.extend(@options, options) if options?
 
   reset: ->
     @tuning = new Vex.Flow.Tuning()
