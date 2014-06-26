@@ -8,7 +8,7 @@ class Vex.Flow.Artist
   @DEBUG = false
   L = (args...) -> console?.log("(Vex.Flow.Artist)", args...) if Vex.Flow.Artist.DEBUG
 
-  @NOLOGO = false
+  @NOLOGO = true
 
   constructor: (@x, @y, @width, options) ->
     @options =
