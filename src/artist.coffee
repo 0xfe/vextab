@@ -956,7 +956,7 @@ class Vex.Flow.Artist
     start_x = @x + @customizations["connector-space"]
     tabstave_start_x = 40
 
-   if opts.notation is "true"
+    if opts.notation is "true"
       note_stave = new Vex.Flow.Stave(start_x, @last_y, @customizations.width - 20).
         addKeySignature(opts.key)
       note_stave.addClef(opts.clef) if opts.clef isnt "none"
