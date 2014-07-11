@@ -956,21 +956,22 @@ class Vex.Flow.Artist
     start_x = @x + @customizations["connector-space"]
     tabstave_start_x = 40
 
-    if opts.notation is "true"
+   if opts.notation is "true"
       note_stave = new Vex.Flow.Stave(start_x, @last_y, @customizations.width - 20).
-        addClef(opts.clef).addKeySignature(opts.key)
+        addKeySignature(opts.key)
+      note_stave.addClef(opts.clef) if opts.clef isnt "none"
       note_stave.addTimeSignature(opts.time) if opts.time?
       @last_y += note_stave.getHeight() +
                  @options.note_stave_lower_spacing +
                  parseInt(@customizations["stave-distance"], 10)
       tabstave_start_x = note_stave.getNoteStartX()
-      @current_clef = opts.clef
+      @current_clef = if opts.clef is "none" then "treble" else opts.clef
 
     if opts.tablature is "true"
       tab_stave = new Vex.Flow.TabStave(start_x, @last_y, @customizations.width - 20)
         .setNumLines(opts.strings)
-        .addTabGlyph()
         .setNoteStartX(tabstave_start_x)
+      tab_stave.addTabGlyph() if opts.clef isnt "none"
       @last_y += tab_stave.getHeight() + @options.tab_stave_lower_spacing
 
     @closeBends()
