@@ -199,7 +199,7 @@ class Vex.Flow.Player
 
     @current_ticks += @ticks_per_refresh
 
-    if @current_ticks >= @next_event_tick
+    if @current_ticks >= @next_event_tick and @all_ticks.length > 0
       @playNote @all_ticks[@next_index].notes
       @next_index++
       if @next_index >= @all_ticks.length
@@ -223,6 +223,7 @@ class Vex.Flow.Player
     L "Start"
     @play_button.fillColor = '#a36' if @play_button?
     MIDI.programChange(0, INSTRUMENTS[@options.instrument])
+    @render() # try to update, maybe notes were changed dynamically
     @interval_id = window.setInterval((() => @refresh()), @refresh_rate)
 
   play: ->
