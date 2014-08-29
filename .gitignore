@@ -2,3 +2,4 @@ node_modules/*
 build/*
 Gemfile.lock
 vendor/*
+.bundle/*
