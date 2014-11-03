@@ -186,7 +186,7 @@ class Vex.Flow.VexTab
           throw newError(stave, "Invalid keyword '#{stave.element}'")
 
   parse: (code) ->
-    vextab_parser.parseError = (message, hash) ->
+    parser.parseError = (message, hash) ->
       L "VexTab parse error: ", message, hash
       message = "Unexpected text '#{hash.text}' at line #{hash.loc.first_line} column #{hash.loc.first_column}."
       throw new Vex.RERR("ParseError", message)
@@ -197,7 +197,7 @@ class Vex.Flow.VexTab
 
     # Strip lines
     stripped_code = (line.trim() for line in code.split(/\r\n|\r|\n/))
-    @elements = vextab_parser.parse(stripped_code.join("\n"))
+    @elements = parser.parse(stripped_code.join("\n"))
     if @elements
       @generate()
       @valid = true
