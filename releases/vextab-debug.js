@@ -2647,10 +2647,11 @@ return new Parser;
         this.current_clef = opts.clef === "none" ? "treble" : opts.clef;
       }
       if (opts.tablature === "true") {
-        tab_stave = new Vex.Flow.TabStave(start_x, this.last_y, this.customizations.width - 20).setNumLines(opts.strings).setNoteStartX(tabstave_start_x);
+        tab_stave = new Vex.Flow.TabStave(start_x, this.last_y, this.customizations.width - 20).setNumLines(opts.strings);
         if (opts.clef !== "none") {
           tab_stave.addTabGlyph();
         }
+        tab_stave.setNoteStartX(tabstave_start_x);
         this.last_y += tab_stave.getHeight() + this.options.tab_stave_lower_spacing;
       }
       this.closeBends();

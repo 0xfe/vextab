@@ -961,6 +961,7 @@ class Vex.Flow.Artist
       note_stave.addClef(opts.clef) if opts.clef isnt "none"
       note_stave.addKeySignature(opts.key)
       note_stave.addTimeSignature(opts.time) if opts.time?
+
       @last_y += note_stave.getHeight() +
                  @options.note_stave_lower_spacing +
                  parseInt(@customizations["stave-distance"], 10)
@@ -970,8 +971,8 @@ class Vex.Flow.Artist
     if opts.tablature is "true"
       tab_stave = new Vex.Flow.TabStave(start_x, @last_y, @customizations.width - 20)
         .setNumLines(opts.strings)
-        .setNoteStartX(tabstave_start_x)
       tab_stave.addTabGlyph() if opts.clef isnt "none"
+      tab_stave.setNoteStartX(tabstave_start_x)
       @last_y += tab_stave.getHeight() + @options.tab_stave_lower_spacing
 
     @closeBends()
