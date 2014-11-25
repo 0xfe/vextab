@@ -11,6 +11,7 @@ module.exports = function(grunt) {
                 ' */\n';
 
   var BUILD_DIR = 'build',
+      DOC_DIR = "doc",
       RELEASE_DIR = 'releases',
       TARGET_RAW = BUILD_DIR + '/vextab-debug.js',
       TARGET_MIN = BUILD_DIR + '/vextab-min.js';
@@ -26,7 +27,9 @@ module.exports = function(grunt) {
       TEST_OUT = BUILD_DIR + "/vextab-tests.js",
 
       PLAYER_SOURCES = ["src/player.coffee"],
-      PLAYER_OUT = BUILD_DIR + "/vextab-player.js";
+      PLAYER_OUT = BUILD_DIR + "/vextab-player.js",
+
+      CSS = ["vextab.css"];
 
   var RELEASE_TARGETS = ["vextab-debug.js", "vextab-min.js", "vextab-min.js.map"];
 
@@ -93,6 +96,16 @@ module.exports = function(grunt) {
             src: RELEASE_TARGETS
           }
         ]
+      },
+      css: {
+        files: [
+          {
+            expand: true,
+            dest: RELEASE_DIR,
+            cwd: DOC_DIR,
+            src: CSS
+          }
+        ]
       }
     },
     gitcommit: {
@@ -151,6 +164,7 @@ module.exports = function(grunt) {
   // Release current build.
   grunt.registerTask('stage', 'Stage current binaries to releases/.', function() {
     grunt.task.run('default');
+    grunt.task.run('copy:css');
     grunt.task.run('copy:release');
   });
 
