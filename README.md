@@ -17,6 +17,14 @@ If you want to save and share your VexTab, try out [My Vexflow](http://my.vexflo
 
 VexTab 2.0 now supports all VexTab 1.0 features, and [includes a few new ones](http://my.vexflow.com/articles/53?source=enabled).
 
+## Quick Start
+
+If you have NodeJS and NPM installed:
+
+    $ npm install vextab
+
+VexTab can be found under `releases/vextab-min.js`. There are also unminified files, source maps, and a default stylesheet available there.
+
 ## Dependencies
 
 This rewrite of VexTab has three key dependencies:
@@ -29,14 +37,6 @@ For the audio player feature, you need:
 
   * [MIDI.js](https://github.com/mudcube/MIDI.js) - A soundfont renderer for the web.
   * Soundfonts for various instruments - See MIDI.js for more information.
-
-## Quick Start
-
-If you have NodeJS and NPM installed:
-
-    $ npm install vextab
-
-VexTab can be found under `releases/vextab-min.js`. There are also unminified files, source maps, and a default stylesheet available there.
 
 ## Build and Test (for VexTab developers)
 
