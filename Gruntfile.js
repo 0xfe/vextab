@@ -116,7 +116,7 @@ module.exports = function(grunt) {
         },
         files: [
           {
-            src: [RELEASE_DIR + "/*.js", RELEASE_DIR + "/*.map"],
+            src: [RELEASE_DIR + "/*.js", RELEASE_DIR + "/*.map", RELEASE_DIR + "/*.css"],
             expand: true
           }
         ]
@@ -169,7 +169,7 @@ module.exports = function(grunt) {
   });
 
   // Increment package version and publish to NPM.
-  grunt.registerTask('publish', 'Publish VexFlow NPM.', function() {
+  grunt.registerTask('publish', 'Publish VexTab NPM.', function() {
     grunt.task.run('bump');
     grunt.task.run('stage');
     grunt.task.run('test');
