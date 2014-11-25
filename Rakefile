@@ -12,7 +12,7 @@ DEPLOY_SSH_DIR = "#{DEPLOY_SSH_SERVER}:#{DEPLOY_DIR}"
 DEPLOY_VEXFLOW_DIR = "#{DEPLOY_SSH_SERVER}:/home/mohit/www/vexflow"
 
 def ssh(command)
-  sh "ssh #{DEPLOY_SSH_SERVER} 'source ~/.bash_profile; cd #{DEPLOY_DIR}; #{command}'"
+  `ssh #{DEPLOY_SSH_SERVER} 'source ~/.bash_profile; cd #{DEPLOY_DIR}; #{command}'`
 end
 
 COFFEE = "node_modules/.bin/coffee"
@@ -35,7 +35,7 @@ FileList['src/*.coffee'].each do |src|
   js_target = "build/output/#{File.basename(src, '.coffee')}.js"
 
   file js_target => [cs_source, 'build/output'] do
-    sh "#{COFFEE} -o build/output --compile #{cs_source}"
+    `#{COFFEE} -o build/output --compile #{cs_source}`
   end
 
   task :coffee => js_target
@@ -54,11 +54,11 @@ def copy_path(path_glob, dest_dir, name)
 end
 
 file 'build/output/vextab_parser.js' => ['src/vextab.jison', 'build/output'] do
-  sh "#{JISON} src/vextab.jison -o build/output/vextab_parser.js"
+  `#{JISON} src/vextab.jison -o build/output/vextab_parser.js`
 end
 
 file 'build/output/tabdiv2.js' => ['src/tabdiv2.js', 'build/output'] do
-  sh "cp src/tabdiv2.js build/output/tabdiv2.js"
+  `cp src/tabdiv2.js build/output/tabdiv2.js`
 end
 
 file 'build/tabdiv-min.js' => generated_sources do
@@ -80,8 +80,8 @@ file 'build/tabdiv-min.js' => generated_sources do
   min_file.close
 
   # Create a copy in support/
-  sh 'cp build/tabdiv-min.js build/support'
-  sh 'cp build/tabdiv-debug.js build/support'
+  `cp build/tabdiv-min.js build/support`
+  `cp build/tabdiv-debug.js build/support`
 end
 
 copy_path("src/*", "build/src", :build_copy)
@@ -89,22 +89,22 @@ copy_path("support/*", "build/support", :build_copy)
 copy_path("doc/*", "build/doc", :build_copy)
 
 task :clean do
-  sh 'rm -rf build'
+  `rm -rf build`
 end
 
 task :watch do
-  sh 'bundle exec guard -i'
+  `bundle exec guard -i`
 end
 
 task :make => [:build_copy, :coffee, 'build/tabdiv-min.js']
 
 task :deploy => :make do
-  sh "scp build/tabdiv-min.js #{DEPLOY_SSH_DIR}/support"
-  sh "scp build/tabdiv-debug.js #{DEPLOY_SSH_DIR}/support"
-  sh "scp -r support #{DEPLOY_SSH_DIR}"
-  sh "scp build/tabdiv-min.js #{DEPLOY_VEXFLOW_DIR}/support"
-  sh "scp build/tabdiv-debug.js #{DEPLOY_VEXFLOW_DIR}/support"
-  sh "scp doc/* #{DEPLOY_SSH_DIR}"
+  `scp build/tabdiv-min.js #{DEPLOY_SSH_DIR}/support`
+  `scp build/tabdiv-debug.js #{DEPLOY_SSH_DIR}/support`
+  `scp -r support #{DEPLOY_SSH_DIR}`
+  `scp build/tabdiv-min.js #{DEPLOY_VEXFLOW_DIR}/support`
+  `scp build/tabdiv-debug.js #{DEPLOY_VEXFLOW_DIR}/support`
+  `scp doc/* #{DEPLOY_SSH_DIR}`
 end
 
 task :default => [:make]
