@@ -81,7 +81,7 @@ module.exports = function(grunt) {
     },
     watch: {
       files: COFFEE_SOURCES + JISON_SOURCES + TEST_SOURCES,
-      tasks: ['concat', 'coffeelint']
+      tasks: ['default']
     },
     copy: {
       release: {
