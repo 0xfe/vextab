@@ -1,15 +1,29 @@
 {
   "name": "vextab",
   "version": "2.0.0",
-  "author": "Muthanna Cheppudira",
+  "author": {
+    "name": "Mohit Muthanna Cheppudira",
+    "email": "mohit@muthanna.com",
+    "url": "http://muthanna.com"
+  },
   "description": "A VexTab Parser for VexFlow",
   "repository": {
     "type": "git",
     "url": "https://github.com/0xfe/vextab.git"
   },
-  "licence": "MIT",
+  "license": "MIT",
   "devDependencies": {
     "coffee-script": "^1.8.0",
     "jison": "^0.4.15"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/0xfe/vexflow/issues"
+  },
+  "homepage": "http://vexflow.com",
+  "keywords": [
+    "music",
+    "notation",
+    "guitar",
+    "tablature"
+  ]
 }
