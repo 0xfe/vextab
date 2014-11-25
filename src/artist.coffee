@@ -957,9 +957,9 @@ class Vex.Flow.Artist
     tabstave_start_x = 40
 
     if opts.notation is "true"
-      note_stave = new Vex.Flow.Stave(start_x, @last_y, @customizations.width - 20).
-        addKeySignature(opts.key)
+      note_stave = new Vex.Flow.Stave(start_x, @last_y, @customizations.width - 20)
       note_stave.addClef(opts.clef) if opts.clef isnt "none"
+      note_stave.addKeySignature(opts.key)
       note_stave.addTimeSignature(opts.time) if opts.time?
       @last_y += note_stave.getHeight() +
                  @options.note_stave_lower_spacing +
