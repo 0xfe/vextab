@@ -39,6 +39,10 @@
   "bugs": {
     "url": "https://github.com/0xfe/vexflow/issues"
   },
+  "scripts": {
+    "start": "grunt stage",
+    "test": "grunt test"
+  },
   "homepage": "http://vexflow.com",
   "keywords": [
     "music",
