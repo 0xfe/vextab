@@ -1,8 +1,0 @@
-source "http://rubygems.org"
-gem "rb-fsevent"
-gem "guard"
-gem "guard-bundler"
-gem "guard-shell"
-gem "rake"
-gem "therubyracer"
-gem "uglifier"
