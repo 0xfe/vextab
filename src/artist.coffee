@@ -293,9 +293,9 @@ class Vex.Flow.Artist
     # Figure out if there's an octave shift based on what the Key
     # Manager just told us about the note.
     if new_root == "b" and old_root == "c"
-       new_octave--
+      new_octave--
     else if new_root == "c" and old_root == "b"
-       new_octave++
+      new_octave++
 
     return [new_note, new_octave, accidental]
 
@@ -314,11 +314,11 @@ class Vex.Flow.Artist
     _.extend(params, note_params)
     stave_notes = _.last(@staves).note_notes
     stave_note = new Vex.Flow.StaveNote({
-            keys: params.spec
-            duration: @current_duration + (if params.is_rest then "r" else "")
-            clef: if params.is_rest then "treble" else @current_clef
-            auto_stem: if params.is_rest then false else true
-          })
+      keys: params.spec
+      duration: @current_duration + (if params.is_rest then "r" else "")
+      clef: if params.is_rest then "treble" else @current_clef
+      auto_stem: if params.is_rest then false else true
+    })
     for acc, index in params.accidentals
       if acc?
         parts = acc.split("_")
@@ -527,12 +527,12 @@ class Vex.Flow.Artist
   makeScoreArticulation: (text) ->
     parts = getScoreArticulationParts(text)
     if parts?
-     type = parts[1]
-     position = parts[2]
+      type = parts[1]
+      position = parts[2]
 
-     POSTYPE = Vex.Flow.Modifier.Position
-     pos = if position is "t" then POSTYPE.ABOVE else POSTYPE.BELOW
-     return new Vex.Flow.Articulation(type).setPosition(pos)
+      POSTYPE = Vex.Flow.Modifier.Position
+      pos = if position is "t" then POSTYPE.ABOVE else POSTYPE.BELOW
+      return new Vex.Flow.Articulation(type).setPosition(pos)
     else return null
 
   makeAnnotation: (text) ->
@@ -626,9 +626,9 @@ class Vex.Flow.Artist
     L "addTabArticulations: ", type, first_note, last_note, first_indices, last_indices
 
     if type == "t"
-        last_note.addModifier(
-          new Vex.Flow.Annotation("T").
-            setVerticalJustification(Vex.Flow.Annotation.VerticalJustify.BOTTOM))
+      last_note.addModifier(
+        new Vex.Flow.Annotation("T").
+          setVerticalJustification(Vex.Flow.Annotation.VerticalJustify.BOTTOM))
 
     if _.isEmpty(first_indices) and _.isEmpty(last_indices) then return
 
@@ -777,11 +777,11 @@ class Vex.Flow.Artist
     tab_notes = _.last(@staves).tab_notes
     if @customizations["tab-stems"] == "true"
       tab_note = new Vex.Flow.StaveNote({
-            keys: [position || "r/4"]
-            duration: @current_duration + "r"
-            clef: "treble"
-            auto_stem: false
-          })
+        keys: [position || "r/4"]
+        duration: @current_duration + "r"
+        clef: "treble"
+        auto_stem: false
+      })
       if @current_duration[@current_duration.length - 1] == "d"
         tab_note.addDot(0)
       tab_notes.push tab_note

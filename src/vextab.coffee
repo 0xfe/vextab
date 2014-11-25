@@ -64,7 +64,7 @@ class Vex.Flow.VexTab
           throw error("Invalid option '#{option.key}'")
 
     if params.notation == "false" and params.tablature == "false"
-       throw newError(notation_option, "Both 'notation' and 'tablature' can't be invisible")
+      throw newError(notation_option, "Both 'notation' and 'tablature' can't be invisible")
 
     return params
 
