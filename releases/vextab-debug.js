@@ -1337,6 +1337,12 @@ return new Parser;
 
   })();
 
+}).call(this);
+
+(function() {
+  var __slice = [].slice,
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+
   Vex.Flow.Artist = (function() {
     var L, formatAndRender, getFingering, getScoreArticulationParts, getStrokeParts, makeBend, makeDuration, parseBool;
 
@@ -2694,8 +2700,6 @@ return new Parser;
   })();
 
 }).call(this);
-
-//# sourceMappingURL=vextab.js.map
 
 /**
  * VexFlow TabDiv

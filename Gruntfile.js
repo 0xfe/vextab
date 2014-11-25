@@ -44,9 +44,6 @@ module.exports = function(grunt) {
     },
     coffee: {
       compile: {
-        options: {
-          sourceMap: true
-        },
         files: [
           { src: COFFEE_SOURCES, dest: COFFEE_OUT },
           { src: PLAYER_SOURCES, dest: PLAYER_OUT },
