@@ -30,31 +30,35 @@ For the audio player feature, you need:
   * [MIDI.js](https://github.com/mudcube/MIDI.js) - A soundfont renderer for the web.
   * Soundfonts for various instruments - See MIDI.js for more information.
 
-## Prerequisites (for VexTab developers)
+## Quick Start
 
-First install Node:
+If you have NodeJS and NPM installed:
+
+    $ npm install vextab
+
+VexTab can be found under `releases/vextab-min.js`. There are also unminified files, source maps, and a default stylesheet available there.
+
+## Build and Test (for VexTab developers)
+
+First install Node and NPM.
 
     $ brew install node (on OSX)
     $ sudo apt-get install node (on Linux)
 
-Then install the depdencies managed in the `package.json`:
+Then install the dependencies, build VexTab, and test with:
 
     $ npm install
+    $ npm start
+    $ npm test
 
-Next, install Ruby and the `bundler` gem. Then install all the dependencies
-by typing:
+Note that some of the tests require visual inspection, so be sure to pull up `tests/runtest.html` in your browser and verify that things are rendering correctly.
 
-    $ bundle install
+If you have `grunt-cli` installed, you can manually run the various build steps:
+
+    $ npm install -g grunt-cli
+    $ grunt (coffee|jison|stage|test|coffeelint|watch)
 
 Quesions? Ask the [VexFlow Google Group](https://groups.google.com/forum/?fromgroups#!forum/vexflow).
-
-## Build and Test
-
-Run `rake` and pull up `build/src/runtest.html` in your browser.
-
-If you want to auto-build on changes to source files type:
-
-    $ rake watch
 
 ## License
 
