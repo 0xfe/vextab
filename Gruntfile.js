@@ -21,7 +21,9 @@ module.exports = function(grunt) {
 
       JISON_SOURCES = ["src/vextab.jison"],
       JISON_OUT = BUILD_DIR + "/vextab-jison.js",
-      JS_SOURCES = [JISON_OUT, COFFEE_OUT, "src/main.js"],
+      JS_SOURCES = ["src/main.js"],
+
+      BUILD_SOURCES = [JISON_OUT, COFFEE_OUT, JS_SOURCES],
 
       TEST_SOURCES = ["tests/*.coffee"],
       TEST_OUT = BUILD_DIR + "/vextab-tests.js",
@@ -62,7 +64,7 @@ module.exports = function(grunt) {
         banner: BANNER
       },
       build: {
-        src: JS_SOURCES,
+        src: BUILD_SOURCES,
         dest: TARGET_RAW
       }
     },
@@ -80,8 +82,13 @@ module.exports = function(grunt) {
       files: ['tests/runtest.html']
     },
     watch: {
-      files: COFFEE_SOURCES + JISON_SOURCES + TEST_SOURCES,
-      tasks: ['default']
+      scripts: {
+        files: COFFEE_SOURCES + JS_SOURCES + JISON_SOURCES + TEST_SOURCES,
+        tasks: ['default'],
+        options: {
+          interrupt: true
+        }
+      }
     },
     copy: {
       release: {
