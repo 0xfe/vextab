@@ -14,16 +14,11 @@ module.exports = function(grunt) {
       DOC_DIR = "doc",
       RELEASE_DIR = 'releases';
 
-  var VEXTAB_SRC = ["src/main.coffee"],
-      VEXTAB_OUT = BUILD_DIR + "/vextab-lib.js",
-
-      JISON_SRC = ["src/vextab.jison"],
+  var JISON_SRC = ["src/vextab.jison"],
       JISON_OUT = BUILD_DIR + "/vextab-jison.js",
 
       TABDIV_SRC = ["src/tabdiv.js"],
       TABDIV_OUT = "build/vextab-div.js",
-
-      BUILD_SOURCES = [JISON_OUT, VEXTAB_OUT, TABDIV_SRC],
 
       TEST_SRC = ["tests/vextab_tests.coffee"],
       TEST_OUT = BUILD_DIR + "/vextab-tests.js",
@@ -33,23 +28,24 @@ module.exports = function(grunt) {
 
       CSS = ["vextab.css"];
 
-  var RELEASE_TARGETS = ["vextab-lib.js", "vextab-div.js"];
+  var RELEASE_TARGETS = ["vextab-div.js"];
 
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
+    coffeelint: {
+      files: ['src/*.coffee'],
+      options: {
+        no_trailing_whitespace: { level: 'error' },
+        max_line_length: { level: 'ignore' }
+      }
+    },
+    jison: {
+      compile: {
+        options: { moduleType: "commonjs" },
+        files: [{src: JISON_SRC, dest: JISON_OUT}]
+      }
+    },
     browserify: {
-      lib: {
-        options: {
-          transform: ['coffeeify'],
-          browserifyOptions: {
-            debug: true,
-            standalone: "Vex.Flow"
-          }
-        },
-        files: [
-          { src: VEXTAB_SRC, dest: VEXTAB_OUT }
-        ]
-      },
       tests: {
         options: {
           transform: ['coffeeify'],
@@ -75,32 +71,12 @@ module.exports = function(grunt) {
         ]
       }
     },
-    coffeelint: {
-      files: ['src/*.coffee'],
-      options: {
-        no_trailing_whitespace: { level: 'error' },
-        max_line_length: { level: 'ignore' }
-      }
-    },
-    coffee: {
-      compile: {
-        files: [
-          { src: PLAYER_SOURCES, dest: PLAYER_OUT }
-        ]
-      }
-    },
-    jison: {
-      compile: {
-        options: { moduleType: "commonjs" },
-        files: [{src: JISON_SRC, dest: JISON_OUT}]
-      }
-    },
     qunit: {
       files: ['tests/runtest.html']
     },
     watch: {
       scripts: {
-        files: TABDIV_SRC + JISON_SRC,
+        files: ['src/*', 'tests/*'],
         tasks: ['default'],
         options: {
           interrupt: true
@@ -161,7 +137,6 @@ module.exports = function(grunt) {
     clean: [BUILD_DIR, RELEASE_DIR],
   });
 
-  // Load the plugin that provides the "uglify" task.
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-contrib-qunit');
   grunt.loadNpmTasks('grunt-contrib-copy');
@@ -175,11 +150,10 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-browserify');
 
   // Default task(s).
-  grunt.registerTask('default', ['coffeelint', 'build']);
+  grunt.registerTask('default', ['coffeelint', 'build', 'test']);
 
   grunt.registerTask('build', 'Build library.', function() {
     grunt.task.run('jison');
-    grunt.task.run('browserify:lib');
     grunt.task.run('browserify:tabdiv');
     grunt.task.run('browserify:tests');
   });
