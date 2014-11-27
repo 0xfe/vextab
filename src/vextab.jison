@@ -6,7 +6,7 @@
 */
 
 %{
-  Vex.L("Starting parser.");
+  var _ = require("underscore");
 %}
 
 %lex

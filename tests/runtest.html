@@ -57,28 +57,13 @@
 
   </style>
 
-  <!-- Support Sources -->
-  <script src="../support/vexflow-min.js"></script>
-  <script src="../support/jquery.js"></script>
-  <script src="../support/underscore-min.js"></script>
-
   <!-- VexTab Generated JS -->
-  <script src="../build/vextab-debug.js"></script>
 
   <!-- Test Sources -->
   <link rel="stylesheet" href="../support/qunit.css"
     type="text/css" media="screen" />
-  <script src="../support/qunit.js"></script>
-  <script src="../support/raphael.js"></script>
+  <script src="../build/vextab-lib.js"></script>
   <script src="../build/vextab-tests.js"></script>
-
-  <script>
-    $(function() {
-      Vex.Flow.Artist.DEBUG = false;
-      Vex.Flow.VexTab.DEBUG = false;
-      Vex.Flow.Test.VexTab.Start();
-    });
-  </script>
 </head>
 
 <body>
@@ -93,6 +78,11 @@
     <p/>
     <a href="http://0xfe.blogspot.com">The Blog</a> </p>
   </center>
-</body>
 
+   <script>
+      Vex.Flow.Artist.DEBUG = false;
+      Vex.Flow.VexTab.DEBUG = false;
+      VexTabTests.Start();
+  </script>
+</body>
 </html>

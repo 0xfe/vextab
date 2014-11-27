@@ -3,6 +3,11 @@
  * Copyright Mohit Muthanna 2010 <mohit@muthanna.com>
  */
 
+$ = require('jquery')
+Vex = require('vexflow')
+Artist = require('./artist.coffee')
+VexTab = require('./vextab.coffee')
+
 Vex.Flow.TabDiv = function(sel, options) {
   if (arguments.length > 0) this.init(sel, options);
 }
@@ -80,8 +85,8 @@ Vex.Flow.TabDiv.prototype.init = function(sel, options) {
   }
 
   // Initialize parser.
-  this.artist = new Vex.Flow.Artist(10, 0, this.width, {scale: this.scale});
-  this.parser = new Vex.Flow.VexTab(this.artist);
+  this.artist = new Artist(10, 0, this.width, {scale: this.scale});
+  this.parser = new VexTab(this.artist);
 
   if (Vex.Flow.Player) {
     opts = {};
@@ -142,3 +147,9 @@ Vex.Flow.TabDiv.start = function() {
 }
 
 $(function() {if (Vex.Flow.TabDiv.SEL) { Vex.Flow.TabDiv.start() }});
+
+module.exports = {
+  TabDiv: Vex.Flow.TabDiv,
+  VexTab: VexTab,
+  Artist: Artist
+}

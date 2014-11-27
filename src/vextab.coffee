@@ -6,9 +6,13 @@
 # Vex.Flow.Artist to render the notation.
 # parsed by Vex.Flow.VexTab.
 
-class Vex.Flow.VexTab
+Vex = require 'vexflow'
+_ = require 'underscore'
+parser = require '../build/vextab-jison.js'
+
+class VexTab
   @DEBUG = false
-  L = (args...) -> console?.log("(Vex.Flow.VexTab)", args...) if Vex.Flow.VexTab.DEBUG
+  L = (args...) -> console?.log("(Vex.Flow.VexTab)", args...) if VexTab.DEBUG
 
   # Private methods
   newError = (object, msg) ->
@@ -203,3 +207,5 @@ class Vex.Flow.VexTab
       @valid = true
 
     return @elements
+
+module.exports = VexTab

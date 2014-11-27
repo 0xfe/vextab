@@ -16,16 +16,18 @@ module.exports = function(grunt) {
       TARGET_RAW = BUILD_DIR + '/vextab-debug.js',
       TARGET_MIN = BUILD_DIR + '/vextab-min.js';
 
-  var COFFEE_SOURCES = ["src/vextab.coffee", "src/artist.coffee"],
-      COFFEE_OUT = BUILD_DIR + "/vextab.js",
+  var VEXTAB_SRC = ["src/main.coffee"],
+      VEXTAB_OUT = BUILD_DIR + "/vextab-lib.js",
 
-      JISON_SOURCES = ["src/vextab.jison"],
+      JISON_SRC = ["src/vextab.jison"],
       JISON_OUT = BUILD_DIR + "/vextab-jison.js",
-      JS_SOURCES = ["src/main.js"],
 
-      BUILD_SOURCES = [JISON_OUT, COFFEE_OUT, JS_SOURCES],
+      TABDIV_SRC = ["src/tabdiv.js"],
+      TABDIV_OUT = "build/vextab-div.js",
 
-      TEST_SOURCES = ["tests/*.coffee"],
+      BUILD_SOURCES = [JISON_OUT, VEXTAB_OUT, TABDIV_SRC],
+
+      TEST_SRC = ["tests/vextab_tests.coffee"],
       TEST_OUT = BUILD_DIR + "/vextab-tests.js",
 
       PLAYER_SOURCES = ["src/player.coffee"],
@@ -33,12 +35,50 @@ module.exports = function(grunt) {
 
       CSS = ["vextab.css"];
 
-  var RELEASE_TARGETS = ["vextab-debug.js", "vextab-min.js", "vextab-min.js.map"];
+  var RELEASE_TARGETS = ["vextab-lib.js", "vextab-div.js", "vextab-div.js.map"];
 
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
+    browserify: {
+      lib: {
+        options: {
+          transform: ['coffeeify'],
+          browserifyOptions: {
+            debug: true,
+            standalone: "Vex.Flow"
+          }
+        },
+        files: [
+          { src: VEXTAB_SRC, dest: VEXTAB_OUT }
+        ]
+      },
+      tests: {
+        options: {
+          transform: ['coffeeify'],
+          browserifyOptions: {
+            debug: true,
+            standalone: "VexTabTests"
+          }
+        },
+        files: [
+          { src: TEST_SRC, dest: TEST_OUT }
+        ]
+      },
+      tabdiv: {
+        options: {
+          transform: ['coffeeify'],
+          browserifyOptions: {
+            debug: true,
+            standalone: "Vex.Flow"
+          }
+        },
+        files: [
+          { src: TABDIV_SRC, dest: TABDIV_OUT }
+        ]
+      }
+    },
     coffeelint: {
-      files: COFFEE_SOURCES,
+      files: ['src/*.coffee'],
       options: {
         no_trailing_whitespace: { level: 'error' },
         max_line_length: { level: 'ignore' }
@@ -47,16 +87,14 @@ module.exports = function(grunt) {
     coffee: {
       compile: {
         files: [
-          { src: COFFEE_SOURCES, dest: COFFEE_OUT },
-          { src: PLAYER_SOURCES, dest: PLAYER_OUT },
-          { src: TEST_SOURCES, dest: TEST_OUT }
+          { src: PLAYER_SOURCES, dest: PLAYER_OUT }
         ]
       }
     },
     jison: {
       compile: {
-        options: { moduleType: "js" },
-        files: [{src: JISON_SOURCES, dest: JISON_OUT}]
+        options: { moduleType: "commonjs" },
+        files: [{src: JISON_SRC, dest: JISON_OUT}]
       }
     },
     concat: {
@@ -83,7 +121,7 @@ module.exports = function(grunt) {
     },
     watch: {
       scripts: {
-        files: COFFEE_SOURCES + JS_SOURCES + JISON_SOURCES + TEST_SOURCES,
+        files: TABDIV_SRC + JISON_SRC,
         tasks: ['default'],
         options: {
           interrupt: true
@@ -157,11 +195,19 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-git');
   grunt.loadNpmTasks('grunt-jison');
   grunt.loadNpmTasks('grunt-coffeelint');
+  grunt.loadNpmTasks('grunt-browserify');
 
   // Default task(s).
   grunt.registerTask('default', ['coffeelint', 'coffee', 'jison', 'concat', 'uglify']);
 
+  grunt.registerTask('build', 'Build library.', function() {
+    grunt.task.run('jison');
+    grunt.task.run('browserify:lib');
+    grunt.task.run('browserify:tabdiv');
+  });
+
   grunt.registerTask('test', 'Run qunit tests.', function() {
+    grunt.task.run('browserify:tests');
     grunt.task.run('qunit');
   });
 

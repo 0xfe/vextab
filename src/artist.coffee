@@ -4,9 +4,13 @@
 # This class is responsible for rendering the elements
 # parsed by Vex.Flow.VexTab.
 
-class Vex.Flow.Artist
+
+Vex = require 'vexflow'
+_ = require 'underscore'
+
+class Artist
   @DEBUG = false
-  L = (args...) -> console?.log("(Vex.Flow.Artist)", args...) if Vex.Flow.Artist.DEBUG
+  L = (args...) -> console?.log("(Vex.Flow.Artist)", args...) if Artist.DEBUG
 
   @NOLOGO = false
 
@@ -15,7 +19,7 @@ class Vex.Flow.Artist
       font_face: "Arial"
       font_size: 10
       font_style: null
-      bottom_spacing: 20 + (if Vex.Flow.Artist.NOLOGO then 0 else 10)
+      bottom_spacing: 20 + (if Artist.NOLOGO then 0 else 10)
       tab_stave_lower_spacing: 10
       note_stave_lower_spacing: 0
       scale: 1.0
@@ -247,7 +251,7 @@ class Vex.Flow.Artist
         @player.removeControls()
     @rendered = true
 
-    unless Vex.Flow.Artist.NOLOGO
+    unless Artist.NOLOGO
       LOGO = "vexflow.com"
       width = ctx.measureText(LOGO).width
       ctx.save()
@@ -1002,3 +1006,5 @@ class Vex.Flow.Artist
         L "Octave shift: ", @current_octave_shift
       else
         throw new Vex.RERR("ArtistError", "Invalid command '#{words[0]}' at line #{_l} column #{_c}")
+
+module.exports = Artist

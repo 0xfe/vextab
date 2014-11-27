@@ -3,11 +3,22 @@ VexTab Tests
 Copyright Mohit Cheppudira 2010 <mohit@muthanna.com>
 ###
 
-Vex.Flow.Test ?= {}
+VexTab = require "../src/vextab.coffee"
+Artist = require "../src/artist.coffee"
+Vex = require "vexflow"
+$ = require "jquery"
+qunit = require "qunitjs"
 
-class Vex.Flow.Test.VexTab
+test = qunit.test
+equal = qunit.equal
+ok = qunit.ok
+expect = qunit.expect
+
+console.log qunit
+
+class VexTabTests
   @Start: ->
-    module "VexTab Parser"
+    # Qunit.module "VexTab Parser"
     test "Basic Test", @basic
     test "Complex Test", @complex
     test "Stave Options Test", @staveOptionsTest
@@ -64,7 +75,7 @@ class Vex.Flow.Test.VexTab
     # equal(error.code, error_type, error.message)
     equal(true, caught)
 
-  makeParser = -> new Vex.Flow.VexTab(new Vex.Flow.Artist(0, 0, 600, {scale: 0.8}))
+  makeParser = -> new VexTab(new Artist(0, 0, 600, {scale: 0.8}))
   makeRenderer = (test_name)->
     test_div = $('<div></div>').addClass("testcanvas")
     test_div.append($('<div></div>').addClass("name").text(test_name))
@@ -612,3 +623,4 @@ class Vex.Flow.Test.VexTab
     """
     renderTest "Fret Hand Fingering and String Numbers", code
 
+module.exports = VexTabTests
