@@ -12,9 +12,7 @@ module.exports = function(grunt) {
 
   var BUILD_DIR = 'build',
       DOC_DIR = "doc",
-      RELEASE_DIR = 'releases',
-      TARGET_RAW = BUILD_DIR + '/vextab-debug.js',
-      TARGET_MIN = BUILD_DIR + '/vextab-min.js';
+      RELEASE_DIR = 'releases';
 
   var VEXTAB_SRC = ["src/main.coffee"],
       VEXTAB_OUT = BUILD_DIR + "/vextab-lib.js",
@@ -35,7 +33,7 @@ module.exports = function(grunt) {
 
       CSS = ["vextab.css"];
 
-  var RELEASE_TARGETS = ["vextab-lib.js", "vextab-div.js", "vextab-div.js.map"];
+  var RELEASE_TARGETS = ["vextab-lib.js", "vextab-div.js"];
 
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
@@ -66,9 +64,9 @@ module.exports = function(grunt) {
       },
       tabdiv: {
         options: {
+          banner: BANNER,
           transform: ['coffeeify'],
           browserifyOptions: {
-            debug: true,
             standalone: "Vex.Flow"
           }
         },
@@ -95,25 +93,6 @@ module.exports = function(grunt) {
       compile: {
         options: { moduleType: "commonjs" },
         files: [{src: JISON_SRC, dest: JISON_OUT}]
-      }
-    },
-    concat: {
-      options: {
-        banner: BANNER
-      },
-      build: {
-        src: BUILD_SOURCES,
-        dest: TARGET_RAW
-      }
-    },
-    uglify: {
-      options: {
-        banner: BANNER,
-        sourceMap: true
-      },
-      build: {
-        src: TARGET_RAW,
-        dest: TARGET_MIN
       }
     },
     qunit: {
@@ -183,8 +162,6 @@ module.exports = function(grunt) {
   });
 
   // Load the plugin that provides the "uglify" task.
-  grunt.loadNpmTasks('grunt-contrib-concat');
-  grunt.loadNpmTasks('grunt-contrib-uglify');
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-contrib-qunit');
   grunt.loadNpmTasks('grunt-contrib-copy');
@@ -198,16 +175,16 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-browserify');
 
   // Default task(s).
-  grunt.registerTask('default', ['coffeelint', 'coffee', 'jison', 'concat', 'uglify']);
+  grunt.registerTask('default', ['coffeelint', 'build']);
 
   grunt.registerTask('build', 'Build library.', function() {
     grunt.task.run('jison');
     grunt.task.run('browserify:lib');
     grunt.task.run('browserify:tabdiv');
+    grunt.task.run('browserify:tests');
   });
 
   grunt.registerTask('test', 'Run qunit tests.', function() {
-    grunt.task.run('browserify:tests');
     grunt.task.run('qunit');
   });
 

@@ -3,9 +3,9 @@ VexTab Tests
 Copyright Mohit Cheppudira 2010 <mohit@muthanna.com>
 ###
 
+Vex = require "vexflow"
 VexTab = require "../src/vextab.coffee"
 Artist = require "../src/artist.coffee"
-Vex = require "vexflow"
 $ = require "jquery"
 qunit = require "qunitjs"
 
@@ -14,11 +14,12 @@ equal = qunit.equal
 ok = qunit.ok
 expect = qunit.expect
 
-console.log qunit
+Artist.DEBUG = false;
+VexTab.DEBUG = false;
 
 class VexTabTests
   @Start: ->
-    # Qunit.module "VexTab Parser"
+    qunit.module "VexTab Parser"
     test "Basic Test", @basic
     test "Complex Test", @complex
     test "Stave Options Test", @staveOptionsTest
