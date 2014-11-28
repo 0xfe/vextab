@@ -34,9 +34,24 @@ Simply include `releases/vextab-div.js` into your HTML document via a script tag
 
 VexTab defaults to HTML5 canvas; for SVG include RaphaelJS in a script tag _before_ `vextab-div.js`. See the `.html` files in `doc/` for examples of `vextab-div` in use.
 
+Some of the available `div` attributes are:
+
+* `editor`: `true`|`false` -- Enable/disable live editor. Default `false`.
+* `scale`: `0.5` -> `3.0` -- Scale factor for rendering. Default `1.0`.
+* `editor_width`, `editor_height`: pixels -- Dimensions of editor.
+
+You can use the CSS file in `releases/vextab.css` for basic styling of the interface.
+
+Note that the provided `vextab-div.js` bundle is unminified, and includes all necessary dependencies such as jQuery, Underscore, and VexFlow. You can get access to some of these classes, and the VexTab API (see below) via the `VexTabDiv` global.
+
+* `VexTabDiv.Div`: The TabDiv class used to implement the auto-render functionality for `div` elements.
+* `VexTabDiv.VexTab`: The parser. See API below.
+* `VexTabDiv.Artist`: The renderer. See API below.
+* `VexTabDiv.Flow`: The `Vex.Flow` namespace from the VexFlow library.
+
 ## VexTab API
 
-If you want to do more interesting things with VexTab, you can use the API directly. First install the NPM:
+If you want to do more interesting things with VexTab, you can use the API directly.
 
     $ npm install vextab
 
@@ -49,7 +64,7 @@ Basic usage:
     Artist = vextab.Artist;
     Renderer = vextab.Vex.Flow.Renderer;
 
-    // Create VexFlow Renderer from canvas element with id #boo
+    // Create VexFlow Renderer from canvas element with id #boo.
     renderer = new Renderer($('#boo')[0], Renderer.Backends.CANVAS);
 
     // Initialize VexTab artist and parser.
