@@ -167,7 +167,6 @@ module.exports = function(grunt) {
     grunt.task.run('jison');
     grunt.task.run('browserify:tabdiv');
     grunt.task.run('browserify:tests');
-    grunt.task.run('playground');
   });
 
   grunt.registerTask('lint', 'Run linter on all coffeescript code.', function() {
