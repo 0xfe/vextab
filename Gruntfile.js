@@ -161,13 +161,17 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-browserify');
 
   // Default task(s).
-  grunt.registerTask('default', ['coffeelint', 'build', 'test']);
+  grunt.registerTask('default', ['lint', 'build', 'test']);
 
   grunt.registerTask('build', 'Build library.', function() {
     grunt.task.run('jison');
     grunt.task.run('browserify:tabdiv');
     grunt.task.run('browserify:tests');
     grunt.task.run('playground');
+  });
+
+  grunt.registerTask('lint', 'Run linter on all coffeescript code.', function() {
+    grunt.task.run('coffeelint');
   });
 
   grunt.registerTask('test', 'Run qunit tests.', function() {

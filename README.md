@@ -74,16 +74,21 @@ See `tests/playground.js` for a working example of the VexTab API in use.
 
 ## Developers
 
-Clone this repository. Then run the following commands to setup a basic build:
+Clone this repository. Then run the following commands to setup a basic build and run tests:
 
     $ npm install
     $ npm link
     $ npm link vextab
-    $ grunt
+    $ npm start
+
+If you have the `grunt-cli` NPM package installed, you can manually run the various build steps:
+
+    $ npm install -g grunt-cli
+    $ grunt (lint|build|test|stage|publish)
 
 Before sending in a pull request, make sure that the tests pass a visual inspection. Open `tests/runtests.html` in your browser and verify that the notation examples at the bottom of the page render correctly. Also open `tests/playground.html` and verify that your new feature/bug fix, etc. works correctly.
 
-Also, don't forget to add new tests for whatever you're working on.
+Please add new tests for whatever you're working on. Don't send PRs without tests. Thanks!
 
 ## Dependencies
 
@@ -98,25 +103,7 @@ For the audio player feature, you need:
   * [MIDI.js](https://github.com/mudcube/MIDI.js) - A soundfont renderer for the web.
   * Soundfonts for various instruments - See MIDI.js for more information.
 
-## Build and Test (for VexTab developers)
-
-First install Node and NPM.
-
-    $ brew install node (on OSX)
-    $ sudo apt-get install node (on Linux)
-
-Then install the dependencies, build VexTab, and test with:
-
-    $ npm install
-    $ npm start
-    $ npm test
-
-Note that some of the tests require visual inspection, so be sure to pull up `tests/runtest.html` in your browser and verify that things are rendering correctly.
-
-If you have `grunt-cli` installed, you can manually run the various build steps:
-
-    $ npm install -g grunt-cli
-    $ grunt (coffee|jison|stage|test|coffeelint|watch)
+## Help
 
 Quesions? Ask the [VexFlow Google Group](https://groups.google.com/forum/?fromgroups#!forum/vexflow).
 
