@@ -52,7 +52,7 @@
     "start": "grunt stage",
     "test": "grunt test"
   },
-  "homepage": "http://vexflow.com",
+  "homepage": "http://www.vexflow.com/vextab/",
   "keywords": [
     "music",
     "notation",
