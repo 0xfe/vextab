@@ -21,10 +21,7 @@ module.exports = function(grunt) {
       TABDIV_OUT = "build/vextab-div.js",
 
       TEST_SRC = ["tests/vextab_tests.coffee"],
-      TEST_OUT = BUILD_DIR + "/vextab-tests.js",
-
-      PLAYER_SOURCES = ["src/player.coffee"],
-      PLAYER_OUT = BUILD_DIR + "/vextab-player.js",
+      TEST_OUT = BUILD_DIR + "/vextab-tests.js";
 
       CSS = ["vextab.css"];
 
