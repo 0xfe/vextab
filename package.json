@@ -14,12 +14,14 @@
   },
   "license": "Free for non-commercial use",
   "dependencies": {
+    "jquery": "^2.1.1",
     "underscore": "^1.7.0",
-    "vexflow": "^1.2.24",
-    "jquery": "^2.1.1"
+    "vexflow": "*"
   },
   "browserify": {
-    "transform": [ "coffeeify" ]
+    "transform": [
+      "coffeeify"
+    ]
   },
   "devDependencies": {
     "browserify": "^6.3.3",
