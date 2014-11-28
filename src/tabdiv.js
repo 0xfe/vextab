@@ -149,7 +149,8 @@ Vex.Flow.TabDiv.start = function() {
 $(function() {if (Vex.Flow.TabDiv.SEL) { Vex.Flow.TabDiv.start() }});
 
 module.exports = {
-  TabDiv: Vex.Flow.TabDiv,
+  Div: Vex.Flow.TabDiv,
   VexTab: VexTab,
-  Artist: Artist
+  Artist: Artist,
+  Flow: Vex.Flow
 }

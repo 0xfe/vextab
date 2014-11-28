@@ -48,7 +48,8 @@ module.exports = function(grunt) {
     browserify: {
       tests: {
         options: {
-          transform: ['coffeeify'],
+          // No need for this because of package.json "browserify" rule.
+          // transform: ['coffeeify'],
           browserifyOptions: {
             debug: true,
             standalone: "VexTabTests"
@@ -61,9 +62,8 @@ module.exports = function(grunt) {
       tabdiv: {
         options: {
           banner: BANNER,
-          transform: ['coffeeify'],
           browserifyOptions: {
-            standalone: "Vex.Flow"
+            standalone: "VexTabDiv"
           }
         },
         files: [
@@ -140,6 +140,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-contrib-qunit');
   grunt.loadNpmTasks('grunt-contrib-clean');
+  grunt.loadNpmTasks('grunt-contrib-copy');
   grunt.loadNpmTasks('grunt-release');
   grunt.loadNpmTasks('grunt-bump');
   grunt.loadNpmTasks('grunt-git');
