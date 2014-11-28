@@ -167,6 +167,7 @@ module.exports = function(grunt) {
     grunt.task.run('jison');
     grunt.task.run('browserify:tabdiv');
     grunt.task.run('browserify:tests');
+    grunt.task.run('playground');
   });
 
   grunt.registerTask('test', 'Run qunit tests.', function() {

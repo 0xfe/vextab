@@ -72,6 +72,19 @@ Basic usage:
 
 See `tests/playground.js` for a working example of the VexTab API in use.
 
+## Developers
+
+Clone this repository. Then run the following commands to setup a basic build:
+
+    $ npm install
+    $ npm link
+    $ npm link vextab
+    $ grunt
+
+Before sending in a pull request, make sure that the tests pass a visual inspection. Open `tests/runtests.html` in your browser and verify that the notation examples at the bottom of the page render correctly. Also open `tests/playground.html` and verify that your new feature/bug fix, etc. works correctly.
+
+Also, don't forget to add new tests for whatever you're working on.
+
 ## Dependencies
 
 This rewrite of VexTab has three key dependencies:
