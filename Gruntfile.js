@@ -69,7 +69,19 @@ module.exports = function(grunt) {
         files: [
           { src: TABDIV_SRC, dest: TABDIV_OUT }
         ]
-      }
+      },
+      playground: {
+        options: {
+          // No need for this because of package.json "browserify" rule.
+          // transform: ['coffeeify'],
+          browserifyOptions: {
+            debug: true
+          }
+        },
+        files: [
+          { src: "tests/playground.js", dest: "build/playground.js" }
+        ]
+      },
     },
     qunit: {
       files: ['tests/runtest.html']
@@ -159,6 +171,13 @@ module.exports = function(grunt) {
 
   grunt.registerTask('test', 'Run qunit tests.', function() {
     grunt.task.run('qunit');
+  });
+
+  grunt.registerTask('playground', 'Build playground.', function() {
+    // Make sure vextab is locally linked:
+    //   $ npm link
+    //   $ npm link vextab
+    grunt.task.run('browserify:playground');
   });
 
   // Release current build.

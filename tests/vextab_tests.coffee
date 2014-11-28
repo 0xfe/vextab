@@ -3,9 +3,12 @@ VexTab Tests
 Copyright Mohit Cheppudira 2010 <mohit@muthanna.com>
 ###
 
-Vex = require "vexflow"
-VexTab = require "../src/vextab.coffee"
-Artist = require "../src/artist.coffee"
+vextab = require "../src/main.coffee"
+
+Vex = vextab.Vex
+VexTab = vextab.VexTab
+Artist = vextab.Artist
+
 $ = require "jquery"
 qunit = require "qunitjs"
 

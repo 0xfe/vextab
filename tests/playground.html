@@ -30,39 +30,7 @@
   </style>
 
   <!-- Support Sources -->
-  <script src="../support/vexflow-debug.js"></script>
-  <script src="../support/underscore-min.js"></script>
-  <script src="../support/jquery.js"></script>
-  <script src="../build/vextab-debug.js"></script>
-
-  <script>
-    $(function() {
-      Vex.Flow.Artist.DEBUG = true;
-      Vex.Flow.VexTab.DEBUG = true;
-
-      renderer = new Vex.Flow.Renderer($('#boo')[0],
-        Vex.Flow.Renderer.Backends.CANVAS);
-
-      artist = new Vex.Flow.Artist(10, 10, 600, {scale: 0.8});
-      vextab = new Vex.Flow.VexTab(artist);
-
-      function render() {
-        try {
-          vextab.reset();
-          artist.reset();
-          vextab.parse($("#blah").val());
-          artist.render(renderer);
-          $("#error").text("");
-        } catch (e) {
-          console.log(e);
-          $("#error").html(e.message.replace(/[\n]/g, '<br/>'));
-        }
-      }
-
-      $("#blah").keyup(_.throttle(render, 250));
-      render();
-    })
-  </script>
+  <script src="../build/playground.js"></script>
 </head>
 
 <body>
