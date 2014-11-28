@@ -5,17 +5,13 @@ Copyright (c) 2012 Mohit Muthanna Cheppudira.
 
 ## What is VexTab?
 
-VexTab is a language that allows you to easily create, edit, and share music notation
-and guitar tablature. Unlike ASCII tab, which is designed for readability, VexTab is
-designed for writeability.
+VexTab is a language that allows you to easily create, edit, and share music notation and guitar tablature. Unlike ASCII tab, which is designed for readability, VexTab is designed for writeability.
 
 Go try it out at [The VexTab Tutorial](http://vexflow.com/vextab/tutorial.html).
 
 If you want to save and share your VexTab, try out [My Vexflow](http://my.vexflow.com).
 
-## Updates
-
-VexTab 2.0 now supports all VexTab 1.0 features, and [includes a few new ones](http://my.vexflow.com/articles/53?source=enabled).
+To see what VexTab can do, take a look at the [list of features](http://my.vexflow.com/articles/53?source=enabled).
 
 ## Quick Start
 
