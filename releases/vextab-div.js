@@ -1,5 +1,5 @@
 /**
- * VexTab 2.0.8 built on 2014-11-28.
+ * VexTab 2.0.9 built on 2014-11-28.
  * Copyright (c) 2010 Mohit Muthanna Cheppudira <mohit@muthanna.com>
  *
  * http://www.vexflow.com  http://github.com/0xfe/vextab
