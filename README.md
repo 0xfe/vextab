@@ -116,7 +116,7 @@ For the audio player feature, you need:
 
 ## Help
 
-Quesions? Ask the [VexFlow Google Group](https://groups.google.com/forum/?fromgroups#!forum/vexflow).
+Questions? Ask the [VexFlow Google Group](https://groups.google.com/forum/?fromgroups#!forum/vexflow).
 
 ## License
 
