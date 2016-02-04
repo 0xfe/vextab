@@ -1,0 +1,108 @@
+<html>
+
+<!--
+  Example of using VexTab without a dependency loader.
+-->
+<head>
+  <title>VexTab Playground</title>
+  <style type="text/css">
+    body {
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      color: #554;
+      margin: 0px;
+      height: 80%;
+    }
+
+    #error {
+      font-family: Courier;
+      color: red;
+      width: 600;
+    }
+
+    textarea#blah {
+      width: 500px;
+      height: 300px;
+      font-family: Courier;
+      font-size: 12px;
+      padding: 10px;
+      margin-top: 40px;
+      border: #eee solid 10px;
+    }
+  </style>
+
+  <!-- Support Sources -->
+  <script src="../build/vextab-div.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.2.1/lodash.js"></script>
+  <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+
+  <script>
+    // Load VexTab module.
+    vextab = VexTabDiv;
+
+    $(function() {
+      VexTab = vextab.VexTab;
+      Artist = vextab.Artist;
+      Renderer = Vex.Flow.Renderer;
+
+      Artist.DEBUG = true;
+      VexTab.DEBUG = false;
+
+      // Create VexFlow Renderer from canvas element with id #boo
+      renderer = new Renderer($('#boo')[0], Renderer.Backends.CANVAS);
+
+      // Initialize VexTab artist and parser.
+      artist = new Artist(10, 10, 600, {scale: 0.8});
+      vextab = new VexTab(artist);
+
+      function render() {
+        try {
+          vextab.reset();
+          artist.reset();
+          vextab.parse($("#blah").val());
+          artist.render(renderer);
+          $("#error").text("");
+        } catch (e) {
+          console.log(e);
+          $("#error").html(e.message.replace(/[\n]/g, '<br/>'));
+        }
+      }
+
+      $("#blah").keyup(_.throttle(render, 250));
+      render();
+    });
+  </script>
+</head>
+
+<body>
+  <h1>VexTab Playground</h1>
+
+  <div style="float:left;width:600;">
+    <canvas id="boo"></canvas>
+    <div id="error"></div>
+  </div>
+
+  <div style="float:left;">
+    <textarea id="blah">options space=20 tab-stems=true stave-distance=40 tab-stem-direction=down
+tabstave notation=true key=A time=4/4
+notes :q =|: (5/2.5/3.7/4) :8 7-5h6/3 ^3^ 5h6-7/5 ^3^ :q 7V/4 |
+notes :8 t12p7/4 s5s3/4 :8 3s:16:5-7/5 :h p5/4
+text :w, |#segno, ,|, :hd, , #tr
+
+
+options space=65
+tabstave notation=true
+notes :q (5/4.5/5) (7/4.7/5)s(5/4.5/5) ^3^
+notes :8 7-5/4 $.a./b.$ (5/4.5/5)h(7/5) =:|
+notes :8 (12/5.12/4)ds(5/5.5/4)u 3b4/5
+notes :h (5V/6.5/4.6/3.7/2) $.italic.let ring$ =|=
+text :h, ,.font=Times-12-italic, D.S. al coda, |#coda
+text :h, ,.-1, .font=Arial-14-bold,A13
+text ++, .30, #f
+
+options space=70</textarea>
+  </div>
+</body>
+
+</html>
