@@ -7,7 +7,7 @@
 # parsed by Vex.Flow.VexTab.
 
 Vex = require 'vexflow'
-_ = require 'underscore'
+_ = require 'lodash'
 parser = require '../build/vextab-jison.js'
 
 class VexTab

@@ -6,7 +6,7 @@
 
 
 Vex = require 'vexflow'
-_ = require 'underscore'
+_ = require 'lodash'
 
 class Artist
   @DEBUG = false

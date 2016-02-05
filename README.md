@@ -42,7 +42,7 @@ Some of the available `div` attributes are:
 
 You can use the CSS file in `releases/vextab.css` for basic styling of the interface.
 
-Note that the provided `vextab-div.js` bundle is unminified, and includes all necessary dependencies such as jQuery, Underscore, and VexFlow. You can get access to some of these classes, and the VexTab API (see below) via the `VexTabDiv` global.
+Note that the provided `vextab-div.js` bundle is unminified, and includes all necessary dependencies such as jQuery, lodash, and VexFlow. You can get access to some of these classes, and the VexTab API (see below) via the `VexTabDiv` global.
 
 * `VexTabDiv.Div`: The TabDiv class used to implement the auto-render functionality for `div` elements.
 * `VexTabDiv.VexTab`: The parser. See API below.
@@ -109,7 +109,7 @@ This rewrite of VexTab has three key dependencies:
 
   * [CoffeeScript](http://coffeescript.org/) - A *nicer* JavaScript.
   * [Jison](http://zaach.github.com/jison/) - An LALR(1) parser modeled on Bison.
-  * [Underscore.js](http://underscorejs.org/) - A utility-belt library for JavaScript.
+  * [lodash](http://lodash.com/) - A utility-belt library for JavaScript.
 
 For the audio player feature, you need:
 

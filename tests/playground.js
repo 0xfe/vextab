@@ -1,7 +1,7 @@
 // Load VexTab module.
 vextab = require("vextab");
 $ = require("jquery");
-_ = require("underscore");
+_ = require("lodash");
 
 $(function() {
   VexTab = vextab.VexTab;
