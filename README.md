@@ -17,20 +17,22 @@ To see what VexTab can do, take a look at the [list of features](http://my.vexfl
 
 Simply include `releases/vextab-div.js` into your HTML document via a script tag. The contents of all `div` elements with the class `vex-tabdiv` are parsed as VexTab and automatically rendered in-place as music notation.
 
-    <div class="vex-tabdiv"
-          width=680 scale=1.0 editor="true"
-          editor_width=680 editor_height=330>options space=20
-      tabstave
-        notation=true
-        key=A time=4/4
+```html
+<div class="vex-tabdiv"
+    width=680 scale=1.0 editor="true"
+    editor_width=680 editor_height=330>options space=20
+    tabstave
+    notation=true
+    key=A time=4/4
 
-        notes :q =|: (5/2.5/3.7/4) :8 7-5h6/3 ^3^ 5h6-7/5 ^3^ :q 7V/4 |
-        notes :8 t12p7/4 s5s3/4 :8 3s:16:5-7/5 :h p5/4
-        text :w, |#segno, ,|, :hd, , #tr
+    notes :q =|: (5/2.5/3.7/4) :8 7-5h6/3 ^3^ 5h6-7/5 ^3^ :q 7V/4 |
+    notes :8 t12p7/4 s5s3/4 :8 3s:16:5-7/5 :h p5/4
+    text :w, |#segno, ,|, :hd, , #tr
 
 
-      options space=25
-    </div>
+    options space=25
+</div>
+```
 
 VexTab defaults to HTML5 canvas; for SVG include RaphaelJS in a script tag _before_ `vextab-div.js`. See the `.html` files in `doc/` for examples of `vextab-div` in use.
 
@@ -53,33 +55,37 @@ Note that the provided `vextab-div.js` bundle is unminified, and includes all ne
 
 If you want to do more interesting things with VexTab, you can use the API directly.
 
-    $ npm install vextab
+```
+$ npm install vextab
+```
 
 Basic usage:
 
-    // Load VexTab module.
-    vextab = require("vextab");
+```js
+// Load VexTab module.
+vextab = require("vextab");
 
-    VexTab = vextab.VexTab;
-    Artist = vextab.Artist;
-    Renderer = vextab.Vex.Flow.Renderer;
+VexTab = vextab.VexTab;
+Artist = vextab.Artist;
+Renderer = vextab.Vex.Flow.Renderer;
 
-    // Create VexFlow Renderer from canvas element with id #boo.
-    renderer = new Renderer($('#boo')[0], Renderer.Backends.CANVAS);
+// Create VexFlow Renderer from canvas element with id #boo.
+renderer = new Renderer($('#boo')[0], Renderer.Backends.CANVAS);
 
-    // Initialize VexTab artist and parser.
-    artist = new Artist(10, 10, 600, {scale: 0.8});
-    vextab = new VexTab(artist);
+// Initialize VexTab artist and parser.
+artist = new Artist(10, 10, 600, {scale: 0.8});
+vextab = new VexTab(artist);
 
-    try {
-      // Parse VexTab music notation passed in as a string.
-      vextab.parse("tabstave notation=true\n notes :q 4/4\n")
+try {
+    // Parse VexTab music notation passed in as a string.
+    vextab.parse("tabstave notation=true\n notes :q 4/4\n")
 
-      // Render notation onto canvas.
-      artist.render(renderer);
-    } catch (e) {
-      console.log(e);
-    }
+    // Render notation onto canvas.
+    artist.render(renderer);
+} catch (e) {
+    console.log(e);
+}
+```
 
 See `tests/playground.js` for a working example of the VexTab API in use.
 
@@ -89,15 +95,19 @@ You can also also use the API in standalone mode, i.e., without a loader, by inc
 
 Clone this repository. Then run the following commands to setup a basic build and run tests:
 
-    $ npm install
-    $ npm link
-    $ npm link vextab
-    $ npm start
+```
+$ npm install
+$ npm link
+$ npm link vextab
+$ npm start
+```
 
 If you have the `grunt-cli` NPM package installed, you can manually run the various build steps:
 
-    $ npm install -g grunt-cli
-    $ grunt (lint|build|test|stage|publish)
+```
+$ npm install -g grunt-cli
+$ grunt (lint|build|test|stage|publish)
+```
 
 Before sending in a pull request, make sure that the tests pass a visual inspection. Open `tests/runtests.html` in your browser and verify that the notation examples at the bottom of the page render correctly. Also open `tests/playground.html` and verify that your new feature/bug fix, etc. works correctly.
 
