@@ -83,6 +83,8 @@ Basic usage:
 
 See `tests/playground.js` for a working example of the VexTab API in use.
 
+You can also also use the API in standalone mode, i.e., without a loader, by including `releases/vextab-div.js` in a `script` tag. See `tests/vextab-standalone.js` for an example of this.
+
 ## Developers
 
 Clone this repository. Then run the following commands to setup a basic build and run tests:
