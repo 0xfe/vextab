@@ -50,7 +50,7 @@ class Artist
       "beam-rests": "true"
       "beam-stemlets": "true"
       "beam-middle-only": "false"
-      "connector-space": 0
+      "connector-space": 5
 
     # Generated elements
     @staves = []
@@ -191,7 +191,9 @@ class Artist
       _.each(text_voices, (voice) -> voice.draw(ctx, text_stave)) if not _.isEmpty(text_notes)
 
       if tab? and score?
-        (new Vex.Flow.StaveConnector(score.stave, tab.stave)).setContext(ctx).draw()
+        (new Vex.Flow.StaveConnector(score.stave, tab.stave))
+          .setType(Vex.Flow.StaveConnector.type.BRACKET)
+          .setContext(ctx).draw()
 
       if score? then score_voices else tab_voices
 
@@ -961,7 +963,8 @@ class Artist
     tabstave_start_x = 40
 
     if opts.notation is "true"
-      note_stave = new Vex.Flow.Stave(start_x, @last_y, @customizations.width - 20)
+      note_stave = new Vex.Flow.Stave(start_x, @last_y, @customizations.width - 20,
+        {left_bar: false})
       note_stave.addClef(opts.clef) if opts.clef isnt "none"
       note_stave.addKeySignature(opts.key)
       note_stave.addTimeSignature(opts.time) if opts.time?
@@ -973,8 +976,8 @@ class Artist
       @current_clef = if opts.clef is "none" then "treble" else opts.clef
 
     if opts.tablature is "true"
-      tab_stave = new Vex.Flow.TabStave(start_x, @last_y, @customizations.width - 20)
-        .setNumLines(opts.strings)
+      tab_stave = new Vex.Flow.TabStave(start_x, @last_y, @customizations.width - 20,
+        {left_bar: false}).setNumLines(opts.strings)
       tab_stave.addTabGlyph() if opts.clef isnt "none"
       tab_stave.setNoteStartX(tabstave_start_x)
       @last_y += tab_stave.getHeight() + @options.tab_stave_lower_spacing
