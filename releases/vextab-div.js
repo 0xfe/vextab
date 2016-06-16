@@ -45605,7 +45605,7 @@ VexTab = (function() {
           break;
         case "strings":
           num_strings = parseInt(option.value);
-          if (num_strings < 4 || num_strings > 8) {
+          if (num_strings < 3 || num_strings > 10) {
             throw error("Invalid number of strings: " + num_strings);
           }
           break;
