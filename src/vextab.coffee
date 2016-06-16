@@ -63,7 +63,7 @@ class VexTab
             throw error("Invalid tuning: '#{option.value}'")
         when "strings"
           num_strings = parseInt(option.value)
-          throw error("Invalid number of strings: #{num_strings}") if (num_strings < 4 or num_strings > 8)
+          throw error("Invalid number of strings: #{num_strings}") if (num_strings < 3 or num_strings > 10)
         else
           throw error("Invalid option '#{option.key}'")
 
