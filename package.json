@@ -12,7 +12,7 @@
     "type": "git",
     "url": "https://github.com/0xfe/vextab.git"
   },
-  "license": "Free for non-commercial use",
+  "license": "LicenseRef-LICENSE",
   "dependencies": {
     "coffeeify": "^1.0.0",
     "jquery": "^2.1.1",
@@ -36,13 +36,13 @@
     "grunt-coffeelint": "0.0.13",
     "grunt-contrib-clean": "^0.6.0",
     "grunt-contrib-copy": "^0.7.0",
-    "grunt-contrib-qunit": "^0.5.2",
+    "grunt-contrib-qunit": "^1.2.0",
     "grunt-contrib-watch": "^0.6.1",
     "grunt-git": "^0.3.2",
     "grunt-jison": "^1.3.2",
     "grunt-release": "^0.7.0",
     "jison": "^0.4.15",
-    "qunitjs": "^1.15.0"
+    "qunit": "^0.9.1"
   },
   "bugs": {
     "url": "https://github.com/0xfe/vexflow/issues"
