@@ -1,5 +1,5 @@
 /**
- * VexTab 2.0.12 built on 2016-07-10.
+ * VexTab 2.0.13 built on 2016-07-10.
  * Copyright (c) 2010 Mohit Muthanna Cheppudira <mohit@muthanna.com>
  *
  * http://www.vexflow.com  http://github.com/0xfe/vextab
@@ -27875,7 +27875,7 @@ process.umask = function() { return 0; };
 
 },{}],7:[function(require,module,exports){
 /**
- * VexFlow 1.2.61 built on 2016-07-10.
+ * VexFlow 1.2.62 built on 2016-07-10.
  * Copyright (c) 2010 Mohit Muthanna Cheppudira <mohit@muthanna.com>
  *
  * http://www.vexflow.com  http://github.com/0xfe/vexflow
@@ -31205,7 +31205,6 @@ process.umask = function() { return 0; };
 
     }, {
       key: 'USE_CANVAS_PROXY',
-      // Downward leg
       get: function get() {
         return false;
       }
@@ -32417,8 +32416,8 @@ process.umask = function() { return 0; };
           // eslint-disable-line no-console
           console.warn(msg); // eslint-disable-line no-console
         } else if (console) {
-            console.log(msg); // eslint-disable-line no-console
-          }
+          console.log(msg); // eslint-disable-line no-console
+        }
       }
     }, {
       key: 'getBeatsOccupied',
@@ -32878,8 +32877,8 @@ process.umask = function() { return 0; };
           noteGroups.forEach(function (group) {
             var stemDirection = void 0;
             if (config.maintain_stem_directions) {
-              var note = findFirstNote(group);
-              stemDirection = note ? note.getStemDirection() : Stem.UP;
+              var _note = findFirstNote(group);
+              stemDirection = _note ? _note.getStemDirection() : Stem.UP;
             } else {
               if (config.stem_direction) {
                 stemDirection = config.stem_direction;
@@ -32892,10 +32891,10 @@ process.umask = function() { return 0; };
         }
 
         function findFirstNote(group) {
-          for (var i = 0; i < group.length; i++) {
-            var note = group[i];
-            if (!note.isRest()) {
-              return note;
+          for (var _i = 0; _i < group.length; _i++) {
+            var _note2 = group[_i];
+            if (!_note2.isRest()) {
+              return _note2;
             }
           }
 
@@ -32951,9 +32950,9 @@ process.umask = function() { return 0; };
         // Reformat tuplets
         tupletGroups.forEach(function (group) {
           var firstNote = group[0];
-          for (var i = 0; i < group.length; ++i) {
-            if (group[i].hasStem()) {
-              firstNote = group[i];
+          for (var _i2 = 0; _i2 < group.length; ++_i2) {
+            if (group[_i2].hasStem()) {
+              firstNote = group[_i2];
               break;
             }
           }
@@ -33112,18 +33111,18 @@ process.umask = function() { return 0; };
           var y_shift_tmp = 0;
 
           // iterate through notes, calculating y shift and stem extension
-          for (var i = 1; i < this.notes.length; ++i) {
-            var note = this.notes[i];
+          for (var _i3 = 1; _i3 < this.notes.length; ++_i3) {
+            var _note3 = this.notes[_i3];
 
-            var x_px = note.getStemX();
-            var y_px = note.getStemExtents().topY;
+            var x_px = _note3.getStemX();
+            var y_px = _note3.getStemExtents().topY;
             var slope_y_px = this.getSlopeY(x_px, first_x_px, first_y_px, slope) + y_shift_tmp;
 
             // beam needs to be shifted up to accommodate note
             if (y_px * this.stem_direction < slope_y_px * this.stem_direction) {
               var diff = Math.abs(y_px - slope_y_px);
               y_shift_tmp += diff * -this.stem_direction;
-              total_stem_extension += diff * i;
+              total_stem_extension += diff * _i3;
             } else {
               // beam overshoots note, account for the difference
               total_stem_extension += (y_px - slope_y_px) * this.stem_direction;
@@ -33164,22 +33163,22 @@ process.umask = function() { return 0; };
         var extreme_y = 0; // Store the highest or lowest note here
         var extreme_beam_count = 0; // The beam count of the extreme note
         var current_extreme = 0;
-        for (var i = 0; i < this.notes.length; i++) {
+        for (var _i4 = 0; _i4 < this.notes.length; _i4++) {
           // Total up all of the offsets so we can average them out later
-          var note = this.notes[i];
-          var top_y = note.getStemExtents().topY;
+          var _note4 = this.notes[_i4];
+          var top_y = _note4.getStemExtents().topY;
           total += top_y;
 
           // Store the highest (stems-up) or lowest (stems-down) note so the
           //  offset can be adjusted in case the average isn't enough
           if (this.stem_direction === Stem.DOWN && current_extreme < top_y) {
             current_extreme = top_y;
-            extreme_y = note.getNoteHeadBounds().y_bottom;
-            extreme_beam_count = note.getBeamCount();
+            extreme_y = _note4.getNoteHeadBounds().y_bottom;
+            extreme_beam_count = _note4.getBeamCount();
           } else if (this.stem_direction === Stem.UP && (current_extreme === 0 || current_extreme > top_y)) {
             current_extreme = top_y;
-            extreme_y = note.getNoteHeadBounds().y_top;
-            extreme_beam_count = note.getBeamCount();
+            extreme_y = _note4.getNoteHeadBounds().y_top;
+            extreme_beam_count = _note4.getBeamCount();
           }
         }
 
@@ -33229,11 +33228,11 @@ process.umask = function() { return 0; };
         }
         var first_x_px = first_note.getStemX();
 
-        for (var i = 0; i < this.notes.length; ++i) {
-          var note = this.notes[i];
+        for (var _i5 = 0; _i5 < this.notes.length; ++_i5) {
+          var _note5 = this.notes[_i5];
 
-          var x_px = note.getStemX();
-          var y_extents = note.getStemExtents();
+          var x_px = _note5.getStemX();
+          var y_extents = _note5.getStemExtents();
           var base_y_px = y_extents.baseY;
           var top_y_px = y_extents.topY;
 
@@ -33244,14 +33243,14 @@ process.umask = function() { return 0; };
           }
 
           // For harmonic note heads, shorten stem length by 3 pixels
-          base_y_px += this.stem_direction * note.glyph.stem_offset;
+          base_y_px += this.stem_direction * _note5.glyph.stem_offset;
 
           // Don't go all the way to the top (for thicker stems)
           var y_displacement = Flow.STEM_WIDTH;
 
-          if (!note.hasStem()) {
-            if (note.isRest() && this.render_options.show_stemlets) {
-              var centerGlyphX = note.getCenterGlyphX();
+          if (!_note5.hasStem()) {
+            if (_note5.isRest() && this.render_options.show_stemlets) {
+              var centerGlyphX = _note5.getCenterGlyphX();
 
               var width = this.render_options.beam_width;
               var total_width = (this.beam_count - 1) * width * 1.5 + width;
@@ -33263,7 +33262,7 @@ process.umask = function() { return 0; };
               var end_y = beam_y + stemlet_height * this.stem_direction;
 
               // Draw Stemlet
-              note.setStem(new Stem({
+              _note5.setStem(new Stem({
                 x_begin: centerGlyphX,
                 x_end: centerGlyphX,
                 y_bottom: this.stem_direction === Stem.UP ? end_y : start_y,
@@ -33279,7 +33278,7 @@ process.umask = function() { return 0; };
 
           var slope_y = this.getSlopeY(x_px, first_x_px, first_y_px, this.slope) + this.y_shift;
 
-          note.setStem(new Stem({
+          _note5.setStem(new Stem({
             x_begin: x_px - Flow.STEM_WIDTH / 2,
             x_end: x_px,
             y_top: this.stem_direction === Stem.UP ? top_y_px : base_y_px,
@@ -33302,18 +33301,18 @@ process.umask = function() { return 0; };
         var partial_beam_length = this.render_options.partial_beam_length;
         var previous_should_break = false;
         var tick_tally = 0;
-        for (var i = 0; i < this.notes.length; ++i) {
-          var note = this.notes[i];
+        for (var _i6 = 0; _i6 < this.notes.length; ++_i6) {
+          var _note6 = this.notes[_i6];
 
           // See if we need to break secondary beams on this note.
-          var ticks = note.getIntrinsicTicks();
+          var ticks = _note6.getIntrinsicTicks();
           tick_tally += ticks;
           var should_break = false;
 
           // 8th note beams are always drawn.
           if (parseInt(duration, 10) >= 8) {
             // First, check to see if any indices were set up through breakSecondaryAt()
-            should_break = this.break_on_indices.indexOf(i) !== -1;
+            should_break = this.break_on_indices.indexOf(_i6) !== -1;
 
             // If the secondary breaks were auto-configured in the render options,
             //  handle that as well.
@@ -33323,11 +33322,11 @@ process.umask = function() { return 0; };
             }
           }
           var note_gets_beam = ticks < Flow.durationToTicks(duration);
-          var stem_x = note.isRest() ? note.getCenterGlyphX() : note.getStemX();
+          var stem_x = _note6.isRest() ? _note6.getCenterGlyphX() : _note6.getStemX();
 
           // Check to see if the next note in the group will get a beam at this
           //  level. This will help to inform the partial beam logic below.
-          var next_note = this.notes[i + 1];
+          var next_note = this.notes[_i6 + 1];
           var beam_next = next_note && next_note.getIntrinsicTicks() < Flow.durationToTicks(duration);
           if (note_gets_beam) {
             // This note gets a beam at the current level
@@ -33352,7 +33351,7 @@ process.umask = function() { return 0; };
               beam_started = true;
               if (!beam_next) {
                 // The next note doesn't get a beam. Draw a partial.
-                if ((previous_should_break || i === 0) && next_note) {
+                if ((previous_should_break || _i6 === 0) && next_note) {
                   // This is the first note (but not the last one), or it is
                   //  following a secondary break. Draw a partial to the right.
                   current_beam.end = current_beam.start + partial_beam_length;
@@ -33412,16 +33411,13 @@ process.umask = function() { return 0; };
         var valid_beam_durations = ['4', '8', '16', '32', '64'];
 
         var first_note = this.notes[0];
-        var last_note = this.notes[this.notes.length - 1];
 
         var first_y_px = first_note.getStemExtents().topY;
-        var last_y_px = last_note.getStemExtents().topY;
 
         // For flat beams, set the first and last Y to the offset, rather than
         //  using the note's stem extents.
         if (this.render_options.flat_beams && this.render_options.flat_beam_offset) {
           first_y_px = this.render_options.flat_beam_offset;
-          last_y_px = this.render_options.flat_beam_offset;
         }
 
         var first_x_px = first_note.getStemX();
@@ -33429,8 +33425,8 @@ process.umask = function() { return 0; };
         var beam_width = this.render_options.beam_width * this.stem_direction;
 
         // Draw the beams.
-        for (var i = 0; i < valid_beam_durations.length; ++i) {
-          var duration = valid_beam_durations[i];
+        for (var _i7 = 0; _i7 < valid_beam_durations.length; ++_i7) {
+          var duration = valid_beam_durations[_i7];
           var beam_lines = this.getBeamLines(duration);
 
           for (var j = 0; j < beam_lines.length; ++j) {
@@ -33451,7 +33447,6 @@ process.umask = function() { return 0; };
           }
 
           first_y_px += beam_width * 1.5;
-          last_y_px += beam_width * 1.5;
         }
       }
 
@@ -34599,7 +34594,6 @@ process.umask = function() { return 0; };
         glyph_font_scale: 35, // font size for note heads
         stroke_px: 3 });
 
-      // number of stroke px to the left and right of head
       if (head_options.glyph_font_scale) {
         _this.render_options.glyph_font_scale = head_options.glyph_font_scale;
       }
@@ -37488,12 +37482,12 @@ process.umask = function() { return 0; };
             // Otherwise, if the group contains fewer than seven members, use the layouts from
             // the accidentalsColumnsTable housed in tables.js.
           } else {
-              for (groupMember = _i3; groupMember <= groupEnd; groupMember++) {
-                column = Flow.accidentalColumnsTable[groupLength][endCase][groupMember - _i3];
-                lineList[groupMember].column = column;
-                totalColumns = totalColumns > column ? totalColumns : column;
-              }
+            for (groupMember = _i3; groupMember <= groupEnd; groupMember++) {
+              column = Flow.accidentalColumnsTable[groupLength][endCase][groupMember - _i3];
+              lineList[groupMember].column = column;
+              totalColumns = totalColumns > column ? totalColumns : column;
             }
+          }
 
           // Increment i to the last note that was set, so that if a lower set of notes
           // does not conflict at all with this group, it can have its own classic shape.
@@ -41133,7 +41127,6 @@ process.umask = function() { return 0; };
           FINE: 12 };
       }
     }]);
-    // Fine at end of stave
 
     function Repetition(type, x, y_shift) {
       classCallCheck(this, Repetition);
@@ -41379,7 +41372,6 @@ process.umask = function() { return 0; };
 
     createClass(StaveTempo, [{
       key: 'getCategory',
-      // font size for note
       value: function getCategory() {
         return StaveTempo.CATEGORY;
       }
@@ -41499,70 +41491,60 @@ process.umask = function() { return 0; };
             x_shift: 0,
             y_shift: -10
           },
-          // width: 10 // optional
           'tr': {
             code: 'v1f',
             point: 40,
             x_shift: 0,
             y_shift: 0
           },
-          // width: 10 // optional
           'mordent_upper': {
             code: 'v1e',
             point: 40,
             x_shift: 0,
             y_shift: 0
           },
-          // width: 10 // optional
           'mordent_lower': {
             code: 'v45',
             point: 40,
             x_shift: 0,
             y_shift: 0
           },
-          // width: 10 // optional
           'f': {
             code: 'vba',
             point: 40,
             x_shift: 0,
             y_shift: 0
           },
-          // width: 10 // optional
           'p': {
             code: 'vbf',
             point: 40,
             x_shift: 0,
             y_shift: 0
           },
-          // width: 10 // optional
           'm': {
             code: 'v62',
             point: 40,
             x_shift: 0,
             y_shift: 0
           },
-          // width: 10 // optional
           's': {
             code: 'v4a',
             point: 40,
             x_shift: 0,
             y_shift: 0
           },
-          // width: 10 // optional
           'z': {
             code: 'v80',
             point: 40,
             x_shift: 0,
             y_shift: 0
           },
-          // width: 10 // optional
           'coda': {
             code: 'v4d',
             point: 40,
             x_shift: 0,
             y_shift: -8
           },
-          // width: 10 // optional
           'pedal_open': {
             code: 'v36',
             point: 40,
@@ -41622,7 +41604,6 @@ process.umask = function() { return 0; };
         };
       }
     }]);
-    // width: 10 // optional
 
     function TextNote(text_struct) {
       classCallCheck(this, TextNote);
@@ -41708,8 +41689,8 @@ process.umask = function() { return 0; };
           if (this.glyph) {
             // Width already set.
           } else {
-              this.setWidth(this.context.measureText(this.text).width);
-            }
+            this.setWidth(this.context.measureText(this.text).width);
+          }
         }
 
         if (this.justification === TextNote.Justification.CENTER) {
@@ -42810,7 +42791,6 @@ process.umask = function() { return 0; };
         space_above_staff_ln: 4, // in staff lines
         space_below_staff_ln: 4, // in staff lines
         top_text_position: 1 };
-      // in staff lines
       this.bounds = { x: this.x, y: this.y, w: this.width, h: 0 };
       Vex.Merge(this.options, options);
 
@@ -43458,7 +43438,7 @@ process.umask = function() { return 0; };
           throw new Vex.RERR('StaveConfigError', 'The line number must be within the range of the number of lines in the Stave.');
         }
 
-        if (!line_config.hasOwnProperty('visible')) {
+        if (line_config.visible === undefined) {
           throw new Vex.RERR('StaveConfigError', "The line configuration object is missing the 'visible' property.");
         }
 
@@ -43860,11 +43840,11 @@ process.umask = function() { return 0; };
         if (position === Modifier.Position.LEFT) {
           x = -1 * 2; // extra_left_px
         } else if (position === Modifier.Position.RIGHT) {
-            x = this.width + 2; // extra_right_px
-          } else if (position === Modifier.Position.BELOW || position === Modifier.Position.ABOVE) {
-              var note_glyph_width = this.glyph.head_width;
-              x = note_glyph_width / 2;
-            }
+          x = this.width + 2; // extra_right_px
+        } else if (position === Modifier.Position.BELOW || position === Modifier.Position.ABOVE) {
+          var note_glyph_width = this.glyph.head_width;
+          x = note_glyph_width / 2;
+        }
 
         return {
           x: this.getAbsoluteX() + x,
@@ -44305,7 +44285,6 @@ process.umask = function() { return 0; };
           last_ys: last_ys,
           direction: -1 });
 
-        // Tab tie's are always face up.
         this.renderText(first_x_px, last_x_px);
         return true;
       }
@@ -44787,7 +44766,6 @@ process.umask = function() { return 0; };
         left_shift_px: 0, // left horizontal offset
         right_shift_px: 0 };
 
-      // right horizontal offset
       this.setNotes(notes);
     }
 
@@ -47849,9 +47827,8 @@ Vex.Flow.TabDiv.prototype.init = function(sel, options) {
   this.height = parseInt($(sel).attr("height")) || 200;
   this.scale = parseFloat($(sel).attr("scale")) || 1.0;
 
-  // If the Raphael.js sources are included, then use Raphael, else
-  // resort to HTML5 Canvas.
-  if (typeof (Raphael) == "undefined") {
+  // Raphael is deprecated. Use SVG if it's defined.
+  if (typeof (Raphael) == "undefined" && typeof (VEXTAB_USE_SVG) == "undefined") {
     this.canvas = $('<canvas></canvas>').addClass("vex-canvas");
     $(sel).append(this.canvas);
     this.renderer = new Vex.Flow.Renderer(this.canvas[0],
@@ -47860,7 +47837,7 @@ Vex.Flow.TabDiv.prototype.init = function(sel, options) {
     this.canvas = $('<div></div>').addClass("vex-canvas");
     $(sel).append(this.canvas);
     this.renderer = new Vex.Flow.Renderer(this.canvas[0],
-        Vex.Flow.Renderer.Backends.RAPHAEL);
+        Vex.Flow.Renderer.Backends.SVG);
   }
 
   this.ctx_sel = $(sel).find(".vex-canvas");
