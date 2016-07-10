@@ -33,9 +33,8 @@ Vex.Flow.TabDiv.prototype.init = function(sel, options) {
   this.height = parseInt($(sel).attr("height")) || 200;
   this.scale = parseFloat($(sel).attr("scale")) || 1.0;
 
-  // If the Raphael.js sources are included, then use Raphael, else
-  // resort to HTML5 Canvas.
-  if (typeof (Raphael) == "undefined") {
+  // Raphael is deprecated. Use SVG if it's defined.
+  if (typeof (Raphael) == "undefined" && typeof (VEXTAB_USE_SVG) == "undefined") {
     this.canvas = $('<canvas></canvas>').addClass("vex-canvas");
     $(sel).append(this.canvas);
     this.renderer = new Vex.Flow.Renderer(this.canvas[0],
@@ -44,7 +43,7 @@ Vex.Flow.TabDiv.prototype.init = function(sel, options) {
     this.canvas = $('<div></div>').addClass("vex-canvas");
     $(sel).append(this.canvas);
     this.renderer = new Vex.Flow.Renderer(this.canvas[0],
-        Vex.Flow.Renderer.Backends.RAPHAEL);
+        Vex.Flow.Renderer.Backends.SVG);
   }
 
   this.ctx_sel = $(sel).find(".vex-canvas");

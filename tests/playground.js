@@ -12,7 +12,7 @@ $(function() {
   VexTab.DEBUG = false;
 
   // Create VexFlow Renderer from canvas element with id #boo
-  renderer = new Renderer($('#boo')[0], Renderer.Backends.CANVAS);
+  renderer = new Renderer($('#boo')[0], Renderer.Backends.SVG);
 
   // Initialize VexTab artist and parser.
   artist = new Artist(10, 10, 600, {scale: 0.8});

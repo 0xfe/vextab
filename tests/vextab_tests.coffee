@@ -11,11 +11,7 @@ Artist = vextab.Artist
 
 $ = require "jquery"
 qunit = require "qunitjs"
-
 test = qunit.test
-equal = qunit.equal
-ok = qunit.ok
-expect = qunit.expect
 
 Artist.DEBUG = false;
 VexTab.DEBUG = false;
@@ -64,7 +60,7 @@ class VexTabTests
     test "Fret-hand Fingering and String Numbers", @fingeringAndStrings
 
   # Private method
-  catchError = (tab, code, error_type="ParseError") ->
+  catchError = (assert, tab, code, error_type="ParseError") ->
     error =
       code: "NoError"
       message: "Expected exception not caught"
@@ -77,36 +73,37 @@ class VexTabTests
       caught = true
 
     # equal(error.code, error_type, error.message)
-    equal(true, caught)
+    assert.equal(true, caught)
 
   makeParser = -> new VexTab(new Artist(0, 0, 600, {scale: 0.8}))
   makeRenderer = (test_name)->
     test_div = $('<div></div>').addClass("testcanvas")
     test_div.append($('<div></div>').addClass("name").text(test_name))
-    canvas = $('<canvas></canvas>').addClass("vex-tabdiv")
+    canvas = $('<div></div>').addClass("vex-tabdiv")
     test_div.append(canvas)
     $("body").append(test_div)
 
-    renderer = new Vex.Flow.Renderer(canvas[0], Vex.Flow.Renderer.Backends.CANVAS)
+    renderer = new Vex.Flow.Renderer(canvas[0], Vex.Flow.Renderer.Backends.SVG)
+    renderer.getContext().setBackgroundFillStyle("#eed")
     return renderer
 
-  renderTest = (title, code) ->
+  renderTest = (assert, title, code) ->
     tab = makeParser()
     renderer = makeRenderer(title)
-    notEqual null, tab.parse(code)
+    assert.notEqual null, tab.parse(code)
     tab.getArtist().render(renderer)
-    ok(true, "all pass")
+    assert.ok(true, "all pass")
 
-  @basic: ->
-    expect 3
+  @basic: (assert) ->
+    assert.expect 3
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n")
-    catchError tab, "tabstave\n notes /2 10/3"
-    ok true, "all pass"
+    assert.notEqual null, tab.parse("tabstave\n")
+    catchError assert, tab, "tabstave\n notes /2 10/3"
+    assert.ok true, "all pass"
 
-  @complex: ->
-    expect 2
+  @complex: (assert) ->
+    assert.expect 2
     tab = makeParser()
     code = """
     tabstave notation=true key=A
@@ -124,207 +121,207 @@ class VexTabTests
     notes :8 [ t(12/5.12/4)s(5/5.5/4) 3b4/5 ] :h 5V/6
     """
 
-    notEqual null, tab.parse(code)
-    catchError tab, "tabstave\n notes :q 5/L"
+    assert.notEqual null, tab.parse(code)
+    catchError assert, tab, "tabstave\n notes :q 5/L"
 
-  @staveOptionsTest: ->
-    expect 3
+  @staveOptionsTest: (assert) ->
+    assert.expect 3
     tab = makeParser()
-    notEqual null, tab.parse("tabstave notation=true key=C#")
-    catchError(tab, "tabstave invalid=true")
-    catchError(tab, "tabstave notation=boo")
+    assert.notEqual null, tab.parse("tabstave notation=true key=C#")
+    catchError(assert, tab, "tabstave invalid=true")
+    catchError(assert, tab, "tabstave notation=boo")
 
-  @notationOnly: ->
-    expect 122
+  @notationOnly: (assert) ->
+    assert.expect 122
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave notation=true")
-    notEqual null, tab.parse("tabstave\n notes :w 1/2 | 1/3 | 1/5 | 1/4")
-    notEqual null, tab.parse("tabstave notation=true tablature=false")
-    notEqual null, tab.parse("tabstave\n notes :w 1/2 | 1/3 | 1/5 | 1/4")
+    assert.notEqual null, tab.parse("tabstave notation=true")
+    assert.notEqual null, tab.parse("tabstave\n notes :w 1/2 | 1/3 | 1/5 | 1/4")
+    assert.notEqual null, tab.parse("tabstave notation=true tablature=false")
+    assert.notEqual null, tab.parse("tabstave\n notes :w 1/2 | 1/3 | 1/5 | 1/4")
 
-    catchError(tab, "tabstave notation=false tablature=false")
+    catchError(assert, tab, "tabstave notation=false tablature=false")
 
     # CLEF TESTS
     clefs = ["treble", "alto", "tenor", "bass"]
 
     for clef in clefs
-      notEqual null, tab.parse("tabstave notation=true clef=" + clef)
-      notEqual null, tab.parse("tabstave clef=" + clef)
+      assert.notEqual null, tab.parse("tabstave notation=true clef=" + clef)
+      assert.notEqual null, tab.parse("tabstave clef=" + clef)
 
-    catchError(tab, "tabstave clef=blah")
+    catchError(assert, tab, "tabstave clef=blah")
 
     # KEY SIGNATURE TESTS
 
     for key of Vex.Flow.keySignature.keySpecs
-      notEqual null, tab.parse("tabstave key=" + key)
-      notEqual null, tab.parse("tabstave notation=true key=" + key)
-      notEqual null, tab.parse("tabstave notation=true tablature=true key=" + key)
+      assert.notEqual null, tab.parse("tabstave key=" + key)
+      assert.notEqual null, tab.parse("tabstave notation=true key=" + key)
+      assert.notEqual null, tab.parse("tabstave notation=true tablature=true key=" + key)
 
-    catchError(tab, "tabstave notation=true key=rrr")
+    catchError(assert, tab, "tabstave notation=true key=rrr")
 
     # TIME SIGNATURE TESTS
     times = ["C", "C|", "2/4", "4/4", "100/4"]
 
     for time in times
-      notEqual null, tab.parse("tabstave time=" + time)
-      notEqual null, tab.parse("tabstave notation=true time=" + time)
-      notEqual null, tab.parse("tabstave notation=true tablature=true time=" + time)
+      assert.notEqual null, tab.parse("tabstave time=" + time)
+      assert.notEqual null, tab.parse("tabstave notation=true time=" + time)
+      assert.notEqual null, tab.parse("tabstave notation=true tablature=true time=" + time)
 
-    catchError(tab, "tabstave notation=true time=rrr")
-    ok true, "all pass"
+    catchError(assert, tab, "tabstave notation=true time=rrr")
+    assert.ok true, "all pass"
 
-  @tuning: ->
-    expect 9
+  @tuning: (assert) ->
+    assert.expect 9
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave tuning=E/5,B/4,G/4,D/4,A/3,E/3")
-    notEqual null, tab.parse("tabstave tuning=standard")
-    notEqual null, tab.parse("tabstave tuning=eb")
-    notEqual null, tab.parse("tabstave tuning=dropd")
+    assert.notEqual null, tab.parse("tabstave tuning=E/5,B/4,G/4,D/4,A/3,E/3")
+    assert.notEqual null, tab.parse("tabstave tuning=standard")
+    assert.notEqual null, tab.parse("tabstave tuning=eb")
+    assert.notEqual null, tab.parse("tabstave tuning=dropd")
 
-    catchError(tab, "tabstave tuning=,B/4,G/4,D/4,A/3,E/3")
-    catchError(tab, "tabstave tuning=/4,G/4,D/4,A/3,E/3")
-    catchError(tab, "tabstave tuning=E,B,G,D,A,E")
-    catchError(tab, "tabstave tuning=T/5,B/4,G/4,D/4,A/3,E/3")
+    catchError(assert, tab, "tabstave tuning=,B/4,G/4,D/4,A/3,E/3")
+    catchError(assert, tab, "tabstave tuning=/4,G/4,D/4,A/3,E/3")
+    catchError(assert, tab, "tabstave tuning=E,B,G,D,A,E")
+    catchError(assert, tab, "tabstave tuning=T/5,B/4,G/4,D/4,A/3,E/3")
 
-    ok true, "all pass"
+    assert.ok true, "all pass"
 
-  @stringFret: ->
-    expect 5
+  @stringFret: (assert) ->
+    assert.expect 5
     tab = makeParser()
 
-    notEqual null, tab.parse "tabstave\n notes 10/2 10/3"
-    catchError(tab, "tabstave\n notes /2 10/3")
-    catchError(tab, "tabstave\n notes j/2 10/3")
-    catchError(tab, "tabstave\n notes 4")
+    assert.notEqual null, tab.parse "tabstave\n notes 10/2 10/3"
+    catchError(assert, tab, "tabstave\n notes /2 10/3")
+    catchError(assert, tab, "tabstave\n notes j/2 10/3")
+    catchError(assert, tab, "tabstave\n notes 4")
 
-    ok true, "all pass"
+    assert.ok true, "all pass"
 
-  @multiFret: ->
-    expect 4
+  @multiFret: (assert) ->
+    assert.expect 4
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes 10-11/3")
-    notEqual null, tab.parse("tabstave\n notes 10-11-12-13-15/3 5-4-3-2-1/2")
-    catchError(tab, "tabstave\n notes 10/2-10")
-    catchError(tab, "tabstave\n notes 10-/2")
+    assert.notEqual null, tab.parse("tabstave\n notes 10-11/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10-11-12-13-15/3 5-4-3-2-1/2")
+    catchError(assert, tab, "tabstave\n notes 10/2-10")
+    catchError(assert, tab, "tabstave\n notes 10-/2")
 
-  @tie: ->
-    expect 6
+  @tie: (assert) ->
+    assert.expect 6
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes 10s11/3")
-    notEqual null, tab.parse("tabstave\n notes 10s11h12p10/3")
-    notEqual null, tab.parse("tabstave notation=true key=A\n notes :w 5/5 | T5/5 | T5V/5")
-    catchError(tab, "tabstave\n notes 10/2s10")
-    catchError(tab, "tabstave\n notes 10s")
+    assert.notEqual null, tab.parse("tabstave\n notes 10s11/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10s11h12p10/3")
+    assert.notEqual null, tab.parse("tabstave notation=true key=A\n notes :w 5/5 | T5/5 | T5V/5")
+    catchError(assert, tab, "tabstave\n notes 10/2s10")
+    catchError(assert, tab, "tabstave\n notes 10s")
 
-    ok true, "all pass"
+    assert.ok true, "all pass"
 
-  @bar: ->
-    expect 5
+  @bar: (assert) ->
+    assert.expect 5
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes |10s11/3")
-    notEqual null, tab.parse("tabstave\n notes 10s11h12p10/3|")
-    notEqual null, tab.parse("tabstave notation=true key=A\n notes || :w || 5/5 ||| T5/5 | T5V/5")
-    catchError(tab, "tabstave\n | notes 10/2s10")
+    assert.notEqual null, tab.parse("tabstave\n notes |10s11/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10s11h12p10/3|")
+    assert.notEqual null, tab.parse("tabstave notation=true key=A\n notes || :w || 5/5 ||| T5/5 | T5V/5")
+    catchError(assert, tab, "tabstave\n | notes 10/2s10")
 
-    ok true, "all pass"
+    assert.ok true, "all pass"
 
 
-  @bend: ->
-    expect 5
+  @bend: (assert) ->
+    assert.expect 5
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes 10b11/3")
-    notEqual null, tab.parse("tabstave\n notes 10b11s12/3")
-    notEqual null, tab.parse("tabstave\n notes 10s11b12/3")
-    catchError(tab, "tabstave\n notes 10b12b10b-/2")
+    assert.notEqual null, tab.parse("tabstave\n notes 10b11/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10b11s12/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10s11b12/3")
+    catchError(assert, tab, "tabstave\n notes 10b12b10b-/2")
 
-    ok(true, "all pass");
+    assert.ok(true, "all pass");
 
-  @vibrato: ->
-    expect 10
+  @vibrato: (assert) ->
+    assert.expect 10
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes 10v/3")
-    notEqual null, tab.parse("tabstave\n notes 10-11v-12v/3")
-    notEqual null, tab.parse("tabstave\n notes 10b11v-12/3")
-    notEqual null, tab.parse("tabstave\n notes 10b11b10v-12/3")
-    notEqual null, tab.parse("tabstave\n notes 10s11v-12/3")
-    notEqual null, tab.parse("tabstave\n notes 10s11vs4s12vh15p10-1/2")
-    catchError(tab, "tabstave\n notes 10v")
-    catchError(tab, "tabstave\n notes 10vb/1")
-    catchError(tab, "tabstave\n notes 10-b11/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10v/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10-11v-12v/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10b11v-12/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10b11b10v-12/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10s11v-12/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10s11vs4s12vh15p10-1/2")
+    catchError(assert, tab, "tabstave\n notes 10v")
+    catchError(assert, tab, "tabstave\n notes 10vb/1")
+    catchError(assert, tab, "tabstave\n notes 10-b11/3")
 
-    ok(true, "all pass")
+    assert.ok(true, "all pass")
 
-  @strokes: ->
-    expect 10
+  @strokes: (assert) ->
+    assert.expect 10
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes 10d/3")
-    notEqual null, tab.parse("tabstave\n notes 10-11u-12d/3")
-    notEqual null, tab.parse("tabstave\n notes 10b11u-12/3")
-    notEqual null, tab.parse("tabstave\n notes 10b11b10d-12/3")
-    notEqual null, tab.parse("tabstave\n notes 10s11d-12/3")
-    notEqual null, tab.parse("tabstave\n notes 10s11us4s12vh15p10-1/2")
-    notEqual null, tab.parse("tabstave\n notes (10/2.10/1)d")
-    catchError(tab, "tabstave\n notes 10vb/1")
-    catchError(tab, "tabstave\n notes 10-b11/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10d/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10-11u-12d/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10b11u-12/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10b11b10d-12/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10s11d-12/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 10s11us4s12vh15p10-1/2")
+    assert.notEqual null, tab.parse("tabstave\n notes (10/2.10/1)d")
+    catchError(assert, tab, "tabstave\n notes 10vb/1")
+    catchError(assert, tab, "tabstave\n notes 10-b11/3")
 
-    ok(true, "all pass");
+    assert.ok(true, "all pass");
 
-  @chord: ->
-    expect 8
+  @chord: (assert) ->
+    assert.expect 8
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes (4/6)")
-    notEqual null, tab.parse("tabstave\n notes (4/5.6/6)")
-    catchError tab, "tabstave\n notes (4/5.6/7)", "BadArguments"
-    catchError tab, "tabstave\n notes (4"
-    catchError tab, "tabstave\n notes (4/)"
-    catchError tab, "tabstave\n notes (/5)"
-    catchError tab, "tabstave\n notes (4/5.)"
+    assert.notEqual null, tab.parse("tabstave\n notes (4/6)")
+    assert.notEqual null, tab.parse("tabstave\n notes (4/5.6/6)")
+    catchError assert, tab, "tabstave\n notes (4/5.6/7)", "BadArguments"
+    catchError assert, tab, "tabstave\n notes (4"
+    catchError assert, tab, "tabstave\n notes (4/)"
+    catchError assert, tab, "tabstave\n notes (/5)"
+    catchError assert, tab, "tabstave\n notes (4/5.)"
 
-    ok(true, "all pass")
+    assert.ok(true, "all pass")
 
-  @tapping: ->
-    expect 5
+  @tapping: (assert) ->
+    assert.expect 5
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes t5p4p3/3")
-    notEqual null, tab.parse("tabstave\n notes 5t12p5-4-3/1")
-    catchError(tab, "tabstave\n notes 5t/4")
-    catchError(tab, "tabstave\n notes t-4-4h5/3")
+    assert.notEqual null, tab.parse("tabstave\n notes t5p4p3/3")
+    assert.notEqual null, tab.parse("tabstave\n notes 5t12p5-4-3/1")
+    catchError(assert, tab, "tabstave\n notes 5t/4")
+    catchError(assert, tab, "tabstave\n notes t-4-4h5/3")
 
-    ok(true, "all pass")
+    assert.ok(true, "all pass")
 
-  @chordTies: ->
-    expect 7
+  @chordTies: (assert) ->
+    assert.expect 7
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes (1/2.2/3)s(3/2.4/3)")
-    notEqual null, tab.parse("tabstave\n notes (1/2.2/3.3/4)s(3/2.4/3.5/4)")
-    notEqual null, tab.parse("tabstave\n notes (4/5.1/2.2/3)s(3/2.4/3)")
-    notEqual null, tab.parse("tabstave\n notes (1/2.2/3)s(3/2.5/5.4/3)")
-    notEqual null, tab.parse("tabstave\n notes (1/2.2/3)s(3/2.4/3)h(6/2.7/3)")
-    notEqual null, tab.parse("tabstave\n notes t(1/2.2/3)s(3/2.4/3)h(6/2.7/3)")
+    assert.notEqual null, tab.parse("tabstave\n notes (1/2.2/3)s(3/2.4/3)")
+    assert.notEqual null, tab.parse("tabstave\n notes (1/2.2/3.3/4)s(3/2.4/3.5/4)")
+    assert.notEqual null, tab.parse("tabstave\n notes (4/5.1/2.2/3)s(3/2.4/3)")
+    assert.notEqual null, tab.parse("tabstave\n notes (1/2.2/3)s(3/2.5/5.4/3)")
+    assert.notEqual null, tab.parse("tabstave\n notes (1/2.2/3)s(3/2.4/3)h(6/2.7/3)")
+    assert.notEqual null, tab.parse("tabstave\n notes t(1/2.2/3)s(3/2.4/3)h(6/2.7/3)")
 
-    ok(true, "all pass")
+    assert.ok(true, "all pass")
 
-  @duration: ->
+  @duration: (assert) ->
     tab = makeParser()
-    notEqual null, tab.parse("tabstave\n notes :w (1/2.2/3)s(3/2.4/3)")
-    notEqual null, tab.parse("tabstave\n notes :h (1/2.2/3)s(3/2.4/3) :q 1/2")
-    notEqual null, tab.parse("tabstave\n notes :h (1/2.2/3)s(3/2.4/3) 1/2 ^3^")
-    catchError(tab, "tabstave notation=true\n notes :w (1/2.2/3)s(3/2.4/3) ^3^", "ArtistError")
-    ok(true, "all pass")
+    assert.notEqual null, tab.parse("tabstave\n notes :w (1/2.2/3)s(3/2.4/3)")
+    assert.notEqual null, tab.parse("tabstave\n notes :h (1/2.2/3)s(3/2.4/3) :q 1/2")
+    assert.notEqual null, tab.parse("tabstave\n notes :h (1/2.2/3)s(3/2.4/3) 1/2 ^3^")
+    catchError(assert, tab, "tabstave notation=true\n notes :w (1/2.2/3)s(3/2.4/3) ^3^", "ArtistError")
+    assert.ok(true, "all pass")
 
-  @tripletsAndTuplets: ->
-    expect 1
+  @tripletsAndTuplets: (assert) ->
+    assert.expect 1
     tab = makeParser()
     code = """
     tabstave notation=true key=Ab tuning=eb
@@ -332,19 +329,19 @@ class VexTabTests
     tabstave notation=true key=Ab tuning=eb
     notes :8 5h7s9-12s15p12h15/5 ^7^ | :q 5-7-8/5 ^3^
     """
-    notEqual null, tab.parse(code)
+    assert.notEqual null, tab.parse(code)
 
-  @dottedNotes: ->
-    expect 1
+  @dottedNotes: (assert) ->
+    assert.expect 1
     tab = makeParser()
     code = """
     tabstave notation=true time=4/4 key=Ab tuning=eb
     notes :8d 5/4 :16 5/5 :8d 5/4 :16 5/5 :8d 5/4 :16 5/5 :q 5v/5
     """
-    notEqual null, tab.parse(code)
+    assert.notEqual null, tab.parse(code)
 
-  @annotations: ->
-    expect 1
+  @annotations: (assert) ->
+    assert.expect 1
     tab = makeParser()
     code = """
     tabstave notation=true time=4/4 key=Ab tuning=eb
@@ -354,101 +351,101 @@ class VexTabTests
     notes :q (5/2.5/3.7/4) $.big.A7#9$ 5h6/3 7/4 |
     notes :8 7/4 $.italic.sweep$ 6/3 5/2 3v/1 :q 7v/5 $.Arial-10-bold.P.H$ :8 3s5/5
     """
-    notEqual null, tab.parse(code)
+    assert.notEqual null, tab.parse(code)
 
-  @longBends: ->
-    expect 1
+  @longBends: (assert) ->
+    assert.expect 1
     tab = makeParser()
     code = """
     tabstave notation=true key=A
     notes :8 7b9b7b9b7s12b14b12s7s5s2/3
     """
-    notEqual null, tab.parse(code)
+    assert.notEqual null, tab.parse(code)
 
-  @rest: ->
-    expect 1
+  @rest: (assert) ->
+    assert.expect 1
     tab = makeParser()
     code = """
     tabstave notation=true key=A
     notes :8 ## 7b9b7b9b7s12b14b12s7s5s2/3 #0# 4/4 #9# 5/5
     """
-    notEqual null, tab.parse(code)
+    assert.notEqual null, tab.parse(code)
 
-  @options: ->
-    expect 8
+  @options: (assert) ->
+    assert.expect 8
     tab = makeParser()
 
-    notEqual null, tab.parse("options width=400\ntabstave\n")
-    notEqual null, tab.parse("options font-face=Arial\ntabstave\n")
-    notEqual null, tab.parse("options font-size=10\ntabstave\n")
-    notEqual null, tab.parse("options font-style=italic\ntabstave\n")
-    notEqual null, tab.parse("options space=40\ntabstave\n")
-    notEqual null, tab.parse("options stave-distance=40\ntabstave\n")
-    catchError tab, "options w=40\ntabstave\n notes /2 10/3"
-    ok true, "all pass"
+    assert.notEqual null, tab.parse("options width=400\ntabstave\n")
+    assert.notEqual null, tab.parse("options font-face=Arial\ntabstave\n")
+    assert.notEqual null, tab.parse("options font-size=10\ntabstave\n")
+    assert.notEqual null, tab.parse("options font-style=italic\ntabstave\n")
+    assert.notEqual null, tab.parse("options space=40\ntabstave\n")
+    assert.notEqual null, tab.parse("options stave-distance=40\ntabstave\n")
+    catchError assert, tab, "options w=40\ntabstave\n notes /2 10/3"
+    assert.ok true, "all pass"
 
-  @abcNotes: ->
-    expect 6
+  @abcNotes: (assert) ->
+    assert.expect 6
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave notation=true\n notes A/5 C-D-E/5")
-    notEqual null, tab.parse("tabstave\n notes :q A/5 C-D-:h:E/5")
-    notEqual null, tab.parse("tabstave\n notes :q (A/5.A/4)T(A/5.A/4)")
-    notEqual null, tab.parse("tabstave notation=true tablature=false\n notes A#/5 C##-D@@-E/5")
-    notEqual null, tab.parse("tabstave\n notes An/5 C-D@-E/5")
+    assert.notEqual null, tab.parse("tabstave notation=true\n notes A/5 C-D-E/5")
+    assert.notEqual null, tab.parse("tabstave\n notes :q A/5 C-D-:h:E/5")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (A/5.A/4)T(A/5.A/4)")
+    assert.notEqual null, tab.parse("tabstave notation=true tablature=false\n notes A#/5 C##-D@@-E/5")
+    assert.notEqual null, tab.parse("tabstave\n notes An/5 C-D@-E/5")
 
-    ok(true, "all pass")
+    assert.ok(true, "all pass")
 
-  @abcNotesWithFrets: ->
-    expect 6
+  @abcNotesWithFrets: (assert) ->
+    assert.expect 6
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave notation=true\n notes A5_5/5 Cn~4_4-5-6/5")
-    notEqual null, tab.parse("tabstave\n notes :q A/5 C-D-:h:A4_6/5")
-    notEqual null, tab.parse("tabstave\n notes :q (E@2_6/5.A/4)T(A/5.A/4)")
-    notEqual null, tab.parse("tabstave notation=true tablature=false\n notes A#3_4/5 C##-D@@-E/5")
-    notEqual null, tab.parse("tabstave\n notes A@~3_6/5 C-D@-E/5")
+    assert.notEqual null, tab.parse("tabstave notation=true\n notes A5_5/5 Cn~4_4-5-6/5")
+    assert.notEqual null, tab.parse("tabstave\n notes :q A/5 C-D-:h:A4_6/5")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (E@2_6/5.A/4)T(A/5.A/4)")
+    assert.notEqual null, tab.parse("tabstave notation=true tablature=false\n notes A#3_4/5 C##-D@@-E/5")
+    assert.notEqual null, tab.parse("tabstave\n notes A@~3_6/5 C-D@-E/5")
 
-    ok(true, "all pass")
+    assert.ok(true, "all pass")
 
-  @rhythmNotation: ->
-    expect 4
+  @rhythmNotation: (assert) ->
+    assert.expect 4
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes :qS A/5 C-D-:h:E/5")
-    notEqual null, tab.parse("tabstave notation=true\n notes :16S (A/5.A/4)T(A/5.A/4)")
-    notEqual null, tab.parse("tabstave notation=true tablature=false\n notes :qS X/5 C-D-:h:E/5")
+    assert.notEqual null, tab.parse("tabstave\n notes :qS A/5 C-D-:h:E/5")
+    assert.notEqual null, tab.parse("tabstave notation=true\n notes :16S (A/5.A/4)T(A/5.A/4)")
+    assert.notEqual null, tab.parse("tabstave notation=true tablature=false\n notes :qS X/5 C-D-:h:E/5")
 
-    ok(true, "all pass")
+    assert.ok(true, "all pass")
 
-  @textLines: ->
-    expect 6
+  @textLines: (assert) ->
+    assert.expect 6
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes :qS A/5 C-D-:h:E/5")
-    notEqual null, tab.parse("tabstave\n text .4, Blah, :16, Boo")
-    notEqual null, tab.parse("tabstave notation=true\n text .4, Blah, :16, Boo")
-    notEqual null, tab.parse("tabstave notation=true\n text .4, Blah,++, :16, Boo")
-    notEqual null, tab.parse("tabstave notation=true\n text .4, .strict, Blah,++, :16, .smooth, Boo")
+    assert.notEqual null, tab.parse("tabstave\n notes :qS A/5 C-D-:h:E/5")
+    assert.notEqual null, tab.parse("tabstave\n text .4, Blah, :16, Boo")
+    assert.notEqual null, tab.parse("tabstave notation=true\n text .4, Blah, :16, Boo")
+    assert.notEqual null, tab.parse("tabstave notation=true\n text .4, Blah,++, :16, Boo")
+    assert.notEqual null, tab.parse("tabstave notation=true\n text .4, .strict, Blah,++, :16, .smooth, Boo")
 
-    ok(true, "all pass")
+    assert.ok(true, "all pass")
 
-  @sweepStrokes: ->
-    expect 8
+  @sweepStrokes: (assert) ->
+    assert.expect 8
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/rd.$")
-    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/ru.$")
-    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/bu.$")
-    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/bd.$")
-    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/qu.$")
-    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/qd.$")
-    catchError tab, "tabstave\n notes :q (5/2.5/3.7/4) $.stroke/xd.$", "ArtistError"
+    assert.notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/rd.$")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/ru.$")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/bu.$")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/bd.$")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/qu.$")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.stroke/qd.$")
+    catchError assert, tab, "tabstave\n notes :q (5/2.5/3.7/4) $.stroke/xd.$", "ArtistError"
 
-    ok(true, "all pass")
+    assert.ok(true, "all pass")
 
-  @voices: ->
-    expect 1
+  @voices: (assert) ->
+    assert.expect 1
     tab = makeParser()
     code = """
     options stave-distance=30
@@ -461,29 +458,29 @@ class VexTabTests
     voice
         notes :h 5/6 :q 5/6 :8 4-5/5 | :w 5/5
     """
-    notEqual null, tab.parse(code)
+    assert.notEqual null, tab.parse(code)
 
-  @fingering: ->
-    expect 7
+  @fingering: (assert) ->
+    assert.expect 7
     tab = makeParser()
 
-    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:r:s:1.$")
-    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:l:f:1.$")
-    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:a:s:1.$")
-    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:b:s:1.$")
-    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:l:f:1.$")
-    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:r:s:1.$")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:r:s:1.$")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:l:f:1.$")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:a:s:1.$")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:b:s:1.$")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:l:f:1.$")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:r:s:1.$")
 
-    ok(true, "all pass")
+    assert.ok(true, "all pass")
 
-  @render: ->
+  @render: (assert) ->
     tab = makeParser()
     renderer = makeRenderer("Render")
-    notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:r:s:1.$")
+    assert.notEqual null, tab.parse("tabstave\n notes :q (5/2.5/3.7/4) $.fingering/0:r:s:1.$")
     tab.getArtist().render(renderer)
-    ok(true, "all pass")
+    assert.ok(true, "all pass")
 
-  @renderComplex: ->
+  @renderComplex: (assert) ->
     code = """
     options space=20 tab-stems=true stave-distance=40 tab-stem-direction=down
     tabstave notation=true key=A time=4/4
@@ -503,9 +500,9 @@ class VexTabTests
 
     options space=70
     """
-    renderTest "Render Complex", code
+    renderTest assert, "Render Complex", code
 
-  @tabStems: ->
+  @tabStems: (assert) ->
     code = """
     options tab-stems=true
     tabstave key=A
@@ -513,7 +510,7 @@ class VexTabTests
     notes :16 5h6/3 7/4 $.a>/b.$
     notes :8d 5/5
     """
-    renderTest "Tab Stems", code
+    renderTest assert, "Tab Stems", code
 
     code = """
     options tab-stems=true tab-stem-direction=down
@@ -522,9 +519,9 @@ class VexTabTests
     notes :16 5h6/3 7/4 $.a>/b.$
     notes :8d 5/5
     """
-    renderTest "Tab Stem Direction", code
+    renderTest assert, "Tab Stem Direction", code
 
-  @restsInTab: ->
+  @restsInTab: (assert) ->
     code = """
     options tab-stems=true
     tabstave key=A
@@ -532,9 +529,9 @@ class VexTabTests
     notes :16 5h6/3 7/4 $.a>/b.$
     notes :8d ##
     """
-    renderTest "Rests in Tab", code
+    renderTest assert, "Rests in Tab", code
 
-  @timeSigBeaming: ->
+  @timeSigBeaming: (assert) ->
     code = """
     tabstave notation=true tablature=false time=4/4
     notes :8 ## D-E-F-G-A-B/4 C/5
@@ -542,25 +539,25 @@ class VexTabTests
     tabstave notation=true tablature=false time=6/8
     notes :8 C-D-E-F/4 ## A-B/4 C-D-E-F-:16:G-F/5
     """
-    renderTest "Time Signature based Beaming", code
+    renderTest assert, "Time Signature based Beaming", code
 
-  @multiStringTab: ->
+  @multiStringTab: (assert) ->
     code = """
     tabstave key=A strings=4
     notes :q (5/2.5/3.7/4) $.a./b.$ :8 5h6/3 7/4 $.a>/b.$
     notes :16 5h6/3 7/4 $.a>/b.$
     options space=20
     """
-    renderTest "Bass Tab", code
+    renderTest assert, "Bass Tab", code
 
     code = """
     tabstave key=A strings=8 tuning=E/5,B/4,G/4,D/4,A/3,E/3,B/2,G/2
     notes :q (5/2.5/3.7/8) :8 5h6/3 7/8
     notes :16 5h6/3 7/7
     """
-    renderTest "8-string Tab", code
+    renderTest assert, "8-string Tab", code
 
-  @overrideFretNote: ->
+  @overrideFretNote: (assert) ->
     code = """
     options stave-distance=30 space=20
     options font-face=courier font-style=bold
@@ -572,9 +569,9 @@ class VexTabTests
     notes G##5_5/1 $G##5_5/1$
     text .font=Times-15-italic,|8va
     """
-    renderTest "Override Fret Note", code
+    renderTest assert, "Override Fret Note", code
 
-  @mixedTuplets: ->
+  @mixedTuplets: (assert) ->
     code = """
     tabstave notation=true tablature=false key=G time=4/4
     notes :q E/5 :8 E/5 ^3,2^ :8 E/5 :q E/5 ^3,2^
@@ -582,24 +579,24 @@ class VexTabTests
 
     options space=20
     """
-    renderTest "Mixed Tuplets", code
+    renderTest assert, "Mixed Tuplets", code
 
-  @accidentalStrategies: ->
+  @accidentalStrategies: (assert) ->
     code = """
     options player=true tempo=80
     tabstave notation=true key=G time=4/4
     notes :8 5-5-6-6-5-5-3-3/3
     """
-    renderTest "Standard Accidental Strategy", code
+    renderTest assert, "Standard Accidental Strategy", code
 
     code = """
     options player=true tempo=80 accidentals=cautionary
     tabstave notation=true key=G time=4/4
     notes :8 5-5-6-6-5-5-3-3/3
     """
-    renderTest "Cautionary Accidental Strategy", code
+    renderTest assert, "Cautionary Accidental Strategy", code
 
-  @fingeringAndStrings: ->
+  @fingeringAndStrings: (assert) ->
     code = """
     options space=40 player=true tempo=80 instrument=acoustic_guitar_nylon
     tabstave notation=true tablature=false key=G time=4/4
@@ -625,6 +622,6 @@ class VexTabTests
 
     options space=60
     """
-    renderTest "Fret Hand Fingering and String Numbers", code
+    renderTest assert, "Fret Hand Fingering and String Numbers", code
 
 module.exports = VexTabTests
