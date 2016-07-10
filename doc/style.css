@@ -69,3 +69,6 @@ code { font-family: Courier; font-size: 14px; color: green; }
 
 table.tabstave-keywords { font-family:monospace; margin:20px;}
 table.tabstave-keywords td {padding-right:30px;}
+div.vex-canvas {
+  background-color: white;
+}

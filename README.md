@@ -34,7 +34,7 @@ Simply include `releases/vextab-div.js` into your HTML document via a script tag
 </div>
 ```
 
-VexTab defaults to HTML5 canvas; for SVG include RaphaelJS in a script tag _before_ `vextab-div.js`. See the `.html` files in `doc/` for examples of `vextab-div` in use.
+VexTab defaults to HTML5 canvas; for SVG define `VEXTAB_USE_SVG` _before_ including `vextab-div.js`. See the `.html` files in `doc/` for examples of `vextab-div` in use.
 
 Some of the available `div` attributes are:
 
@@ -42,7 +42,13 @@ Some of the available `div` attributes are:
 * `scale`: `0.5` -> `3.0` -- Scale factor for rendering. Default `1.0`.
 * `editor_width`, `editor_height`: pixels -- Dimensions of editor.
 
-You can use the CSS file in `releases/vextab.css` for basic styling of the interface.
+You can use the CSS file in `releases/vextab.css` for basic styling of the interface. You can also set the `clear` background color via `div.vex-canvas`. E.g.:
+
+```css
+div.vex-canvas {
+  background-color: white;
+}
+```
 
 Note that the provided `vextab-div.js` bundle is unminified, and includes all necessary dependencies such as jQuery, lodash, and VexFlow. You can get access to some of these classes, and the VexTab API (see below) via the `VexTabDiv` global.
 
@@ -71,6 +77,9 @@ Renderer = vextab.Vex.Flow.Renderer;
 
 // Create VexFlow Renderer from canvas element with id #boo.
 renderer = new Renderer($('#boo')[0], Renderer.Backends.CANVAS);
+
+// For SVG, you can use the following line (make sure #boo is a div element)
+// renderer = new Renderer($('#boo')[0], Renderer.Backends.SVG);
 
 // Initialize VexTab artist and parser.
 artist = new Artist(10, 10, 600, {scale: 0.8});
