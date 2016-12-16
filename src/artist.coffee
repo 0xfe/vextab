@@ -708,11 +708,11 @@ class Artist
     if decorator == "V"
       modifier = new Vex.Flow.Vibrato().setHarsh(true)
     if decorator == "u"
-      modifier = new Vex.Flow.Articulation("a|").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
-      score_modifier = new Vex.Flow.Articulation("a|").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
+      modifier = new Vex.Flow.Articulation("a|").setPosition(Vex.Flow.Modifier.Position.BELOW)
+      score_modifier = new Vex.Flow.Articulation("a|").setPosition(Vex.Flow.Modifier.Position.BELOW)
     if decorator == "d"
-      modifier = new Vex.Flow.Articulation("am").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
-      score_modifier = new Vex.Flow.Articulation("am").setPosition(Vex.Flow.Modifier.Position.BOTTOM)
+      modifier = new Vex.Flow.Articulation("am").setPosition(Vex.Flow.Modifier.Position.BELOW)
+      score_modifier = new Vex.Flow.Articulation("am").setPosition(Vex.Flow.Modifier.Position.BELOW)
 
     _.last(tab_notes).addModifier(modifier, 0) if modifier?
     _.last(score_notes)?.addArticulation(0, score_modifier) if score_modifier?
