@@ -1,8 +1,11 @@
 // Gruntfile for VexTab.
 // Mohit Muthanna Cheppudira <mohit@muthanna.com>
+const webpackTests = require('./webpack.config.tests');
+const webpackStandalone = require('./webpack.config.standalone');
+const webpackPlayground = require('./webpack.config.playground');
+const webpackLib = require('./webpack.config');
 
 module.exports = function(grunt) {
-  var L = grunt.log.writeln;
   var BANNER = '/**\n' +
                 ' * VexTab <%= pkg.version %> built on <%= grunt.template.today("yyyy-mm-dd") %>.\n' +
                 ' * Copyright (c) 2010 Mohit Muthanna Cheppudira <mohit@muthanna.com>\n' +
@@ -12,16 +15,7 @@ module.exports = function(grunt) {
 
   var BUILD_DIR = 'build',
       DOC_DIR = "doc",
-      RELEASE_DIR = 'releases';
-
-  var JISON_SRC = ["src/vextab.jison"],
-      JISON_OUT = BUILD_DIR + "/vextab-jison.js",
-
-      TABDIV_SRC = ["src/tabdiv.js"],
-      TABDIV_OUT = "build/vextab-div.js",
-
-      TEST_SRC = ["tests/vextab_tests.coffee"],
-      TEST_OUT = BUILD_DIR + "/vextab-tests.js";
+      RELEASE_DIR = 'releases',
 
       CSS = ["vextab.css"];
 
@@ -36,52 +30,14 @@ module.exports = function(grunt) {
         max_line_length: { level: 'ignore' }
       }
     },
-    jison: {
-      compile: {
-        options: { moduleType: "commonjs" },
-        files: [{src: JISON_SRC, dest: JISON_OUT}]
-      }
-    },
-    browserify: {
-      tests: {
-        options: {
-          // No need for this because of package.json "browserify" rule.
-          // transform: ['coffeeify'],
-          browserifyOptions: {
-            debug: true,
-            standalone: "VexTabTests"
-          }
-        },
-        files: [
-          { src: TEST_SRC, dest: TEST_OUT }
-        ]
-      },
-      tabdiv: {
-        options: {
-          banner: BANNER,
-          browserifyOptions: {
-            standalone: "VexTabDiv"
-          }
-        },
-        files: [
-          { src: TABDIV_SRC, dest: TABDIV_OUT }
-        ]
-      },
-      playground: {
-        options: {
-          // No need for this because of package.json "browserify" rule.
-          // transform: ['coffeeify'],
-          browserifyOptions: {
-            debug: true
-          }
-        },
-        files: [
-          { src: "tests/playground.js", dest: "build/playground.js" }
-        ]
-      },
-    },
     qunit: {
       files: ['tests/runtest.html']
+    },
+    webpack: {
+      lib: webpackLib,
+      playground: webpackPlayground,
+      tests: webpackTests,
+      standalone: webpackStandalone
     },
     watch: {
       scripts: {
@@ -153,17 +109,17 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-release');
   grunt.loadNpmTasks('grunt-bump');
   grunt.loadNpmTasks('grunt-git');
-  grunt.loadNpmTasks('grunt-jison');
   grunt.loadNpmTasks('grunt-coffeelint');
-  grunt.loadNpmTasks('grunt-browserify');
+  grunt.loadNpmTasks('grunt-webpack');
+
 
   // Default task(s).
   grunt.registerTask('default', ['lint', 'build', 'test']);
 
   grunt.registerTask('build', 'Build library.', function() {
-    grunt.task.run('jison');
-    grunt.task.run('browserify:tabdiv');
-    grunt.task.run('browserify:tests');
+    grunt.task.run('webpack:lib');
+    grunt.task.run('webpack:standalone');
+    grunt.task.run('webpack:tests');
   });
 
   grunt.registerTask('lint', 'Run linter on all coffeescript code.', function() {
@@ -175,10 +131,8 @@ module.exports = function(grunt) {
   });
 
   grunt.registerTask('playground', 'Build playground.', function() {
-    // Make sure vextab is locally linked:
-    //   $ npm link
-    //   $ npm link vextab
-    grunt.task.run('browserify:playground');
+    grunt.task.run('webpack:lib');
+    grunt.task.run('webpack:playground');
   });
 
   // Release current build.
