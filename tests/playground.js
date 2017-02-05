@@ -1,22 +1,18 @@
-// Load VexTab module.
-vextab = require("vextab");
-$ = require("jquery");
-_ = require("lodash");
+import $ from 'jquery';
+import { VexTab, Artist, Vex }  from '../lib/vextab';
 
 $(function() {
-  VexTab = vextab.VexTab;
-  Artist = vextab.Artist;
-  Renderer = vextab.Vex.Flow.Renderer;
+  const Renderer = Vex.Flow.Renderer;
 
   Artist.DEBUG = true;
   VexTab.DEBUG = false;
 
   // Create VexFlow Renderer from canvas element with id #boo
-  renderer = new Renderer($('#boo')[0], Renderer.Backends.SVG);
+  const renderer = new Renderer($('#boo')[0], Renderer.Backends.SVG);
 
   // Initialize VexTab artist and parser.
-  artist = new Artist(10, 10, 600, {scale: 0.8});
-  vextab = new VexTab(artist);
+  const artist = new Artist(10, 10, 600, {scale: 0.8});
+  const vextab = new VexTab(artist);
 
   function render() {
     try {

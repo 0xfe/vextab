@@ -8,7 +8,7 @@
 
 Vex = require 'vexflow'
 _ = require 'lodash'
-parser = require '../build/vextab-jison.js'
+parser = require './vextab.jison'
 
 class VexTab
   @DEBUG = false
