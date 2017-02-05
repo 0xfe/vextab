@@ -6,7 +6,7 @@
     "email": "mohit@muthanna.com",
     "url": "http://muthanna.com"
   },
-  "main": "src/main.coffee",
+  "main": "lib/vextab.js",
   "description": "A VexTab Parser for VexFlow",
   "repository": {
     "type": "git",
@@ -14,8 +14,6 @@
   },
   "license": "LicenseRef-LICENSE",
   "dependencies": {
-    "coffeeify": "^2.0.1",
-    "jquery": "^3.1.0",
     "lodash": "^4.2.1",
     "vexflow": "*"
   },
@@ -24,9 +22,14 @@
       "coffeeify"
     ]
   },
+  "files": [
+    "lib"
+  ],
   "devDependencies": {
     "browserify": "^13.0.1",
+    "coffee-loader": "^0.7.2",
     "coffee-script": "^1.8.0",
+    "coffeeify": "^2.0.1",
     "coffeelint": "^1.6.1",
     "grunt": "^1.0.1",
     "grunt-browserify": "^5.0.0",
@@ -42,15 +45,19 @@
     "grunt-jison": "^1.3.2",
     "grunt-release": "^0.14.0",
     "jison": "^0.4.15",
+    "jison-loader": "^1.0.0",
+    "jquery": "^3.1.0",
     "qunit": "^0.9.1",
-    "qunitjs": "^2.0.0"
+    "qunitjs": "^2.0.0",
+    "webpack": "^2.2.1"
   },
   "bugs": {
     "url": "https://github.com/0xfe/vexflow/issues"
   },
   "scripts": {
     "start": "grunt stage",
-    "test": "grunt test"
+    "test": "grunt test",
+    "prepublish": "webpack"
   },
   "homepage": "http://www.vexflow.com/vextab/",
   "keywords": [
