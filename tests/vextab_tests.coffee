@@ -3,14 +3,14 @@ VexTab Tests
 Copyright Mohit Cheppudira 2010 <mohit@muthanna.com>
 ###
 
+$ = require "jquery"
+qunit = require "qunitjs"
 vextab = require "../src/main.coffee"
 
 Vex = vextab.Vex
 VexTab = vextab.VexTab
 Artist = vextab.Artist
 
-$ = require "jquery"
-qunit = require "qunitjs"
 test = qunit.test
 
 Artist.DEBUG = false;
@@ -18,6 +18,7 @@ VexTab.DEBUG = false;
 
 class VexTabTests
   @Start: ->
+    qunit.start();
     qunit.module "VexTab Parser"
     test "Basic Test", @basic
     test "Complex Test", @complex
