@@ -1,17 +1,35 @@
 // Gruntfile for VexTab.
 // Mohit Muthanna Cheppudira <mohit@muthanna.com>
+const webpack = require('webpack');
 const webpackTests = require('./webpack.config.tests');
 const webpackStandalone = require('./webpack.config.standalone');
 const webpackPlayground = require('./webpack.config.playground');
 const webpackLib = require('./webpack.config');
+const pkg = require('./package.json');
+
+const now = new Date();
+
+function addBanner(config) {
+  const date = `${now.getFullYear()}-${now.getMonth()}-${now.getDay()}`;
+  const banner = `
+/**
+ * VexTab ${pkg.version} built on ${date}.
+ * Copyright (c) 2010 Mohit Muthanna Cheppudira <mohit@muthanna.com>
+ *
+ * http://www.vexflow.com  http://github.com/0xfe/vextab
+ */
+`;
+  config.plugins = [
+    new webpack.BannerPlugin({
+      banner,
+      raw: true,
+      entryOnly: true
+    })
+  ];
+  return config;
+}
 
 module.exports = function(grunt) {
-  var BANNER = '/**\n' +
-                ' * VexTab <%= pkg.version %> built on <%= grunt.template.today("yyyy-mm-dd") %>.\n' +
-                ' * Copyright (c) 2010 Mohit Muthanna Cheppudira <mohit@muthanna.com>\n' +
-                ' *\n' +
-                ' * http://www.vexflow.com  http://github.com/0xfe/vextab\n' +
-                ' */\n';
 
   var BUILD_DIR = 'build',
       DOC_DIR = "doc",
@@ -22,7 +40,7 @@ module.exports = function(grunt) {
   var RELEASE_TARGETS = ["vextab-div.js"];
 
   grunt.initConfig({
-    pkg: grunt.file.readJSON('package.json'),
+    pkg,
     coffeelint: {
       files: ['src/*.coffee'],
       options: {
@@ -34,10 +52,10 @@ module.exports = function(grunt) {
       files: ['tests/runtest.html']
     },
     webpack: {
-      lib: webpackLib,
+      lib: addBanner(webpackLib),
       playground: webpackPlayground,
       tests: webpackTests,
-      standalone: webpackStandalone
+      standalone: addBanner(webpackStandalone)
     },
     watch: {
       scripts: {
