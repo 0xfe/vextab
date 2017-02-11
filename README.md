@@ -106,8 +106,6 @@ Clone this repository. Then run the following commands to setup a basic build an
 
 ```
 $ npm install
-$ npm link
-$ npm link vextab
 $ npm start
 ```
 
@@ -123,12 +121,6 @@ Before sending in a pull request, make sure that the tests pass a visual inspect
 Please add new tests for whatever you're working on. Don't send PRs without tests. Thanks!
 
 ## Dependencies
-
-This rewrite of VexTab has three key dependencies:
-
-  * [CoffeeScript](http://coffeescript.org/) - A *nicer* JavaScript.
-  * [Jison](http://zaach.github.com/jison/) - An LALR(1) parser modeled on Bison.
-  * [lodash](http://lodash.com/) - A utility-belt library for JavaScript.
 
 For the audio player feature, you need:
 
