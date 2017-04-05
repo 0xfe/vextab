@@ -6,7 +6,7 @@
     "email": "mohit@muthanna.com",
     "url": "http://muthanna.com"
   },
-  "main": "src/main.coffee",
+  "main": "releases/vextab-div.js",
   "description": "A VexTab Parser for VexFlow",
   "repository": {
     "type": "git",
