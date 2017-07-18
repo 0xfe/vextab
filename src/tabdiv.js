@@ -7,6 +7,7 @@ $ = require('jquery')
 Vex = require('vexflow')
 Artist = require('./artist.coffee')
 VexTab = require('./vextab.coffee')
+Player = require('./player.coffee')
 
 Vex.Flow.TabDiv = function(sel, options) {
   if (arguments.length > 0) this.init(sel, options);
@@ -151,5 +152,6 @@ module.exports = {
   Div: Vex.Flow.TabDiv,
   VexTab: VexTab,
   Artist: Artist,
+  Player: Player,
   Flow: Vex.Flow
 }

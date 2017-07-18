@@ -4,6 +4,8 @@
 # This class is responsible for rendering the elements
 # parsed by Vex.Flow.VexTab.
 
+paper = require 'paper'
+
 class Vex.Flow.Player
   @DEBUG = false
   @INSTRUMENTS_LOADED = {}
@@ -77,18 +79,18 @@ class Vex.Flow.Player
     @stop()
 
   getOverlay = (context, scale, overlay_class) ->
-    canvas = context.canvas
-    height = canvas.height
-    width = canvas.width
+    svg = context.svg
+    height = svg.clientHeight
+    width = svg.clientWidth
 
-    overlay = $('<canvas>')
+    overlay = $('<svg>')
     overlay.css("position", "absolute")
     overlay.css("left", 0)
     overlay.css("top", 0)
     overlay.addClass(overlay_class)
 
-    $(canvas).after(overlay)
-    ctx = Vex.Flow.Renderer.getCanvasContext(overlay.get(0), width, height)
+    $(svg).after(overlay)
+    ctx = Vex.Flow.Renderer.getSVGContext(overlay.get(0), width, height)
     ctx.scale(scale, scale)
 
     ps = new paper.PaperScope()
@@ -96,7 +98,7 @@ class Vex.Flow.Player
 
     return {
       paper: ps
-      canvas: overlay.get(0)
+      svg: overlay.get(0)
     }
 
   removeControls: ->
@@ -108,6 +110,8 @@ class Vex.Flow.Player
     @reset()
     data = @artist.getPlayerData()
     @scale = data.scale
+
+    console.log("CONTEXT - should be SVG", data.context);
 
     if not @paper
       overlay = getOverlay(data.context, data.scale, @options.overlay_class)
@@ -245,3 +249,5 @@ class Vex.Flow.Player
           @loading = false
           @loading_message.content = ""
           @start()
+
+module.exports = Vex.Flow.Player
