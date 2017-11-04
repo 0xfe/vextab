@@ -50,6 +50,7 @@
 "."                       return '.'
 "#"                       return '#'
 "@"                       return '@'
+"*"                       return '*'
 
 /* These are valid inside fret/string expressions only */
 
@@ -273,6 +274,14 @@ lingo
         params: $1
       }]
     }
+  | timesignote
+    { $$ = [{
+        command: "timesignote",
+        value: $1,
+        _l: @1.first_line,
+        _c: @1.first_column
+        }]
+    }
   ;
 
 bar
@@ -421,6 +430,10 @@ rest
   : '#' '#'             { $$ = {position: 0} }
   | '#' NUMBER '#'      { $$ = {position: $2} }
   | '#' '-' NUMBER '#'  { $$ = {position: $3 * -1} }
+  ;
+
+timesignote
+  : '*' NUMBER '/' NUMBER '*'   { $$ = $2 + '/' + $4 }
   ;
 
 abc

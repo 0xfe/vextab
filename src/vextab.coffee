@@ -85,6 +85,9 @@ class VexTab
     if element.command is "rest"
       @artist.addRest(element.params)
 
+    if element.command is "timesignote"
+      @artist.addTimeSigNote(element.value)
+
     if element.command is "command"
       @artist.runCommand(element.params, element._l, element._c)
 

@@ -794,6 +794,14 @@ class Artist
     else
       tab_notes.push new Vex.Flow.GhostNote(@current_duration)
 
+  addTimeSigNote: (value) ->
+    L "addTimeSig", value
+    stave = _.last(@staves)
+
+    timesig_note = new Vex.Flow.TimeSigNote(value)
+    stave.tab_notes.push(timesig_note)
+    stave.note_notes.push(timesig_note) if stave.note?
+
   addChord: (chord, chord_articulation, chord_decorator) ->
     return if _.isEmpty(chord)
     L "addChord: ", chord
