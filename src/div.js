@@ -131,6 +131,8 @@ class Div {
 window.VEXTAB_SEL_V3 = 'div.vextab-auto';
 
 function start(sel) {
+  // eslint-disable-next-line
+  console.log('Running VexTab.Div:', __VERSION, __BRANCH, __COMMITHASH);
   $(sel || window.VEXTAB_SEL_V3).forEach((s) => new Div(s));
 }
 
