@@ -42344,6 +42344,8 @@ class Div {
 window.VEXTAB_SEL_V3 = 'div.vextab-auto';
 
 function start(sel) {
+  // eslint-disable-next-line
+  console.log('Running VexTab.Div:', "3.0.1-4-gcbceb5d", "master", "cbceb5d86f59afafcb6aaf0c21d04b4fbfc18ec3");
   $(sel || window.VEXTAB_SEL_V3).forEach(s => new Div(s));
 }
 
