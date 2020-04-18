@@ -97,7 +97,6 @@ If you have the `grunt-cli` NPM package installed, you can manually run the vari
 ```
 $ npm install -g grunt-cli
 $ grunt (lint|build|publish)
-$ npm publish
 ```
 
 Before sending in a pull request, make sure that the tests pass a visual inspection. Open `http://localhost:9005` in your browser and verify that the notation examples at the bottom of the page render correctly. Also open `http://localhost:9005/playground.html` and verify that your new feature/bug fix, etc. works correctly.
