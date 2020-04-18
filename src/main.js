@@ -3,6 +3,6 @@ import Artist from './artist.coffee';
 import VexTab from './vextab.coffee';
 import Div from './div';
 
-export default {
+export {
   Vex, Artist, VexTab, Div,
 };

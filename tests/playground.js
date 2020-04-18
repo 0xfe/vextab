@@ -1,6 +1,6 @@
 // Load VexTab module.
 import * as _ from 'lodash';
-import vextab from '../src/main';
+import * as vextab from '../src/main';
 
 $(() => {
   const VexTab = vextab.VexTab;
@@ -14,7 +14,7 @@ $(() => {
   const renderer = new Renderer($('#boo')[0], Renderer.Backends.SVG);
 
   // Initialize VexTab artist and parser.
-  const artist = new Artist(10, 10, 600, { scale: 0.8 });
+  const artist = new Artist(10, 10, 700, { scale: 0.8 });
   const tab = new VexTab(artist);
 
   function render() {
