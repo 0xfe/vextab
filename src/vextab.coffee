@@ -6,9 +6,9 @@
 # Vex.Flow.Artist to render the notation.
 # parsed by Vex.Flow.VexTab.
 
-Vex = require 'vexflow'
-_ = require 'lodash'
-parser = require '../build/vextab-jison.js'
+import Vex from 'vexflow'
+import * as _ from 'lodash'
+import * as parser from './vextab.jison'
 
 class VexTab
   @DEBUG = false
@@ -208,4 +208,4 @@ class VexTab
 
     return @elements
 
-module.exports = VexTab
+export default VexTab

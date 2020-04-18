@@ -1,0 +1,56 @@
+<html>
+
+<head>
+    <title>VexTab Div Playground</title>
+    <style type="text/css">
+        body {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            color: #554;
+            margin: 0px;
+            height: 80%;
+        }
+
+        #error {
+            font-family: Courier;
+            color: red;
+            width: 600;
+        }
+
+        textarea#blah {
+            width: 500px;
+            height: 300px;
+            font-family: Courier;
+            font-size: 12px;
+            padding: 10px;
+            margin-top: 40px;
+            border: #eee solid 10px;
+        }
+    </style>
+    <script src="div.prod.js"></script>
+    <script src="div.dev.js"></script>
+    <script>
+        window.VEXTAB_SEL_V3 = '.vex-tabdiv'
+    </script>
+    <link rel="stylesheet" type="text/css" href="vextab.css" />
+</head>
+
+<body>
+    <h1>TabDiv Playground</h1>
+
+    <div class="vex-tabdiv" width=800 scale=0.8 editor="true" editor-width=640 editor-height=330>
+        options space=20
+        tabstave
+        notation=true
+        key=A time=4/4
+
+        notes :q =|: (7/4.5/3.5/2) :8 7-5h6/3 ^3^ 5h6-7/5 ^3^ :q 7V/4 |
+        notes :8 t12p7/4 s5s3/4 :8 3s:16:5-7/5 :h p5/4
+        text :w, |#segno, ,|, :hd, , #tr
+
+        options space=25
+    </div>
+</body>
+
+</html>

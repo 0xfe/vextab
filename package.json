@@ -1,62 +1,78 @@
 {
-  "name": "vextab",
-  "version": "2.0.13",
-  "author": {
-    "name": "Mohit Muthanna Cheppudira",
-    "email": "mohit@muthanna.com",
-    "url": "http://muthanna.com"
-  },
-  "main": "src/main.coffee",
-  "description": "A VexTab Parser for VexFlow",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/0xfe/vextab.git"
-  },
-  "license": "LicenseRef-LICENSE",
-  "dependencies": {
-    "coffeeify": "^2.0.1",
-    "jquery": "^3.1.0",
-    "lodash": "^4.2.1",
-    "vexflow": "*"
-  },
-  "browserify": {
-    "transform": [
-      "coffeeify"
+    "name": "vextab",
+    "version": "2.0.13",
+    "author": {
+        "name": "Mohit Muthanna Cheppudira",
+        "email": "mohit@muthanna.com",
+        "url": "http://muthanna.com"
+    },
+    "main": "dist/main.prod.js",
+    "description": "A VexTab Parser for VexFlow",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/0xfe/vextab.git"
+    },
+    "license": "LicenseRef-LICENSE",
+    "dependencies": {
+        "lodash": "^4.2.1",
+        "vexflow": "*"
+    },
+    "devDependencies": {
+        "@babel/core": "^7.9.0",
+        "@babel/preset-env": "^7.9.5",
+        "@babel/preset-react": "^7.9.4",
+        "babel-eslint": "^10.1.0",
+        "babel-loader": "^8.1.0",
+        "babel-preset-es2015": "^6.24.1",
+        "clean-webpack-plugin": "^3.0.0",
+        "coffee-loader": "^0.9.0",
+        "coffee-script": "^1.8.0",
+        "coffeelint": "^1.6.1",
+        "coffeescript": "^2.5.1",
+        "copy-webpack-plugin": "^5.1.1",
+        "css-loader": "^3.5.2",
+        "eslint": "^6.8.0",
+        "eslint-config-airbnb-base": "^14.1.0",
+        "eslint-loader": "^4.0.0",
+        "eslint-plugin-import": "^2.20.2",
+        "git-revision-webpack-plugin": "^3.0.6",
+        "grunt": "^1.0.1",
+        "grunt-browserify": "^5.0.0",
+        "grunt-bump": "0.8.0",
+        "grunt-cli": "^1.2.0",
+        "grunt-coffeelint": "0.0.16",
+        "grunt-contrib-clean": "^1.0.0",
+        "grunt-contrib-copy": "^1.0.0",
+        "grunt-contrib-qunit": "^1.2.0",
+        "grunt-contrib-watch": "^1.0.0",
+        "grunt-git": "^1.0.0",
+        "grunt-release": "^0.14.0",
+        "html-webpack-plugin": "^4.2.0",
+        "jison": "^0.4.18",
+        "jison-loader": "^1.0.0",
+        "qunit": "^0.9.3",
+        "style-loader": "^1.1.4",
+        "webpack": "^4.42.1",
+        "webpack-cli": "^3.3.11",
+        "webpack-dev-server": "^3.10.3",
+        "zepto-webpack": "^1.2.1"
+    },
+    "bugs": {
+        "url": "https://github.com/0xfe/vexflow/issues"
+    },
+    "scripts": {
+        "build": "webpack --progress --mode production --env.NODE_ENV=production --env.TAG_NAME=prod --config webpack.config.js",
+        "build-dev": "webpack --progress --mode development --env.NODE_ENV=development --env.TAG_NAME=dev --config webpack.config.js",
+        "start": "webpack-dev-server --progress --colors --mode development  --port 9005 --disable-host-check --env.NODE_ENV=development --env.TAG_NAME=dev --config webpack.config.js",
+        "serve": "npx http-server -c 1 -p 8052",
+        "watch": "webpack -w --progress --mode development --env.NODE_ENV=development --env.TAG_NAME=dev --config webpack.config.js",
+        "clean": "rm -rf ./dist/*"
+    },
+    "homepage": "http://www.vexflow.com/vextab/",
+    "keywords": [
+        "music",
+        "notation",
+        "guitar",
+        "tablature"
     ]
-  },
-  "devDependencies": {
-    "browserify": "^13.0.1",
-    "coffee-script": "^1.8.0",
-    "coffeelint": "^1.6.1",
-    "grunt": "^1.0.1",
-    "grunt-browserify": "^5.0.0",
-    "grunt-bump": "0.8.0",
-    "grunt-cli": "^1.2.0",
-    "grunt-coffeelint": "0.0.16",
-    "grunt-contrib-clean": "^1.0.0",
-    "grunt-contrib-coffeeify": "^0.1.0",
-    "grunt-contrib-copy": "^1.0.0",
-    "grunt-contrib-qunit": "^1.2.0",
-    "grunt-contrib-watch": "^1.0.0",
-    "grunt-git": "^1.0.0",
-    "grunt-jison": "^1.3.2",
-    "grunt-release": "^0.14.0",
-    "jison": "^0.4.15",
-    "qunit": "^0.9.1",
-    "qunitjs": "^2.0.0"
-  },
-  "bugs": {
-    "url": "https://github.com/0xfe/vexflow/issues"
-  },
-  "scripts": {
-    "start": "grunt stage",
-    "test": "grunt test"
-  },
-  "homepage": "http://www.vexflow.com/vextab/",
-  "keywords": [
-    "music",
-    "notation",
-    "guitar",
-    "tablature"
-  ]
 }

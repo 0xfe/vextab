@@ -3,15 +3,14 @@ VexTab Tests
 Copyright Mohit Cheppudira 2010 <mohit@muthanna.com>
 ###
 
-vextab = require "../src/main.coffee"
+import Vex from 'vexflow';
+import Artist from '../src/artist.coffee';
+import VexTab from '../src/vextab.coffee';
 
-Vex = vextab.Vex
-VexTab = vextab.VexTab
-Artist = vextab.Artist
-
-$ = require "jquery"
-qunit = require "qunitjs"
+qunit = QUnit
 test = qunit.test
+
+console.log(test)
 
 Artist.DEBUG = false;
 VexTab.DEBUG = false;
@@ -75,7 +74,7 @@ class VexTabTests
     # equal(error.code, error_type, error.message)
     assert.equal(true, caught)
 
-  makeParser = -> new VexTab(new Artist(0, 0, 600, {scale: 0.8}))
+  makeParser = -> new VexTab(new Artist(0, 0, 800, {scale: 0.8}))
   makeRenderer = (test_name)->
     test_div = $('<div></div>').addClass("testcanvas")
     test_div.append($('<div></div>').addClass("name").text(test_name))
@@ -624,4 +623,4 @@ class VexTabTests
     """
     renderTest assert, "Fret Hand Fingering and String Numbers", code
 
-module.exports = VexTabTests
+VexTabTests.Start()

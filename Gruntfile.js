@@ -1,31 +1,30 @@
 // Gruntfile for VexTab.
 // Mohit Muthanna Cheppudira <mohit@muthanna.com>
 
-module.exports = function(grunt) {
-  var L = grunt.log.writeln;
-  var BANNER = '/**\n' +
-                ' * VexTab <%= pkg.version %> built on <%= grunt.template.today("yyyy-mm-dd") %>.\n' +
-                ' * Copyright (c) 2010 Mohit Muthanna Cheppudira <mohit@muthanna.com>\n' +
-                ' *\n' +
-                ' * http://www.vexflow.com  http://github.com/0xfe/vextab\n' +
-                ' */\n';
+module.exports = (grunt) => {
+  const BANNER = '/**\n'
+                + ' * VexTab <%= pkg.version %> built on <%= grunt.template.today("yyyy-mm-dd") %>.\n'
+                + ' * Copyright (c) 2010 Mohit Muthanna Cheppudira <mohit@muthanna.com>\n'
+                + ' *\n'
+                + ' * http://www.vexflow.com  http://github.com/0xfe/vextab\n'
+                + ' */\n';
 
-  var BUILD_DIR = 'build',
-      DOC_DIR = "doc",
-      RELEASE_DIR = 'releases';
+  const BUILD_DIR = 'build';
+  const DOC_DIR = 'doc';
+  const RELEASE_DIR = 'releases';
 
-  var JISON_SRC = ["src/vextab.jison"],
-      JISON_OUT = BUILD_DIR + "/vextab-jison.js",
+  const JISON_SRC = ['src/vextab.jison'];
+  const JISON_OUT = `${BUILD_DIR}/vextab-jison.js`;
 
-      TABDIV_SRC = ["src/tabdiv.js"],
-      TABDIV_OUT = "build/vextab-div.js",
+  const TABDIV_SRC = ['src/tabdiv.js'];
+  const TABDIV_OUT = 'build/vextab-div.js';
 
-      TEST_SRC = ["tests/vextab_tests.coffee"],
-      TEST_OUT = BUILD_DIR + "/vextab-tests.js";
+  const TEST_SRC = ['tests/vextab_tests.coffee'];
+  const TEST_OUT = `${BUILD_DIR}/vextab-tests.js`;
 
-      CSS = ["vextab.css"];
+  const CSS = ['vextab.css'];
 
-  var RELEASE_TARGETS = ["vextab-div.js"];
+  const RELEASE_TARGETS = ['vextab-div.js'];
 
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
@@ -33,14 +32,14 @@ module.exports = function(grunt) {
       files: ['src/*.coffee'],
       options: {
         no_trailing_whitespace: { level: 'error' },
-        max_line_length: { level: 'ignore' }
-      }
+        max_line_length: { level: 'ignore' },
+      },
     },
     jison: {
       compile: {
-        options: { moduleType: "commonjs" },
-        files: [{src: JISON_SRC, dest: JISON_OUT}]
-      }
+        options: { moduleType: 'commonjs' },
+        files: [{ src: JISON_SRC, dest: JISON_OUT }],
+      },
     },
     browserify: {
       tests: {
@@ -49,48 +48,50 @@ module.exports = function(grunt) {
           // transform: ['coffeeify'],
           browserifyOptions: {
             debug: true,
-            standalone: "VexTabTests"
-          }
+            standalone: 'VexTabTests',
+            transform: [['babelify', { presets: ['@babel/preset-env'] }]],
+          },
         },
         files: [
-          { src: TEST_SRC, dest: TEST_OUT }
-        ]
+          { src: TEST_SRC, dest: TEST_OUT },
+        ],
       },
       tabdiv: {
         options: {
           banner: BANNER,
           browserifyOptions: {
-            standalone: "VexTabDiv"
-          }
+            standalone: 'VexTabDiv',
+            transform: [['babelify', { presets: ['@babel/preset-env'] }]],
+          },
         },
         files: [
-          { src: TABDIV_SRC, dest: TABDIV_OUT }
-        ]
+          { src: TABDIV_SRC, dest: TABDIV_OUT },
+        ],
       },
       playground: {
         options: {
           // No need for this because of package.json "browserify" rule.
           // transform: ['coffeeify'],
           browserifyOptions: {
-            debug: true
-          }
+            debug: true,
+          },
         },
         files: [
-          { src: "tests/playground.js", dest: "build/playground.js" }
-        ]
+          { src: 'tests/playground.js', dest: 'build/playground.js' },
+        ],
       },
     },
     qunit: {
-      files: ['tests/runtest.html']
+      files: ['tests/runtest.html'],
     },
     watch: {
       scripts: {
         files: ['Gruntfile.js', 'src/*', 'tests/*'],
         tasks: ['build', 'playground', 'lint'],
         options: {
-          interrupt: true
-        }
-      }
+          interrupt: true,
+        },
+      },
     },
     copy: {
       release: {
@@ -99,9 +100,9 @@ module.exports = function(grunt) {
             expand: true,
             dest: RELEASE_DIR,
             cwd: BUILD_DIR,
-            src: RELEASE_TARGETS
-          }
-        ]
+            src: RELEASE_TARGETS,
+          },
+        ],
       },
       css: {
         files: [
@@ -109,24 +110,24 @@ module.exports = function(grunt) {
             expand: true,
             dest: RELEASE_DIR,
             cwd: DOC_DIR,
-            src: CSS
-          }
-        ]
-      }
+            src: CSS,
+          },
+        ],
+      },
     },
     gitcommit: {
       releases: {
         options: {
-          message: "Committing release binaries for new version: <%= pkg.version %>",
-          verbose: true
+          message: 'Committing release binaries for new version: <%= pkg.version %>',
+          verbose: true,
         },
         files: [
           {
-            src: [RELEASE_DIR + "/*.js", RELEASE_DIR + "/*.map", RELEASE_DIR + "/*.css"],
-            expand: true
-          }
-        ]
-      }
+            src: [`${RELEASE_DIR}/*.js`, `${RELEASE_DIR}/*.map`, `${RELEASE_DIR}/*.css`],
+            expand: true,
+          },
+        ],
+      },
     },
     bump: {
       options: {
@@ -134,14 +135,14 @@ module.exports = function(grunt) {
         commitFiles: ['package.json'], // Add component.json here
         updateConfigs: ['pkg'],
         createTag: false,
-        push: false
-      }
+        push: false,
+      },
     },
     release: {
       options: {
         bump: false,
-        commit: false
-      }
+        commit: false,
+      },
     },
     clean: [BUILD_DIR, RELEASE_DIR],
   });
@@ -160,21 +161,21 @@ module.exports = function(grunt) {
   // Default task(s).
   grunt.registerTask('default', ['lint', 'build', 'test']);
 
-  grunt.registerTask('build', 'Build library.', function() {
+  grunt.registerTask('build', 'Build library.', () => {
     grunt.task.run('jison');
     grunt.task.run('browserify:tabdiv');
     grunt.task.run('browserify:tests');
   });
 
-  grunt.registerTask('lint', 'Run linter on all coffeescript code.', function() {
+  grunt.registerTask('lint', 'Run linter on all coffeescript code.', () => {
     grunt.task.run('coffeelint');
   });
 
-  grunt.registerTask('test', 'Run qunit tests.', function() {
+  grunt.registerTask('test', 'Run qunit tests.', () => {
     grunt.task.run('qunit');
   });
 
-  grunt.registerTask('playground', 'Build playground.', function() {
+  grunt.registerTask('playground', 'Build playground.', () => {
     // Make sure vextab is locally linked:
     //   $ npm link
     //   $ npm link vextab
@@ -182,14 +183,14 @@ module.exports = function(grunt) {
   });
 
   // Release current build.
-  grunt.registerTask('stage', 'Stage current binaries to releases/.', function() {
+  grunt.registerTask('stage', 'Stage current binaries to releases/.', () => {
     grunt.task.run('default');
     grunt.task.run('copy:css');
     grunt.task.run('copy:release');
   });
 
   // Increment package version and publish to NPM.
-  grunt.registerTask('publish', 'Publish VexTab NPM.', function() {
+  grunt.registerTask('publish', 'Publish VexTab NPM.', () => {
     grunt.task.run('bump');
     grunt.task.run('stage');
     grunt.task.run('test');

@@ -68,7 +68,7 @@ class Vex.Flow.Player
     @tick_notes = {}
     @all_ticks = []
     @tpm = @options.tempo * (RESOLUTION / 4)
-    @refresh_rate = 25 #ms: 50 = 20hz
+    @refresh_rate = 25 # ms: 50 = 20hz
     @ticks_per_refresh = @tpm / (60 * (1000/@refresh_rate))
     @total_ticks = 0
     if @marker?
