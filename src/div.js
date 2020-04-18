@@ -7,6 +7,8 @@ import Vex from 'vexflow';
 import Artist from './artist.coffee';
 import VexTab from './vextab.coffee';
 
+import './vextab.css';
+
 class Div {
   constructor(sel) {
     this.sel = sel;
@@ -107,7 +109,7 @@ class Div {
         this.editor_error.empty();
         this.editor_error.append(
           $('<div></div>').addClass('text').html(
-            `Sucky VexTab: ${e.message}`,
+            `<h3>Oops!</h3> ${e.message.replace(/(?:\r\n|\r|\n)/g, '<br>')}`,
           ),
         );
       }
@@ -126,7 +128,7 @@ class Div {
   }
 }
 
-window.VEXTAB_SEL_V3 = '.vex-tabdiv';
+window.VEXTAB_SEL_V3 = 'div.vextab-auto';
 
 function start(sel) {
   $(sel || window.VEXTAB_SEL_V3).forEach((s) => new Div(s));

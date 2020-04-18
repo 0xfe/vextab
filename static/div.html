@@ -31,21 +31,20 @@
     <script src="div.prod.js"></script>
     <script src="div.dev.js"></script>
     <script>
-        window.VEXTAB_SEL_V3 = '.vex-tabdiv'
+        window.VEXTAB_SEL_V3 = '.vextab-auto'
     </script>
-    <link rel="stylesheet" type="text/css" href="vextab.css" />
 </head>
 
 <body>
     <h1>TabDiv Playground</h1>
 
-    <div class="vex-tabdiv" width=800 scale=0.8 editor="true" editor-width=640 editor-height=330>
+    <div class="vextab-auto" width=800 scale=0.8 editor="true" editor-width=640 editor-height=330>
         options space=20
         tabstave
         notation=true
         key=A time=4/4
 
-        notes :q =|: (7/4.5/3.5/2) :8 7-5h6/3 ^3^ 5h6-7/5 ^3^ :q 7V/4 |
+        notes :q =|: (7/4.5/3.5/2) :8 7h5-6/3 ^3^ 5-6h7/5 ^3^ :q 7V/4 |
         notes :8 t12p7/4 s5s3/4 :8 3s:16:5-7/5 :h p5/4
         text :w, |#segno, ,|, :hd, , #tr
 

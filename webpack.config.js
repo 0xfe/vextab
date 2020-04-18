@@ -1,14 +1,13 @@
 const path = require('path');
 const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 const GitRevisionPlugin = require('git-revision-webpack-plugin');
 
 module.exports = (env) => {
   // eslint-disable-next-line
   env = env || {};
-  const tag = env.TAG_NAME || process.env.TAG_NAME;
+  const tag = env.TAG_NAME || process.env.TAG_NAME || 'dev';
   const hasTag = typeof tag !== 'undefined' && tag !== '';
   const gitRevisionPlugin = new GitRevisionPlugin();
 
@@ -20,7 +19,6 @@ module.exports = (env) => {
       new webpack.ProvidePlugin({
         $: 'zepto-webpack',
       }),
-      new CleanWebpackPlugin(),
       new HtmlWebpackPlugin({
         template: './tests/tests.html',
         filename: 'index.html',
@@ -43,7 +41,7 @@ module.exports = (env) => {
         __BRANCH: JSON.stringify(gitRevisionPlugin.branch()),
       }),
     ],
-    devtool: env.NODE_ENV === 'production' ? 'hidden-source-map' : false,
+    devtool: tag === 'prod' ? 'hidden-source-map' : false,
     entry: {
       main: './src/main.js',
       div: './src/div.js',
