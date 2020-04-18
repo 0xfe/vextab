@@ -42224,7 +42224,7 @@ class Div {
     this.sel = sel;
 
     if (!this.sel) {
-      throw new Error(`VexTab.Div: Invalid selector: ${sel}`);
+      throw new Error(`VexTab.Div: invalid selector: ${sel}`);
     } // Grab code and clear tabdiv
 
 
