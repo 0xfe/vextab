@@ -42224,7 +42224,7 @@ class Div {
     this.sel = sel;
 
     if (!this.sel) {
-      throw new Error(`TabDiv: Invalid sel: ${sel}`);
+      throw new Error(`TabDiv: Invalid selector: ${sel}`);
     } // Grab code and clear tabdiv
 
 
