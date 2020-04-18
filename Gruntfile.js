@@ -4,8 +4,8 @@
 const webpackConfig = require('./webpack.config.js');
 
 module.exports = (grunt) => {
-  const BUILD_DIR = 'build';
-  const RELEASE_DIR = 'dist';
+  const BUILD_DIR = 'dist';
+  const RELEASE_DIR = 'releases';
 
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
@@ -21,6 +21,18 @@ module.exports = (grunt) => {
       options: {
         no_trailing_whitespace: { level: 'error' },
         max_line_length: { level: 'ignore' },
+      },
+    },
+    copy: {
+      release: {
+        files: [
+          {
+            expand: true,
+            dest: RELEASE_DIR,
+            cwd: BUILD_DIR,
+            src: ['*.js', '*.map'],
+          },
+        ],
       },
     },
     gitcommit: {
@@ -58,6 +70,7 @@ module.exports = (grunt) => {
 
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-contrib-clean');
+  grunt.loadNpmTasks('grunt-contrib-copy');
   grunt.loadNpmTasks('grunt-release');
   grunt.loadNpmTasks('grunt-bump');
   grunt.loadNpmTasks('grunt-git');
@@ -81,7 +94,7 @@ module.exports = (grunt) => {
   grunt.registerTask('publish', 'Publish VexTab NPM.', () => {
     grunt.task.run('bump');
     grunt.task.run('default');
-    grunt.task.run('test');
+    grunt.task.run('copy:release');
     grunt.task.run('gitcommit:releases');
     grunt.task.run('release');
   });
