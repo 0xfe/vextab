@@ -90,12 +90,11 @@ module.exports = (grunt) => {
     grunt.task.run('webpack:dev');
   });
 
-  // Increment package version and publish to NPM.
-  grunt.registerTask('publish', 'Publish VexTab NPM.', () => {
-    grunt.task.run('bump');
-    grunt.task.run('default');
-    grunt.task.run('copy:release');
-    grunt.task.run('gitcommit:releases');
-    grunt.task.run('release');
+  grunt.registerTask('alldone', 'Publish VexTab NPM.', () => {
+    grunt.log.ok('NOT YET DONE: Run `npm publish` now to publish NPM.');
   });
+
+  // Increment package version generate releases
+  grunt.registerTask('publish', 'Generate releases.',
+    ['bump', 'default', 'copy:release', 'gitcommit:releases', 'release', 'alldone']);
 };

@@ -13,7 +13,7 @@ class Div {
   constructor(sel) {
     this.sel = sel;
     if (!this.sel) {
-      throw new Error(`TabDiv: Invalid sel: ${sel}`);
+      throw new Error(`VexTab.Div: invalid selector: ${sel}`);
     }
 
     // Grab code and clear tabdiv
