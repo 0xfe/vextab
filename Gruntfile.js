@@ -62,7 +62,7 @@ module.exports = (grunt) => {
       options: {
         bump: false,
         commit: false,
-        npm: false,
+        npm: true, // switch to false once there's 2FA
       },
     },
     clean: [BUILD_DIR, RELEASE_DIR],
@@ -91,7 +91,7 @@ module.exports = (grunt) => {
   });
 
   grunt.registerTask('alldone', 'Publish VexTab NPM.', () => {
-    grunt.log.ok('NOT YET DONE: Run `npm publish` now to publish NPM.');
+    grunt.log.ok('All done!');
   });
 
   // Increment package version generate releases
