@@ -55,14 +55,12 @@ If you want to do more interesting things with VexTab, you can use the API direc
 $ npm install vextab
 ```
 
-Basic usage:
+Basic usage [jsfiddle](https://jsfiddle.net/ogL5w6ja/2/)
 
 ```js
-import vextab from 'vextab';
+import {VexTab, Artist, Vex} from 'vextab';
 
-const VexTab = vextab.VexTab;
-const Artist = vextab.Artist;
-const Renderer = vextab.Vex.Flow.Renderer;
+const Renderer = Vex.Flow.Renderer;
 
 // Create VexFlow Renderer from canvas element with id #boo
 const renderer = new Renderer($('#boo')[0], Renderer.Backends.SVG);
@@ -72,7 +70,7 @@ const artist = new Artist(10, 10, 600, { scale: 0.8 });
 const tab = new VexTab(artist);
 
 try {
-    tab.parse($('#blah').val());
+    tab.parse('tabstave').val());
     artist.render(renderer);
 } catch (e) {
     console.error(e);
