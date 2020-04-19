@@ -15,7 +15,7 @@
     "license": "LicenseRef-LICENSE",
     "dependencies": {
         "lodash": "^4.2.1",
-        "vexflow": "^3.0.7"
+        "vexflow": "^3.0.8"
     },
     "devDependencies": {
         "@babel/core": "^7.9.0",

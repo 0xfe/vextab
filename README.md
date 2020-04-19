@@ -88,12 +88,17 @@ $ npm install
 $ npm start
 ```
 
+If you have the `grunt-cli` NPM package installed, you can manually run the various build steps:
+
 Browse to http://localhost:9005 to run tests.
 
-If you have the `grunt-cli` NPM package installed, you can manually run the various build steps:
+### Publishing new packages
+
+Update vexflow dependency if necessary.
 
 ```
 $ npm install -g grunt-cli
+$ npm upgrade vexflow
 $ grunt (lint|build|publish)
 ```
 
@@ -101,7 +106,19 @@ Before sending in a pull request, make sure that the tests pass a visual inspect
 
 Please add new tests for whatever you're working on. Don't send PRs without tests. Thanks!
 
-## Dependencies
+### Working with a local VexFlow installation
+
+```
+$ git clone vexflow_repo
+$ cd vexflow
+$ npm link
+$ cd ~/git/vextab
+$ npm link vexflow
+```
+
+You may have to run `npm link vexflow` everytime you install or upgrade an npm package.
+
+## Other Dependencies
 
 This rewrite of VexTab has three key dependencies:
 
