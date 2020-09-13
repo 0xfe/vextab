@@ -50,6 +50,7 @@ module.exports = (env) => {
     },
     output: {
       library: 'vextab',
+      libraryTarget: 'umd',
       filename: hasTag ? `[name].${tag}.js` : '[name].[contenthash].js',
       path: path.resolve(__dirname, 'dist'),
     },
