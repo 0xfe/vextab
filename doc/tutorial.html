@@ -585,6 +585,48 @@ voice
 notes :q 7/6 7/6 0/5 0/5                    | 4/6 0/5 7/6 4/6 |
     </div>
 
+<h2>Step 17: Add fingerings.</h2>
+    <div class="description">
+      You can also add <code>fingering</code> after a given note.
+      <p />
+      The format for a <code>fingering</code> is:
+      <p />
+      <code>fingering/<i>[note number]</i>:<i>[position]</i>:<i>[type]</i>:<i>[value]</i></code>
+
+      <table class="fingering-keywords" style="vertical-align: top;">
+        <thead>
+          <tr><td><strong>element</strong></td><td><strong>values</strong></td></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>note number</td>
+            <td>The index of the note you for which you're adding the notation.  For single notes, this will be 1, and for chords it will be the position of the note in the notated chord</td>
+          </tr>
+          <tr>
+            <td>position</td>
+            <td>The position that the annotation will appear.  One of a, b, l, or r (for above, below, right or left).</td>
+          </tr>
+          <tr>
+            <td>type</td>
+            <td>The type of annotation.  f or s (finger or string)</td>
+          </tr>
+          <tr>
+            <td>value</td>
+            <td>The annotation to add to the rendered staff</td>
+          </tr>
+        </tbody>
+      </table>
+
+     </div>
+
+    <div style="width:570; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=550 scale=1.0 editor="true"
+         editor_height=100>options stave-distance=30
+tabstave notation=true
+notes :8 6/4 $.fingering/1:l:f:2.$ h7/4 $.fingering/1:l:f:3.$ :q 0/2 :8 T0/2 5/3 $.fingering/1:l:f:4.$ :q 3/2 $.fingering/1:r:f:3.$
+    </div>
+
     <center>
     <h2>Step N + 1: Coming soon</h2>
       <p/>
