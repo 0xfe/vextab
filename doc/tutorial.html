@@ -564,6 +564,26 @@ tabstave time=4/4 key=A
 notes :8 5/5 5/4 5/3 ^3^ :16 5-6-7-8/1 :8 9s10/1 :h s9v/1</div>
     </div>
 
+<h2>Step 16: Add multiple voices for polyphonic music.</h2>
+    <div class="description">
+      Add multiple <code>voice</code> lines before <code>notes</code> lines to correctly notate polyphonic music.  The stem directions are inferred from the voice order: the first voice (soprano) has stems up, and the last (bass) stems down.  The voices are combined onto a single staff.
+     </div>
+
+    <div style="width:570; margin-left: auto; margin-right: auto;">
+    <div class="vex-tabdiv"
+      width=550 scale=1.0 editor="true"
+      editor_height=100>options stave-distance=30
+tabstave notation=true
+    time=4/4
+voice
+notes :8 6/4 h7/4 :q 0/2 :8 T0/2 5/3 :q 3/2 | :q T3/2    :16 3/2 0/1 :8 6/2 :q T6/2 :q 0/1 |
+voice
+notes :w ##                                 | :8 ##  5/3 :8  0/2        7/4 6/4 7/4 :q 0/2 |
+voice
+notes :q ## :8 0/4 7/5 :qd 3/4 :8 0/4       | :q 2/4 |
+voice
+notes :q 7/6 7/6 0/5 0/5                    | 4/6 0/5 7/6 4/6 |
+    </div>
 
     <center>
     <h2>Step N + 1: Coming soon</h2>
