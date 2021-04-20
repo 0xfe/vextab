@@ -501,6 +501,20 @@ class VexTabTests
     """
     renderTest assert, "Render Complex", code
 
+    code = """
+    tabstave notation=true key=E time=12/8
+        notes :w 7/4 | :w 6/5"""
+    renderTest assert, "Render ok when notes line does not end with bar", code
+    renderTest assert, "Render misaligns when notes line ends with bar", code + " |"
+
+    code = """
+    tabstave notation=true key=E time=12/8
+        notes :w 7/4 |
+        notes :w 6/5"""
+
+    renderTest assert, "Render ok when last notes line does not end with bar", code
+    renderTest assert, "Render misaligns when last notes line ends with bar", code + " |"
+
   @tabStems: (assert) ->
     code = """
     options tab-stems=true
