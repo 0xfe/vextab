@@ -214,6 +214,7 @@ class Artist
       if last_note instanceof Vex.Flow.BarNote
         notes.pop()
         stave.setEndBarType(last_note.getType())
+        stave.formatted = true
 
     for stave in @staves
       L "Rendering staves."
