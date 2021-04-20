@@ -262,13 +262,22 @@ class VexTabTests
     assert.ok true, "all pass"
 
   @bar: (assert) ->
-    assert.expect 5
+    assert.expect 7
     tab = makeParser()
 
     assert.notEqual null, tab.parse("tabstave\n notes |10s11/3")
     assert.notEqual null, tab.parse("tabstave\n notes 10s11h12p10/3|")
     assert.notEqual null, tab.parse("tabstave notation=true key=A\n notes || :w || 5/5 ||| T5/5 | T5V/5")
     catchError(assert, tab, "tabstave\n | notes 10/2s10")
+
+    code = """tabstave notation=true key=E time=12/8
+        notes :w 7/4 | :w 6/5"""
+    assertEquivalent(assert, "Sole notes line ends with bar", code, code + " |")
+
+    code = """tabstave notation=true key=E time=12/8
+        notes :w 7/4 |
+        notes :w 6/5"""
+    assertEquivalent(assert, "Last notes line ends with bar", code, code + " |")
 
     assert.ok true, "all pass"
 
@@ -544,19 +553,6 @@ class VexTabTests
     """
     renderTest assert, "Render Complex", code
 
-    code = """
-    tabstave notation=true key=E time=12/8
-        notes :w 7/4 | :w 6/5"""
-    renderTest assert, "Render ok when notes line does not end with bar", code
-    renderTest assert, "Render misaligns when notes line ends with bar", code + " |"
-
-    code = """
-    tabstave notation=true key=E time=12/8
-        notes :w 7/4 |
-        notes :w 6/5"""
-
-    renderTest assert, "Render ok when last notes line does not end with bar", code
-    renderTest assert, "Render misaligns when last notes line ends with bar", code + " |"
 
   @tabStems: (assert) ->
     code = """
