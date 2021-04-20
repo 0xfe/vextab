@@ -93,26 +93,30 @@ class VexTabTests
     tab.getArtist().render(renderer)
     assert.ok(true, "all pass")
 
-  makeCanvas = (vex, test_id, flex)->
-    c = $('<div></div>').css('flex', flex).css('font-size', '0.8em')
-    p = $('<p></p>').css('margin-top', '0px')
-    p.append($('<pre></pre>').text(vex).css('font-family', 'courier'))
-    c.append(p)
-    canvas = $('<div></div>').addClass("vex-tabdiv").attr('id', test_id).css('flex', flex)
-    c.append(canvas)
-    return c
-
-  renderCodeInCanvasId = (code, canvasid) ->
-    tab = new VexTab(new Artist(0, 0, 500, {scale: 0.8}))
-    tab.parse(code)
-    canvas = $('#' + canvasid)
-    renderer = new Vex.Flow.Renderer(canvas[0], Vex.Flow.Renderer.Backends.SVG)
-    renderer.getContext().setBackgroundFillStyle("#eed")
-    tab.getArtist().render(renderer)
+  # ID counter for getRenderedContent.
+  idcounter = 0
 
   # Render content to a new div, and return the content.
   # Remove some things that change but aren't relevant (IDs)
   getRenderedContent = (container, code, cssflex) ->
+
+    makeCanvas = (vex, test_id, flex)->
+      c = $('<div></div>').css('flex', flex).css('font-size', '0.8em')
+      p = $('<p></p>').css('margin-top', '0px')
+      p.append($('<pre></pre>').text(vex).css('font-family', 'courier'))
+      c.append(p)
+      canvas = $('<div></div>').addClass("vex-tabdiv").attr('id', test_id).css('flex', flex)
+      c.append(canvas)
+      return c
+
+    renderCodeInCanvasId = (code, canvasid) ->
+      tab = new VexTab(new Artist(0, 0, 500, {scale: 0.8}))
+      tab.parse(code)
+      canvas = $('#' + canvasid)
+      renderer = new Vex.Flow.Renderer(canvas[0], Vex.Flow.Renderer.Backends.SVG)
+      renderer.getContext().setBackgroundFillStyle("#eed")
+      tab.getArtist().render(renderer)
+
     idcounter += 1
     canvasid = 'rendered-' + idcounter
     container.append(makeCanvas(code, canvasid, cssflex))
@@ -121,9 +125,6 @@ class VexTabTests
       html().
       replace(/id=\".*?\"/g, 'id="xxx"')
     return content
-
-  # ID counter for the equivalence tests
-  idcounter = 0
 
   # Ensure that the rendered content of vex1 and vex2 are equivalent.
   assertEquivalent = (assert, title, vex1, vex2) ->
