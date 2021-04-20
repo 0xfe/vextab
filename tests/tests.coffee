@@ -100,16 +100,19 @@ class VexTabTests
   # Remove some things that change but aren't relevant (IDs)
   getRenderedContent = (container, code, cssflex) ->
 
-    makeCanvas = (vex, test_id, flex)->
-      c = $('<div></div>').css('flex', flex).css('font-size', '0.8em')
+    idcounter += 1
+    canvasid = 'rendered-' + idcounter
+
+    makeCanvas = ->
+      c = $('<div></div>').css('flex', cssflex).css('font-size', '0.8em')
       p = $('<p></p>').css('margin-top', '0px')
-      p.append($('<pre></pre>').text(vex).css('font-family', 'courier'))
+      p.append($('<pre></pre>').text(code).css('font-family', 'courier'))
       c.append(p)
-      canvas = $('<div></div>').addClass("vex-tabdiv").attr('id', test_id).css('flex', flex)
+      canvas = $('<div></div>').addClass("vex-tabdiv").attr('id', canvasid)
       c.append(canvas)
       return c
 
-    renderCodeInCanvasId = (code, canvasid) ->
+    renderCodeInCanvas = ->
       tab = new VexTab(new Artist(0, 0, 500, {scale: 0.8}))
       tab.parse(code)
       canvas = $('#' + canvasid)
@@ -117,10 +120,8 @@ class VexTabTests
       renderer.getContext().setBackgroundFillStyle("#eed")
       tab.getArtist().render(renderer)
 
-    idcounter += 1
-    canvasid = 'rendered-' + idcounter
-    container.append(makeCanvas(code, canvasid, cssflex))
-    renderCodeInCanvasId(code, canvasid)
+    container.append(makeCanvas())
+    renderCodeInCanvas()
     content = $('#' + canvasid).
       html().
       replace(/id=\".*?\"/g, 'id="xxx"')
