@@ -404,6 +404,8 @@ class Artist
     if not @in_beam
       throw new Vex.RERR("ArtistError", "Not in beam")
     b = new Vex.Flow.Beam(@beam_notes, true)
+    for n in @beam_notes
+      n.setBeam(b)
     @stave_articulations.push b
     @in_beam = false
     @beam_notes = []
