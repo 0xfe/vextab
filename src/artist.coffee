@@ -409,7 +409,7 @@ class Artist
       n.setBeam(b)
       _.last(@staves).note_notes.push n
 
-    @stave_articulations.push b
+    # @stave_articulations.push b
     @in_beam = false
     @beam_notes = []
 
