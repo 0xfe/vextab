@@ -73,20 +73,23 @@ class VexTab
     return params
 
   parseCommand: (element) ->
-    if element.command is "bar"
-      @artist.addBar(element.type)
-
-    if element.command is "tuplet"
-      @artist.makeTuplets(element.params.tuplet, element.params.notes)
-
-    if element.command is "annotations"
-      @artist.addAnnotations(element.params)
-
-    if element.command is "rest"
-      @artist.addRest(element.params)
-
-    if element.command is "command"
-      @artist.runCommand(element.params, element._l, element._c)
+    switch element.command
+      when "bar"
+        @artist.addBar(element.type)
+      when "tuplet"
+        @artist.makeTuplets(element.params.tuplet, element.params.notes)
+      when "annotations"
+        @artist.addAnnotations(element.params)
+      when "rest"
+        @artist.addRest(element.params)
+      when "command"
+        @artist.runCommand(element.params, element._l, element._c)
+      when "open_beam"
+        @artist.openBeam(element.params)
+      when "close_beam"
+        @artist.closeBeam(element.params)
+      else
+        throw newError(element.command, "Invalid command '#{element.command}'")
 
   parseChord: (element) ->
     L "parseChord:", element

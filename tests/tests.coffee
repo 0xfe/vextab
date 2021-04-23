@@ -53,6 +53,7 @@ class VexTabTests
     test "Rests in Tab", @restsInTab
     test "Multi String Tab", @multiStringTab
     test "Time Signature based Beaming", @timeSigBeaming
+    test "User Beaming", @beaming
     test "Override Fret-Note", @overrideFretNote
     test "Mixed Tuplets", @mixedTuplets
     test "Accidental Strategies", @accidentalStrategies
@@ -594,6 +595,13 @@ class VexTabTests
     notes :8 C-D-E-F/4 ## A-B/4 C-D-E-F-:16:G-F/5
     """
     renderTest assert, "Time Signature based Beaming", code
+
+  @beaming: (assert) ->
+    code = """
+    tabstave notation=true tablature=true time=4/4
+    notes :32 [ 2/3 5/2 ] :q 5/1
+    """
+    renderTest assert, "User Beaming", code
 
   @multiStringTab: (assert) ->
     code = """

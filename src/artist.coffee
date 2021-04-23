@@ -68,6 +68,8 @@ class Artist
     @current_octave_shift = 0
     @bend_start_index = null
     @bend_start_strings = null
+    @in_beam = false
+    @beam_notes = []
     @rendered = false
     @renderer_context = null
 
@@ -340,6 +342,8 @@ class Artist
       stave_note.addDotToAll()
 
     stave_note.setPlayNote(params.play_note) if params.play_note?
+    if @in_beam
+      @beam_notes.push stave_note
     stave_notes.push stave_note
 
   addTabNote: (spec, play_note=null) ->
@@ -387,6 +391,22 @@ class Artist
     bar_note = new Vex.Flow.BarNote().setType(type)
     stave.tab_notes.push(bar_note)
     stave.note_notes.push(bar_note) if stave.note?
+
+  openBeam: (type) ->
+    L "openBeam: ", type
+    if @in_beam
+      throw new Vex.RERR("ArtistError", "Already in beam")
+    @in_beam = true
+    @beam_notes = []
+
+  closeBeam: (type) ->
+    L "closeBeam: ", type
+    if not @in_beam
+      throw new Vex.RERR("ArtistError", "Not in beam")
+    b = new Vex.Flow.Beam(@beam_notes, true)
+    @stave_articulations.push b
+    @in_beam = false
+    @beam_notes = []
 
   makeBend = (from_fret, to_fret) ->
     direction = Vex.Flow.Bend.UP
