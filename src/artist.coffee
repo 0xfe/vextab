@@ -407,6 +407,7 @@ class Artist
     b = new Vex.Flow.Beam(@beam_notes, true)
     for n in @beam_notes
       n.setBeam(b)
+      # _.last(@staves).note_notes.push b  # doesn't work
       _.last(@staves).note_notes.push n
 
     # @stave_articulations.push b
