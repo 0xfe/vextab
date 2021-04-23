@@ -344,7 +344,8 @@ class Artist
     stave_note.setPlayNote(params.play_note) if params.play_note?
     if @in_beam
       @beam_notes.push stave_note
-    stave_notes.push stave_note
+    else
+      stave_notes.push stave_note
 
   addTabNote: (spec, play_note=null) ->
     tab_notes = _.last(@staves).tab_notes
@@ -406,6 +407,8 @@ class Artist
     b = new Vex.Flow.Beam(@beam_notes, true)
     for n in @beam_notes
       n.setBeam(b)
+      _.last(@staves).note_notes.push n
+
     @stave_articulations.push b
     @in_beam = false
     @beam_notes = []
