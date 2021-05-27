@@ -603,6 +603,14 @@ class VexTabTests
     """
     renderTest assert, "User Beaming", code
 
+    # adapted from https://github.com/0xfe/vextab/pull/124#issuecomment-833214140
+    code = """
+tabstave notation=true tablature=false clef=treble time=4/4
+ notes  =|: :8 F/4  :q F/4   :8 F/4 [ tF/4  E/4 ] :q D/4
+ notes  | :qd D/4     :8 F/4 [ F/4  A/4 G/4  F/4 ]
+    """
+    renderTest assert, "User Beaming 2", code
+
   @multiStringTab: (assert) ->
     code = """
     tabstave key=A strings=4

@@ -113,6 +113,13 @@ class VexTab
         @artist.setDuration(element.time, element.dot)
 
       if element.command
+        # Code here adapted from https://github.com/0xfe/vextab/pull/124#issuecomment-833214140
+        # open_beam and close_beam are not really command but state
+        # set beam state (this state would be saved in stavenote array)
+        if (element.command == "open_beam")
+          @artist.setBeam("open")
+        if (element.command == "close_beam")
+          @artist.setBeam("close")
         @parseCommand(element)
 
       if element.chord

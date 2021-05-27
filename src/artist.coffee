@@ -342,6 +342,7 @@ class Artist
       stave_note.addDotToAll()
 
     stave_note.setPlayNote(params.play_note) if params.play_note?
+    stave_note.beamset = @beamset  # adapted from https://github.com/0xfe/vextab/pull/124#issuecomment-833214140
     if @in_beam
       @beam_notes.push stave_note
     else
@@ -392,6 +393,10 @@ class Artist
     bar_note = new Vex.Flow.BarNote().setType(type)
     stave.tab_notes.push(bar_note)
     stave.note_notes.push(bar_note) if stave.note?
+
+  # adapted from https://github.com/0xfe/vextab/pull/124#issuecomment-833214140
+  setBeam: (action) ->
+    @beamset = action
 
   openBeam: (type) ->
     L "openBeam: ", type
