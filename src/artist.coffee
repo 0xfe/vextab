@@ -625,7 +625,7 @@ class Artist
         fingerings = @makeFingering(annotations[i])
         if fingerings?
           try
-            (note.addModifier(fingering.num, fingering.modifier) for fingering in fingerings)
+            (note.addModifier(fingering.modifier, fingering.num) for fingering in fingerings)
           catch e
             throw new Vex.RERR("ArtistError", "Bad note number in fingering: #{annotations[i]}")
 
