@@ -44,7 +44,7 @@ class VexTab
           notation_option = option
           throw error("'#{option.key}' must be 'true' or 'false'") if option.value not in ["true", "false"]
         when "key"
-          throw error("Invalid key signature '#{option.value}'") unless _.has(Vex.Flow.keySignature.keySpecs, option.value)
+          throw error("Invalid key signature '#{option.value}'") unless Vex.Flow.hasKeySignature(option.value)
         when "clef"
           clefs = ["treble", "bass", "tenor", "alto", "percussion", "none"]
           throw error("'clef' must be one of #{clefs.join(', ')}") if option.value not in clefs
