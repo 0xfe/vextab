@@ -2,11 +2,11 @@
   LALR(1) Grammar for VexTab
   Mohit Cheppudira <mohit@muthanna.com>
 
-  Process with Jison: http://zaach.github.com/jison/
+  Process with Jison: https://github.com/zaach/jison
 */
 
 %{
-  var _ = require("lodash");
+  // import _ from "lodash";
 %}
 
 %lex

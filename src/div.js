@@ -4,8 +4,8 @@
  */
 
 import Vex from 'vexflow';
-import Artist from './artist.coffee';
-import VexTab from './vextab.coffee';
+import Artist from './artist';
+import VexTab from './vextab';
 
 import './vextab.css';
 

@@ -1,8 +1,9 @@
-import Vex from 'vexflow';
-import Artist from './artist.coffee';
-import VexTab from './vextab.coffee';
-import Div from './div';
+import * as Vex from 'vexflow';
+import Artist from './artist';
+import VexTab from './vextab';
 
-export {
-  Vex, Artist, VexTab, Div,
+export default {
+  Artist,
+  VexTab,
+  Vex
 };
