@@ -7,6 +7,7 @@
 
 import Vex from 'vexflow'
 import * as _ from 'lodash'
+//haha
 
 class Artist
   @DEBUG = false
