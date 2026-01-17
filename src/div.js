@@ -3,7 +3,7 @@
  * Copyright Mohit Muthanna 2010 <mohit@muthanna.com>
  */
 
-import Vex from 'vexflow';
+import Vex from './vexflow';
 import Artist from './artist.coffee';
 import VexTab from './vextab.coffee';
 

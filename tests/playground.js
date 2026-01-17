@@ -25,7 +25,6 @@ $(() => {
       artist.render(renderer);
       $('#error').text('');
     } catch (e) {
-      // eslint-disable-next-line
       console.error(e);
       $('#error').html(e.message.replace(/[\n]/g, '<br/>'));
     }

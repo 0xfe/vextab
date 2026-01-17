@@ -6,7 +6,7 @@
 # Vex.Flow.Artist to render the notation.
 # parsed by Vex.Flow.VexTab.
 
-import Vex from 'vexflow'
+import Vex from './vexflow'
 import * as _ from 'lodash'
 import * as parser from './vextab.jison'
 
@@ -44,7 +44,11 @@ class VexTab
           notation_option = option
           throw error("'#{option.key}' must be 'true' or 'false'") if option.value not in ["true", "false"]
         when "key"
-          throw error("Invalid key signature '#{option.value}'") unless _.has(Vex.Flow.keySignature.keySpecs, option.value)
+          has_key = if Vex.Flow?.hasKeySignature?
+            Vex.Flow.hasKeySignature(option.value)
+          else
+            _.has(Vex.Flow?.keySignature?.keySpecs, option.value)
+          throw error("Invalid key signature '#{option.value}'") unless has_key
         when "clef"
           clefs = ["treble", "bass", "tenor", "alto", "percussion", "none"]
           throw error("'clef' must be one of #{clefs.join(', ')}") if option.value not in clefs

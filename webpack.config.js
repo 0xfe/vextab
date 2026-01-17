@@ -1,8 +1,8 @@
 const path = require('path');
-const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
-const GitRevisionPlugin = require('git-revision-webpack-plugin');
+const { GitRevisionPlugin } = require('git-revision-webpack-plugin');
+const ESLintPlugin = require('eslint-webpack-plugin');
 
 module.exports = (env) => {
   // eslint-disable-next-line
@@ -12,11 +12,12 @@ module.exports = (env) => {
   const gitRevisionPlugin = new GitRevisionPlugin();
 
   return {
-    node: {
-      fs: 'empty',
-    },
     plugins: [
-      new webpack.ProvidePlugin({
+      new ESLintPlugin({
+        extensions: ['js'],
+        fix: true,
+      }),
+      new (require('webpack').ProvidePlugin)({
         $: 'zepto-webpack',
       }),
       new HtmlWebpackPlugin({
@@ -29,12 +30,12 @@ module.exports = (env) => {
         filename: 'playground.html',
         chunks: ['playground'],
       }),
-      new CopyPlugin([{ from: 'static/*', flatten: true }], {
+      new CopyPlugin({
+        patterns: [{ from: 'static/*', to: '', noErrorOnMissing: true }],
         // Always copy (for --watch / webpack-dev-server). Needed
         // because CleanWebpackPlugin wipes everything out.
-        copyUnmodified: true,
       }),
-      new webpack.DefinePlugin({
+      new (require('webpack').DefinePlugin)({
         NODE_ENV: JSON.stringify(env.NODE_ENV),
         __VERSION: JSON.stringify(gitRevisionPlugin.version()),
         __COMMITHASH: JSON.stringify(gitRevisionPlugin.commithash()),
@@ -54,13 +55,30 @@ module.exports = (env) => {
       filename: hasTag ? `[name].${tag}.js` : '[name].[contenthash].js',
       path: path.resolve(__dirname, 'dist'),
     },
+    resolve: {
+      fallback: {
+        fs: false,
+        path: false,
+      },
+    },
     module: {
       rules: [
-        { test: /\.jsx?$/, exclude: /node_modules/, use: [{ loader: 'babel-loader' }, { loader: 'eslint-loader', options: { fix: true } }] },
+        { test: /\.jsx?$/, exclude: /node_modules/, use: [{ loader: 'babel-loader' }] },
         { test: /\.coffee$/, use: [{ loader: 'coffee-loader' }] },
         { test: /\.jison$/, use: [{ loader: 'jison-loader' }] },
         { test: /\.css$/, use: ['style-loader', 'css-loader'] },
       ],
+    },
+    devServer: {
+      static: {
+        directory: path.join(__dirname, 'dist'),
+      },
+      port: 9005,
+      open: false,
+      allowedHosts: 'all',
+      client: {
+        overlay: false,
+      },
     },
   };
 };

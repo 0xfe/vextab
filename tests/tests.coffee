@@ -3,7 +3,7 @@ VexTab Tests
 Copyright Mohit Cheppudira 2010 <mohit@muthanna.com>
 ###
 
-import Vex from 'vexflow';
+import Vex from '../src/vexflow';
 import Artist from '../src/artist.coffee';
 import VexTab from '../src/vextab.coffee';
 
