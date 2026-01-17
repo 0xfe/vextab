@@ -340,7 +340,7 @@ class Artist
           stave_note.addModifier(new_accidental, index)
 
     if @current_duration[@current_duration.length - 1] == "d"
-      stave_note.addDotToAll()
+      Vex.Flow.Dot.buildAndAttach([stave_note], {all: true})
 
     stave_note.setPlayNote(params.play_note) if params.play_note?
     stave_notes.push stave_note
@@ -356,7 +356,7 @@ class Artist
     tab_notes.push new_tab_note
 
     if @current_duration[@current_duration.length - 1] == "d"
-      new_tab_note.addDot()
+      Vex.Flow.Dot.buildAndAttach([new_tab_note], {all: true})
 
   makeDuration = (time, dot) -> time + (if dot then "d" else "")
   setDuration: (time, dot=false) ->
@@ -441,7 +441,8 @@ class Artist
         new Vex.Flow.Bend(phrase)
       else
         new Vex.Flow.Bend(null, null, phrase)
-      tab_notes[@bend_start_index].addModifier(bend_modifier, k)
+      bend_index = parseInt(k, 10)
+      tab_notes[@bend_start_index].addModifier(bend_modifier, bend_index)
 
     # Replace bent notes with ghosts (make them invisible)
     for tab_note in tab_notes[@bend_start_index+1..((tab_notes.length - 2) + offset)]
@@ -635,7 +636,7 @@ class Artist
         fingerings = @makeFingering(annotations[i])
         if fingerings?
           try
-            (note.addModifier(fingering.num, fingering.modifier) for fingering in fingerings)
+            (note.addModifier(fingering.modifier, fingering.num) for fingering in fingerings)
           catch e
             throw new Vex.RERR("ArtistError", "Bad note number in fingering: #{annotations[i]}")
 
@@ -805,7 +806,7 @@ class Artist
         auto_stem: false
       })
       if @current_duration[@current_duration.length - 1] == "d"
-        tab_note.addDot(0)
+        Vex.Flow.Dot.buildAndAttach([tab_note], {all: true})
       tab_notes.push tab_note
     else
       tab_notes.push new Vex.Flow.GhostNote(@current_duration)

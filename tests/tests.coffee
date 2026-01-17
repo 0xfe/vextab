@@ -176,9 +176,28 @@ class VexTabTests
     catchError(assert, tab, "tabstave notation=boo")
 
   @notationOnly: (assert) ->
-    assert.expect 122
-    tab = makeParser()
+    clefs = ["treble", "alto", "tenor", "bass"]
+    times = ["C", "C|", "2/4", "4/4", "100/4"]
+    keySignatures = [
+      "C", "G", "D", "A", "E", "B", "F#", "C#", "F", "Bb", "Eb", "Ab", "Db", "Gb", "Cb",
+      "Am", "Em", "Bm", "F#m", "C#m", "G#m", "D#m", "A#m", "Dm", "Gm", "Cm", "Fm", "Bbm", "Ebm", "Abm"
+    ]
+    if Vex.Flow?.hasKeySignature?
+      keySignatures = (key for key in keySignatures when Vex.Flow.hasKeySignature(key))
 
+    expected =
+      4 + # initial parse calls
+      1 + # invalid notation+tablature
+      (clefs.length * 2) + # clef tests
+      1 + # invalid clef
+      (keySignatures.length * 3) + # key signature tests
+      1 + # invalid key
+      (times.length * 3) + # time signature tests
+      1 + # invalid time
+      1   # final ok
+
+    assert.expect expected
+    tab = makeParser()
     assert.notEqual null, tab.parse("tabstave notation=true")
     assert.notEqual null, tab.parse("tabstave\n notes :w 1/2 | 1/3 | 1/5 | 1/4")
     assert.notEqual null, tab.parse("tabstave notation=true tablature=false")
@@ -186,9 +205,9 @@ class VexTabTests
 
     catchError(assert, tab, "tabstave notation=false tablature=false")
 
-    # CLEF TESTS
-    clefs = ["treble", "alto", "tenor", "bass"]
+    tab = makeParser()
 
+    # CLEF TESTS
     for clef in clefs
       assert.notEqual null, tab.parse("tabstave notation=true clef=" + clef)
       assert.notEqual null, tab.parse("tabstave clef=" + clef)
@@ -197,7 +216,7 @@ class VexTabTests
 
     # KEY SIGNATURE TESTS
 
-    for key of Vex.Flow.keySignature.keySpecs
+    for key in keySignatures
       assert.notEqual null, tab.parse("tabstave key=" + key)
       assert.notEqual null, tab.parse("tabstave notation=true key=" + key)
       assert.notEqual null, tab.parse("tabstave notation=true tablature=true key=" + key)
@@ -205,8 +224,6 @@ class VexTabTests
     catchError(assert, tab, "tabstave notation=true key=rrr")
 
     # TIME SIGNATURE TESTS
-    times = ["C", "C|", "2/4", "4/4", "100/4"]
-
     for time in times
       assert.notEqual null, tab.parse("tabstave time=" + time)
       assert.notEqual null, tab.parse("tabstave notation=true time=" + time)
