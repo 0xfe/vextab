@@ -1,29 +1,34 @@
 /*
-VexTab Tests
+tests/tests.ts
+QUnit-based regression suite for VexTab parsing + rendering behavior.
 Copyright Mohit Cheppudira 2010 <mohit@muthanna.com>
 */
-var VexTabTests, qunit, test;
 
-import Vex from '../src/vexflow';
+var VexTabTests, qunit, test; // Module globals for the test harness.
 
-import Artist from '../src/artist';
+import Vex from '../src/vexflow'; // VexFlow shim used by tests.
+import Artist from '../src/artist'; // Artist renderer used by tests.
+import VexTab from '../src/vextab'; // VexTab parser under test.
 
-import VexTab from '../src/vextab';
+qunit = QUnit; // QUnit global injected by tests.html.
+test = qunit.test; // Alias for convenience.
 
-qunit = QUnit;
+console.log(test); // Surface QUnit test function for debugging.
 
-test = qunit.test;
-
-console.log(test);
-
-Artist.DEBUG = false;
-
-VexTab.DEBUG = false;
+Artist.DEBUG = false; // Disable verbose logging in tests.
+VexTab.DEBUG = false; // Disable verbose logging in tests.
 
 VexTabTests = (function() {
+  // Helper functions and state used across test cases.
   var assertEquivalent, catchError, getRenderedContent, idcounter, makeParser, makeRenderer, renderTest;
 
+  /**
+   * Collection of static QUnit test cases for VexTab.
+   */
   class VexTabTests {
+    /**
+     * Register all VexTab tests with QUnit.
+     */
     static Start() {
       qunit.module("VexTab Parser");
       test("Basic Test", this.basic);
@@ -67,6 +72,9 @@ VexTabTests = (function() {
       return test("Fret-hand Fingering and String Numbers", this.fingeringAndStrings);
     }
 
+    /**
+     * Basic parser smoke test and error handling.
+     */
     static basic(assert) {
       var tab;
       assert.expect(3);
@@ -76,6 +84,9 @@ VexTabTests = (function() {
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Complex multi-stave parse with bends, ties, and tuplets.
+     */
     static complex(assert) {
       var code, tab;
       assert.expect(2);
@@ -97,6 +108,9 @@ notes :8 [ t(12/5.12/4)s(5/5.5/4) 3b4/5 ] :h 5V/6`;
       return catchError(assert, tab, "tabstave\n notes :q 5/L");
     }
 
+    /**
+     * Validate stave options parsing and error reporting.
+     */
     static staveOptionsTest(assert) {
       var tab;
       assert.expect(3);
@@ -106,6 +120,9 @@ notes :8 [ t(12/5.12/4)s(5/5.5/4) 3b4/5 ] :h 5V/6`;
       return catchError(assert, tab, "tabstave notation=boo");
     }
 
+    /**
+     * Ensure notation-only staves respect clef, key, and time validation.
+     */
     static notationOnly(assert) {
       var clef, clefs, expected, i, j, k, key, keySignatures, len, len1, len2, ref, tab, time, times;
       clefs = ["treble", "alto", "tenor", "bass"];
@@ -162,6 +179,9 @@ notes :8 [ t(12/5.12/4)s(5/5.5/4) 3b4/5 ] :h 5V/6`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate tuning option parsing and error cases.
+     */
     static tuning(assert) {
       var tab;
       assert.expect(9);
@@ -177,6 +197,9 @@ notes :8 [ t(12/5.12/4)s(5/5.5/4) 3b4/5 ] :h 5V/6`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate basic string/fret note parsing.
+     */
     static stringFret(assert) {
       var tab;
       assert.expect(5);
@@ -188,6 +211,9 @@ notes :8 [ t(12/5.12/4)s(5/5.5/4) 3b4/5 ] :h 5V/6`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate multi-fret notation parsing.
+     */
     static multiFret(assert) {
       var tab;
       assert.expect(4);
@@ -198,6 +224,9 @@ notes :8 [ t(12/5.12/4)s(5/5.5/4) 3b4/5 ] :h 5V/6`;
       return catchError(assert, tab, "tabstave\n notes 10-/2");
     }
 
+    /**
+     * Validate tie and hammer/pull parsing.
+     */
     static tie(assert) {
       var tab;
       assert.expect(6);
@@ -210,6 +239,9 @@ notes :8 [ t(12/5.12/4)s(5/5.5/4) 3b4/5 ] :h 5V/6`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate barline parsing and placement.
+     */
     static bar(assert) {
       var code, tab;
       assert.expect(7);
@@ -228,6 +260,9 @@ notes :w 6/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate bend parsing and bend notation.
+     */
     static bend(assert) {
       var tab;
       assert.expect(5);
@@ -239,6 +274,9 @@ notes :w 6/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate vibrato decorator parsing.
+     */
     static vibrato(assert) {
       var tab;
       assert.expect(10);
@@ -255,6 +293,9 @@ notes :w 6/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate upstroke/downstroke annotations.
+     */
     static strokes(assert) {
       var tab;
       assert.expect(10);
@@ -271,6 +312,9 @@ notes :w 6/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate chord parsing and multi-note group handling.
+     */
     static chord(assert) {
       var tab;
       assert.expect(8);
@@ -285,6 +329,9 @@ notes :w 6/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate tapping annotation parsing.
+     */
     static tapping(assert) {
       var tab;
       assert.expect(5);
@@ -296,6 +343,9 @@ notes :w 6/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate tie behavior across chord notes.
+     */
     static chordTies(assert) {
       var tab;
       assert.expect(7);
@@ -309,6 +359,9 @@ notes :w 6/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate duration parsing and duration changes.
+     */
     static duration(assert) {
       var tab;
       tab = makeParser();
@@ -319,6 +372,9 @@ notes :w 6/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate triplet/tuplet parsing and note grouping.
+     */
     static tripletsAndTuplets(assert) {
       var code, tab;
       assert.expect(1);
@@ -330,6 +386,9 @@ notes :8 5h7s9-12s15p12h15/5 ^7^ | :q 5-7-8/5 ^3^`;
       return assert.notEqual(null, tab.parse(code));
     }
 
+    /**
+     * Validate dotted duration parsing.
+     */
     static dottedNotes(assert) {
       var code, tab;
       assert.expect(1);
@@ -339,6 +398,9 @@ notes :8d 5/4 :16 5/5 :8d 5/4 :16 5/5 :8d 5/4 :16 5/5 :q 5v/5`;
       return assert.notEqual(null, tab.parse(code));
     }
 
+    /**
+     * Validate general annotation parsing and placement.
+     */
     static annotations(assert) {
       var code, tab;
       assert.expect(1);
@@ -352,6 +414,9 @@ notes :8 7/4 $.italic.sweep$ 6/3 5/2 3v/1 :q 7v/5 $.Arial-10-bold.P.H$ :8 3s5/5`
       return assert.notEqual(null, tab.parse(code));
     }
 
+    /**
+     * Validate long bend phrase parsing across multiple notes.
+     */
     static longBends(assert) {
       var code, tab;
       assert.expect(1);
@@ -361,6 +426,9 @@ notes :8 7b9b7b9b7s12b14b12s7s5s2/3`;
       return assert.notEqual(null, tab.parse(code));
     }
 
+    /**
+     * Validate rest parsing in tab and notation.
+     */
     static rest(assert) {
       var code, tab;
       assert.expect(1);
@@ -370,6 +438,9 @@ notes :8 ## 7b9b7b9b7s12b14b12s7s5s2/3 #0# 4/4 #9# 5/5`;
       return assert.notEqual(null, tab.parse(code));
     }
 
+    /**
+     * Validate global options parsing.
+     */
     static options(assert) {
       var tab;
       assert.expect(8);
@@ -384,6 +455,9 @@ notes :8 ## 7b9b7b9b7s12b14b12s7s5s2/3 #0# 4/4 #9# 5/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate ABC note parsing.
+     */
     static abcNotes(assert) {
       var tab;
       assert.expect(6);
@@ -396,6 +470,9 @@ notes :8 ## 7b9b7b9b7s12b14b12s7s5s2/3 #0# 4/4 #9# 5/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate ABC notes combined with fret notation.
+     */
     static abcNotesWithFrets(assert) {
       var tab;
       assert.expect(6);
@@ -408,6 +485,9 @@ notes :8 ## 7b9b7b9b7s12b14b12s7s5s2/3 #0# 4/4 #9# 5/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate rhythm and slash notation parsing.
+     */
     static rhythmNotation(assert) {
       var tab;
       assert.expect(4);
@@ -418,6 +498,9 @@ notes :8 ## 7b9b7b9b7s12b14b12s7s5s2/3 #0# 4/4 #9# 5/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate text line parsing (lyrics/annotations).
+     */
     static textLines(assert) {
       var tab;
       assert.expect(6);
@@ -430,6 +513,9 @@ notes :8 ## 7b9b7b9b7s12b14b12s7s5s2/3 #0# 4/4 #9# 5/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate sweep stroke parsing.
+     */
     static sweepStrokes(assert) {
       var tab;
       assert.expect(8);
@@ -444,6 +530,9 @@ notes :8 ## 7b9b7b9b7s12b14b12s7s5s2/3 #0# 4/4 #9# 5/5`;
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Validate multi-voice parsing and rendering.
+     */
     static voices(assert) {
       var code, tab;
       assert.expect(1);
@@ -460,6 +549,9 @@ voice
       return assert.notEqual(null, tab.parse(code));
     }
 
+    /**
+     * Validate fingering annotations and string numbers.
+     */
     static fingering(assert) {
       var tab;
       assert.expect(7);
@@ -473,6 +565,9 @@ voice
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Basic render test to ensure no exceptions in drawing pipeline.
+     */
     static render(assert) {
       var renderer, tab;
       tab = makeParser();
@@ -482,6 +577,9 @@ voice
       return assert.ok(true, "all pass");
     }
 
+    /**
+     * Render a complex score to exercise layout and formatter behavior.
+     */
     static renderComplex(assert) {
       var code;
       code = `options space=20 tab-stems=true stave-distance=40 tab-stem-direction=down
@@ -504,6 +602,9 @@ options space=70`;
       return renderTest(assert, "Render Complex", code);
     }
 
+    /**
+     * Validate tab stem rendering behavior.
+     */
     static tabStems(assert) {
       var code;
       code = `options tab-stems=true
@@ -520,6 +621,9 @@ notes :8d 5/5`;
       return renderTest(assert, "Tab Stem Direction", code);
     }
 
+    /**
+     * Validate rest rendering in tab staves.
+     */
     static restsInTab(assert) {
       var code;
       code = `options tab-stems=true
@@ -530,6 +634,9 @@ notes :8d ##`;
       return renderTest(assert, "Rests in Tab", code);
     }
 
+    /**
+     * Validate time-signature-based beaming.
+     */
     static timeSigBeaming(assert) {
       var code;
       code = `tabstave notation=true tablature=false time=4/4
@@ -540,6 +647,9 @@ notes :8 C-D-E-F/4 ## A-B/4 C-D-E-F-:16:G-F/5`;
       return renderTest(assert, "Time Signature based Beaming", code);
     }
 
+    /**
+     * Validate multi-string tab rendering.
+     */
     static multiStringTab(assert) {
       var code;
       code = `tabstave key=A strings=4
@@ -553,6 +663,9 @@ notes :16 5h6/3 7/7`;
       return renderTest(assert, "8-string Tab", code);
     }
 
+    /**
+     * Validate override fret-note annotations for tab rendering.
+     */
     static overrideFretNote(assert) {
       var code;
       code = `options stave-distance=30 space=20
@@ -567,6 +680,9 @@ text .font=Times-15-italic,|8va`;
       return renderTest(assert, "Override Fret Note", code);
     }
 
+    /**
+     * Validate mixed tuplets parsing and rendering.
+     */
     static mixedTuplets(assert) {
       var code;
       code = `tabstave notation=true tablature=false key=G time=4/4
@@ -577,6 +693,9 @@ options space=20`;
       return renderTest(assert, "Mixed Tuplets", code);
     }
 
+    /**
+     * Validate accidental strategy options and output.
+     */
     static accidentalStrategies(assert) {
       var code;
       code = `options player=true tempo=80
@@ -589,6 +708,9 @@ notes :8 5-5-6-6-5-5-3-3/3`;
       return renderTest(assert, "Cautionary Accidental Strategy", code);
     }
 
+    /**
+     * Validate combined fret-hand fingering and string numbers.
+     */
     static fingeringAndStrings(assert) {
       var code;
       code = `options space=40 player=true tempo=80 instrument=acoustic_guitar_nylon
@@ -619,9 +741,11 @@ options space=60`;
 
   };
 
-  // Private method
+  /**
+   * Assert that parsing `code` throws an error.
+   */
   catchError = function(assert, tab, code, _error_type = "ParseError") {
-    var caught;
+    var caught; // Whether an error was thrown.
     caught = false;
     try {
       tab.parse(code);
@@ -632,26 +756,35 @@ options space=60`;
     return assert.equal(true, caught);
   };
 
+  /**
+   * Create a fresh parser with a standard Artist configuration.
+   */
   makeParser = function() {
     return new VexTab(new Artist(0, 0, 800, {
       scale: 0.8
     }));
   };
 
+  /**
+   * Create a renderer and attach a labeled container for a test.
+   */
   makeRenderer = function(test_name) {
-    var canvas, renderer, test_div;
-    test_div = $('<div></div>').addClass("testcanvas");
-    test_div.append($('<div></div>').addClass("name").text(test_name));
-    canvas = $('<div></div>').addClass("vex-tabdiv");
+    var canvas, renderer, test_div; // DOM nodes + VexFlow renderer.
+    test_div = $('<div></div>').addClass("testcanvas"); // Root test container.
+    test_div.append($('<div></div>').addClass("name").text(test_name)); // Title label.
+    canvas = $('<div></div>').addClass("vex-tabdiv"); // Render surface container.
     test_div.append(canvas);
     $("body").append(test_div);
-    renderer = new Vex.Flow.Renderer(canvas[0], Vex.Flow.Renderer.Backends.SVG);
-    renderer.getContext().setBackgroundFillStyle("#eed");
+    renderer = new Vex.Flow.Renderer(canvas[0], Vex.Flow.Renderer.Backends.SVG); // SVG renderer.
+    renderer.getContext().setBackgroundFillStyle("#eed"); // Consistent background.
     return renderer;
   };
 
+  /**
+   * Render a test snippet and assert that parsing succeeds.
+   */
   renderTest = function(assert, title, code) {
-    var renderer, tab;
+    var renderer, tab; // Parser + renderer for this test.
     tab = makeParser();
     renderer = makeRenderer(title);
     assert.notEqual(null, tab.parse(code));
@@ -660,26 +793,26 @@ options space=60`;
   };
 
   // ID counter for getRenderedContent.
-  idcounter = 0;
+  idcounter = 0; // Monotonic counter to ensure unique canvas IDs.
 
   // Render content to a new div, and return the content.
   // Remove some things that change but aren't relevant (IDs)
   getRenderedContent = function(container, code, cssflex) {
-    var canvasid, content, makeCanvas, renderCodeInCanvas;
+    var canvasid, content, makeCanvas, renderCodeInCanvas; // Rendering helpers + output.
     idcounter += 1;
-    canvasid = 'rendered-' + idcounter;
+    canvasid = 'rendered-' + idcounter; // Unique ID for this render.
     makeCanvas = function() {
-      var c, canvas, p;
-      c = $('<div></div>').css('flex', cssflex).css('font-size', '0.8em');
-      p = $('<p></p>').css('margin-top', '0px');
-      p.append($('<pre></pre>').text(code).css('font-family', 'courier'));
+      var c, canvas, p; // Container, canvas node, and code label.
+      c = $('<div></div>').css('flex', cssflex).css('font-size', '0.8em'); // Flexed column.
+      p = $('<p></p>').css('margin-top', '0px'); // Label wrapper.
+      p.append($('<pre></pre>').text(code).css('font-family', 'courier')); // Code preview.
       c.append(p);
-      canvas = $('<div></div>').addClass("vex-tabdiv").attr('id', canvasid);
+      canvas = $('<div></div>').addClass("vex-tabdiv").attr('id', canvasid); // Render surface.
       c.append(canvas);
       return c;
     };
     renderCodeInCanvas = function() {
-      var canvas, renderer, tab;
+      var canvas, renderer, tab; // Local render context.
       tab = new VexTab(new Artist(0, 0, 500, {
         scale: 0.8
       }));
@@ -691,20 +824,22 @@ options space=60`;
     };
     container.append(makeCanvas());
     renderCodeInCanvas();
-    content = $('#' + canvasid).html().replace(/id=".*?"/g, 'id="xxx"');
+    content = $('#' + canvasid).html().replace(/id=".*?"/g, 'id="xxx"'); // Normalize IDs.
     return content;
   };
 
-  // Ensure that the rendered content of vex1 and vex2 are equivalent.
+  /**
+   * Ensure that the rendered content of vex1 and vex2 are equivalent.
+   */
   assertEquivalent = function(assert, title, vex1, vex2) {
-    var container, newhtml, oldhtml, test_div;
-    test_div = $('<div></div>').addClass("testcanvas");
-    test_div.append($('<div></div>').addClass("name").text(title));
-    container = $('<div></div>').css('display', 'flex');
+    var container, newhtml, oldhtml, test_div; // DOM nodes + snapshots.
+    test_div = $('<div></div>').addClass("testcanvas"); // Root test container.
+    test_div.append($('<div></div>').addClass("name").text(title)); // Test label.
+    container = $('<div></div>').css('display', 'flex'); // Side-by-side layout.
     test_div.append(container);
     $("body").append(test_div);
-    oldhtml = getRenderedContent(container, vex1, '0 0 30%');
-    newhtml = getRenderedContent(container, vex2, '1');
+    oldhtml = getRenderedContent(container, vex1, '0 0 30%'); // Render baseline.
+    newhtml = getRenderedContent(container, vex2, '1'); // Render comparison.
     return assert.equal(oldhtml, newhtml, title);
   };
 
@@ -712,4 +847,4 @@ options space=60`;
 
 }).call(this);
 
-VexTabTests.Start();
+VexTabTests.Start(); // Register and run the VexTab test suite.
