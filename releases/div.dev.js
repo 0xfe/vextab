@@ -22560,6 +22560,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "default": () => (/* reexport safe */ _artist_Artist__WEBPACK_IMPORTED_MODULE_0__["default"])
 /* harmony export */ });
 /* harmony import */ var _artist_Artist__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./artist/Artist */ "./src/artist/Artist.ts");
+// Re-export for the Artist class so consumers can import from the package root.
 
 
 
@@ -22578,6 +22579,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _vexflow__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../vexflow */ "./src/vexflow.ts");
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../utils */ "./src/utils.ts");
+// Modifier pipeline for articulations, bends, tuplets, annotations, and special glyphs.
 
 
 /**
@@ -22585,13 +22587,20 @@ __webpack_require__.r(__webpack_exports__);
  * This file centralizes modifier logic so rendering/notation code stays focused.
  */
 class ArticulationBuilder {
+    /**
+     * Create a modifier builder bound to an Artist.
+     */
     constructor(artist) {
         this.artist = artist;
     }
     // ---- Bends ----
+    /**
+     * Build a bend descriptor between two frets.
+     */
     makeBend(from_fret, to_fret) {
         let direction = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Bend.UP;
         let text = '';
+        // Choose bend text and direction based on the interval size.
         if (parseInt(from_fret, 10) > parseInt(to_fret, 10)) {
             direction = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Bend.DOWN;
         }
@@ -22613,11 +22622,15 @@ class ArticulationBuilder {
         }
         return { type: direction, text };
     }
+    /**
+     * Start or extend a bend phrase across notes.
+     */
     openBends(first_note, last_note, first_indices, last_indices) {
         this.artist.log('openBends', first_note, last_note, first_indices, last_indices);
         const tab_notes = _utils__WEBPACK_IMPORTED_MODULE_1__.last(this.artist.staves).tab_notes;
         let start_note = first_note;
         let start_indices = first_indices;
+        // Track the first note of the bend phrase so later notes can extend it.
         if (_utils__WEBPACK_IMPORTED_MODULE_1__.isEmpty(this.artist.current_bends)) {
             this.artist.bend_start_index = tab_notes.length - 2;
             this.artist.bend_start_strings = first_indices;
@@ -22628,6 +22641,7 @@ class ArticulationBuilder {
         }
         const start_frets = start_note.getPositions();
         const last_frets = last_note.getPositions();
+        // Build per-string bend phrases.
         start_indices.forEach((index, i) => {
             const last_index = last_indices[i];
             const from_fret = start_frets[index];
@@ -22638,11 +22652,15 @@ class ArticulationBuilder {
             this.artist.current_bends[index].push(this.makeBend(from_fret.fret, to_fret.fret));
         });
     }
+    /**
+     * Close any open bend phrases and apply them to the tab notes.
+     */
     closeBends(offset = 1) {
         if (this.artist.bend_start_index == null)
             return;
         this.artist.log(`closeBends(${offset})`);
         const tab_notes = _utils__WEBPACK_IMPORTED_MODULE_1__.last(this.artist.staves).tab_notes;
+        // Attach bend modifiers to the starting note for each string.
         _utils__WEBPACK_IMPORTED_MODULE_1__.forEach(this.artist.current_bends, (bend_list, key) => {
             const phrase = [];
             bend_list.forEach((bend) => phrase.push(bend));
@@ -22652,7 +22670,7 @@ class ArticulationBuilder {
             const bend_index = parseInt(String(key), 10);
             tab_notes[this.artist.bend_start_index].addModifier(bend_modifier, bend_index);
         });
-        // Replace bent notes with ghosts (make them invisible)
+        // Replace bent notes with ghosts so only the phrase start is visible.
         tab_notes
             .slice(this.artist.bend_start_index + 1, (tab_notes.length - 2) + offset + 1)
             .forEach((tab_note) => tab_note.setGhost(true));
@@ -22660,6 +22678,9 @@ class ArticulationBuilder {
         this.artist.bend_start_index = null;
     }
     // ---- Tuplets ----
+    /**
+     * Create tuplets for the most recent notes in the current stave.
+     */
     makeTuplets(tuplets, notes) {
         this.artist.log('makeTuplets', tuplets, notes);
         const tuple_notes = notes !== null && notes !== void 0 ? notes : tuplets;
@@ -22673,16 +22694,22 @@ class ArticulationBuilder {
         }
         const modifier = new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Tuplet(stave_notes.slice(stave_notes.length - tuple_notes), { num_notes: tuplets });
         this.artist.stave_articulations.push(modifier);
-        // Tuplet creation adjusts ticks, so we create one for tab as well.
+        // Tuplet creation adjusts ticks, so create one for tab as well.
         const tab_modifier = new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Tuplet(tab_notes.slice(tab_notes.length - tuple_notes), { num_notes: tuplets });
         if (this.artist.customizations['tab-stems'] === 'true') {
             this.artist.tab_articulations.push(tab_modifier);
         }
     }
     // ---- Fingerings / strokes / score articulations ----
+    /**
+     * Extract a fingering command from text, if present.
+     */
     getFingering(text) {
         return text.match(/^\.fingering\/([^.]+)\./);
     }
+    /**
+     * Parse a fingering annotation into modifiers that can be attached to notes.
+     */
     makeFingering(text) {
         const parts = this.getFingering(text);
         const POS = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Modifier.Position;
@@ -22695,6 +22722,7 @@ class ArticulationBuilder {
         else {
             return null;
         }
+        // Provide a consistent error so callers can surface precise feedback.
         const badFingering = () => new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].RERR('ArtistError', `Bad fingering: ${parts[1]}`);
         fingers.forEach((finger) => {
             const pieces = finger.match(/(\d+):([ablr]):([fs]):([^-.]+)/);
@@ -22730,6 +22758,7 @@ class ArticulationBuilder {
                 default:
                     break;
             }
+            // Offset right/left modifiers so they clear the note heads.
             if (modifier && typeof modifier.setOffsetX === 'function') {
                 if (position === POS.RIGHT) {
                     modifier.setOffsetX(offset_x);
@@ -22742,9 +22771,15 @@ class ArticulationBuilder {
         });
         return fingering;
     }
+    /**
+     * Extract a stroke command from text, if present.
+     */
     getStrokeParts(text) {
         return text.match(/^\.stroke\/([^.]+)\./);
     }
+    /**
+     * Build a VexFlow stroke modifier from a stroke command string.
+     */
     makeStroke(text) {
         const parts = this.getStrokeParts(text);
         const TYPE = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Stroke.Type;
@@ -22767,20 +22802,30 @@ class ArticulationBuilder {
                 throw new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].RERR('ArtistError', `Invalid stroke type: ${parts[1]}`);
         }
     }
+    /**
+     * Extract score articulation parts from the annotation string.
+     */
     getScoreArticulationParts(text) {
         return text.match(/^\.(a[^/]*)\/(t|b)[^.]*\./);
     }
+    /**
+     * Create a score articulation modifier from an annotation string.
+     */
     makeScoreArticulation(text) {
         const parts = this.getScoreArticulationParts(text);
         if (!parts)
             return null;
         const type = parts[1];
         const position = parts[2];
+        // Normalize top/bottom into VexFlow's position enum.
         const POSTYPE = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Modifier.Position;
         const pos = position === 't' ? POSTYPE.ABOVE : POSTYPE.BELOW;
         return new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Articulation(type).setPosition(pos);
     }
     // ---- Annotations ----
+    /**
+     * Create a VexFlow Annotation modifier, with optional font overrides.
+     */
     makeAnnotation(text) {
         let font_face = this.artist.customizations['font-face'];
         let font_size = this.artist.customizations['font-size'];
@@ -22791,6 +22836,7 @@ class ArticulationBuilder {
         const makeIt = (note_text, just = default_vjust) => (new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Annotation(note_text)
             .setFont(font_face, font_size, font_style)
             .setVerticalJustification(just));
+        // Support inline font overrides like ".Times-12-italic.Text".
         let parts = text.match(/^\.([^-]*)-([^-]*)-([^.]*)\.(.*)/);
         if (parts) {
             font_face = parts[1];
@@ -22799,6 +22845,7 @@ class ArticulationBuilder {
             const message = parts[4];
             return message ? makeIt(message) : null;
         }
+        // Support command-style prefixes like ".big." or ".top.".
         parts = text.match(/^\.([^.]*)\.(.*)/);
         if (parts) {
             let just = default_vjust;
@@ -22832,14 +22879,19 @@ class ArticulationBuilder {
         }
         return makeIt(text);
     }
+    /**
+     * Normalize override text for fret annotations (e.g., A#4 or 5/2).
+     */
     formatOverrideFretText(text) {
         var _a, _b, _c, _d, _f, _g, _h;
         if (!text)
             return null;
+        // Prefer VexFlow unicode glyphs when available, with ASCII fallbacks.
         const unicode = (_b = (_a = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow) === null || _a === void 0 ? void 0 : _a.unicode) !== null && _b !== void 0 ? _b : {};
         const sharp = (_c = unicode.sharp) !== null && _c !== void 0 ? _c : '#';
         const flat = (_d = unicode.flat) !== null && _d !== void 0 ? _d : 'b';
         const natural = (_f = unicode.natural) !== null && _f !== void 0 ? _f : 'n';
+        // Match note text with optional accidentals, octave, and string override.
         const note_match = text.match(/^([A-G])([#@n]{1,2})?(~?)(\d+)?(?:_(\d+)\/(\d+))?$/);
         if (note_match) {
             const note = note_match[1];
@@ -22864,17 +22916,22 @@ class ArticulationBuilder {
             })();
             return { text: `${note}${acc_text}${octave}`, string: string_num };
         }
+        // Fret/string pattern.
         const fret_match = text.match(/^(\d+)\/(\d+)$/);
         if (fret_match) {
             return { text: fret_match[1], string: fret_match[2] };
         }
         return null;
     }
+    /**
+     * Apply a text override to a tab note's fret rendering.
+     */
     applyFretOverride(tab_note, override) {
         if (!tab_note || !override)
             return;
         if (!tab_note.fretElement || !tab_note.positions)
             return;
+        // Map an override to the correct string index when provided.
         let override_index = 0;
         if (override.string) {
             const string_num = parseInt(override.string, 10);
@@ -22892,6 +22949,7 @@ class ArticulationBuilder {
         if (!element)
             return;
         element.setText(override.text);
+        // Apply current font settings for consistent layout.
         const font_face = this.artist.customizations['font-face'];
         const font_size = this.artist.customizations['font-size'];
         const font_style = this.artist.customizations['font-style'];
@@ -22899,11 +22957,15 @@ class ArticulationBuilder {
             element.setFont(font_face, font_size, font_style);
         }
         let max_width = 0;
+        // Keep widths aligned for multi-string notes.
         tab_note.fretElement.forEach((el) => {
             max_width = Math.max(max_width, el.getWidth());
         });
         tab_note.setWidth(max_width);
     }
+    /**
+     * Add annotation modifiers to the most recent notes in the stave group.
+     */
     addAnnotations(annotations) {
         const stave = _utils__WEBPACK_IMPORTED_MODULE_1__.last(this.artist.staves);
         const stave_notes = stave.note_notes;
@@ -22911,7 +22973,7 @@ class ArticulationBuilder {
         if (annotations.length > tab_notes.length) {
             throw new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].RERR('ArtistError', 'More annotations than note elements');
         }
-        // Add text annotations to tablature.
+        // Prefer applying annotations to tab notes when they exist.
         if (stave.tab) {
             tab_notes.slice(tab_notes.length - annotations.length).forEach((tab_note, i) => {
                 if (this.getScoreArticulationParts(annotations[i])) {
@@ -22937,6 +22999,7 @@ class ArticulationBuilder {
             });
         }
         else {
+            // Fallback: apply annotations to notation notes.
             stave_notes.slice(stave_notes.length - annotations.length).forEach((note, i) => {
                 if (!this.getScoreArticulationParts(annotations[i])) {
                     const annotation = this.makeAnnotation(annotations[i]);
@@ -22951,7 +23014,6 @@ class ArticulationBuilder {
                 }
             });
         }
-        // Add glyph articulations, strokes, or fingerings on score.
         if (stave.note) {
             stave_notes.slice(stave_notes.length - annotations.length).forEach((note, i) => {
                 const score_articulation = this.makeScoreArticulation(annotations[i]);
@@ -22963,10 +23025,12 @@ class ArticulationBuilder {
                         note.addModifier(score_articulation, 0);
                     }
                 }
+                // Strokes apply to notation as well as tab.
                 const stroke = this.makeStroke(annotations[i]);
                 if (stroke) {
                     note.addStroke(0, stroke);
                 }
+                // Fingering annotations attach modifiers per note index.
                 const fingerings = this.makeFingering(annotations[i]);
                 if (fingerings) {
                     try {
@@ -22979,6 +23043,9 @@ class ArticulationBuilder {
             });
         }
     }
+    /**
+     * Add a tab articulation between two notes (slides, ties, bends, etc.).
+     */
     addTabArticulation(type, first_note, last_note, first_indices, last_indices) {
         this.artist.log('addTabArticulations: ', type, first_note, last_note, first_indices, last_indices);
         if (type === 't') {
@@ -22987,6 +23054,7 @@ class ArticulationBuilder {
         }
         if (_utils__WEBPACK_IMPORTED_MODULE_1__.isEmpty(first_indices) && _utils__WEBPACK_IMPORTED_MODULE_1__.isEmpty(last_indices))
             return;
+        // Build the appropriate tab articulation based on type.
         let articulation = null;
         const notes = {
             first_note,
@@ -23014,8 +23082,12 @@ class ArticulationBuilder {
             this.artist.tab_articulations.push(articulation);
         }
     }
+    /**
+     * Add a notation stave articulation between two notes.
+     */
     addStaveArticulation(type, first_note, last_note, first_indices, last_indices) {
         this.artist.log('addStaveArticulations: ', type, first_note, last_note, first_indices, last_indices);
+        // Stave ties/slides share a common VexFlow class.
         let articulation = null;
         if (['b', 's', 'h', 'p', 't', 'T'].includes(type)) {
             articulation = new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.StaveTie({
@@ -23033,7 +23105,9 @@ class ArticulationBuilder {
             this.artist.stave_articulations.push(articulation);
         }
     }
-    // This gets the previous (second-to-last) non-bar non-ghost note.
+    /**
+     * Find the previous (second-to-last) non-bar, non-ghost tab note index.
+     */
     getPreviousNoteIndex() {
         const tab_notes = _utils__WEBPACK_IMPORTED_MODULE_1__.last(this.artist.staves).tab_notes;
         let index = 2;
@@ -23046,6 +23120,9 @@ class ArticulationBuilder {
         }
         return -1;
     }
+    /**
+     * Add a decorator (vibrato, up/down bowing) to the latest notes.
+     */
     addDecorator(decorator) {
         this.artist.log('addDecorator: ', decorator);
         if (!decorator)
@@ -23088,6 +23165,9 @@ class ArticulationBuilder {
             }
         }
     }
+    /**
+     * Add articulations for the most recent tab/note entries.
+     */
     addArticulations(articulations) {
         this.artist.log('addArticulations: ', articulations);
         const stave = _utils__WEBPACK_IMPORTED_MODULE_1__.last(this.artist.staves);
@@ -23097,6 +23177,7 @@ class ArticulationBuilder {
             this.closeBends(0);
             return;
         }
+        // Collect articulation indices per symbol to support multi-string chords.
         const current_tab_note = _utils__WEBPACK_IMPORTED_MODULE_1__.last(tab_notes);
         let has_bends = false;
         ['b', 's', 'h', 'p', 't', 'T', 'v', 'V'].forEach((valid_articulation) => {
@@ -23168,6 +23249,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _NoteBuilder__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./NoteBuilder */ "./src/artist/NoteBuilder.ts");
 /* harmony import */ var _StaveBuilder__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./StaveBuilder */ "./src/artist/StaveBuilder.ts");
 /* harmony import */ var _TextBuilder__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./TextBuilder */ "./src/artist/TextBuilder.ts");
+// Central orchestration layer for building VexFlow structures from VexTab input.
 
 
 
@@ -23182,13 +23264,20 @@ __webpack_require__.r(__webpack_exports__);
  * changing the public VexTab API.
  */
 class Artist {
+    /**
+     * Construct an Artist with initial layout coordinates and options.
+     * Design note: we keep defaults here to isolate configuration in one place.
+     */
     constructor(x, y, width, options) {
+        // Mutable overrides set by VexTab options.
         this.customizations = {};
+        // Rendered output + annotation state.
         // Rendered output + annotation state.
         this.staves = [];
         this.tab_articulations = [];
         this.stave_articulations = [];
         this.player_voices = [];
+        // Current render cursor / note state.
         // Current render cursor / note state.
         this.last_y = 0;
         this.current_duration = 'q';
@@ -23197,12 +23286,14 @@ class Artist {
         this.current_octave_shift = 0;
         this.bend_start_index = null;
         this.bend_start_strings = null;
+        // Render status and optional Player overlay.
         this.rendered = false;
         this.renderer_context = null;
         this.player = null;
         this.x = x;
         this.y = y;
         this.width = width;
+        // Defaults reflect legacy VexTab behavior.
         this.options = {
             font_face: 'Arial',
             font_size: 10,
@@ -23213,8 +23304,10 @@ class Artist {
             scale: 1.0,
         };
         if (options) {
+            // Allow callers to override defaults without changing the API shape.
             _utils__WEBPACK_IMPORTED_MODULE_1__.extend(this.options, options);
         }
+        // Compose helper objects for focused responsibilities.
         this.renderer = new _ArtistRenderer__WEBPACK_IMPORTED_MODULE_2__.ArtistRenderer(this);
         this.articulations = new _ArticulationBuilder__WEBPACK_IMPORTED_MODULE_3__.ArticulationBuilder(this);
         this.notes = new _NoteBuilder__WEBPACK_IMPORTED_MODULE_4__.NoteBuilder(this);
@@ -23222,11 +23315,19 @@ class Artist {
         this.text = new _TextBuilder__WEBPACK_IMPORTED_MODULE_6__.TextBuilder(this);
         this.reset();
     }
+    /**
+     * Conditional logging helper.
+     */
     log(...args) {
+        // Keep logs guarded to avoid noisy production output.
         if (Artist.DEBUG && console) {
             console.log('(Vex.Flow.Artist)', ...args);
         }
     }
+    /**
+     * Reset the Artist's internal state prior to a new parse/render cycle.
+     * Design note: this is intentionally comprehensive to avoid stale state leaks.
+     */
     reset() {
         // Core helpers used for fret/notation logic.
         this.tuning = new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Tuning();
@@ -23270,9 +23371,15 @@ class Artist {
         this.rendered = false;
         this.renderer_context = null;
     }
+    /**
+     * Attach a playback helper to the Artist.
+     */
     attachPlayer(player) {
         this.player = player;
     }
+    /**
+     * Apply user-provided options and validate known keys.
+     */
     setOptions(options) {
         this.log('setOptions: ', options);
         // Only allow known customization keys.
@@ -23285,11 +23392,16 @@ class Artist {
                 throw new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].RERR('ArtistError', `Invalid option '${key}'`);
             }
         });
+        // Apply vertical spacing immediately so subsequent staves start lower.
         this.last_y += parseInt(String(this.customizations.space), 10);
         if (this.customizations.player === 'true') {
+            // Reserve extra space for playback controls.
             this.last_y += 15;
         }
     }
+    /**
+     * Return data used by the Player overlay.
+     */
     getPlayerData() {
         return {
             voices: this.player_voices,
@@ -23298,71 +23410,135 @@ class Artist {
         };
     }
     // --- Public API used by VexTab (delegates to helper classes) ---
+    /**
+     * Render the currently parsed score using the provided renderer.
+     */
     render(renderer) {
         this.renderer.render(renderer);
     }
+    /**
+     * Backwards-compatible alias for render().
+     */
     draw(renderer) {
         this.render(renderer);
     }
+    /**
+     * Whether render() has been called and finished.
+     */
     isRendered() {
         return this.rendered;
     }
+    /**
+     * Whether the logo is suppressed via global flag.
+     */
     isLogoHidden() {
         return Artist.NOLOGO;
     }
+    /**
+     * Set the duration used for subsequent notes.
+     */
     setDuration(time, dot = false) {
         this.notes.setDuration(time, dot);
     }
+    /**
+     * Add a barline to the current stave group.
+     */
     addBar(type) {
         this.stavesBuilder.addBar(type);
     }
+    /**
+     * Build tuplets for the current voice.
+     */
     makeTuplets(tuplets, notes) {
         this.articulations.makeTuplets(tuplets, notes);
     }
+    /**
+     * Add annotations that will be attached to upcoming notes.
+     */
     addAnnotations(annotations) {
         this.articulations.addAnnotations(annotations);
     }
+    /**
+     * Add articulations that will be attached to upcoming notes.
+     */
     addArticulations(articulations) {
         this.articulations.addArticulations(articulations);
     }
+    /**
+     * Add a decorator (e.g., segno/coda) to upcoming notes.
+     */
     addDecorator(decorator) {
         this.articulations.addDecorator(decorator || null);
     }
+    /**
+     * Add a rest with the given parameters.
+     */
     addRest(params) {
         this.notes.addRest(params);
     }
+    /**
+     * Add a chord built from multiple note definitions.
+     */
     addChord(chord, chord_articulation, chord_decorator) {
         this.notes.addChord(chord, chord_articulation || null, chord_decorator || null);
     }
+    /**
+     * Add a single note.
+     */
     addNote(note) {
         this.notes.addNote(note);
     }
+    /**
+     * Add a new text voice (for lyric or annotation lines).
+     */
     addTextVoice() {
         this.text.addTextVoice();
     }
+    /**
+     * Set the font used for subsequent text notes.
+     */
     setTextFont(font) {
         this.text.setTextFont(font);
     }
+    /**
+     * Add a text note to the current text voice.
+     */
     addTextNote(text, position = 0, justification = 'center', smooth = true, ignore_ticks = false) {
         this.text.addTextNote(text, position, justification, smooth, ignore_ticks);
     }
+    /**
+     * Add a new voice to the current stave group.
+     */
     addVoice(options) {
         this.stavesBuilder.addVoice(options || {});
     }
+    /**
+     * Add a new stave (notation, tablature, or both) to the score.
+     */
     addStave(element, options) {
         this.stavesBuilder.addStave(element, options);
     }
+    /**
+     * Open a bend span between notes (used for tab bends).
+     */
     openBends(first_note, last_note, first_indices, last_indices) {
         this.articulations.openBends(first_note, last_note, first_indices, last_indices);
     }
+    /**
+     * Close any open bend spans.
+     */
     closeBends(offset = 1) {
         this.articulations.closeBends(offset);
     }
+    /**
+     * Handle dot-prefixed VexTab commands (e.g., octave-shift).
+     */
     runCommand(line, lineNumber = 0, column = 0) {
         this.log('runCommand: ', line);
         const words = line.split(/\s+/);
         switch (words[0]) {
             case 'octave-shift':
+                // Apply octave changes to playback pitch only.
                 this.current_octave_shift = parseInt(words[1], 10);
                 this.log('Octave shift: ', this.current_octave_shift);
                 break;
@@ -23371,7 +23547,9 @@ class Artist {
         }
     }
 }
+// Enables verbose logging for debugging.
 Artist.DEBUG = false;
+// Hide the VexTab logo when true.
 Artist.NOLOGO = false;
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Artist);
 
@@ -23391,6 +23569,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _vexflow__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../vexflow */ "./src/vexflow.ts");
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../utils */ "./src/utils.ts");
+// Layout and rendering engine for Artist state, responsible for VexFlow formatting and drawing.
 
 
 /**
@@ -23399,21 +23578,33 @@ __webpack_require__.r(__webpack_exports__);
  * everything to the given renderer.
  */
 class ArtistRenderer {
+    /**
+     * Create a renderer tied to a specific Artist.
+     */
     constructor(artist) {
         this.artist = artist;
     }
+    /**
+     * Coerce string/boolean-like values into a strict boolean.
+     */
     parseBool(value) {
         return String(value) === 'true';
     }
+    /**
+     * Format and render a stave group (tab/notation/text) using VexFlow formatters.
+     * Design note: we centralize formatting here to keep Artist.render() readable.
+     */
     formatAndRender(ctx, tab, score, text_notes, customizations, options) {
         const tab_stave = tab ? tab.stave : null;
         const score_stave = score ? score.stave : null;
+        // Voice collections and formatting helpers.
         const tab_voices = [];
         const score_voices = [];
         const text_voices = [];
         let beams = [];
         let format_stave = null;
         let text_stave = null;
+        // Beam configuration is shared for tab and notation voices.
         const beam_config = {
             beam_rests: this.parseBool(customizations['beam-rests']),
             show_stemlets: this.parseBool(customizations['beam-stemlets']),
@@ -23421,6 +23612,7 @@ class ArtistRenderer {
             groups: options.beam_groups,
         };
         if (tab) {
+            // Build voices for tablature, optionally forcing stems.
             const multi_voice = tab.voices.length > 1;
             tab.voices.forEach((notes, i) => {
                 if (_utils__WEBPACK_IMPORTED_MODULE_1__.isEmpty(notes))
@@ -23431,6 +23623,7 @@ class ArtistRenderer {
                 voice.addTickables(notes);
                 tab_voices.push(voice);
                 if (customizations['tab-stems'] === 'true') {
+                    // For tab, stem direction is driven by the voice order or settings.
                     if (multi_voice) {
                         beam_config.stem_direction = i === 0 ? 1 : -1;
                     }
@@ -23446,6 +23639,7 @@ class ArtistRenderer {
         }
         beam_config.beam_rests = this.parseBool(customizations['beam-rests']);
         if (score) {
+            // Build voices for notation and generate beams with proper stem directions.
             const multi_voice = score.voices.length > 1;
             score.voices.forEach((notes, i) => {
                 if (_utils__WEBPACK_IMPORTED_MODULE_1__.isEmpty(notes))
@@ -23468,6 +23662,7 @@ class ArtistRenderer {
             format_stave = score_stave;
             text_stave = score_stave;
         }
+        // Text voices are formatted alongside the primary stave for alignment.
         text_notes.forEach((notes) => {
             if (_utils__WEBPACK_IMPORTED_MODULE_1__.isEmpty(notes))
                 return;
@@ -23478,6 +23673,7 @@ class ArtistRenderer {
             text_voices.push(voice);
         });
         if (format_stave) {
+            // Join voices and format them together to align note spacing.
             let format_voices = [];
             const formatter = new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Formatter();
             let align_rests = false;
@@ -23503,6 +23699,7 @@ class ArtistRenderer {
             if (!_utils__WEBPACK_IMPORTED_MODULE_1__.isEmpty(format_voices)) {
                 formatter.formatToStave(format_voices, format_stave, { align_rests });
             }
+            // Draw voices, beams, and any text staves.
             if (tab) {
                 _utils__WEBPACK_IMPORTED_MODULE_1__.each(tab_voices, (voice) => voice.draw(ctx, tab_stave));
             }
@@ -23513,6 +23710,7 @@ class ArtistRenderer {
             if (!_utils__WEBPACK_IMPORTED_MODULE_1__.isEmpty(text_notes)) {
                 _utils__WEBPACK_IMPORTED_MODULE_1__.each(text_voices, (voice) => voice.draw(ctx, text_stave));
             }
+            // Draw a bracket when both tab and notation staves are present.
             if (tab && score) {
                 new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.StaveConnector(score.stave, tab.stave)
                     .setType(_vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.StaveConnector.type.BRACKET)
@@ -23523,15 +23721,22 @@ class ArtistRenderer {
         }
         return [];
     }
+    /**
+     * Render the complete score using the provided VexFlow renderer instance.
+     * Design note: we recompute layout on every render to match current options.
+     */
     render(renderer) {
         const artist = this.artist;
         artist.log('Render: ', artist.options);
         artist.closeBends();
+        // Resize to match the computed layout height and scale.
         renderer.resize(Number(artist.customizations.width) * Number(artist.customizations.scale), (artist.last_y + artist.options.bottom_spacing) * Number(artist.customizations.scale));
+        // Prepare a fresh render context per draw.
         const ctx = renderer.getContext();
         ctx.scale(Number(artist.customizations.scale), Number(artist.customizations.scale));
         ctx.clear();
         ctx.setFont(artist.options.font_face, artist.options.font_size, '');
+        // Cache context for the Player overlay.
         artist.renderer_context = ctx;
         const setBar = (stave, notes) => {
             const last_note = _utils__WEBPACK_IMPORTED_MODULE_1__.last(notes);
@@ -23547,6 +23752,7 @@ class ArtistRenderer {
                 setBar(stave.tab, stave.tab_notes);
             if (stave.note)
                 setBar(stave.note, stave.note_notes);
+            // Draw staves before notes so beams/notes align to stave positions.
             if (stave.tab)
                 stave.tab.setContext(ctx).draw();
             if (stave.note)
@@ -23560,6 +23766,7 @@ class ArtistRenderer {
         artist.tab_articulations.forEach((articulation) => articulation.setContext(ctx).draw());
         artist.log('Rendering note articulations.');
         artist.stave_articulations.forEach((articulation) => articulation.setContext(ctx).draw());
+        // Synchronize the Player overlay (if enabled).
         if (artist.player) {
             if (artist.customizations.player === 'true') {
                 artist.player.setTempo(parseInt(String(artist.customizations.tempo), 10));
@@ -23571,6 +23778,7 @@ class ArtistRenderer {
             }
         }
         artist.rendered = true;
+        // Optionally draw the VexTab logo at the bottom of the render.
         if (!artist.isLogoHidden()) {
             const LOGO = 'vexflow.com';
             const width = ctx.measureText(LOGO).width;
@@ -23598,6 +23806,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _vexflow__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../vexflow */ "./src/vexflow.ts");
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../utils */ "./src/utils.ts");
+// Note creation and expansion logic for tab/notation, including chords and rests.
 
 
 /**
@@ -23605,14 +23814,20 @@ __webpack_require__.r(__webpack_exports__);
  * It is intentionally stateful and mutates the parent Artist state directly.
  */
 class NoteBuilder {
+    /**
+     * Create a note builder bound to an Artist.
+     */
     constructor(artist) {
         this.artist = artist;
     }
-    // Given a fret/string pair, returns a note, octave, and required accidentals
-    // based on current guitar tuning and stave key.
+    /**
+     * Given a fret/string pair, return note name, octave, and accidental.
+     * Design note: this uses the Artist key manager to respect the current key.
+     */
     getNoteForFret(fret, string) {
         const spec = this.artist.tuning.getNoteForFret(fret, string);
         const spec_props = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.keyProperties(spec);
+        // Use the key manager to select the canonical spelling for the current key.
         const selected_note = this.artist.key_manager.selectNote(spec_props.key);
         let accidental = null;
         // Determine explicit accidentals based on custom strategy.
@@ -23635,7 +23850,7 @@ class NoteBuilder {
         }
         let new_note = selected_note.note;
         let new_octave = spec_props.octave;
-        // Key manager can force octave changes based on root note.
+        // Adjust octave when the key manager changes the root letter.
         const old_root = this.artist.music_api.getNoteParts(spec_props.key).root;
         const new_root = this.artist.music_api.getNoteParts(selected_note.note).root;
         if (new_root === 'b' && old_root === 'c') {
@@ -23646,7 +23861,11 @@ class NoteBuilder {
         }
         return [new_note, new_octave, accidental];
     }
+    /**
+     * Convert ABC-style note data into a note name, octave, and accidental.
+     */
     getNoteForABC(abc, string) {
+        // ABC notes provide a direct note name; octave is derived from the string index.
         const key = abc.key;
         const octave = string;
         let accidental = abc.accidental;
@@ -23655,7 +23874,11 @@ class NoteBuilder {
         }
         return [key, octave, accidental];
     }
+    /**
+     * Add a notation (staff) note, with accidentals and optional playback pitch.
+     */
     addStaveNote(note_params) {
+        // Normalize input and default to non-rest notes.
         const params = {
             is_rest: false,
             play_note: null,
@@ -23668,6 +23891,7 @@ class NoteBuilder {
             clef: params.is_rest ? 'treble' : this.artist.current_clef,
             auto_stem: params.is_rest ? false : true,
         });
+        // Attach accidentals per note head.
         params.accidentals.forEach((acc, index) => {
             if (!acc)
                 return;
@@ -23683,40 +23907,59 @@ class NoteBuilder {
                 stave_note.addModifier(new_accidental, index);
             }
         });
+        // VexFlow uses a dotted flag in the duration string.
         if (this.artist.current_duration.endsWith('d')) {
             _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Dot.buildAndAttach([stave_note], { all: true });
         }
+        // Playback pitch is optional and only used when Player is enabled.
         if (params.play_note) {
             stave_note.setPlayNote(params.play_note);
         }
         stave_notes.push(stave_note);
     }
+    /**
+     * Add a tablature note (TabNote) with optional playback pitches.
+     */
     addTabNote(spec, play_note = null) {
+        // Tab notes are built from positions and the current duration.
         const tab_notes = _utils__WEBPACK_IMPORTED_MODULE_1__.last(this.artist.staves).tab_notes;
         const new_tab_note = new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.TabNote({
             positions: spec,
             duration: this.artist.current_duration,
         }, this.artist.customizations['tab-stems'] === 'true');
+        // Playback pitch is optional and only used when Player is enabled.
         if (play_note) {
             new_tab_note.setPlayNote(play_note);
         }
         tab_notes.push(new_tab_note);
+        // Dotted notes need an explicit dot glyph on tab notes.
         if (this.artist.current_duration.endsWith('d')) {
             _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Dot.buildAndAttach([new_tab_note], { all: true });
         }
     }
+    /**
+     * Create a VexFlow duration string including a dotted flag.
+     */
     makeDuration(time, dot) {
         return `${time}${dot ? 'd' : ''}`;
     }
+    /**
+     * Update the current duration used for subsequent notes.
+     */
     setDuration(time, dot = false) {
+        // Support "q" or "q ." style tokens from the parser.
         const t = time.split(/\s+/);
         this.artist.log('setDuration: ', t[0], dot);
         this.artist.current_duration = this.makeDuration(t[0], dot);
     }
+    /**
+     * Add a rest into both tab and notation staves.
+     */
     addRest(params) {
         this.artist.log('addRest: ', params);
         this.artist.closeBends();
         const position_value = parseInt(String(params.position), 10);
+        // Position 0 uses a generic rest marker; other positions use a placeholder pitch.
         if (position_value === 0) {
             this.addStaveNote({
                 spec: ['r/4'],
@@ -23734,6 +23977,7 @@ class NoteBuilder {
         }
         const tab_notes = _utils__WEBPACK_IMPORTED_MODULE_1__.last(this.artist.staves).tab_notes;
         if (this.artist.customizations['tab-stems'] === 'true') {
+            // With tab stems enabled, render rests as stave notes for consistent stems.
             const tab_note = new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.StaveNote({
                 keys: [position_value === 0 ? 'r/4' : this.artist.tuning.getNoteForFret((position_value + 5) * 2, 6)],
                 duration: `${this.artist.current_duration}r`,
@@ -23746,14 +23990,21 @@ class NoteBuilder {
             tab_notes.push(tab_note);
         }
         else {
+            // Ghost notes maintain spacing without rendering a glyph.
             tab_notes.push(new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.GhostNote(this.artist.current_duration));
         }
     }
+    /**
+     * Expand a chord into multiple notes across strings/positions and add them.
+     * Design note: chords can represent stacked notes on the same string, so we
+     * track "positions" per string to keep multi-stop logic intact.
+     */
     addChord(chord, chord_articulation, chord_decorator) {
         if (_utils__WEBPACK_IMPORTED_MODULE_1__.isEmpty(chord))
             return;
         this.artist.log('addChord: ', chord);
         const stave = _utils__WEBPACK_IMPORTED_MODULE_1__.last(this.artist.staves);
+        // Per-position arrays track stacked chord notes on the same string.
         const specs = [];
         const play_notes = [];
         const accidentals = [];
@@ -23761,8 +24012,8 @@ class NoteBuilder {
         const decorators = [];
         const tab_specs = [];
         const durations = [];
+        // Track chord size so global articulations can be fanned out.
         let num_notes = 0;
-        // Chords can contain multiple lines per string; track motion per line.
         let current_string = chord[0].string;
         let current_position = 0;
         chord.forEach((note) => {
@@ -23771,6 +24022,7 @@ class NoteBuilder {
                 current_position = 0;
                 current_string = note.string;
             }
+            // Initialize per-position arrays on first use.
             if (!specs[current_position]) {
                 specs[current_position] = [];
                 play_notes[current_position] = [];
@@ -23784,6 +24036,7 @@ class NoteBuilder {
             let accidental = null;
             let play_note = null;
             if (note.abc) {
+                // ABC notes carry a pitch name; the octave is derived.
                 const octave = note.octave ? note.octave : note.string;
                 [new_note, new_octave, accidental] = this.getNoteForABC(note.abc, octave);
                 const acc = accidental ? accidental.split('_')[0] : '';
@@ -23793,12 +24046,14 @@ class NoteBuilder {
                 }
             }
             else if (note.fret) {
+                // Tab notes are translated through the tuning map.
                 [new_note, new_octave, accidental] = this.getNoteForFret(note.fret, note.string);
                 play_note = this.artist.tuning.getNoteForFret(note.fret, note.string).split('/')[0];
             }
             else {
                 throw new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].RERR('ArtistError', 'No note specified');
             }
+            // Apply any octave shift commands to the playback pitch.
             const play_octave = parseInt(String(new_octave), 10) + this.artist.current_octave_shift;
             const current_duration = note.time ? { time: note.time, dot: note.dot } : null;
             specs[current_position].push(`${new_note}/${new_octave}`);
@@ -23817,6 +24072,7 @@ class NoteBuilder {
             }
             current_position += 1;
         });
+        // Emit notes position by position so formatting and articulations align.
         specs.forEach((spec, i) => {
             if (durations[i]) {
                 this.setDuration(durations[i].time, durations[i].dot);
@@ -23831,6 +24087,7 @@ class NoteBuilder {
             }
         });
         if (chord_articulation) {
+            // Fan out a single articulation to each note in the chord.
             const art = [];
             for (let i = 0; i < num_notes; i += 1)
                 art.push(chord_articulation);
@@ -23840,6 +24097,9 @@ class NoteBuilder {
             this.artist.addDecorator(chord_decorator);
         }
     }
+    /**
+     * Convenience wrapper for adding a single note as a one-note chord.
+     */
     addNote(note) {
         this.addChord([note], null, null);
     }
@@ -23861,20 +24121,28 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _vexflow__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../vexflow */ "./src/vexflow.ts");
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../utils */ "./src/utils.ts");
+// Stave creation logic that manages bars, voices, and stave layout.
 
 
 /**
  * Builds staves, manages voice boundaries, and handles barlines.
  */
 class StaveBuilder {
+    /**
+     * Create a stave builder bound to an Artist.
+     */
     constructor(artist) {
         this.artist = artist;
     }
+    /**
+     * Insert a barline into the current stave group.
+     */
     addBar(type) {
         this.artist.log('addBar: ', type);
         this.artist.closeBends();
         this.artist.key_manager.reset();
         const stave = _utils__WEBPACK_IMPORTED_MODULE_1__.last(this.artist.staves);
+        // Map the VexTab bar token into a VexFlow barline type.
         const TYPE = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Barline.type;
         let bar_type = TYPE.SINGLE;
         switch (type) {
@@ -23900,12 +24168,16 @@ class StaveBuilder {
                 bar_type = TYPE.SINGLE;
                 break;
         }
+        // Use a BarNote as a sentinel the renderer can consume later.
         const bar_note = new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.BarNote().setType(bar_type);
         stave.tab_notes.push(bar_note);
         if (stave.note) {
             stave.note_notes.push(bar_note);
         }
     }
+    /**
+     * Start a new voice within the current stave group.
+     */
     addVoice(_options) {
         this.artist.closeBends();
         const stave = _utils__WEBPACK_IMPORTED_MODULE_1__.last(this.artist.staves);
@@ -23913,6 +24185,7 @@ class StaveBuilder {
             this.addStave('stave', _options || {});
             return;
         }
+        // Commit any pending notes into the current voice.
         if (!_utils__WEBPACK_IMPORTED_MODULE_1__.isEmpty(stave.tab_notes)) {
             stave.tab_voices.push(stave.tab_notes);
             stave.tab_notes = [];
@@ -23922,7 +24195,11 @@ class StaveBuilder {
             stave.note_notes = [];
         }
     }
+    /**
+     * Add a new stave group (tab, notation, or both) with the given options.
+     */
     addStave(element, options) {
+        // Defaults mirror legacy VexTab behavior.
         const opts = {
             tuning: 'standard',
             clef: 'treble',
@@ -23935,10 +24212,11 @@ class StaveBuilder {
         this.artist.log('addStave: ', element, opts);
         let tab_stave = null;
         let note_stave = null;
-        // Used to line up tablature and notation.
+        // Align the tab stave to the notation stave when both are present.
         const start_x = this.artist.x + Number(this.artist.customizations['connector-space']);
         let tabstave_start_x = 40;
         if (opts.notation === 'true') {
+            // Build the notation stave first so tab can align to it.
             note_stave = new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Stave(start_x, this.artist.last_y, Number(this.artist.customizations.width) - 20, { left_bar: false });
             if (opts.clef !== 'none') {
                 note_stave.addClef(opts.clef);
@@ -23954,6 +24232,7 @@ class StaveBuilder {
             this.artist.current_clef = opts.clef === 'none' ? 'treble' : opts.clef;
         }
         if (opts.tablature === 'true') {
+            // Tab stave sits below the notation stave (if any).
             tab_stave = new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.TabStave(start_x, this.artist.last_y, Number(this.artist.customizations.width) - 20, { left_bar: false }).setNumLines(opts.strings);
             if (opts.clef !== 'none') {
                 tab_stave.addTabGlyph();
@@ -23962,6 +24241,7 @@ class StaveBuilder {
             this.artist.last_y += tab_stave.getHeight() + this.artist.options.tab_stave_lower_spacing;
         }
         this.artist.closeBends();
+        // Beam grouping depends on the time signature.
         const beam_groups = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Beam.getDefaultBeamGroups(opts.time);
         this.artist.staves.push({
             tab: tab_stave,
@@ -23973,6 +24253,7 @@ class StaveBuilder {
             text_voices: [],
             beam_groups,
         });
+        // Update tuning and key for subsequent notes.
         this.artist.tuning.setTuning(opts.tuning);
         this.artist.key_manager.setKey(opts.key);
     }
@@ -23994,21 +24275,32 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _vexflow__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../vexflow */ "./src/vexflow.ts");
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../utils */ "./src/utils.ts");
+// Text voice builder for lyric/annotation staves in the VexTab layout.
 
 
 /**
  * TextBuilder manages text voices (lyrics/annotations in a text stave).
  */
 class TextBuilder {
+    /**
+     * Create a text builder bound to an Artist.
+     */
     constructor(artist) {
         this.artist = artist;
     }
+    /**
+     * Start a new text voice in the current stave group.
+     */
     addTextVoice() {
         _utils__WEBPACK_IMPORTED_MODULE_1__.last(this.artist.staves).text_voices.push([]);
     }
+    /**
+     * Update font customizations based on a "face-size-style" string.
+     */
     setTextFont(font) {
         if (!font)
             return;
+        // Parse the "face-size-style" convention used by VexTab text commands.
         const parts = font.match(/([^-]*)-([^-]*)-([^.]*)/);
         if (parts) {
             this.artist.customizations['font-face'] = parts[1];
@@ -24016,14 +24308,20 @@ class TextBuilder {
             this.artist.customizations['font-style'] = parts[3];
         }
     }
+    /**
+     * Add a text note to the current text voice.
+     * Design note: glyph syntax (#...) is supported for symbol-only notes.
+     */
     addTextNote(text, position = 0, justification = 'center', smooth = true, ignore_ticks = false) {
         const voices = _utils__WEBPACK_IMPORTED_MODULE_1__.last(this.artist.staves).text_voices;
         if (_utils__WEBPACK_IMPORTED_MODULE_1__.isEmpty(voices)) {
             throw new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].RERR('ArtistError', "Can't add text note without text voice");
         }
+        // Pull active font options from the Artist customization map.
         const font_face = this.artist.customizations['font-face'];
         const font_size = this.artist.customizations['font-size'];
         const font_style = this.artist.customizations['font-style'];
+        // Map justification labels into VexFlow's enum.
         let just = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.TextNote.Justification.CENTER;
         switch (justification) {
             case 'center':
@@ -24039,6 +24337,7 @@ class TextBuilder {
                 just = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.TextNote.Justification.CENTER;
                 break;
         }
+        // "b" creates a bar-sized spacer when ticks are ignored.
         const duration = ignore_ticks ? 'b' : this.artist.current_duration;
         const struct = {
             text,
@@ -24051,6 +24350,7 @@ class TextBuilder {
                 weight: font_style,
             },
         };
+        // Glyph syntax uses TextNote glyphs instead of text rendering.
         if (text.startsWith('#')) {
             struct.glyph = text.slice(1);
             struct.text = '';
@@ -24088,6 +24388,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _player__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./player */ "./src/player.ts");
 /* harmony import */ var _vextab_css__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./vextab.css */ "./src/vextab.css");
 /* provided dependency */ var $ = __webpack_require__(/*! zepto-webpack */ "./node_modules/zepto-webpack/zepto.js");
+// DOM integration layer that renders VexTab inside a selected element, with optional editor UI.
 /**
  * VexTab.Div renders VexTab code inside a DOM element, with optional
  * live-editing and error display support.
@@ -24098,6 +24399,10 @@ __webpack_require__.r(__webpack_exports__);
 
 
 class Div {
+    /**
+     * Construct the Div renderer and immediately render the initial markup.
+     * Design note: we read once from the DOM and then manage our own state.
+     */
     constructor(sel) {
         this.text_area = null;
         this.editor_error = null;
@@ -24106,13 +24411,13 @@ class Div {
         if (!this.sel) {
             throw new Error(`VexTab.Div: invalid selector: ${sel}`);
         }
-        // Grab code and clear tabdiv.
+        // Read initial markup and clear the container so we own rendering.
         this.code = $(sel).text();
         $(sel).empty();
         if ($(sel).css('position') === 'static') {
             $(sel).css('position', 'relative');
         }
-        // Tabdiv properties.
+        // Host sizing and renderer options from data attributes.
         this.width = parseInt($(sel).attr('width'), 10) || 400;
         this.height = parseInt($(sel).attr('height'), 10) || 200;
         this.scale = parseFloat($(sel).attr('scale'), 10) || 1.0;
@@ -24127,6 +24432,7 @@ class Div {
             $(sel).append(this.canvas);
             this.renderer = new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Renderer(this.canvas[0], _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Renderer.Backends.SVG);
         }
+        // Cache the render context and apply scale/background.
         this.ctx_sel = $(sel).find('.vex-canvas');
         this.renderer.resize(this.width, this.height);
         this.ctx = this.renderer.getContext();
@@ -24138,6 +24444,7 @@ class Div {
         this.editor_width = parseInt($(sel).attr('editor-width'), 10) || this.width;
         this.editor_height = parseInt($(sel).attr('editor-height'), 10) || 200;
         if (this.editor === 'true') {
+            // Build editor UI and debounce renders to avoid thrashing.
             this.text_area = $('<textarea></textarea>').addClass('editor')
                 .val(this.code);
             this.editor_error = $('<div></div>').addClass('editor-error');
@@ -24149,7 +24456,6 @@ class Div {
                 if (this.timeoutID)
                     window.clearTimeout(this.timeoutID);
                 this.timeoutID = window.setTimeout(() => {
-                    // Draw only if code changed.
                     if (this.code !== this.text_area.val()) {
                         this.code = this.text_area.val();
                         this.redraw();
@@ -24158,28 +24464,41 @@ class Div {
             });
         }
         else if (this.show_errors === 'true') {
+            // Error display without the editor UI.
             this.editor_error = $('<div></div>').addClass('editor-error');
             $(sel).append($('<p/>')).append(this.editor_error);
         }
-        // Initialize parser.
+        // Initialize parser and renderer.
         this.artist = new _artist__WEBPACK_IMPORTED_MODULE_1__["default"](10, 0, this.width, { scale: this.scale });
         this.parser = new _vextab__WEBPACK_IMPORTED_MODULE_2__["default"](this.artist);
         this.redraw();
     }
+    /**
+     * Parse and draw the current code in one pass for convenience.
+     */
     redraw() {
+        // Wrap parse/draw with VexFlow benchmarking to support legacy timing logs.
         _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].BM('Total render time: ', () => {
             this.parse();
             this.draw();
         });
         return this;
     }
+    /**
+     * Draw if parsing succeeded; otherwise do nothing to avoid stale output.
+     */
     drawInternal() {
         if (!this.parser.isValid())
             return this;
         return this.artist.draw(this.renderer);
     }
+    /**
+     * Parse the current VexTab code and surface any errors in the UI.
+     * Design note: we keep errors in-band (DOM) so the editor experience is clear.
+     */
     parseInternal() {
         try {
+            // Reset state before parsing so errors never leak a partial render.
             this.artist.reset();
             this.parser.reset();
             this.parser.parse(this.code);
@@ -24188,25 +24507,38 @@ class Div {
         }
         catch (e) {
             if (this.editor_error) {
+                // Render parse errors into the UI for user feedback.
                 this.editor_error.empty();
                 this.editor_error.append($('<div></div>').addClass('text').html(`<h3>Oops!</h3> ${e.message.replace(/(?:\r\n|\r|\n)/g, '<br>')}`));
             }
         }
         return this;
     }
+    /**
+     * Public wrapper around parseInternal() with benchmark timing.
+     */
     parse() {
+        // Benchmark parse to keep logs comparable with legacy builds.
         _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].BM('Parse time: ', () => { this.parseInternal(); });
         return this;
     }
+    /**
+     * Public wrapper around drawInternal() with benchmark timing.
+     */
     draw() {
+        // Benchmark draw to keep logs comparable with legacy builds.
         _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].BM('Draw time: ', () => { this.drawInternal(); });
         return this;
     }
 }
 window.VEXTAB_SEL_V3 = 'div.vextab-auto';
+/**
+ * Start auto-rendering any VexTab elements found in the document.
+ */
 function start(sel) {
+    // Emit version info for troubleshooting in the browser console.
     // eslint-disable-next-line
-    console.log('Running VexTab.Div:', "4.0.2-1-g0646fe9", "master", "0646fe9fb14e299c4b58fb1a126610f1d6758c0b");
+    console.log('Running VexTab.Div:', "4.0.3-3-g503e682", "formatter", "503e6820132e6e1d09c29d9004a93a7abb12e637");
     $(sel || window.VEXTAB_SEL_V3).forEach((s) => new Div(s));
 }
 $(() => { if (window.VEXTAB_SEL_V3) {
@@ -24232,6 +24564,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _vexflow__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./vexflow */ "./src/vexflow.ts");
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./utils */ "./src/utils.ts");
 /* provided dependency */ var $ = __webpack_require__(/*! zepto-webpack */ "./node_modules/zepto-webpack/zepto.js");
+// Playback overlay that uses MIDI.js to audition VexFlow notes and show a moving marker.
 
 
 /**
@@ -24242,29 +24575,37 @@ __webpack_require__.r(__webpack_exports__);
  * with legacy VexTab usage.
  */
 class Player {
+    /**
+     * Construct a playback helper and attach to an Artist.
+     * Design note: options are merged so callers can override selectively.
+     */
     constructor(artist, options) {
+        // Playback timer and overlay UI handles.
         this.interval_id = null;
         this.paper = null;
         this.marker = null;
         this.loading_message = null;
         this.play_button = null;
         this.stop_button = null;
+        // Playback timing state.
         this.tick_notes = {};
         this.all_ticks = [];
         this.total_ticks = null;
         this.tpm = 0;
         this.refresh_rate = 25;
         this.ticks_per_refresh = 0;
+        // Cursor state for playback.
         this.current_ticks = 0;
         this.next_event_tick = 0;
         this.next_index = 0;
         this.done = false;
         this.loading = false;
         this.scale = 1;
-        // Static constants pulled from VexFlow for timing.
+        // Static constants pulled from VexFlow for timing and note math.
         this.Fraction = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Fraction;
         this.RESOLUTION = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.RESOLUTION;
         this.noteValues = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Music.noteValues;
+        // MIDI program numbers keyed by human-friendly instrument names.
         this.INSTRUMENTS = {
             acoustic_grand_piano: 0,
             acoustic_guitar_nylon: 24,
@@ -24297,20 +24638,32 @@ class Player {
         this.log(`Using soundfonts in: ${this.options.soundfont_url}`);
         this.reset();
     }
+    /**
+     * Log only when debug mode is enabled, to keep console noise low.
+     */
     log(...args) {
         if (Player.DEBUG && console) {
             console.log('(Vex.Flow.Player)', ...args);
         }
     }
+    /**
+     * Swap the Artist instance and reset cached playback data.
+     */
     setArtist(artist) {
         this.artist = artist;
         this.reset();
     }
+    /**
+     * Update playback tempo and recompute tick scheduling.
+     */
     setTempo(tempo) {
         this.log('New tempo: ', tempo);
         this.options.tempo = tempo;
         this.reset();
     }
+    /**
+     * Update the MIDI instrument used for playback.
+     */
     setInstrument(instrument) {
         this.log('New instrument: ', instrument);
         if (!Object.keys(this.INSTRUMENTS).includes(instrument)) {
@@ -24319,12 +24672,17 @@ class Player {
         this.options.instrument = instrument;
         this.reset();
     }
+    /**
+     * Reset internal playback state and recompute timing values.
+     * Design note: called on every render to keep playback in sync.
+     */
     reset() {
+        // Reset tick scheduling and overlay state after each render.
         this.artist.attachPlayer(this);
         this.tick_notes = {};
         this.all_ticks = [];
         this.tpm = this.options.tempo * (this.RESOLUTION / 4);
-        this.refresh_rate = 25; // ms: 50 = 20hz
+        this.refresh_rate = 25;
         this.ticks_per_refresh = this.tpm / (60 * (1000 / this.refresh_rate));
         this.total_ticks = 0;
         if (this.marker) {
@@ -24333,10 +24691,15 @@ class Player {
         }
         this.stop();
     }
+    /**
+     * Create a Paper.js overlay canvas positioned above the VexFlow surface.
+     * Design note: a separate overlay avoids interfering with VexFlow render output.
+     */
     getOverlay(context, scale, overlay_class) {
         const canvas = context.canvas;
         const height = canvas.height;
         const width = canvas.width;
+        // The overlay is a separate canvas stacked above the main render.
         const overlay = $('<canvas>');
         overlay.css('position', 'absolute');
         overlay.css('left', 0);
@@ -24345,10 +24708,14 @@ class Player {
         $(canvas).after(overlay);
         const ctx = _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow.Renderer.getCanvasContext(overlay.get(0), width, height);
         ctx.scale(scale, scale);
+        // Paper.js handles drawing for the overlay UI.
         const ps = new paper.PaperScope();
         ps.setup(overlay.get(0));
         return { paper: ps, canvas: overlay.get(0) };
     }
+    /**
+     * Remove playback controls from the overlay (used when re-rendering).
+     */
     removeControls() {
         if (this.play_button)
             this.play_button.remove();
@@ -24357,6 +24724,10 @@ class Player {
         if (this.paper)
             this.paper.view.draw();
     }
+    /**
+     * Build the overlay UI and compute tick maps for playback.
+     * Design note: we compute tick maps from the render output for accuracy.
+     */
     render() {
         this.reset();
         const data = this.artist.getPlayerData();
@@ -24365,9 +24736,11 @@ class Player {
             const overlay = this.getOverlay(data.context, data.scale, this.options.overlay_class);
             this.paper = overlay.paper;
         }
+        // Basic overlay UI elements.
         this.marker = new this.paper.Path.Rectangle(0, 0, 13, 85);
         this.loading_message = new this.paper.PointText(35, 12);
         if (this.options.show_controls) {
+            // Simple play/stop controls rendered with Paper.js.
             this.play_button = new this.paper.Path.RegularPolygon(new this.paper.Point(25, 10), 3, 7, 7);
             this.play_button.fillColor = '#396';
             this.play_button.opacity = 0.8;
@@ -24384,6 +24757,7 @@ class Player {
         }
         this.paper.view.draw();
         const staves = data.voices;
+        // Build a flattened list of tick events to drive playback.
         let total_ticks = new this.Fraction(0, 1);
         staves.forEach((voice_group) => {
             let max_voice_tick = new this.Fraction(0, 1);
@@ -24414,18 +24788,27 @@ class Player {
             });
             total_ticks.add(max_voice_tick);
         });
+        // Sort events by absolute tick for deterministic playback.
         this.all_ticks = _utils__WEBPACK_IMPORTED_MODULE_1__.sortBy(_utils__WEBPACK_IMPORTED_MODULE_1__.values(this.tick_notes), (tick) => tick.value);
         this.total_ticks = _utils__WEBPACK_IMPORTED_MODULE_1__.last(this.all_ticks);
         this.log(this.all_ticks);
     }
+    /**
+     * Move the overlay marker to the given note position.
+     */
     updateMarker(x, y) {
         this.marker.fillColor = '#369';
         this.marker.opacity = 0.2;
         this.marker.setPosition(new this.paper.Point(x * this.scale, y * this.scale));
         this.paper.view.draw();
     }
+    /**
+     * Trigger MIDI playback for a set of notes and move the marker.
+     * Design note: VexFlow's note APIs provide pitch strings we map to MIDI.
+     */
     playNote(notes) {
         this.log(`(${this.current_ticks}) playNote: `, notes);
+        // For each note, move the marker and emit MIDI events.
         notes.forEach((note) => {
             const x = note.getAbsoluteX() + 4;
             const y = note.getStave().getYForLine(2);
@@ -24448,11 +24831,15 @@ class Player {
             });
         });
     }
+    /**
+     * Advance playback time and emit notes when their tick is reached.
+     */
     refresh() {
         if (this.done) {
             this.stop();
             return;
         }
+        // Advance playback cursor based on ticks-per-refresh.
         this.current_ticks += this.ticks_per_refresh;
         if (this.current_ticks >= this.next_event_tick && this.all_ticks.length > 0) {
             this.playNote(this.all_ticks[this.next_index].notes);
@@ -24465,8 +24852,12 @@ class Player {
             }
         }
     }
+    /**
+     * Stop playback, clear timers, and reset UI state.
+     */
     stop() {
         this.log('Stop');
+        // Reset playback cursor and UI state.
         if (this.interval_id)
             window.clearInterval(this.interval_id);
         if (this.play_button)
@@ -24479,15 +24870,22 @@ class Player {
         this.next_index = 0;
         this.done = false;
     }
+    /**
+     * Start playback after ensuring the overlay and MIDI setup are ready.
+     */
     start() {
         this.stop();
         this.log('Start');
         if (this.play_button)
             this.play_button.fillColor = '#a36';
+        // Select instrument and schedule refresh ticks.
         MIDI.programChange(0, this.INSTRUMENTS[this.options.instrument]);
         this.render();
         this.interval_id = window.setInterval(() => this.refresh(), this.refresh_rate);
     }
+    /**
+     * Public entry point for playback. Loads instruments as needed.
+     */
     play() {
         this.log('Play: ', this.refresh_rate, this.ticks_per_refresh);
         if (Player.INSTRUMENTS_LOADED[this.options.instrument] && !this.loading) {
@@ -24499,6 +24897,7 @@ class Player {
             this.loading_message.fillColor = 'green';
             this.loading = true;
             this.paper.view.draw();
+            // Load soundfonts on demand to keep initial render lightweight.
             MIDI.loadPlugin({
                 soundfontUrl: this.options.soundfont_url,
                 instruments: [this.options.instrument],
@@ -24512,7 +24911,9 @@ class Player {
         }
     }
 }
+// Enables verbose logging for debugging.
 Player.DEBUG = false;
+// Cache to avoid re-loading soundfonts per instrument.
 Player.INSTRUMENTS_LOADED = {};
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Player);
 // Preserve legacy access via Vex.Flow.Player.
@@ -24546,11 +24947,22 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   throttle: () => (/* binding */ throttle),
 /* harmony export */   values: () => (/* binding */ values)
 /* harmony export */ });
+// Minimal utility helpers that replace lodash with focused, documented primitives.
+/**
+ * Return the last item of an array, or undefined for null/empty inputs.
+ * This is a tiny, predictable helper used throughout the codebase.
+ */
 function last(items) {
     if (!items || items.length === 0)
         return undefined;
     return items[items.length - 1];
 }
+/**
+ * Determine whether a value is "empty" by lodash-style rules.
+ * - null/undefined → empty
+ * - arrays/strings → length === 0
+ * - objects → no own keys
+ */
 function isEmpty(value) {
     if (value == null)
         return true;
@@ -24560,6 +24972,10 @@ function isEmpty(value) {
         return Object.keys(value).length === 0;
     return false;
 }
+/**
+ * Iterate over an array or object with a simple callback signature.
+ * This keeps call sites uniform without pulling in a full utility library.
+ */
 function each(collection, iteratee) {
     if (!collection)
         return;
@@ -24569,30 +24985,55 @@ function each(collection, iteratee) {
     }
     Object.keys(collection).forEach((key) => iteratee(collection[key], key));
 }
+/**
+ * Alias for each() to preserve compatibility with lodash-style usage.
+ */
 function forEach(collection, iteratee) {
     each(collection, iteratee);
 }
+/**
+ * Map a collection into an array of results.
+ */
 function map(collection, iteratee) {
+    // Preserve lodash-style semantics by always returning a new array.
     const results = [];
     each(collection, (value, key) => results.push(iteratee(value, key)));
     return results;
 }
+/**
+ * Merge object properties into a target object.
+ * Design note: we intentionally skip null/undefined sources to keep call sites compact.
+ */
 function extend(target, ...sources) {
+    // Skip null/undefined sources to keep call sites concise.
     const validSources = sources.filter((source) => source != null);
     return Object.assign(target, ...validSources);
 }
+/**
+ * Return the own keys of an object or an empty array for nullish inputs.
+ */
 function keys(value) {
     return value ? Object.keys(value) : [];
 }
+/**
+ * Return the own values of an object or an empty array for nullish inputs.
+ */
 function values(value) {
     return value ? Object.values(value) : [];
 }
+/**
+ * Safe hasOwnProperty wrapper.
+ */
 function has(value, key) {
     if (!value)
         return false;
     return Object.prototype.hasOwnProperty.call(value, key);
 }
+/**
+ * Pick a subset of properties into a shallow clone.
+ */
 function pick(value, ...props) {
+    // Build a shallow object containing only requested keys.
     const result = {};
     props.forEach((prop) => {
         if (has(value, prop)) {
@@ -24601,14 +25042,23 @@ function pick(value, ...props) {
     });
     return result;
 }
+/**
+ * Create a new array sorted by a numeric iteratee.
+ */
 function sortBy(items, iteratee) {
+    // Sorting a copy keeps callers' arrays immutable.
     return items.slice().sort((a, b) => {
         const left = iteratee(a);
         const right = iteratee(b);
         return left - right;
     });
 }
+/**
+ * Throttle a function so it runs at most once per `wait` milliseconds.
+ * Design note: this mirrors lodash's trailing invocation behavior for the last call.
+ */
 function throttle(fn, wait) {
+    // Track last execution time and a pending trailing call.
     let lastCall = 0;
     let timeoutId;
     let pendingArgs = null;
@@ -24637,6 +25087,7 @@ function throttle(fn, wait) {
         }, remaining);
     };
 }
+// Default export for compatibility with older lodash-style imports.
 const utils = {
     last,
     isEmpty,
@@ -24668,13 +25119,14 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
 /* harmony import */ var vexflow__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! vexflow */ "./node_modules/vexflow/build/esm/entry/vexflow.js");
+// Compatibility shim for VexFlow 5+ to preserve the legacy Vex.Flow namespace.
+// VexFlow 5 exports classes at the top level, so we re-introduce the old namespace.
 
-// VexFlow 5+ exports classes at the top level. Provide a Vex.Flow alias
-// for legacy code paths that expect Vex.Flow.*.
+// Provide a Vex.Flow alias for legacy code paths.
 if (!vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow) {
     vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].Flow = vexflow__WEBPACK_IMPORTED_MODULE_0__["default"];
 }
-// Legacy error constructor used by older VexFlow APIs.
+// Legacy error constructor used by older VexFlow APIs (e.g., Vex.RERR).
 if (!vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].RERR && vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].RuntimeError) {
     vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].RERR = vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].RuntimeError;
 }
@@ -24682,6 +25134,7 @@ if (!vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].RERR && vexflow__WEBPACK_IM
 if (!vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].BM) {
     vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].BM = (_label, fn) => fn();
 }
+// Export the patched namespace for callers expecting Vex.Flow.*.
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (vexflow__WEBPACK_IMPORTED_MODULE_0__["default"]);
 
 
@@ -25842,6 +26295,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "default": () => (/* reexport safe */ _vextab_VexTab__WEBPACK_IMPORTED_MODULE_0__["default"])
 /* harmony export */ });
 /* harmony import */ var _vextab_VexTab__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./vextab/VexTab */ "./src/vextab/VexTab.ts");
+// Re-export for the VexTab class so consumers can import from the package root.
 
 
 
@@ -25862,6 +26316,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _vextab_jison__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../vextab.jison */ "./src/vextab.jison");
 /* harmony import */ var _vextab_jison__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_vextab_jison__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */ var _VexTabParser__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./VexTabParser */ "./src/vextab/VexTabParser.ts");
+// Public-facing VexTab wrapper that wires the parser to the Artist renderer.
 
 
 
@@ -25870,27 +26325,49 @@ __webpack_require__.r(__webpack_exports__);
  * dispatches the parsed AST into Artist instructions.
  */
 class VexTab {
+    /**
+     * Create a VexTab parser wrapper around an Artist.
+     */
     constructor(artist) {
+        // Whether the last parse was successful.
         this.valid = false;
+        // AST elements returned from the parser.
         this.elements = false;
         this.artist = artist;
+        // Keep compiler bound to the artist for the lifetime of this parser.
         this.compiler = new _VexTabParser__WEBPACK_IMPORTED_MODULE_2__.VexTabParser(this.artist);
     }
+    /**
+     * Internal conditional logger.
+     */
     log(...args) {
         if (VexTab.DEBUG && console) {
             console.log('(Vex.Flow.VexTab)', ...args);
         }
     }
+    /**
+     * Reset the parser validity state for a new parse.
+     */
     reset() {
         this.valid = false;
         this.elements = false;
     }
+    /**
+     * Return whether the last parse was valid.
+     */
     isValid() {
         return this.valid;
     }
+    /**
+     * Return the bound Artist instance.
+     */
     getArtist() {
         return this.artist;
     }
+    /**
+     * Parse VexTab source, compile the AST, and return the parsed elements.
+     * Design note: we trim each line to keep whitespace predictable and consistent.
+     */
     parse(code) {
         const parserInstance = (_vextab_jison__WEBPACK_IMPORTED_MODULE_1___default());
         parserInstance.parseError = (message, hash) => {
@@ -25902,18 +26379,21 @@ class VexTab {
             throw new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].RERR('ParseError', 'No code');
         }
         this.log(`Parsing:\n${code}`);
+        // Normalize whitespace to keep the grammar deterministic.
         const stripped_code = code
             .split(/\r\n|\r|\n/)
             .map((line) => line.trim())
             .join('\n');
         this.elements = parserInstance.parse(stripped_code);
         if (this.elements) {
+            // Translate the AST into Artist calls.
             this.compiler.generate(this.elements);
             this.valid = true;
         }
         return this.elements;
     }
 }
+// Enable debug logging in the parser pipeline.
 VexTab.DEBUG = false;
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (VexTab);
 
@@ -25933,6 +26413,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _vexflow__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../vexflow */ "./src/vexflow.ts");
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../utils */ "./src/utils.ts");
+// Semantic compiler that turns the parsed VexTab AST into concrete Artist calls.
 
 
 /**
@@ -25940,16 +26421,27 @@ __webpack_require__.r(__webpack_exports__);
  * It isolates the "semantic" phase of VexTab from the raw parse step.
  */
 class VexTabParser {
+    /**
+     * Create a compiler bound to an Artist.
+     */
     constructor(artist) {
         this.artist = artist;
     }
+    /**
+     * Create a standardized parse error that includes line/column information.
+     */
     newError(object, msg) {
         return new _vexflow__WEBPACK_IMPORTED_MODULE_0__["default"].RERR('ParseError', `${msg} in line ${object._l} column ${object._c}`);
     }
+    /**
+     * Parse and validate stave options into a simple key/value map.
+     * Design note: validation happens here so the Artist stays focused on rendering.
+     */
     parseStaveOptions(options) {
         const params = {};
         if (!options)
             return params;
+        // Track notation/tablature to validate mutual visibility.
         let notation_option = null;
         options.forEach((option) => {
             var _a, _b, _d;
@@ -26018,6 +26510,9 @@ class VexTabParser {
         }
         return params;
     }
+    /**
+     * Dispatch a parsed command element to the Artist.
+     */
     parseCommand(element) {
         if (element.command === 'bar') {
             this.artist.addBar(element.type);
@@ -26035,20 +26530,34 @@ class VexTabParser {
             this.artist.runCommand(element.params, element._l, element._c);
         }
     }
+    /**
+     * Convert a chord AST node into an Artist chord call.
+     */
     parseChord(element) {
         this.artist.log('parseChord:', element);
+        // Keep only relevant fields to avoid leaking parser internals.
         this.artist.addChord(_utils__WEBPACK_IMPORTED_MODULE_1__.map(element.chord, (note) => _utils__WEBPACK_IMPORTED_MODULE_1__.pick(note, 'time', 'dot', 'fret', 'abc', 'octave', 'string', 'articulation', 'decorator')), element.articulation, element.decorator);
     }
+    /**
+     * Convert a fret-based note AST node into an Artist note call.
+     */
     parseFret(note) {
         this.artist.addNote(_utils__WEBPACK_IMPORTED_MODULE_1__.pick(note, 'time', 'dot', 'fret', 'string', 'articulation', 'decorator'));
     }
+    /**
+     * Convert an ABC note AST node into an Artist note call.
+     */
     parseABC(note) {
         this.artist.addNote(_utils__WEBPACK_IMPORTED_MODULE_1__.pick(note, 'time', 'dot', 'fret', 'abc', 'octave', 'string', 'articulation', 'decorator'));
     }
+    /**
+     * Parse a list of stave elements (notes, chords, commands) into Artist calls.
+     */
     parseStaveElements(notes) {
         this.artist.log('parseStaveElements:', notes);
         notes.forEach((element) => {
             if (element.time) {
+                // Duration markers apply to subsequent notes.
                 this.artist.setDuration(element.time, element.dot);
             }
             if (element.command) {
@@ -26065,14 +26574,21 @@ class VexTabParser {
             }
         });
     }
+    /**
+     * Parse stave text tokens into text voices and text notes.
+     * Design note: this parser is permissive to preserve legacy VexTab behavior.
+     */
     parseStaveText(text_line) {
         if (!_utils__WEBPACK_IMPORTED_MODULE_1__.isEmpty(text_line)) {
+            // Text lines start a new text voice.
             this.artist.addTextVoice();
         }
+        // X position within the text stave.
         let position = 0;
         let justification = 'center';
         let smooth = true;
         let font = null;
+        // A bar token is represented as a zero-width spacer note.
         const bartext = () => this.artist.addTextNote('', 0, justification, false, true);
         const createNote = (text, token) => {
             let ignore_ticks = false;
@@ -26091,10 +26607,12 @@ class VexTabParser {
         text_line.forEach((token) => {
             let text = token.text.trim();
             if (text.match(/\.font=.*/)) {
+                // Inline font overrides are applied immediately.
                 font = text.slice(6);
                 this.artist.setTextFont(font);
             }
             else if (text[0] === ':') {
+                // Duration markers inside text lines affect spacing.
                 this.artist.setDuration(text);
             }
             else if (text[0] === '.') {
@@ -26131,6 +26649,10 @@ class VexTabParser {
             }
         });
     }
+    /**
+     * Entry point to translate the parsed AST into Artist calls.
+     * Design note: we handle each "stave" element sequentially to preserve order.
+     */
     generate(elements) {
         elements.forEach((stave) => {
             switch (stave.element) {
