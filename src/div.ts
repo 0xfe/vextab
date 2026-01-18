@@ -1,22 +1,44 @@
 /**
- * VexFlow TabDiv
- * Copyright Mohit Muthanna 2010 <mohit@muthanna.com>
+ * VexTab.Div renders VexTab code inside a DOM element, with optional
+ * live-editing and error display support.
  */
 
 import Vex from './vexflow';
-import Artist from './artist.coffee';
-import VexTab from './vextab.coffee';
+import Artist from './artist';
+import VexTab from './vextab';
 
 import './vextab.css';
 
 class Div {
-  constructor(sel) {
+  private sel: string;
+  private code: string;
+  private width: number;
+  private height: number;
+  private scale: number;
+  private rendererBackend: string;
+  private canvas: any;
+  private renderer: any;
+  private ctx_sel: any;
+  private ctx: any;
+
+  private editor: string;
+  private show_errors: string;
+  private editor_width: number;
+  private editor_height: number;
+  private text_area: any = null;
+  private editor_error: any = null;
+  private timeoutID: any = null;
+
+  private artist: Artist;
+  private parser: VexTab;
+
+  constructor(sel: string) {
     this.sel = sel;
     if (!this.sel) {
       throw new Error(`VexTab.Div: invalid selector: ${sel}`);
     }
 
-    // Grab code and clear tabdiv
+    // Grab code and clear tabdiv.
     this.code = $(sel).text();
     $(sel).empty();
 
@@ -24,13 +46,12 @@ class Div {
       $(sel).css('position', 'relative');
     }
 
-    // Get tabdiv properties
+    // Tabdiv properties.
     this.width = parseInt($(sel).attr('width'), 10) || 400;
     this.height = parseInt($(sel).attr('height'), 10) || 200;
     this.scale = parseFloat($(sel).attr('scale'), 10) || 1.0;
     this.rendererBackend = $(sel).attr('renderer') || 'svg';
 
-    // Raphael is deprecated. Use SVG if it's defined.
     if (this.rendererBackend.toLowerCase() === 'canvas') {
       this.canvas = $('<canvas></canvas>').addClass('vex-canvas');
       $(sel).append(this.canvas);
@@ -47,13 +68,12 @@ class Div {
     this.ctx.setBackgroundFillStyle(this.ctx_sel.css('background-color'));
     this.ctx.scale(this.scale, this.scale);
 
-    // Grab editor properties
+    // Editor properties.
     this.editor = $(sel).attr('editor') || '';
     this.show_errors = $(sel).attr('show-errors') || '';
     this.editor_width = parseInt($(sel).attr('editor-width'), 10) || this.width;
     this.editor_height = parseInt($(sel).attr('editor-height'), 10) || 200;
 
-    const that = this;
     if (this.editor === 'true') {
       this.text_area = $('<textarea></textarea>').addClass('editor')
         .val(this.code);
@@ -63,16 +83,16 @@ class Div {
       this.text_area.width(this.editor_width);
       this.text_area.height(this.editor_height);
       this.text_area.keyup(() => {
-        if (that.timeoutID) window.clearTimeout(that.timeoutID);
-        that.timeoutID = window.setTimeout(() => {
-        // Draw only if code changed
-          if (that.code !== that.text_area.val()) {
-            that.code = that.text_area.val();
-            that.redraw();
+        if (this.timeoutID) window.clearTimeout(this.timeoutID);
+        this.timeoutID = window.setTimeout(() => {
+          // Draw only if code changed.
+          if (this.code !== this.text_area.val()) {
+            this.code = this.text_area.val();
+            this.redraw();
           }
         }, 250);
       });
-    } if (this.show_errors === 'true') {
+    } else if (this.show_errors === 'true') {
       this.editor_error = $('<div></div>').addClass('editor-error');
       $(sel).append($('<p/>')).append(this.editor_error);
     }
@@ -84,27 +104,27 @@ class Div {
     this.redraw();
   }
 
-  redraw() {
-    const that = this;
+  redraw(): this {
     Vex.BM('Total render time: ', () => {
-      that.parse(); that.draw();
+      this.parse();
+      this.draw();
     });
 
     return this;
   }
 
-  drawInternal() {
+  private drawInternal(): this {
     if (!this.parser.isValid()) return this;
     return this.artist.draw(this.renderer);
   }
 
-  parseInternal() {
+  private parseInternal(): this {
     try {
       this.artist.reset();
       this.parser.reset();
       this.parser.parse(this.code);
-      this.editor_error.empty();
-    } catch (e) {
+      if (this.editor_error) this.editor_error.empty();
+    } catch (e: any) {
       if (this.editor_error) {
         this.editor_error.empty();
         this.editor_error.append(
@@ -117,25 +137,25 @@ class Div {
     return this;
   }
 
-  parse() {
+  parse(): this {
     Vex.BM('Parse time: ', () => { this.parseInternal(); });
     return this;
   }
 
-  draw() {
+  draw(): this {
     Vex.BM('Draw time: ', () => { this.drawInternal(); });
     return this;
   }
 }
 
-window.VEXTAB_SEL_V3 = 'div.vextab-auto';
+(window as any).VEXTAB_SEL_V3 = 'div.vextab-auto';
 
-function start(sel) {
+function start(sel?: string): void {
   // eslint-disable-next-line
   console.log('Running VexTab.Div:', __VERSION, __BRANCH, __COMMITHASH);
-  $(sel || window.VEXTAB_SEL_V3).forEach((s) => new Div(s));
+  $(sel || (window as any).VEXTAB_SEL_V3).forEach((s: any) => new Div(s));
 }
 
-$(() => { if (window.VEXTAB_SEL_V3) { start(); } });
+$(() => { if ((window as any).VEXTAB_SEL_V3) { start(); } });
 
 export default Div;

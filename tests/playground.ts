@@ -24,7 +24,8 @@ $(() => {
       tab.parse($('#blah').val());
       artist.render(renderer);
       $('#error').text('');
-    } catch (e) {
+    } catch (e: any) {
+       
       console.error(e);
       $('#error').html(e.message.replace(/[\n]/g, '<br/>'));
     }

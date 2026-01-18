@@ -14,7 +14,7 @@ module.exports = (env) => {
   return {
     plugins: [
       new ESLintPlugin({
-        extensions: ['js'],
+        extensions: ['js', 'ts'],
         fix: true,
       }),
       new (require('webpack').ProvidePlugin)({
@@ -44,10 +44,10 @@ module.exports = (env) => {
     ],
     devtool: tag === 'prod' ? 'hidden-source-map' : false,
     entry: {
-      main: './src/main.js',
-      div: './src/div.js',
-      tests: './tests/tests.coffee',
-      playground: './tests/playground.js',
+      main: './src/main.ts',
+      div: './src/div.ts',
+      tests: './tests/tests.ts',
+      playground: './tests/playground.ts',
     },
     output: {
       library: 'vextab',
@@ -56,6 +56,7 @@ module.exports = (env) => {
       path: path.resolve(__dirname, 'dist'),
     },
     resolve: {
+      extensions: ['.ts', '.tsx', '.js', '.json'],
       fallback: {
         fs: false,
         path: false,
@@ -64,7 +65,7 @@ module.exports = (env) => {
     module: {
       rules: [
         { test: /\.jsx?$/, exclude: /node_modules/, use: [{ loader: 'babel-loader' }] },
-        { test: /\.coffee$/, use: [{ loader: 'coffee-loader' }] },
+        { test: /\.tsx?$/, exclude: /node_modules/, use: [{ loader: 'ts-loader', options: { transpileOnly: true } }] },
         { test: /\.jison$/, use: [{ loader: 'jison-loader' }] },
         { test: /\.css$/, use: ['style-loader', 'css-loader'] },
       ],

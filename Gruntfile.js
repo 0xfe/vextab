@@ -16,13 +16,6 @@ module.exports = (grunt) => {
       prod: { ...webpackConfig({ TAG_NAME: 'prod' }), mode: 'production' },
       dev: { ...webpackConfig({ TAG_NAME: 'dev' }), mode: 'development' },
     },
-    coffeelint: {
-      files: ['src/*.coffee'],
-      options: {
-        no_trailing_whitespace: { level: 'error' },
-        max_line_length: { level: 'ignore' },
-      },
-    },
     copy: {
       release: {
         files: [
@@ -74,15 +67,25 @@ module.exports = (grunt) => {
   grunt.loadNpmTasks('grunt-release');
   grunt.loadNpmTasks('grunt-bump');
   grunt.loadNpmTasks('grunt-git');
-  grunt.loadNpmTasks('grunt-coffeelint');
   grunt.loadNpmTasks('grunt-webpack');
 
 
   // Default task(s).
   grunt.registerTask('default', ['lint', 'build']);
 
-  grunt.registerTask('lint', 'Run linter on all coffeescript code.', () => {
-    grunt.task.run('coffeelint');
+  grunt.registerTask('lint', 'Run ESLint on the codebase.', () => {
+    const done = grunt.task.current.async();
+    grunt.util.spawn(
+      { cmd: 'npx', args: ['eslint', '.'], opts: { stdio: 'inherit' } },
+      (error) => {
+        if (error) {
+          grunt.log.error(error);
+          done(false);
+          return;
+        }
+        done();
+      },
+    );
   });
 
   grunt.registerTask('build', 'Build library.', () => {
