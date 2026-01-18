@@ -1,4 +1,4 @@
-# VexTab 3.0
+# VexTab 4.0
 
 A VexTab Parser for VexFlow.
 Copyright (c) 2012 Mohit Muthanna Cheppudira.
@@ -40,7 +40,7 @@ Some of the available `div` attributes are:
 * `scale`: `0.5` -> `3.0` -- Scale factor for rendering. Default `1.0`.
 * `editor-width`, `editor-height`: pixels -- Dimensions of editor.
 
-Note that the provided `dist/div.dev.js` bundle is unminified, and `dist/div.prod.js` is minified. They include bundled versions of zepto, lodash, and VexFlow. You can get access to some of these classes, and the VexTab API (see below) via the `vextab` global.
+Note that the provided `dist/div.dev.js` bundle is unminified, and `dist/div.prod.js` is minified. They include bundled versions of zepto and VexFlow, plus a small internal utility helper. You can get access to some of these classes, and the VexTab API (see below) via the `vextab` global.
 
 * `vextab.Div`: The TabDiv class used to implement the auto-render functionality for `div` elements.
 * `vextab.VexTab`: The parser. See API below.
@@ -70,14 +70,14 @@ const artist = new Artist(10, 10, 600, { scale: 0.8 });
 const tab = new VexTab(artist);
 
 try {
-    tab.parse('tabstave').val());
+    tab.parse('tabstave');
     artist.render(renderer);
 } catch (e) {
     console.error(e);
 }
 ```
 
-See `tests/playground.js` for a working example of the VexTab API in use.
+See `tests/playground.ts` for a working example of the VexTab API in use.
 
 ## Developers
 
@@ -94,7 +94,7 @@ Browse to http://localhost:9005 to run tests.
 
 ### Publishing new packages
 
-Update vexflow dependency if necessary.
+Update VexFlow dependency if necessary.
 
 ```
 $ npm install -g grunt-cli
@@ -122,9 +122,9 @@ You may have to run `npm link vexflow` everytime you install or upgrade an npm p
 
 This rewrite of VexTab has three key dependencies:
 
-  * [CoffeeScript](http://coffeescript.org/) - A *nicer* JavaScript.
+  * [TypeScript](https://www.typescriptlang.org/) - Strongly-typed source for the parser/renderer.
   * [Jison](http://zaach.github.com/jison/) - An LALR(1) parser modeled on Bison.
-  * [lodash](http://lodash.com/) - A utility-belt library for JavaScript.
+  * [VexFlow](http://github.com/0xfe/vexflow) - Music engraving and rendering.
 
 For the audio player feature, you need:
 

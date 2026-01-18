@@ -6,11 +6,6 @@ declare module '*.jison' {
   export default parser;
 }
 
-declare module 'lodash' {
-  const lodash: any;
-  export = lodash;
-}
-
 declare module 'vexflow' {
   const VexFlow: any;
   export default VexFlow;

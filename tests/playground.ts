@@ -1,5 +1,5 @@
 // Load VexTab module.
-import * as _ from 'lodash';
+import * as _ from '../src/utils';
 import * as vextab from '../src/main';
 
 $(() => {

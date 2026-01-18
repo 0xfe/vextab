@@ -6,7 +6,8 @@
 */
 
 %{
-  var _ = require("lodash");
+  var _ = require("./utils");
+  _ = _.default || _;
 %}
 
 %lex

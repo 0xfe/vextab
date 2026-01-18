@@ -1,5 +1,5 @@
 import Vex from './vexflow';
-import * as _ from 'lodash';
+import * as _ from './utils';
 
 /**
  * VexTab Player
