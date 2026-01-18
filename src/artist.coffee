@@ -475,6 +475,7 @@ class Artist
     POS = Vex.Flow.Modifier.Position
     fingers = []
     fingering = []
+    offset_x = 4
 
     if parts?
       fingers = (p.trim() for p in parts[1].split(/-/))
@@ -506,6 +507,12 @@ class Artist
           modifier = new Vex.Flow.StringNumber(number).setPosition(position)
         when "f"
           modifier = new Vex.Flow.FretHandFinger(number).setPosition(position)
+
+      if modifier? and typeof modifier.setOffsetX is "function"
+        if position is POS.RIGHT
+          modifier.setOffsetX(offset_x)
+        else if position is POS.LEFT
+          modifier.setOffsetX(-offset_x)
 
       fingering.push({num: note_number, modifier: modifier})
 
@@ -594,6 +601,63 @@ class Artist
 
     return makeIt(text)
 
+  formatOverrideFretText: (text) ->
+    return null unless text?
+    unicode = Vex.Flow?.unicode ? {}
+    sharp = unicode.sharp ? "#"
+    flat = unicode.flat ? "b"
+    natural = unicode.natural ? "n"
+
+    note_match = text.match(/^([A-G])([#@n]{1,2})?(~?)(\d+)?(?:_(\d+)\/(\d+))?$/)
+    if note_match?
+      note = note_match[1]
+      accidental = note_match[2] ? ""
+      octave = note_match[4] ? ""
+      string_num = note_match[6]
+      acc_text = switch accidental
+        when "##" then "#{sharp}#{sharp}"
+        when "#" then sharp
+        when "@@" then "#{flat}#{flat}"
+        when "@" then flat
+        when "n" then natural
+        else ""
+      return {text: "#{note}#{acc_text}#{octave}", string: string_num}
+
+    fret_match = text.match(/^(\d+)\/(\d+)$/)
+    if fret_match?
+      return {text: fret_match[1], string: fret_match[2]}
+
+    return null
+
+  applyFretOverride: (tab_note, override) ->
+    return unless tab_note? and override?
+    return unless tab_note.fretElement? and tab_note.positions?
+
+    override_index = 0
+    if override.string?
+      string_num = parseInt(override.string, 10)
+      if not isNaN(string_num)
+        idx = -1
+        for pos, i in tab_note.positions
+          if parseInt(pos.str, 10) == string_num
+            idx = i
+            break
+        override_index = if idx >= 0 then idx else 0
+
+    element = tab_note.fretElement[override_index]
+    return unless element?
+
+    element.setText(override.text)
+    font_face = @customizations["font-face"]
+    font_size = @customizations["font-size"]
+    font_style = @customizations["font-style"]
+    element.setFont(font_face, font_size, font_style) if font_face?
+
+    max_width = 0
+    for el in tab_note.fretElement
+      max_width = Math.max(max_width, el.getWidth())
+    tab_note.setWidth(max_width)
+
   addAnnotations: (annotations) ->
     stave = _.last(@staves)
     stave_notes = stave.note_notes
@@ -612,8 +676,13 @@ class Artist
           stroke = @makeStroke(annotations[i])
           tab_note.addModifier(stroke, 0)
         else
-          annotation = @makeAnnotation(annotations[i])
-          tab_note.addModifier(@makeAnnotation(annotations[i]), 0) if annotation
+          annotation_text = annotations[i]
+          override = @formatOverrideFretText(annotation_text, tab_note)
+          if override?
+            @applyFretOverride(tab_note, override)
+          else
+            annotation = @makeAnnotation(annotation_text)
+            tab_note.addModifier(annotation, 0) if annotation
     else
       for note, i in stave_notes[stave_notes.length - annotations.length..]
         unless getScoreArticulationParts(annotations[i])
@@ -941,6 +1010,8 @@ class Artist
 
     if text[0] == "#"
       struct.glyph = text[1..]
+      struct.text = ""
+      struct.font = null
 
     note = new Vex.Flow.TextNote(struct).
       setLine(position).setJustification(just)
