@@ -51,20 +51,12 @@ module.exports = (grunt) => {
         push: false,
       },
     },
-    release: {
-      options: {
-        bump: false,
-        commit: false,
-        npm: true, // switch to false once there's 2FA
-      },
-    },
     clean: [BUILD_DIR, RELEASE_DIR],
   });
 
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-contrib-copy');
-  grunt.loadNpmTasks('grunt-release');
   grunt.loadNpmTasks('grunt-bump');
   grunt.loadNpmTasks('grunt-git');
   grunt.loadNpmTasks('grunt-webpack');
@@ -97,7 +89,22 @@ module.exports = (grunt) => {
     grunt.log.ok('All done!');
   });
 
+  grunt.registerTask('npm_publish', 'Publish package to npm.', () => {
+    const done = grunt.task.current.async();
+    grunt.util.spawn(
+      { cmd: 'npm', args: ['publish'], opts: { stdio: 'inherit' } },
+      (error) => {
+        if (error) {
+          grunt.log.error(error);
+          done(false);
+          return;
+        }
+        done();
+      },
+    );
+  });
+
   // Increment package version generate releases
   grunt.registerTask('publish', 'Generate releases.',
-    ['bump', 'default', 'copy:release', 'gitcommit:releases', 'release', 'alldone']);
+    ['bump', 'default', 'copy:release', 'gitcommit:releases', 'npm_publish', 'alldone']);
 };
