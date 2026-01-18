@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>VexTab API Demo</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 24px;
+      }
+      #boo {
+        border: 1px solid #ddd;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>VexTab API Demo</h1>
+    <p>Uses the public API similar to the README example.</p>
+    <div id="boo"></div>
+
+    <script src="/dist/main.dev.js"></script>
+    <script>
+      const { VexTab, Artist, Vex } = window.vextab;
+      const Renderer = Vex.Flow.Renderer;
+      const renderer = new Renderer(document.getElementById('boo'), Renderer.Backends.SVG);
+
+      const artist = new Artist(10, 10, 600, { scale: 0.8 });
+      const tab = new VexTab(artist);
+
+      try {
+        tab.parse([
+          'tabstave notation=true key=A time=4/4',
+          'notes :q 5/2 7/2 8/2 7/2',
+        ].join('\n'));
+        artist.render(renderer);
+      } catch (e) {
+        console.error(e);
+      }
+    </script>
+  </body>
+</html>

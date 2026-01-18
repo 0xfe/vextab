@@ -5,10 +5,22 @@ const tsParser = require('@typescript-eslint/parser');
 const tsPlugin = require('@typescript-eslint/eslint-plugin');
 
 module.exports = [
+  {
+    ignores: ['dist/**', 'releases/**', 'node_modules/**', 'support/**', 'vexflow/**'],
+  },
   js.configs.recommended,
   {
+    files: ['Gruntfile.js', 'webpack.config.js', 'eslint.config.cjs'],
+    languageOptions: {
+      ecmaVersion: 2021,
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
     files: ['**/*.js'],
-    ignores: ['dist/**', 'releases/**', 'node_modules/**', 'vexflow/**'],
     languageOptions: {
       ecmaVersion: 2021,
       sourceType: 'module',

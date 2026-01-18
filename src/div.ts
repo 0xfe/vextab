@@ -6,6 +6,7 @@
 import Vex from './vexflow';
 import Artist from './artist';
 import VexTab from './vextab';
+import Player from './player';
 
 import './vextab.css';
 
@@ -159,3 +160,11 @@ function start(sel?: string): void {
 $(() => { if ((window as any).VEXTAB_SEL_V3) { start(); } });
 
 export default Div;
+
+export {
+  Div,
+  Vex,
+  Artist,
+  VexTab,
+  Player,
+};

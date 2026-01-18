@@ -100,6 +100,8 @@ Update VexFlow dependency if necessary.
 $ npm install -g grunt-cli
 $ npm upgrade vexflow
 $ grunt (lint|build|publish)
+
+# you might have to manuall run npm publish if NPM.org blocks you
 ```
 
 Before sending in a pull request, make sure that the tests pass a visual inspection. Open `http://localhost:9005` in your browser and verify that the notation examples at the bottom of the page render correctly. Also open `http://localhost:9005/playground.html` and verify that your new feature/bug fix, etc. works correctly.

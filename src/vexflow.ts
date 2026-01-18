@@ -11,4 +11,9 @@ if (!(VexFlow as any).RERR && (VexFlow as any).RuntimeError) {
   (VexFlow as any).RERR = (VexFlow as any).RuntimeError;
 }
 
+// Legacy benchmark helper used by older VexFlow APIs.
+if (!(VexFlow as any).BM) {
+  (VexFlow as any).BM = (_label: string, fn: () => void) => fn();
+}
+
 export default VexFlow as any;

@@ -5,7 +5,6 @@ const { GitRevisionPlugin } = require('git-revision-webpack-plugin');
 const ESLintPlugin = require('eslint-webpack-plugin');
 
 module.exports = (env) => {
-  // eslint-disable-next-line
   env = env || {};
   const tag = env.TAG_NAME || process.env.TAG_NAME || 'dev';
   const hasTag = typeof tag !== 'undefined' && tag !== '';
