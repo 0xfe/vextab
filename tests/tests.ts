@@ -4,19 +4,23 @@ QUnit-based regression suite for VexTab parsing + rendering behavior.
 Copyright Mohit Cheppudira 2010 <mohit@muthanna.com>
 */
 
-var VexTabTests, qunit, test; // Module globals for the test harness.
+// Module globals for the test harness.
+var VexTabTests, qunit, test;
 
-import Vex from '../src/vexflow'; // VexFlow shim used by tests.
-import Artist from '../src/artist'; // Artist renderer used by tests.
-import VexTab from '../src/vextab'; // VexTab parser under test.
+import Vex from '../src/vexflow';
+import Artist from '../src/artist';
+import VexTab from '../src/vextab';
 
-qunit = QUnit; // QUnit global injected by tests.html.
-test = qunit.test; // Alias for convenience.
+// QUnit globals injected by tests.html.
+qunit = QUnit;
+test = qunit.test;
 
-console.log(test); // Surface QUnit test function for debugging.
+// Surface QUnit test function for debugging.
+console.log(test);
 
-Artist.DEBUG = false; // Disable verbose logging in tests.
-VexTab.DEBUG = false; // Disable verbose logging in tests.
+// Disable verbose logging in tests.
+Artist.DEBUG = false;
+VexTab.DEBUG = false;
 
 VexTabTests = (function() {
   // Helper functions and state used across test cases.
@@ -144,7 +148,8 @@ notes :8 [ t(12/5.12/4)s(5/5.5/4) 3b4/5 ] :h 5V/6`;
           return results;
         })();
       }
-      expected = 4 + 1 + (clefs.length * 2) + 1 + (keySignatures.length * 3) + 1 + (times.length * 3) + 1 + 1; // initial parse calls // invalid notation+tablature // clef tests // invalid clef // key signature tests // invalid key // time signature tests // invalid time // final ok
+      // Expected parse call count for all validation branches.
+      expected = 4 + 1 + (clefs.length * 2) + 1 + (keySignatures.length * 3) + 1 + (times.length * 3) + 1 + 1;
       assert.expect(expected);
       tab = makeParser();
       assert.notEqual(null, tab.parse("tabstave notation=true"));
@@ -745,7 +750,8 @@ options space=60`;
    * Assert that parsing `code` throws an error.
    */
   catchError = function(assert, tab, code, _error_type = "ParseError") {
-    var caught; // Whether an error was thrown.
+    // Whether an error was thrown.
+    var caught;
     caught = false;
     try {
       tab.parse(code);
@@ -759,6 +765,7 @@ options space=60`;
   /**
    * Create a fresh parser with a standard Artist configuration.
    */
+  // Create a fresh parser with a standard Artist configuration.
   makeParser = function() {
     return new VexTab(new Artist(0, 0, 800, {
       scale: 0.8
@@ -768,23 +775,25 @@ options space=60`;
   /**
    * Create a renderer and attach a labeled container for a test.
    */
+  // Create a renderer and attach a labeled container for a test.
   makeRenderer = function(test_name) {
-    var canvas, renderer, test_div; // DOM nodes + VexFlow renderer.
-    test_div = $('<div></div>').addClass("testcanvas"); // Root test container.
-    test_div.append($('<div></div>').addClass("name").text(test_name)); // Title label.
-    canvas = $('<div></div>').addClass("vex-tabdiv"); // Render surface container.
+    var canvas, renderer, test_div;
+    test_div = $('<div></div>').addClass("testcanvas");
+    test_div.append($('<div></div>').addClass("name").text(test_name));
+    canvas = $('<div></div>').addClass("vex-tabdiv");
     test_div.append(canvas);
     $("body").append(test_div);
-    renderer = new Vex.Flow.Renderer(canvas[0], Vex.Flow.Renderer.Backends.SVG); // SVG renderer.
-    renderer.getContext().setBackgroundFillStyle("#eed"); // Consistent background.
+    renderer = new Vex.Flow.Renderer(canvas[0], Vex.Flow.Renderer.Backends.SVG);
+    renderer.getContext().setBackgroundFillStyle("#eed");
     return renderer;
   };
 
   /**
    * Render a test snippet and assert that parsing succeeds.
    */
+  // Render a test snippet and assert that parsing succeeds.
   renderTest = function(assert, title, code) {
-    var renderer, tab; // Parser + renderer for this test.
+    var renderer, tab;
     tab = makeParser();
     renderer = makeRenderer(title);
     assert.notEqual(null, tab.parse(code));
@@ -793,26 +802,28 @@ options space=60`;
   };
 
   // ID counter for getRenderedContent.
-  idcounter = 0; // Monotonic counter to ensure unique canvas IDs.
+  idcounter = 0;
 
   // Render content to a new div, and return the content.
   // Remove some things that change but aren't relevant (IDs)
+  // Render content into a new div and return normalized HTML.
   getRenderedContent = function(container, code, cssflex) {
-    var canvasid, content, makeCanvas, renderCodeInCanvas; // Rendering helpers + output.
+    var canvasid, content, makeCanvas, renderCodeInCanvas;
     idcounter += 1;
-    canvasid = 'rendered-' + idcounter; // Unique ID for this render.
+    canvasid = 'rendered-' + idcounter;
     makeCanvas = function() {
-      var c, canvas, p; // Container, canvas node, and code label.
-      c = $('<div></div>').css('flex', cssflex).css('font-size', '0.8em'); // Flexed column.
-      p = $('<p></p>').css('margin-top', '0px'); // Label wrapper.
-      p.append($('<pre></pre>').text(code).css('font-family', 'courier')); // Code preview.
+      var c, canvas, p;
+      c = $('<div></div>').css('flex', cssflex).css('font-size', '0.8em');
+      p = $('<p></p>').css('margin-top', '0px');
+      p.append($('<pre></pre>').text(code).css('font-family', 'courier'));
       c.append(p);
-      canvas = $('<div></div>').addClass("vex-tabdiv").attr('id', canvasid); // Render surface.
+      canvas = $('<div></div>').addClass("vex-tabdiv").attr('id', canvasid);
       c.append(canvas);
       return c;
     };
+    // Isolate rendering to avoid state bleed between comparisons.
     renderCodeInCanvas = function() {
-      var canvas, renderer, tab; // Local render context.
+      var canvas, renderer, tab;
       tab = new VexTab(new Artist(0, 0, 500, {
         scale: 0.8
       }));
@@ -824,22 +835,24 @@ options space=60`;
     };
     container.append(makeCanvas());
     renderCodeInCanvas();
-    content = $('#' + canvasid).html().replace(/id=".*?"/g, 'id="xxx"'); // Normalize IDs.
+    // Normalize IDs so string comparisons are stable.
+    content = $('#' + canvasid).html().replace(/id=".*?"/g, 'id="xxx"');
     return content;
   };
 
   /**
    * Ensure that the rendered content of vex1 and vex2 are equivalent.
    */
+  // Ensure that the rendered content of vex1 and vex2 are equivalent.
   assertEquivalent = function(assert, title, vex1, vex2) {
-    var container, newhtml, oldhtml, test_div; // DOM nodes + snapshots.
-    test_div = $('<div></div>').addClass("testcanvas"); // Root test container.
-    test_div.append($('<div></div>').addClass("name").text(title)); // Test label.
-    container = $('<div></div>').css('display', 'flex'); // Side-by-side layout.
+    var container, newhtml, oldhtml, test_div;
+    test_div = $('<div></div>').addClass("testcanvas");
+    test_div.append($('<div></div>').addClass("name").text(title));
+    container = $('<div></div>').css('display', 'flex');
     test_div.append(container);
     $("body").append(test_div);
-    oldhtml = getRenderedContent(container, vex1, '0 0 30%'); // Render baseline.
-    newhtml = getRenderedContent(container, vex2, '1'); // Render comparison.
+    oldhtml = getRenderedContent(container, vex1, '0 0 30%');
+    newhtml = getRenderedContent(container, vex2, '1');
     return assert.equal(oldhtml, newhtml, title);
   };
 
@@ -847,4 +860,5 @@ options space=60`;
 
 }).call(this);
 
-VexTabTests.Start(); // Register and run the VexTab test suite.
+// Register and run the VexTab test suite.
+VexTabTests.Start();

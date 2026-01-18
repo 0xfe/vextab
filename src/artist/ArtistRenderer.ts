@@ -1,9 +1,7 @@
-// src/artist/ArtistRenderer.ts
 // Layout and rendering engine for Artist state, responsible for VexFlow formatting and drawing.
-
-import Vex from '../vexflow'; // VexFlow shim for render classes.
-import * as _ from '../utils'; // Utility helpers for iteration/sorting.
-import type Artist from './Artist'; // Artist type for the owning context.
+import Vex from '../vexflow';
+import * as _ from '../utils';
+import type Artist from './Artist';
 
 /**
  * ArtistRenderer is responsible for layout + drawing. It takes the in-memory
@@ -11,7 +9,8 @@ import type Artist from './Artist'; // Artist type for the owning context.
  * everything to the given renderer.
  */
 export class ArtistRenderer {
-  private artist: Artist; // Owning Artist instance with rendered state.
+  // Artist instance provides staves, notes, and render options.
+  private artist: Artist;
 
   /**
    * Create a renderer tied to a specific Artist.
@@ -39,16 +38,18 @@ export class ArtistRenderer {
     customizations: Record<string, any>,
     options: { beam_groups: any },
   ): any[] {
-    const tab_stave = tab ? tab.stave : null; // Tab stave to render.
-    const score_stave = score ? score.stave : null; // Notation stave to render.
+    const tab_stave = tab ? tab.stave : null;
+    const score_stave = score ? score.stave : null;
 
-    const tab_voices: any[] = []; // Tab voices built from notes.
-    const score_voices: any[] = []; // Notation voices built from notes.
-    const text_voices: any[] = []; // Text voices built from text notes.
-    let beams: any[] = []; // Beam objects created for beamed groups.
-    let format_stave: any = null; // Stave used for formatting alignment.
-    let text_stave: any = null; // Stave for text notes (tab or score).
+    // Voice collections and formatting helpers.
+    const tab_voices: any[] = [];
+    const score_voices: any[] = [];
+    const text_voices: any[] = [];
+    let beams: any[] = [];
+    let format_stave: any = null;
+    let text_stave: any = null;
 
+    // Beam configuration is shared for tab and notation voices.
     const beam_config: Record<string, any> = {
       beam_rests: this.parseBool(customizations['beam-rests']),
       show_stemlets: this.parseBool(customizations['beam-stemlets']),
@@ -57,7 +58,8 @@ export class ArtistRenderer {
     };
 
     if (tab) {
-      const multi_voice = tab.voices.length > 1; // Whether to split stems for multiple voices.
+      // Build voices for tablature, optionally forcing stems.
+      const multi_voice = tab.voices.length > 1;
       tab.voices.forEach((notes, i) => {
         if (_.isEmpty(notes)) return;
         _.each(notes, (note) => note.setStave(tab_stave));
@@ -67,14 +69,15 @@ export class ArtistRenderer {
         tab_voices.push(voice);
 
         if (customizations['tab-stems'] === 'true') {
+          // For tab, stem direction is driven by the voice order or settings.
           if (multi_voice) {
-            beam_config.stem_direction = i === 0 ? 1 : -1; // Up for first voice, down for second.
+            beam_config.stem_direction = i === 0 ? 1 : -1;
           } else {
-            beam_config.stem_direction = customizations['tab-stem-direction'] === 'down' ? -1 : 1; // Respect tab-stem-direction.
+            beam_config.stem_direction = customizations['tab-stem-direction'] === 'down' ? -1 : 1;
           }
 
-          beam_config.beam_rests = false; // Tab stems typically ignore rests.
-          beams = beams.concat(Vex.Flow.Beam.generateBeams(voice.getTickables(), beam_config)); // Generate beams.
+          beam_config.beam_rests = false;
+          beams = beams.concat(Vex.Flow.Beam.generateBeams(voice.getTickables(), beam_config));
         }
       });
 
@@ -85,10 +88,11 @@ export class ArtistRenderer {
     beam_config.beam_rests = this.parseBool(customizations['beam-rests']);
 
     if (score) {
-      const multi_voice = score.voices.length > 1; // Determine multi-voice formatting.
+      // Build voices for notation and generate beams with proper stem directions.
+      const multi_voice = score.voices.length > 1;
       score.voices.forEach((notes, i) => {
         if (_.isEmpty(notes)) return;
-        const stem_direction = i === 0 ? 1 : -1; // Alternate stem direction per voice.
+        const stem_direction = i === 0 ? 1 : -1;
         _.each(notes, (note) => note.setStave(score_stave));
 
         const voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4)
@@ -98,10 +102,10 @@ export class ArtistRenderer {
 
         if (multi_voice) {
           beam_config.stem_direction = stem_direction;
-          beams = beams.concat(Vex.Flow.Beam.generateBeams(notes, beam_config)); // Generate beams with forced stem direction.
+          beams = beams.concat(Vex.Flow.Beam.generateBeams(notes, beam_config));
         } else {
           beam_config.stem_direction = null;
-          beams = beams.concat(Vex.Flow.Beam.generateBeams(notes, beam_config)); // Allow VexFlow to choose stem direction.
+          beams = beams.concat(Vex.Flow.Beam.generateBeams(notes, beam_config));
         }
       });
 
@@ -109,9 +113,10 @@ export class ArtistRenderer {
       text_stave = score_stave;
     }
 
+    // Text voices are formatted alongside the primary stave for alignment.
     text_notes.forEach((notes) => {
       if (_.isEmpty(notes)) return;
-      _.each(notes, (voice) => voice.setStave(text_stave)); // Attach text notes to the chosen stave.
+      _.each(notes, (voice) => voice.setStave(text_stave));
       const voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4)
         .setMode(Vex.Flow.Voice.Mode.SOFT);
       voice.addTickables(notes);
@@ -119,9 +124,10 @@ export class ArtistRenderer {
     });
 
     if (format_stave) {
-      let format_voices: any[] = []; // List of voices to format together.
-      const formatter = new Vex.Flow.Formatter(); // VexFlow formatter.
-      let align_rests = false; // Whether to align rests across voices.
+      // Join voices and format them together to align note spacing.
+      let format_voices: any[] = [];
+      const formatter = new Vex.Flow.Formatter();
+      let align_rests = false;
 
       if (tab) {
         if (!_.isEmpty(tab_voices)) {
@@ -136,7 +142,7 @@ export class ArtistRenderer {
         }
         format_voices = format_voices.concat(score_voices);
         if (score_voices.length > 1) {
-          align_rests = true; // Multi-voice scores benefit from rest alignment.
+          align_rests = true;
         }
       }
 
@@ -146,20 +152,22 @@ export class ArtistRenderer {
       }
 
       if (!_.isEmpty(format_voices)) {
-        formatter.formatToStave(format_voices, format_stave, { align_rests }); // Compute x positions.
+        formatter.formatToStave(format_voices, format_stave, { align_rests });
       }
 
+      // Draw voices, beams, and any text staves.
       if (tab) {
-        _.each(tab_voices, (voice) => voice.draw(ctx, tab_stave)); // Draw tab voices.
+        _.each(tab_voices, (voice) => voice.draw(ctx, tab_stave));
       }
       if (score) {
-        _.each(score_voices, (voice) => voice.draw(ctx, score_stave)); // Draw notation voices.
+        _.each(score_voices, (voice) => voice.draw(ctx, score_stave));
       }
-      _.each(beams, (beam) => beam.setContext(ctx).draw()); // Draw beams.
+      _.each(beams, (beam) => beam.setContext(ctx).draw());
       if (!_.isEmpty(text_notes)) {
-        _.each(text_voices, (voice) => voice.draw(ctx, text_stave)); // Draw text voices.
+        _.each(text_voices, (voice) => voice.draw(ctx, text_stave));
       }
 
+      // Draw a bracket when both tab and notation staves are present.
       if (tab && score) {
         new Vex.Flow.StaveConnector(score.stave, tab.stave)
           .setType(Vex.Flow.StaveConnector.type.BRACKET)
@@ -180,39 +188,43 @@ export class ArtistRenderer {
   render(renderer: any): void {
     const artist = this.artist;
     artist.log('Render: ', artist.options);
-    artist.closeBends(); // Ensure pending bends are flushed.
+    artist.closeBends();
 
+    // Resize to match the computed layout height and scale.
     renderer.resize(
       Number(artist.customizations.width) * Number(artist.customizations.scale),
       (artist.last_y + artist.options.bottom_spacing) * Number(artist.customizations.scale),
     );
 
-    const ctx = renderer.getContext(); // VexFlow rendering context.
-    ctx.scale(Number(artist.customizations.scale), Number(artist.customizations.scale)); // Apply scale.
-    ctx.clear(); // Clear previous render.
-    ctx.setFont(artist.options.font_face, artist.options.font_size, ''); // Apply default font.
+    // Prepare a fresh render context per draw.
+    const ctx = renderer.getContext();
+    ctx.scale(Number(artist.customizations.scale), Number(artist.customizations.scale));
+    ctx.clear();
+    ctx.setFont(artist.options.font_face, artist.options.font_size, '');
 
-    artist.renderer_context = ctx; // Share context with Player overlay.
+    // Cache context for the Player overlay.
+    artist.renderer_context = ctx;
 
     const setBar = (stave: any, notes: any[]) => {
-      const last_note = _.last(notes); // Inspect the last note for barline markers.
+      const last_note = _.last(notes);
       if (last_note instanceof Vex.Flow.BarNote) {
-        notes.pop(); // Remove the bar note from tickables.
-        stave.setEndBarType(last_note.getType()); // Apply end barline.
-        stave.formatted = true; // Prevent formatter from reformatting barline.
+        notes.pop();
+        stave.setEndBarType(last_note.getType());
+        stave.formatted = true;
       }
     };
 
     artist.staves.forEach((stave) => {
       artist.log('Rendering staves.');
-      if (stave.tab) setBar(stave.tab, stave.tab_notes); // Apply tab barline.
-      if (stave.note) setBar(stave.note, stave.note_notes); // Apply notation barline.
+      if (stave.tab) setBar(stave.tab, stave.tab_notes);
+      if (stave.note) setBar(stave.note, stave.note_notes);
 
-      if (stave.tab) stave.tab.setContext(ctx).draw(); // Draw tab stave.
-      if (stave.note) stave.note.setContext(ctx).draw(); // Draw notation stave.
+      // Draw staves before notes so beams/notes align to stave positions.
+      if (stave.tab) stave.tab.setContext(ctx).draw();
+      if (stave.note) stave.note.setContext(ctx).draw();
 
-      stave.tab_voices.push(stave.tab_notes); // Append tab notes to voices list.
-      stave.note_voices.push(stave.note_notes); // Append note notes to voices list.
+      stave.tab_voices.push(stave.tab_notes);
+      stave.note_voices.push(stave.note_notes);
 
       const voices = this.formatAndRender(
         ctx,
@@ -223,33 +235,35 @@ export class ArtistRenderer {
         { beam_groups: stave.beam_groups },
       );
 
-      artist.player_voices.push(voices); // Accumulate voices for playback.
+      artist.player_voices.push(voices);
     });
 
     artist.log('Rendering tab articulations.');
-    artist.tab_articulations.forEach((articulation) => articulation.setContext(ctx).draw()); // Draw tab articulations.
+    artist.tab_articulations.forEach((articulation) => articulation.setContext(ctx).draw());
 
     artist.log('Rendering note articulations.');
-    artist.stave_articulations.forEach((articulation) => articulation.setContext(ctx).draw()); // Draw notation articulations.
+    artist.stave_articulations.forEach((articulation) => articulation.setContext(ctx).draw());
 
+    // Synchronize the Player overlay (if enabled).
     if (artist.player) {
       if (artist.customizations.player === 'true') {
-        artist.player.setTempo(parseInt(String(artist.customizations.tempo), 10)); // Sync tempo.
-        artist.player.setInstrument(String(artist.customizations.instrument)); // Sync instrument.
-        artist.player.render(); // Build overlay.
+        artist.player.setTempo(parseInt(String(artist.customizations.tempo), 10));
+        artist.player.setInstrument(String(artist.customizations.instrument));
+        artist.player.render();
       } else {
-        artist.player.removeControls(); // Remove overlay controls if disabled.
+        artist.player.removeControls();
       }
     }
 
-    artist.rendered = true; // Mark render complete.
+    artist.rendered = true;
 
+    // Optionally draw the VexTab logo at the bottom of the render.
     if (!artist.isLogoHidden()) {
-      const LOGO = 'vexflow.com'; // Attribution text.
-      const width = ctx.measureText(LOGO).width; // Centering width.
+      const LOGO = 'vexflow.com';
+      const width = ctx.measureText(LOGO).width;
       ctx.save();
       ctx.setFont('Times', 10, 'italic');
-      ctx.fillText(LOGO, (Number(artist.customizations.width) - width) / 2, artist.last_y + 25); // Draw centered logo.
+      ctx.fillText(LOGO, (Number(artist.customizations.width) - width) / 2, artist.last_y + 25);
       ctx.restore();
     }
   }

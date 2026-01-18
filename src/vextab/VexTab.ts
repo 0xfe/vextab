@@ -1,29 +1,33 @@
-// src/vextab/VexTab.ts
 // Public-facing VexTab wrapper that wires the parser to the Artist renderer.
-
-import Vex from '../vexflow'; // VexFlow shim for legacy errors/logging.
-import parser from '../vextab.jison'; // Jison-generated parser module.
-import type Artist from '../artist/Artist'; // Artist type for rendering callbacks.
-import { VexTabParser } from './VexTabParser'; // Compiler from AST to Artist calls.
+import Vex from '../vexflow';
+import parser from '../vextab.jison';
+import type Artist from '../artist/Artist';
+import { VexTabParser } from './VexTabParser';
 
 /**
  * VexTab is the public API wrapper that invokes the Jison parser and then
  * dispatches the parsed AST into Artist instructions.
  */
 export default class VexTab {
-  static DEBUG = false; // Enable debug logging in the parser pipeline.
+  // Enable debug logging in the parser pipeline.
+  static DEBUG = false;
 
-  private artist: Artist; // Artist instance that will receive rendering instructions.
-  private valid = false; // Whether the last parse was successful.
-  private elements: any = false; // AST elements returned from the parser.
-  private compiler: VexTabParser; // Compiler that turns AST into Artist calls.
+  // Artist instance that will receive rendering instructions.
+  private artist: Artist;
+  // Whether the last parse was successful.
+  private valid = false;
+  // AST elements returned from the parser.
+  private elements: any = false;
+  // Compiler that turns AST into Artist calls.
+  private compiler: VexTabParser;
 
   /**
    * Create a VexTab parser wrapper around an Artist.
    */
   constructor(artist: Artist) {
     this.artist = artist;
-    this.compiler = new VexTabParser(this.artist); // Keep compiler bound to the artist.
+    // Keep compiler bound to the artist for the lifetime of this parser.
+    this.compiler = new VexTabParser(this.artist);
   }
 
   /**
@@ -62,10 +66,10 @@ export default class VexTab {
    * Design note: we trim each line to keep whitespace predictable and consistent.
    */
   parse(code?: string): any {
-    const parserInstance = parser as any; // Jison parser instance.
+    const parserInstance = parser as any;
     parserInstance.parseError = (message: string, hash: any) => {
       this.log('VexTab parse error: ', message, hash);
-      const formatted = `Unexpected text '${hash.text}' at line ${hash.loc.first_line} column ${hash.loc.first_column}.`; // Human-friendly error.
+      const formatted = `Unexpected text '${hash.text}' at line ${hash.loc.first_line} column ${hash.loc.first_column}.`;
       throw new Vex.RERR('ParseError', formatted);
     };
 
@@ -75,15 +79,17 @@ export default class VexTab {
 
     this.log(`Parsing:\n${code}`);
 
-    const stripped_code = code // Normalize whitespace for the grammar.
+    // Normalize whitespace to keep the grammar deterministic.
+    const stripped_code = code
       .split(/\r\n|\r|\n/)
       .map((line) => line.trim())
       .join('\n');
 
-    this.elements = parserInstance.parse(stripped_code); // Parse into AST elements.
+    this.elements = parserInstance.parse(stripped_code);
     if (this.elements) {
-      this.compiler.generate(this.elements); // Compile into Artist calls.
-      this.valid = true; // Mark last parse as valid.
+      // Translate the AST into Artist calls.
+      this.compiler.generate(this.elements);
+      this.valid = true;
     }
 
     return this.elements;

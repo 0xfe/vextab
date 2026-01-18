@@ -1,4 +1,3 @@
-// src/utils.ts
 // Minimal utility helpers that replace lodash with focused, documented primitives.
 
 // Shared collection type used by generic iteration helpers.
@@ -50,7 +49,8 @@ export function forEach<T>(collection: Collection<T> | null | undefined, iterate
  * Map a collection into an array of results.
  */
 export function map<T, R>(collection: Collection<T> | null | undefined, iteratee: (value: T, key: string | number) => R): R[] {
-  const results: R[] = []; // Collected mapping results.
+  // Preserve lodash-style semantics by always returning a new array.
+  const results: R[] = [];
   each(collection, (value, key) => results.push(iteratee(value, key)));
   return results;
 }
@@ -60,7 +60,8 @@ export function map<T, R>(collection: Collection<T> | null | undefined, iteratee
  * Design note: we intentionally skip null/undefined sources to keep call sites compact.
  */
 export function extend<T extends object, U extends object>(target: T, ...sources: Array<U | null | undefined>): T & U {
-  const validSources = sources.filter((source) => source != null) as U[]; // Defensive filter for optional params.
+  // Skip null/undefined sources to keep call sites concise.
+  const validSources = sources.filter((source) => source != null) as U[];
   return Object.assign(target, ...validSources);
 }
 
@@ -90,7 +91,8 @@ export function has(value: object | null | undefined, key: string): boolean {
  * Pick a subset of properties into a shallow clone.
  */
 export function pick<T extends Record<string, any>>(value: T, ...props: string[]): Partial<T> {
-  const result: Partial<T> = {}; // Accumulates selected properties.
+  // Build a shallow object containing only requested keys.
+  const result: Partial<T> = {};
   props.forEach((prop) => {
     if (has(value, prop)) {
       result[prop] = value[prop];
@@ -103,9 +105,10 @@ export function pick<T extends Record<string, any>>(value: T, ...props: string[]
  * Create a new array sorted by a numeric iteratee.
  */
 export function sortBy<T>(items: T[], iteratee: (value: T) => number): T[] {
+  // Sorting a copy keeps callers' arrays immutable.
   return items.slice().sort((a, b) => {
-    const left = iteratee(a); // Numeric key for the left item.
-    const right = iteratee(b); // Numeric key for the right item.
+    const left = iteratee(a);
+    const right = iteratee(b);
     return left - right;
   });
 }
@@ -115,13 +118,14 @@ export function sortBy<T>(items: T[], iteratee: (value: T) => number): T[] {
  * Design note: this mirrors lodash's trailing invocation behavior for the last call.
  */
 export function throttle<T extends (...args: any[]) => void>(fn: T, wait: number): (...args: Parameters<T>) => void {
-  let lastCall = 0; // Timestamp of the last executed call.
-  let timeoutId: number | undefined; // Active timeout handle for trailing call.
-  let pendingArgs: Parameters<T> | null = null; // Arguments captured for trailing call.
+  // Track last execution time and a pending trailing call.
+  let lastCall = 0;
+  let timeoutId: number | undefined;
+  let pendingArgs: Parameters<T> | null = null;
 
   return (...args: Parameters<T>) => {
-    const now = Date.now(); // Current timestamp for throttling math.
-    const remaining = wait - (now - lastCall); // Time left before we can invoke again.
+    const now = Date.now();
+    const remaining = wait - (now - lastCall);
     if (remaining <= 0) {
       if (timeoutId !== undefined) {
         clearTimeout(timeoutId);
@@ -134,7 +138,7 @@ export function throttle<T extends (...args: any[]) => void>(fn: T, wait: number
     pendingArgs = args;
     if (timeoutId !== undefined) return;
     timeoutId = window.setTimeout(() => {
-      lastCall = Date.now(); // Use actual fire time for consistent spacing.
+      lastCall = Date.now();
       timeoutId = undefined;
       if (pendingArgs) {
         fn(...pendingArgs);

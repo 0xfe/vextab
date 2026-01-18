@@ -1,8 +1,6 @@
-// src/artist/Artist.ts
 // Central orchestration layer for building VexFlow structures from VexTab input.
-
-import Vex from '../vexflow'; // VexFlow shim for rendering + errors.
-import * as _ from '../utils'; // Lightweight utility helpers.
+import Vex from '../vexflow';
+import * as _ from '../utils';
 
 import { ArtistRenderer } from './ArtistRenderer';
 import { ArticulationBuilder } from './ArticulationBuilder';
@@ -14,13 +12,20 @@ import { TextBuilder } from './TextBuilder';
  * Configuration options accepted by the Artist constructor.
  */
 export type ArtistOptions = {
-  font_face: string; // Default font family for text annotations.
-  font_size: number; // Default font size (in px).
-  font_style: string | null; // Optional font style (e.g., italic).
-  bottom_spacing: number; // Additional spacing below the last stave.
-  tab_stave_lower_spacing: number; // Gap between tab and text staves.
-  note_stave_lower_spacing: number; // Gap between note and text staves.
-  scale: number; // Render scaling factor.
+  // Default font family for text annotations.
+  font_face: string;
+  // Default font size (in px).
+  font_size: number;
+  // Optional font style (e.g., italic).
+  font_style: string | null;
+  // Additional spacing below the last stave.
+  bottom_spacing: number;
+  // Gap between tab and text staves.
+  tab_stave_lower_spacing: number;
+  // Gap between note and text staves.
+  note_stave_lower_spacing: number;
+  // Render scaling factor.
+  scale: number;
 };
 
 /**
@@ -32,14 +37,22 @@ export type CustomizationMap = Record<string, string | number | null>;
  * Represents a grouped pair of staves and their voice/note collections.
  */
 export type StaveGroup = {
-  tab: any | null; // Tab stave (if enabled).
-  note: any | null; // Notation stave (if enabled).
-  tab_voices: any[]; // Voices assigned to the tab stave.
-  note_voices: any[]; // Voices assigned to the note stave.
-  tab_notes: any[]; // Notes for tab stave.
-  note_notes: any[]; // Notes for notation stave.
-  text_voices: any[]; // Text voices aligned with this stave group.
-  beam_groups: any; // Beam groups collected for formatting.
+  // Tab stave (if enabled).
+  tab: any | null;
+  // Notation stave (if enabled).
+  note: any | null;
+  // Voices assigned to the tab stave.
+  tab_voices: any[];
+  // Voices assigned to the note stave.
+  note_voices: any[];
+  // Notes for tab stave.
+  tab_notes: any[];
+  // Notes for notation stave.
+  note_notes: any[];
+  // Text voices aligned with this stave group.
+  text_voices: any[];
+  // Beam groups collected for formatting.
+  beam_groups: any;
 };
 
 /**
@@ -49,47 +62,57 @@ export type StaveGroup = {
  * changing the public VexTab API.
  */
 export default class Artist {
-  static DEBUG = false; // Enables verbose logging.
-  static NOLOGO = false; // Hide the VexTab logo when true.
+  // Enables verbose logging for debugging.
+  static DEBUG = false;
+  // Hide the VexTab logo when true.
+  static NOLOGO = false;
 
   // Core configuration + user customization state.
-  options: ArtistOptions; // Immutable options set at construction.
-  customizations: CustomizationMap = {}; // Mutable overrides set by VexTab options.
+  // Immutable options set at construction.
+  options: ArtistOptions;
+  // Mutable overrides set by VexTab options.
+  customizations: CustomizationMap = {};
 
   // VexFlow helpers.
-  tuning: any; // Vex.Flow.Tuning instance for tab string mapping.
-  key_manager: any; // Vex.Flow.KeyManager for pitch computations.
-  music_api: any; // Vex.Flow.Music helper for note parsing.
+  // VexFlow helpers for tuning, key, and note math.
+  tuning: any;
+  key_manager: any;
+  music_api: any;
 
   // Rendered output + annotation state.
-  staves: StaveGroup[] = []; // Collection of rendered stave groups.
-  tab_articulations: any[] = []; // Tab articulations pending for attachment.
-  stave_articulations: any[] = []; // Notation articulations pending for attachment.
-  player_voices: any[] = []; // Voices collected for playback rendering.
+  // Rendered output + annotation state.
+  staves: StaveGroup[] = [];
+  tab_articulations: any[] = [];
+  stave_articulations: any[] = [];
+  player_voices: any[] = [];
 
   // Current render cursor / note state.
-  last_y = 0; // Current vertical cursor for the next stave.
-  current_duration = 'q'; // Current duration token (quarter note by default).
-  current_clef = 'treble'; // Current clef for notation staves.
-  current_bends: Record<string, any[]> = {}; // Pending bend segments keyed by string.
-  current_octave_shift = 0; // Octave shift applied via command.
-  bend_start_index: number | null = null; // Index of the bend start note in a chord.
-  bend_start_strings: number[] | null = null; // Strings for bend start in a chord.
+  // Current render cursor / note state.
+  last_y = 0;
+  current_duration = 'q';
+  current_clef = 'treble';
+  current_bends: Record<string, any[]> = {};
+  current_octave_shift = 0;
+  bend_start_index: number | null = null;
+  bend_start_strings: number[] | null = null;
 
-  rendered = false; // Whether a render pass has completed.
-  renderer_context: any = null; // Cached VexFlow context from the renderer.
-  player: any | null = null; // Optional playback helper.
+  // Render status and optional Player overlay.
+  rendered = false;
+  renderer_context: any = null;
+  player: any | null = null;
 
   // Component helpers keep this class lean.
-  renderer: ArtistRenderer; // Layout + rendering coordinator.
-  articulations: ArticulationBuilder; // Builder for articulations and decorations.
-  notes: NoteBuilder; // Builder for notes/chords/rests.
-  stavesBuilder: StaveBuilder; // Builder for staves and voices.
-  text: TextBuilder; // Builder for text annotations.
+  // Component helpers keep this class lean.
+  renderer: ArtistRenderer;
+  articulations: ArticulationBuilder;
+  notes: NoteBuilder;
+  stavesBuilder: StaveBuilder;
+  text: TextBuilder;
 
-  x: number; // Render origin X.
-  y: number; // Render origin Y.
-  width: number; // Render width.
+  // Render origin and width.
+  x: number;
+  y: number;
+  width: number;
 
   /**
    * Construct an Artist with initial layout coordinates and options.
@@ -100,6 +123,7 @@ export default class Artist {
     this.y = y;
     this.width = width;
 
+    // Defaults reflect legacy VexTab behavior.
     this.options = {
       font_face: 'Arial',
       font_size: 10,
@@ -111,14 +135,16 @@ export default class Artist {
     };
 
     if (options) {
-      _.extend(this.options, options); // Apply caller-specified overrides.
+      // Allow callers to override defaults without changing the API shape.
+      _.extend(this.options, options);
     }
 
-    this.renderer = new ArtistRenderer(this); // Rendering/layout coordinator.
-    this.articulations = new ArticulationBuilder(this); // Articulation builder.
-    this.notes = new NoteBuilder(this); // Note builder.
-    this.stavesBuilder = new StaveBuilder(this); // Stave builder.
-    this.text = new TextBuilder(this); // Text builder.
+    // Compose helper objects for focused responsibilities.
+    this.renderer = new ArtistRenderer(this);
+    this.articulations = new ArticulationBuilder(this);
+    this.notes = new NoteBuilder(this);
+    this.stavesBuilder = new StaveBuilder(this);
+    this.text = new TextBuilder(this);
 
     this.reset();
   }
@@ -127,6 +153,7 @@ export default class Artist {
    * Conditional logging helper.
    */
   log(...args: any[]): void {
+    // Keep logs guarded to avoid noisy production output.
     if (Artist.DEBUG && console) {
       console.log('(Vex.Flow.Artist)', ...args);
     }
@@ -138,9 +165,9 @@ export default class Artist {
    */
   reset(): void {
     // Core helpers used for fret/notation logic.
-    this.tuning = new Vex.Flow.Tuning(); // Default to standard tuning.
-    this.key_manager = new Vex.Flow.KeyManager('C'); // Default key center.
-    this.music_api = new Vex.Flow.Music(); // Helper for pitch math.
+    this.tuning = new Vex.Flow.Tuning();
+    this.key_manager = new Vex.Flow.KeyManager('C');
+    this.music_api = new Vex.Flow.Music();
 
     // User customizations that can be changed by VexTab options.
     this.customizations = {
@@ -165,23 +192,23 @@ export default class Artist {
     };
 
     // Generated elements.
-    this.staves = []; // Clear stave groups.
-    this.tab_articulations = []; // Clear tab articulations.
-    this.stave_articulations = []; // Clear notation articulations.
+    this.staves = [];
+    this.tab_articulations = [];
+    this.stave_articulations = [];
 
     // Voices for player overlay.
-    this.player_voices = []; // Clear player voice list.
+    this.player_voices = [];
 
     // Current state.
-    this.last_y = this.y; // Reset layout cursor.
-    this.current_duration = 'q'; // Reset duration.
-    this.current_clef = 'treble'; // Reset clef.
-    this.current_bends = {}; // Reset bend tracking.
-    this.current_octave_shift = 0; // Reset octave shift.
-    this.bend_start_index = null; // Reset bend state.
-    this.bend_start_strings = null; // Reset bend state.
-    this.rendered = false; // Mark as not yet rendered.
-    this.renderer_context = null; // Clear cached renderer context.
+    this.last_y = this.y;
+    this.current_duration = 'q';
+    this.current_clef = 'treble';
+    this.current_bends = {};
+    this.current_octave_shift = 0;
+    this.bend_start_index = null;
+    this.bend_start_strings = null;
+    this.rendered = false;
+    this.renderer_context = null;
   }
 
   /**
@@ -198,7 +225,7 @@ export default class Artist {
     this.log('setOptions: ', options);
 
     // Only allow known customization keys.
-    const validOptions = _.keys(this.customizations); // All permitted option keys.
+    const validOptions = _.keys(this.customizations);
     _.forEach(options, (value, key) => {
       if (validOptions.includes(key)) {
         this.customizations[key] = value;
@@ -207,9 +234,11 @@ export default class Artist {
       }
     });
 
-    this.last_y += parseInt(String(this.customizations.space), 10); // Apply extra spacing.
+    // Apply vertical spacing immediately so subsequent staves start lower.
+    this.last_y += parseInt(String(this.customizations.space), 10);
     if (this.customizations.player === 'true') {
-      this.last_y += 15; // Extra room for player controls.
+      // Reserve extra space for playback controls.
+      this.last_y += 15;
     }
   }
 
@@ -377,10 +406,11 @@ export default class Artist {
    */
   runCommand(line: string, lineNumber = 0, column = 0): void {
     this.log('runCommand: ', line);
-    const words = line.split(/\s+/); // Tokenize the command line.
+    const words = line.split(/\s+/);
     switch (words[0]) {
       case 'octave-shift':
-        this.current_octave_shift = parseInt(words[1], 10); // Apply octave shift.
+        // Apply octave changes to playback pitch only.
+        this.current_octave_shift = parseInt(words[1], 10);
         this.log('Octave shift: ', this.current_octave_shift);
         break;
       default:

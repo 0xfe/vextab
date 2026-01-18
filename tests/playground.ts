@@ -1,24 +1,23 @@
-// tests/playground.ts
 // Interactive playground harness used by playground.html for manual rendering checks.
-
-// Load VexTab module.
-import * as _ from '../src/utils'; // Utility helpers (throttle).
-import * as vextab from '../src/main'; // VexTab public API entry point.
+import * as _ from '../src/utils';
+import * as vextab from '../src/main';
 
 $(() => {
-  const VexTab = vextab.VexTab; // Parser/renderer API.
-  const Artist = vextab.Artist; // Rendering orchestrator.
-  const Renderer = vextab.Vex.Flow.Renderer; // VexFlow renderer constructor.
+  // Local aliases for the public API to keep the playground readable.
+  const VexTab = vextab.VexTab;
+  const Artist = vextab.Artist;
+  const Renderer = vextab.Vex.Flow.Renderer;
 
-  Artist.DEBUG = true; // Enable verbose rendering logs for debugging.
-  VexTab.DEBUG = false; // Keep parser logs off by default.
+  // Debug toggles for the playground.
+  Artist.DEBUG = true;
+  VexTab.DEBUG = false;
 
-  // Create VexFlow Renderer from canvas element with id #boo
-  const renderer = new Renderer($('#boo')[0], Renderer.Backends.SVG); // SVG backend for the playground.
+  // Create VexFlow renderer from the playground canvas element.
+  const renderer = new Renderer($('#boo')[0], Renderer.Backends.SVG);
 
   // Initialize VexTab artist and parser.
-  const artist = new Artist(10, 10, 700, { scale: 0.8 }); // Margin + width for the demo.
-  const tab = new VexTab(artist); // Parser bound to the artist.
+  const artist = new Artist(10, 10, 700, { scale: 0.8 });
+  const tab = new VexTab(artist);
 
   /**
    * Parse the textarea contents and render into the SVG renderer.
@@ -26,18 +25,20 @@ $(() => {
    */
   function render() {
     try {
-      tab.reset(); // Reset parser state.
-      artist.reset(); // Reset renderer state.
-      tab.parse($('#blah').val()); // Parse VexTab from the textarea.
-      artist.render(renderer); // Render the parsed score.
-      $('#error').text(''); // Clear previous errors.
+      // Reset state on each render to avoid stale layout artifacts.
+      tab.reset();
+      artist.reset();
+      tab.parse($('#blah').val());
+      artist.render(renderer);
+      $('#error').text('');
     } catch (e: any) {
-      // Keep errors visible in the UI for manual debugging.
+      // Surface errors in the playground UI for quick debugging.
       console.error(e);
       $('#error').html(e.message.replace(/[\n]/g, '<br/>'));
     }
   }
 
-  $('#blah').keyup(_.throttle(render, 250)); // Debounce keystrokes to avoid flooding renders.
-  render(); // Render initial content on page load.
+  // Debounce keystrokes to avoid flooding renders.
+  $('#blah').keyup(_.throttle(render, 250));
+  render();
 });

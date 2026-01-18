@@ -1,15 +1,14 @@
-// src/artist/TextBuilder.ts
 // Text voice builder for lyric/annotation staves in the VexTab layout.
-
-import Vex from '../vexflow'; // VexFlow shim for TextNote classes.
-import * as _ from '../utils'; // Utility helpers for collection access.
-import type Artist from './Artist'; // Artist type for shared state.
+import Vex from '../vexflow';
+import * as _ from '../utils';
+import type Artist from './Artist';
 
 /**
  * TextBuilder manages text voices (lyrics/annotations in a text stave).
  */
 export class TextBuilder {
-  private artist: Artist; // Owning Artist instance.
+  // Owning Artist instance, used for shared state and customizations.
+  private artist: Artist;
 
   /**
    * Create a text builder bound to an Artist.
@@ -30,7 +29,8 @@ export class TextBuilder {
    */
   setTextFont(font: string): void {
     if (!font) return;
-    const parts = font.match(/([^-]*)-([^-]*)-([^.]*)/); // Parse face-size-style format.
+    // Parse the "face-size-style" convention used by VexTab text commands.
+    const parts = font.match(/([^-]*)-([^-]*)-([^.]*)/);
     if (parts) {
       this.artist.customizations['font-face'] = parts[1];
       this.artist.customizations['font-size'] = parseInt(parts[2], 10);
@@ -49,16 +49,18 @@ export class TextBuilder {
     smooth = true,
     ignore_ticks = false,
   ): void {
-    const voices = _.last(this.artist.staves)!.text_voices; // Current text voices.
+    const voices = _.last(this.artist.staves)!.text_voices;
     if (_.isEmpty(voices)) {
       throw new Vex.RERR('ArtistError', "Can't add text note without text voice");
     }
 
-    const font_face = this.artist.customizations['font-face']; // Font family for text notes.
-    const font_size = this.artist.customizations['font-size']; // Font size for text notes.
-    const font_style = this.artist.customizations['font-style']; // Font style for text notes.
+    // Pull active font options from the Artist customization map.
+    const font_face = this.artist.customizations['font-face'];
+    const font_size = this.artist.customizations['font-size'];
+    const font_style = this.artist.customizations['font-style'];
 
-    let just = Vex.Flow.TextNote.Justification.CENTER; // Default justification.
+    // Map justification labels into VexFlow's enum.
+    let just = Vex.Flow.TextNote.Justification.CENTER;
     switch (justification) {
       case 'center':
         just = Vex.Flow.TextNote.Justification.CENTER;
@@ -74,7 +76,8 @@ export class TextBuilder {
         break;
     }
 
-    const duration = ignore_ticks ? 'b' : this.artist.current_duration; // "b" makes a bar-sized spacer.
+    // "b" creates a bar-sized spacer when ticks are ignored.
+    const duration = ignore_ticks ? 'b' : this.artist.current_duration;
 
     const struct: any = {
       text,
@@ -88,16 +91,17 @@ export class TextBuilder {
       },
     };
 
+    // Glyph syntax uses TextNote glyphs instead of text rendering.
     if (text.startsWith('#')) {
-      struct.glyph = text.slice(1); // Glyph name without the leading '#'.
-      struct.text = ''; // No text when using glyphs.
-      struct.font = null; // Glyphs use their own font in VexFlow.
+      struct.glyph = text.slice(1);
+      struct.text = '';
+      struct.font = null;
     }
 
     const note = new Vex.Flow.TextNote(struct)
       .setLine(position)
       .setJustification(just);
 
-    _.last(voices)!.push(note); // Append to the current text voice.
+    _.last(voices)!.push(note);
   }
 }

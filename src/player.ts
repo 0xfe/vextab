@@ -1,8 +1,6 @@
-// src/player.ts
 // Playback overlay that uses MIDI.js to audition VexFlow notes and show a moving marker.
-
-import Vex from './vexflow'; // VexFlow shim (for legacy Vex.Flow.Player attachment).
-import * as _ from './utils'; // Utility helpers used for sorting/merging.
+import Vex from './vexflow';
+import * as _ from './utils';
 
 /**
  * VexTab Player
@@ -12,36 +10,43 @@ import * as _ from './utils'; // Utility helpers used for sorting/merging.
  * with legacy VexTab usage.
  */
 export default class Player {
-  static DEBUG = false; // Enables verbose logging for debugging.
-  static INSTRUMENTS_LOADED: Record<string, boolean> = {}; // Cache to avoid re-loading soundfonts.
+  // Enables verbose logging for debugging.
+  static DEBUG = false;
+  // Cache to avoid re-loading soundfonts per instrument.
+  static INSTRUMENTS_LOADED: Record<string, boolean> = {};
 
-  private artist: any; // Artist instance providing rendering + playback data.
-  private options: Record<string, any>; // Configurable playback options.
-  private interval_id: any = null; // setInterval handle for playback refresh.
-  private paper: any = null; // Paper.js scope used to draw overlay UI.
-  private marker: any = null; // Marker rectangle that tracks the current note.
-  private loading_message: any = null; // Text overlay for loading state.
-  private play_button: any = null; // Paper.js play button path.
-  private stop_button: any = null; // Paper.js stop button path.
+  // Artist instance provides render data and context.
+  private artist: any;
+  // Configurable playback options.
+  private options: Record<string, any>;
+  // Playback timer and overlay UI handles.
+  private interval_id: any = null;
+  private paper: any = null;
+  private marker: any = null;
+  private loading_message: any = null;
+  private play_button: any = null;
+  private stop_button: any = null;
 
-  private tick_notes: Record<string, any> = {}; // Map of tick → notes at that time.
-  private all_ticks: any[] = []; // Sorted list of tick events for playback.
-  private total_ticks: any = null; // Last tick in the piece (for display/logging).
-  private tpm = 0; // Ticks per minute (derived from tempo).
-  private refresh_rate = 25; // Refresh cadence in ms for playback updates.
-  private ticks_per_refresh = 0; // Tick increment for each refresh tick.
+  // Playback timing state.
+  private tick_notes: Record<string, any> = {};
+  private all_ticks: any[] = [];
+  private total_ticks: any = null;
+  private tpm = 0;
+  private refresh_rate = 25;
+  private ticks_per_refresh = 0;
 
-  private current_ticks = 0; // Current playback position in ticks.
-  private next_event_tick = 0; // Tick value for the next event to play.
-  private next_index = 0; // Index into all_ticks for the next event.
-  private done = false; // Whether playback has completed.
-  private loading = false; // Whether instruments are currently loading.
-  private scale = 1; // Render scale used to position the marker.
+  // Cursor state for playback.
+  private current_ticks = 0;
+  private next_event_tick = 0;
+  private next_index = 0;
+  private done = false;
+  private loading = false;
+  private scale = 1;
 
   // Static constants pulled from VexFlow for timing and note math.
-  private Fraction = Vex.Flow.Fraction; // Fraction class for tick arithmetic.
-  private RESOLUTION = Vex.Flow.RESOLUTION; // Ticks per whole note.
-  private noteValues = Vex.Flow.Music.noteValues; // Map of note name → semitone info.
+  private Fraction = Vex.Flow.Fraction;
+  private RESOLUTION = Vex.Flow.RESOLUTION;
+  private noteValues = Vex.Flow.Music.noteValues;
 
   // MIDI program numbers keyed by human-friendly instrument names.
   private INSTRUMENTS: Record<string, number> = {
@@ -67,7 +72,7 @@ export default class Player {
    * Design note: options are merged so callers can override selectively.
    */
   constructor(artist: any, options?: Record<string, any>) {
-    this.artist = artist; // Store artist reference for data queries.
+    this.artist = artist;
     this.log('Initializing player: ', options);
     this.options = {
       instrument: 'acoustic_grand_piano',
@@ -78,7 +83,7 @@ export default class Player {
     };
 
     if (options) {
-      _.extend(this.options, options); // Apply user overrides.
+      _.extend(this.options, options);
     }
 
     this.log(`Using soundfonts in: ${this.options.soundfont_url}`);
@@ -128,15 +133,16 @@ export default class Player {
    * Design note: called on every render to keep playback in sync.
    */
   reset(): void {
-    this.artist.attachPlayer(this); // Allow Artist to push voice data.
-    this.tick_notes = {}; // Clear tick → notes map.
-    this.all_ticks = []; // Clear tick list.
-    this.tpm = this.options.tempo * (this.RESOLUTION / 4); // Ticks per minute.
-    this.refresh_rate = 25; // ms: 50 = 20hz
-    this.ticks_per_refresh = this.tpm / (60 * (1000 / this.refresh_rate)); // Tick delta per refresh.
-    this.total_ticks = 0; // Reset total tick counter.
+    // Reset tick scheduling and overlay state after each render.
+    this.artist.attachPlayer(this);
+    this.tick_notes = {};
+    this.all_ticks = [];
+    this.tpm = this.options.tempo * (this.RESOLUTION / 4);
+    this.refresh_rate = 25;
+    this.ticks_per_refresh = this.tpm / (60 * (1000 / this.refresh_rate));
+    this.total_ticks = 0;
     if (this.marker) {
-      this.marker.remove(); // Remove old marker from overlay.
+      this.marker.remove();
       this.marker = null;
     }
     this.stop();
@@ -147,22 +153,24 @@ export default class Player {
    * Design note: a separate overlay avoids interfering with VexFlow render output.
    */
   private getOverlay(context: any, scale: number, overlay_class: string): { paper: any; canvas: any } {
-    const canvas = context.canvas; // Underlying render surface.
-    const height = canvas.height; // Render surface height.
-    const width = canvas.width; // Render surface width.
+    const canvas = context.canvas;
+    const height = canvas.height;
+    const width = canvas.width;
 
-    const overlay = $('<canvas>'); // New overlay canvas.
-    overlay.css('position', 'absolute'); // Overlay above main canvas.
-    overlay.css('left', 0); // Align to left edge of container.
-    overlay.css('top', 0); // Align to top edge of container.
-    overlay.addClass(overlay_class); // CSS hook for styling.
+    // The overlay is a separate canvas stacked above the main render.
+    const overlay = $('<canvas>');
+    overlay.css('position', 'absolute');
+    overlay.css('left', 0);
+    overlay.css('top', 0);
+    overlay.addClass(overlay_class);
 
     $(canvas).after(overlay);
-    const ctx = Vex.Flow.Renderer.getCanvasContext(overlay.get(0), width, height); // Overlay context.
-    ctx.scale(scale, scale); // Mirror render scale.
+    const ctx = Vex.Flow.Renderer.getCanvasContext(overlay.get(0), width, height);
+    ctx.scale(scale, scale);
 
-    const ps = new paper.PaperScope(); // Paper.js scope for overlay drawing.
-    ps.setup(overlay.get(0)); // Bind Paper.js to the overlay canvas.
+    // Paper.js handles drawing for the overlay UI.
+    const ps = new paper.PaperScope();
+    ps.setup(overlay.get(0));
 
     return { paper: ps, canvas: overlay.get(0) };
   }
@@ -182,19 +190,21 @@ export default class Player {
    */
   render(): void {
     this.reset();
-    const data = this.artist.getPlayerData(); // Voice data + renderer context.
-    this.scale = data.scale; // Track scaling for marker placement.
+    const data = this.artist.getPlayerData();
+    this.scale = data.scale;
 
     if (!this.paper) {
       const overlay = this.getOverlay(data.context, data.scale, this.options.overlay_class);
-      this.paper = overlay.paper; // Cache Paper.js scope for later updates.
+      this.paper = overlay.paper;
     }
 
-    this.marker = new this.paper.Path.Rectangle(0, 0, 13, 85); // Marker rectangle for playback position.
-    this.loading_message = new this.paper.PointText(35, 12); // Loading status text.
+    // Basic overlay UI elements.
+    this.marker = new this.paper.Path.Rectangle(0, 0, 13, 85);
+    this.loading_message = new this.paper.PointText(35, 12);
 
     if (this.options.show_controls) {
-      this.play_button = new this.paper.Path.RegularPolygon(new this.paper.Point(25, 10), 3, 7, 7); // Triangle play icon.
+      // Simple play/stop controls rendered with Paper.js.
+      this.play_button = new this.paper.Path.RegularPolygon(new this.paper.Point(25, 10), 3, 7, 7);
       this.play_button.fillColor = '#396';
       this.play_button.opacity = 0.8;
       this.play_button.rotate(90);
@@ -202,7 +212,7 @@ export default class Player {
         this.play();
       };
 
-      this.stop_button = new this.paper.Path.Rectangle(3, 3, 10, 10); // Square stop icon.
+      this.stop_button = new this.paper.Path.Rectangle(3, 3, 10, 10);
       this.stop_button.fillColor = '#396';
       this.stop_button.opacity = 0.8;
       this.stop_button.onMouseUp = () => {
@@ -211,20 +221,21 @@ export default class Player {
     }
 
     this.paper.view.draw();
-    const staves = data.voices; // Nested voice list from the Artist.
+    const staves = data.voices;
 
-    let total_ticks = new this.Fraction(0, 1); // Accumulator for total tick count.
+    // Build a flattened list of tick events to drive playback.
+    let total_ticks = new this.Fraction(0, 1);
     staves.forEach((voice_group: any[]) => {
-      let max_voice_tick = new this.Fraction(0, 1); // Track the longest voice in this group.
+      let max_voice_tick = new this.Fraction(0, 1);
       voice_group.forEach((voice) => {
-        const total_voice_ticks = new this.Fraction(0, 1); // Tick count within the voice.
+        const total_voice_ticks = new this.Fraction(0, 1);
 
         voice.getTickables().forEach((note: any) => {
           if (!note.shouldIgnoreTicks()) {
-            const abs_tick = total_ticks.clone(); // Absolute tick position.
-            abs_tick.add(total_voice_ticks); // Add per-voice offset.
-            abs_tick.simplify(); // Reduce fraction for consistent string keys.
-            const key = abs_tick.toString(); // Hash key for tick map.
+            const abs_tick = total_ticks.clone();
+            abs_tick.add(total_voice_ticks);
+            abs_tick.simplify();
+            const key = abs_tick.toString();
 
             if (_.has(this.tick_notes, key)) {
               this.tick_notes[key].notes.push(note);
@@ -236,20 +247,21 @@ export default class Player {
               };
             }
 
-            total_voice_ticks.add(note.getTicks()); // Advance by note duration.
+            total_voice_ticks.add(note.getTicks());
           }
         });
 
         if (total_voice_ticks.value() > max_voice_tick.value()) {
-          max_voice_tick.copy(total_voice_ticks); // Keep the maximum voice length.
+          max_voice_tick.copy(total_voice_ticks);
         }
       });
 
-      total_ticks.add(max_voice_tick); // Advance by the longest voice.
+      total_ticks.add(max_voice_tick);
     });
 
-    this.all_ticks = _.sortBy(_.values(this.tick_notes), (tick) => tick.value); // Sorted tick events.
-    this.total_ticks = _.last(this.all_ticks); // Final tick event (if any).
+    // Sort events by absolute tick for deterministic playback.
+    this.all_ticks = _.sortBy(_.values(this.tick_notes), (tick) => tick.value);
+    this.total_ticks = _.last(this.all_ticks);
     this.log(this.all_ticks);
   }
 
@@ -270,22 +282,23 @@ export default class Player {
   private playNote(notes: any[]): void {
     this.log(`(${this.current_ticks}) playNote: `, notes);
 
+    // For each note, move the marker and emit MIDI events.
     notes.forEach((note) => {
-      const x = note.getAbsoluteX() + 4; // Slight offset to center the marker.
-      const y = note.getStave().getYForLine(2); // Vertical placement on the stave.
+      const x = note.getAbsoluteX() + 4;
+      const y = note.getStave().getYForLine(2);
       if (this.paper) this.updateMarker(x, y);
       if (note.isRest()) return;
 
-      const keys = note.getPlayNote(); // Pitch strings (e.g., c/4).
-      const duration = note.getTicks().value() / (this.tpm / 60); // Duration in seconds.
+      const keys = note.getPlayNote();
+      const duration = note.getTicks().value() / (this.tpm / 60);
       keys.forEach((key: string) => {
-        const pieces = key.split('/'); // ["c", "4"] style split.
-        const noteName = pieces[0].trim().toLowerCase(); // Normalized pitch name.
-        const octave = pieces[1]; // Octave string.
-        const note_value = this.noteValues[noteName]; // VexFlow note value info.
+        const pieces = key.split('/');
+        const noteName = pieces[0].trim().toLowerCase();
+        const octave = pieces[1];
+        const note_value = this.noteValues[noteName];
         if (!note_value) return;
 
-        const midi_note = (24 + (parseInt(octave, 10) * 12)) + note_value.int_val; // MIDI note number.
+        const midi_note = (24 + (parseInt(octave, 10) * 12)) + note_value.int_val;
         MIDI.noteOn(0, midi_note, 127, 0);
         MIDI.noteOff(0, midi_note, duration);
       });
@@ -301,15 +314,16 @@ export default class Player {
       return;
     }
 
-    this.current_ticks += this.ticks_per_refresh; // Advance playback cursor.
+    // Advance playback cursor based on ticks-per-refresh.
+    this.current_ticks += this.ticks_per_refresh;
 
     if (this.current_ticks >= this.next_event_tick && this.all_ticks.length > 0) {
-      this.playNote(this.all_ticks[this.next_index].notes); // Play current tick's notes.
-      this.next_index += 1; // Move to next tick event.
+      this.playNote(this.all_ticks[this.next_index].notes);
+      this.next_index += 1;
       if (this.next_index >= this.all_ticks.length) {
         this.done = true;
       } else {
-        this.next_event_tick = this.all_ticks[this.next_index].tick.value(); // Update target tick.
+        this.next_event_tick = this.all_ticks[this.next_index].tick.value();
       }
     }
   }
@@ -319,6 +333,7 @@ export default class Player {
    */
   stop(): void {
     this.log('Stop');
+    // Reset playback cursor and UI state.
     if (this.interval_id) window.clearInterval(this.interval_id);
     if (this.play_button) this.play_button.fillColor = '#396';
     if (this.paper) this.paper.view.draw();
@@ -336,9 +351,10 @@ export default class Player {
     this.stop();
     this.log('Start');
     if (this.play_button) this.play_button.fillColor = '#a36';
-    MIDI.programChange(0, this.INSTRUMENTS[this.options.instrument]); // Select instrument.
+    // Select instrument and schedule refresh ticks.
+    MIDI.programChange(0, this.INSTRUMENTS[this.options.instrument]);
     this.render();
-    this.interval_id = window.setInterval(() => this.refresh(), this.refresh_rate); // Schedule refresh loop.
+    this.interval_id = window.setInterval(() => this.refresh(), this.refresh_rate);
   }
 
   /**
@@ -355,14 +371,15 @@ export default class Player {
       this.loading = true;
       this.paper.view.draw();
 
+      // Load soundfonts on demand to keep initial render lightweight.
       MIDI.loadPlugin({
-        soundfontUrl: this.options.soundfont_url, // Base URL for soundfont assets.
-        instruments: [this.options.instrument], // Instruments to load.
+        soundfontUrl: this.options.soundfont_url,
+        instruments: [this.options.instrument],
         callback: () => {
-          Player.INSTRUMENTS_LOADED[this.options.instrument] = true; // Mark instrument cached.
-          this.loading = false; // Exit loading state.
-          this.loading_message.content = ''; // Clear loading text.
-          this.start(); // Begin playback after assets are ready.
+          Player.INSTRUMENTS_LOADED[this.options.instrument] = true;
+          this.loading = false;
+          this.loading_message.content = '';
+          this.start();
         },
       });
     }

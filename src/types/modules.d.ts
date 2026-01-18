@@ -1,4 +1,3 @@
-// src/types/modules.d.ts
 // Module declarations for non-TS assets and external libraries used by the build.
 
 declare module '*.jison' {

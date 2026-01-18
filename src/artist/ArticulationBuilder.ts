@@ -1,16 +1,15 @@
-// src/artist/ArticulationBuilder.ts
 // Modifier pipeline for articulations, bends, tuplets, annotations, and special glyphs.
-
-import Vex from '../vexflow'; // VexFlow shim for modifier classes.
-import * as _ from '../utils'; // Utility helpers for collections.
-import type Artist from './Artist'; // Artist type for shared state access.
+import Vex from '../vexflow';
+import * as _ from '../utils';
+import type Artist from './Artist';
 
 /**
  * Handles articulations, annotations, tuplets, bends, and other note modifiers.
  * This file centralizes modifier logic so rendering/notation code stays focused.
  */
 export class ArticulationBuilder {
-  private artist: Artist; // Owning Artist instance.
+  // Shared Artist state for staves, articulations, and customizations.
+  private artist: Artist;
 
   /**
    * Create a modifier builder bound to an Artist.
@@ -25,9 +24,10 @@ export class ArticulationBuilder {
    * Build a bend descriptor between two frets.
    */
   private makeBend(from_fret: string, to_fret: string): { type: number; text: string } {
-    let direction = Vex.Flow.Bend.UP; // Default to upward bend.
-    let text = ''; // Display text for the bend amount.
+    let direction = Vex.Flow.Bend.UP;
+    let text = '';
 
+    // Choose bend text and direction based on the interval size.
     if (parseInt(from_fret, 10) > parseInt(to_fret, 10)) {
       direction = Vex.Flow.Bend.DOWN;
     } else {
@@ -55,11 +55,11 @@ export class ArticulationBuilder {
    */
   openBends(first_note: any, last_note: any, first_indices: number[], last_indices: number[]): void {
     this.artist.log('openBends', first_note, last_note, first_indices, last_indices);
-    const tab_notes = _.last(this.artist.staves)!.tab_notes; // Current tab notes.
+    const tab_notes = _.last(this.artist.staves)!.tab_notes;
+    let start_note = first_note;
+    let start_indices = first_indices;
 
-    let start_note = first_note; // Default bend start.
-    let start_indices = first_indices; // Default bend start indices.
-
+    // Track the first note of the bend phrase so later notes can extend it.
     if (_.isEmpty(this.artist.current_bends)) {
       this.artist.bend_start_index = tab_notes.length - 2;
       this.artist.bend_start_strings = first_indices;
@@ -68,12 +68,13 @@ export class ArticulationBuilder {
       start_indices = this.artist.bend_start_strings as number[];
     }
 
-    const start_frets = start_note.getPositions(); // Start note positions.
-    const last_frets = last_note.getPositions(); // End note positions.
+    const start_frets = start_note.getPositions();
+    const last_frets = last_note.getPositions();
+    // Build per-string bend phrases.
     start_indices.forEach((index, i) => {
-      const last_index = last_indices[i]; // Matching end index for this string.
-      const from_fret = start_frets[index]; // Starting fret.
-      const to_fret = last_frets[last_index]; // Ending fret.
+      const last_index = last_indices[i];
+      const from_fret = start_frets[index];
+      const to_fret = last_frets[last_index];
       if (!this.artist.current_bends[index]) {
         this.artist.current_bends[index] = [];
       }
@@ -87,19 +88,20 @@ export class ArticulationBuilder {
   closeBends(offset = 1): void {
     if (this.artist.bend_start_index == null) return;
     this.artist.log(`closeBends(${offset})`);
-    const tab_notes = _.last(this.artist.staves)!.tab_notes; // Current tab notes.
+    const tab_notes = _.last(this.artist.staves)!.tab_notes;
 
+    // Attach bend modifiers to the starting note for each string.
     _.forEach(this.artist.current_bends, (bend_list, key) => {
-      const phrase: any[] = []; // Full bend phrase for this string.
+      const phrase: any[] = [];
       bend_list.forEach((bend) => phrase.push(bend));
       const bend_modifier = Vex.Flow.Bend.length <= 1
         ? new Vex.Flow.Bend(phrase)
         : new Vex.Flow.Bend(null, null, phrase);
-      const bend_index = parseInt(String(key), 10); // String index in the chord.
+      const bend_index = parseInt(String(key), 10);
       tab_notes[this.artist.bend_start_index as number].addModifier(bend_modifier, bend_index);
     });
 
-    // Replace bent notes with ghosts (make them invisible)
+    // Replace bent notes with ghosts so only the phrase start is visible.
     tab_notes
       .slice((this.artist.bend_start_index as number) + 1, (tab_notes.length - 2) + offset + 1)
       .forEach((tab_note) => tab_note.setGhost(true));
@@ -115,12 +117,12 @@ export class ArticulationBuilder {
    */
   makeTuplets(tuplets: number, notes?: number): void {
     this.artist.log('makeTuplets', tuplets, notes);
-    const tuple_notes = notes ?? tuplets; // Number of notes in the tuplet group.
-    const stave = _.last(this.artist.staves); // Current stave group.
+    const tuple_notes = notes ?? tuplets;
+    const stave = _.last(this.artist.staves);
     if (!stave || !stave.note) return;
 
-    const stave_notes = stave.note_notes; // Notation notes.
-    const tab_notes = stave.tab_notes; // Tab notes.
+    const stave_notes = stave.note_notes;
+    const tab_notes = stave.tab_notes;
 
     if (stave_notes.length < tuple_notes) {
       throw new Vex.RERR('ArtistError', 'Not enough notes for tuplet');
@@ -132,7 +134,7 @@ export class ArticulationBuilder {
     );
     this.artist.stave_articulations.push(modifier);
 
-    // Tuplet creation adjusts ticks, so we create one for tab as well.
+    // Tuplet creation adjusts ticks, so create one for tab as well.
     const tab_modifier = new Vex.Flow.Tuplet(
       tab_notes.slice(tab_notes.length - tuple_notes),
       { num_notes: tuplets },
@@ -156,11 +158,11 @@ export class ArticulationBuilder {
    * Parse a fingering annotation into modifiers that can be attached to notes.
    */
   makeFingering(text: string): Array<{ num: number; modifier: any }> | null {
-    const parts = this.getFingering(text); // Regex parts for fingering syntax.
-    const POS = Vex.Flow.Modifier.Position; // VexFlow position enum.
-    const fingers: string[] = []; // Individual fingering tokens.
-    const fingering: Array<{ num: number; modifier: any }> = []; // Parsed modifier list.
-    const offset_x = 4; // Horizontal offset to keep digits clear of notes.
+    const parts = this.getFingering(text);
+    const POS = Vex.Flow.Modifier.Position;
+    const fingers: string[] = [];
+    const fingering: Array<{ num: number; modifier: any }> = [];
+    const offset_x = 4;
 
     if (parts) {
       parts[1].split(/-/).forEach((piece) => fingers.push(piece.trim()));
@@ -168,14 +170,15 @@ export class ArticulationBuilder {
       return null;
     }
 
-    const badFingering = () => new Vex.RERR('ArtistError', `Bad fingering: ${parts[1]}`); // Error helper.
+    // Provide a consistent error so callers can surface precise feedback.
+    const badFingering = () => new Vex.RERR('ArtistError', `Bad fingering: ${parts[1]}`);
 
     fingers.forEach((finger) => {
-      const pieces = finger.match(/(\d+):([ablr]):([fs]):([^-.]+)/); // Parse "note:position:type:value".
+      const pieces = finger.match(/(\d+):([ablr]):([fs]):([^-.]+)/);
       if (!pieces) throw badFingering();
 
-      const note_number = parseInt(pieces[1], 10) - 1; // 1-based to 0-based index.
-      let position = POS.RIGHT; // Default modifier position.
+      const note_number = parseInt(pieces[1], 10) - 1;
+      let position = POS.RIGHT;
       switch (pieces[2]) {
         case 'l':
           position = POS.LEFT;
@@ -193,8 +196,8 @@ export class ArticulationBuilder {
           break;
       }
 
-      let modifier: any = null; // VexFlow modifier instance.
-      const number = pieces[4]; // Finger number string.
+      let modifier: any = null;
+      const number = pieces[4];
       switch (pieces[3]) {
         case 's':
           modifier = new Vex.Flow.StringNumber(number).setPosition(position);
@@ -206,6 +209,7 @@ export class ArticulationBuilder {
           break;
       }
 
+      // Offset right/left modifiers so they clear the note heads.
       if (modifier && typeof modifier.setOffsetX === 'function') {
         if (position === POS.RIGHT) {
           modifier.setOffsetX(offset_x);
@@ -214,7 +218,7 @@ export class ArticulationBuilder {
         }
       }
 
-      fingering.push({ num: note_number, modifier }); // Store modifier for later attachment.
+      fingering.push({ num: note_number, modifier });
     });
 
     return fingering;
@@ -231,8 +235,8 @@ export class ArticulationBuilder {
    * Build a VexFlow stroke modifier from a stroke command string.
    */
   makeStroke(text: string): any | null {
-    const parts = this.getStrokeParts(text); // Regex parts for stroke syntax.
-    const TYPE = Vex.Flow.Stroke.Type; // Stroke type enum.
+    const parts = this.getStrokeParts(text);
+    const TYPE = Vex.Flow.Stroke.Type;
 
     if (!parts) return null;
 
@@ -268,11 +272,12 @@ export class ArticulationBuilder {
     const parts = this.getScoreArticulationParts(text);
     if (!parts) return null;
 
-    const type = parts[1]; // Articulation code (e.g., a|).
-    const position = parts[2]; // t (top) or b (bottom).
+    const type = parts[1];
+    const position = parts[2];
 
-    const POSTYPE = Vex.Flow.Modifier.Position; // VexFlow position enum.
-    const pos = position === 't' ? POSTYPE.ABOVE : POSTYPE.BELOW; // Convert to VexFlow position.
+    // Normalize top/bottom into VexFlow's position enum.
+    const POSTYPE = Vex.Flow.Modifier.Position;
+    const pos = position === 't' ? POSTYPE.ABOVE : POSTYPE.BELOW;
     return new Vex.Flow.Articulation(type).setPosition(pos);
   }
 
@@ -282,10 +287,10 @@ export class ArticulationBuilder {
    * Create a VexFlow Annotation modifier, with optional font overrides.
    */
   makeAnnotation(text: string): any | null {
-    let font_face = this.artist.customizations['font-face']; // Default font face.
-    let font_size = this.artist.customizations['font-size']; // Default font size.
-    let font_style = this.artist.customizations['font-style']; // Default font style.
-    const aposition = this.artist.customizations['annotation-position']; // Top/bottom setting.
+    let font_face = this.artist.customizations['font-face'];
+    let font_size = this.artist.customizations['font-size'];
+    let font_style = this.artist.customizations['font-style'];
+    const aposition = this.artist.customizations['annotation-position'];
 
     const VJUST = Vex.Flow.Annotation.VerticalJustify;
     const default_vjust = aposition === 'top' ? VJUST.TOP : VJUST.BOTTOM;
@@ -296,7 +301,8 @@ export class ArticulationBuilder {
         .setVerticalJustification(just)
     );
 
-    let parts = text.match(/^\.([^-]*)-([^-]*)-([^.]*)\.(.*)/); // Font override syntax.
+    // Support inline font overrides like ".Times-12-italic.Text".
+    let parts = text.match(/^\.([^-]*)-([^-]*)-([^.]*)\.(.*)/);
     if (parts) {
       font_face = parts[1];
       font_size = parts[2];
@@ -305,11 +311,12 @@ export class ArticulationBuilder {
       return message ? makeIt(message) : null;
     }
 
-    parts = text.match(/^\.([^.]*)\.(.*)/); // Command syntax (e.g., .big.)
+    // Support command-style prefixes like ".big." or ".top.".
+    parts = text.match(/^\.([^.]*)\.(.*)/);
     if (parts) {
-      let just = default_vjust; // Vertical justification to apply.
-      const command = parts[1]; // Command token.
-      const message = parts[2]; // Annotation text.
+      let just = default_vjust;
+      const command = parts[1];
+      const message = parts[2];
       switch (command) {
         case 'big':
           font_style = 'bold';
@@ -345,17 +352,19 @@ export class ArticulationBuilder {
    */
   formatOverrideFretText(text: string): { text: string; string?: string } | null {
     if (!text) return null;
-    const unicode = Vex.Flow?.unicode ?? {}; // Unicode glyph map (if available).
-    const sharp = unicode.sharp ?? '#'; // Sharp glyph fallback.
-    const flat = unicode.flat ?? 'b'; // Flat glyph fallback.
-    const natural = unicode.natural ?? 'n'; // Natural glyph fallback.
+    // Prefer VexFlow unicode glyphs when available, with ASCII fallbacks.
+    const unicode = Vex.Flow?.unicode ?? {};
+    const sharp = unicode.sharp ?? '#';
+    const flat = unicode.flat ?? 'b';
+    const natural = unicode.natural ?? 'n';
 
-    const note_match = text.match(/^([A-G])([#@n]{1,2})?(~?)(\d+)?(?:_(\d+)\/(\d+))?$/); // Note pattern.
+    // Match note text with optional accidentals, octave, and string override.
+    const note_match = text.match(/^([A-G])([#@n]{1,2})?(~?)(\d+)?(?:_(\d+)\/(\d+))?$/);
     if (note_match) {
-      const note = note_match[1]; // Base note letter.
-      const accidental = note_match[2] ?? ''; // Accidental (if any).
-      const octave = note_match[4] ?? ''; // Octave number (if any).
-      const string_num = note_match[6]; // String number override (if any).
+      const note = note_match[1];
+      const accidental = note_match[2] ?? '';
+      const octave = note_match[4] ?? '';
+      const string_num = note_match[6];
       const acc_text = (() => {
         switch (accidental) {
           case '##':
@@ -375,7 +384,8 @@ export class ArticulationBuilder {
       return { text: `${note}${acc_text}${octave}`, string: string_num };
     }
 
-    const fret_match = text.match(/^(\d+)\/(\d+)$/); // Fret/string pattern.
+    // Fret/string pattern.
+    const fret_match = text.match(/^(\d+)\/(\d+)$/);
     if (fret_match) {
       return { text: fret_match[1], string: fret_match[2] };
     }
@@ -390,11 +400,12 @@ export class ArticulationBuilder {
     if (!tab_note || !override) return;
     if (!tab_note.fretElement || !tab_note.positions) return;
 
-    let override_index = 0; // Default to first position if none specified.
+    // Map an override to the correct string index when provided.
+    let override_index = 0;
     if (override.string) {
-      const string_num = parseInt(override.string, 10); // Parsed string number.
+      const string_num = parseInt(override.string, 10);
       if (!Number.isNaN(string_num)) {
-        let idx = -1; // Index of the matching string.
+        let idx = -1;
         tab_note.positions.forEach((pos: any, i: number) => {
           if (parseInt(pos.str, 10) === string_num && idx < 0) {
             idx = i;
@@ -404,18 +415,20 @@ export class ArticulationBuilder {
       }
     }
 
-    const element = tab_note.fretElement[override_index]; // Text element to override.
+    const element = tab_note.fretElement[override_index];
     if (!element) return;
 
     element.setText(override.text);
-    const font_face = this.artist.customizations['font-face']; // Current font face.
-    const font_size = this.artist.customizations['font-size']; // Current font size.
-    const font_style = this.artist.customizations['font-style']; // Current font style.
+    // Apply current font settings for consistent layout.
+    const font_face = this.artist.customizations['font-face'];
+    const font_size = this.artist.customizations['font-size'];
+    const font_style = this.artist.customizations['font-style'];
     if (font_face) {
       element.setFont(font_face, font_size, font_style);
     }
 
-    let max_width = 0; // Track widest text to set consistent width.
+    let max_width = 0;
+    // Keep widths aligned for multi-string notes.
     tab_note.fretElement.forEach((el: any) => {
       max_width = Math.max(max_width, el.getWidth());
     });
@@ -426,15 +439,15 @@ export class ArticulationBuilder {
    * Add annotation modifiers to the most recent notes in the stave group.
    */
   addAnnotations(annotations: string[]): void {
-    const stave = _.last(this.artist.staves)!; // Current stave group.
-    const stave_notes = stave.note_notes; // Notation notes.
-    const tab_notes = stave.tab_notes; // Tab notes.
+    const stave = _.last(this.artist.staves)!;
+    const stave_notes = stave.note_notes;
+    const tab_notes = stave.tab_notes;
 
     if (annotations.length > tab_notes.length) {
       throw new Vex.RERR('ArtistError', 'More annotations than note elements');
     }
 
-    // Add text annotations to tablature.
+    // Prefer applying annotations to tab notes when they exist.
     if (stave.tab) {
       tab_notes.slice(tab_notes.length - annotations.length).forEach((tab_note: any, i: number) => {
         if (this.getScoreArticulationParts(annotations[i])) {
@@ -444,8 +457,8 @@ export class ArticulationBuilder {
           const stroke = this.makeStroke(annotations[i]);
           tab_note.addModifier(stroke, 0);
         } else {
-          const annotation_text = annotations[i]; // Raw annotation string.
-          const override = this.formatOverrideFretText(annotation_text); // Override parse result.
+          const annotation_text = annotations[i];
+          const override = this.formatOverrideFretText(annotation_text);
           if (override) {
             this.applyFretOverride(tab_note, override);
           } else {
@@ -455,6 +468,7 @@ export class ArticulationBuilder {
         }
       });
     } else {
+      // Fallback: apply annotations to notation notes.
       stave_notes.slice(stave_notes.length - annotations.length).forEach((note: any, i: number) => {
         if (!this.getScoreArticulationParts(annotations[i])) {
           const annotation = this.makeAnnotation(annotations[i]);
@@ -469,7 +483,6 @@ export class ArticulationBuilder {
       });
     }
 
-    // Add glyph articulations, strokes, or fingerings on score.
     if (stave.note) {
       stave_notes.slice(stave_notes.length - annotations.length).forEach((note: any, i: number) => {
         const score_articulation = this.makeScoreArticulation(annotations[i]);
@@ -481,12 +494,14 @@ export class ArticulationBuilder {
           }
         }
 
-        const stroke = this.makeStroke(annotations[i]); // Stroke annotations affect notation too.
+        // Strokes apply to notation as well as tab.
+        const stroke = this.makeStroke(annotations[i]);
         if (stroke) {
           note.addStroke(0, stroke);
         }
 
-        const fingerings = this.makeFingering(annotations[i]); // Fingering annotations for strings/frets.
+        // Fingering annotations attach modifiers per note index.
+        const fingerings = this.makeFingering(annotations[i]);
         if (fingerings) {
           try {
             fingerings.forEach((fingering) => note.addModifier(fingering.modifier, fingering.num));
@@ -519,7 +534,8 @@ export class ArticulationBuilder {
 
     if (_.isEmpty(first_indices) && _.isEmpty(last_indices)) return;
 
-    let articulation: any = null; // VexFlow articulation modifier.
+    // Build the appropriate tab articulation based on type.
+    let articulation: any = null;
     const notes = {
       first_note,
       last_note,
@@ -563,7 +579,8 @@ export class ArticulationBuilder {
     last_indices: number[],
   ): void {
     this.artist.log('addStaveArticulations: ', type, first_note, last_note, first_indices, last_indices);
-    let articulation: any = null; // VexFlow stave articulation modifier.
+    // Stave ties/slides share a common VexFlow class.
+    let articulation: any = null;
     if (['b', 's', 'h', 'p', 't', 'T'].includes(type)) {
       articulation = new Vex.Flow.StaveTie({
         first_note,
@@ -586,8 +603,8 @@ export class ArticulationBuilder {
    * Find the previous (second-to-last) non-bar, non-ghost tab note index.
    */
   private getPreviousNoteIndex(): number {
-    const tab_notes = _.last(this.artist.staves)!.tab_notes; // Current tab notes list.
-    let index = 2; // Start from the second-to-last note.
+    const tab_notes = _.last(this.artist.staves)!.tab_notes;
+    let index = 2;
     while (index <= tab_notes.length) {
       const note = tab_notes[tab_notes.length - index];
       if (note instanceof Vex.Flow.TabNote) {
@@ -606,11 +623,11 @@ export class ArticulationBuilder {
     this.artist.log('addDecorator: ', decorator);
     if (!decorator) return;
 
-    const stave = _.last(this.artist.staves)!; // Current stave group.
-    const tab_notes = stave.tab_notes; // Tab notes to decorate.
-    const score_notes = stave.note_notes; // Notation notes to decorate.
-    let modifier: any = null; // Tab modifier.
-    let score_modifier: any = null; // Notation modifier (if any).
+    const stave = _.last(this.artist.staves)!;
+    const tab_notes = stave.tab_notes;
+    const score_notes = stave.note_notes;
+    let modifier: any = null;
+    let score_modifier: any = null;
 
     if (decorator === 'v') {
       modifier = new Vex.Flow.Vibrato();
@@ -630,13 +647,13 @@ export class ArticulationBuilder {
       score_modifier = new Vex.Flow.Articulation('am').setPosition(Vex.Flow.Modifier.Position.BELOW);
     }
 
-    const last_tab = _.last(tab_notes); // Latest tab note.
+    const last_tab = _.last(tab_notes);
     if (last_tab && modifier) {
       last_tab.addModifier(modifier, 0);
     }
 
     if (score_modifier) {
-      const score_note = _.last(score_notes); // Latest notation note.
+      const score_note = _.last(score_notes);
       if (score_note) {
         if (typeof score_note.addArticulation === 'function') {
           score_note.addArticulation(0, score_modifier);
@@ -652,16 +669,17 @@ export class ArticulationBuilder {
    */
   addArticulations(articulations: Array<string | null>): void {
     this.artist.log('addArticulations: ', articulations);
-    const stave = _.last(this.artist.staves)!; // Current stave group.
-    const tab_notes = stave.tab_notes; // Tab notes list.
-    const stave_notes = stave.note_notes; // Notation notes list.
+    const stave = _.last(this.artist.staves)!;
+    const tab_notes = stave.tab_notes;
+    const stave_notes = stave.note_notes;
     if (_.isEmpty(tab_notes) || _.isEmpty(articulations)) {
       this.closeBends(0);
       return;
     }
 
-    const current_tab_note = _.last(tab_notes); // Latest tab note.
-    let has_bends = false; // Track whether current articulation set includes bends.
+    // Collect articulation indices per symbol to support multi-string chords.
+    const current_tab_note = _.last(tab_notes);
+    let has_bends = false;
 
     ['b', 's', 'h', 'p', 't', 'T', 'v', 'V'].forEach((valid_articulation) => {
       const indices = articulations
@@ -671,10 +689,10 @@ export class ArticulationBuilder {
       if (_.isEmpty(indices)) return;
       if (valid_articulation === 'b') has_bends = true;
 
-      const prev_index = this.getPreviousNoteIndex(); // Index of previous tab note.
-      let prev_tab_note: any = null; // Previous tab note for ties/slides.
-      let prev_indices: number[] | null = null; // Previous note string indices.
-      let current_indices: number[] = []; // Current note string indices.
+      const prev_index = this.getPreviousNoteIndex();
+      let prev_tab_note: any = null;
+      let prev_indices: number[] | null = null;
+      let current_indices: number[] = [];
 
       if (prev_index === -1) {
         prev_tab_note = null;

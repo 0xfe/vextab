@@ -1,16 +1,15 @@
-// src/vextab/VexTabParser.ts
 // Semantic compiler that turns the parsed VexTab AST into concrete Artist calls.
-
-import Vex from '../vexflow'; // VexFlow shim for errors and helpers.
-import * as _ from '../utils'; // Utility helpers (map, pick, etc.).
-import type Artist from '../artist/Artist'; // Artist type for renderer calls.
+import Vex from '../vexflow';
+import * as _ from '../utils';
+import type Artist from '../artist/Artist';
 
 /**
  * VexTabParser translates the parsed Jison AST into concrete Artist calls.
  * It isolates the "semantic" phase of VexTab from the raw parse step.
  */
 export class VexTabParser {
-  private artist: Artist; // Artist instance that receives rendering commands.
+  // Artist instance that receives rendering commands.
+  private artist: Artist;
 
   /**
    * Create a compiler bound to an Artist.
@@ -31,13 +30,14 @@ export class VexTabParser {
    * Design note: validation happens here so the Artist stays focused on rendering.
    */
   parseStaveOptions(options?: any[]): Record<string, string> {
-    const params: Record<string, string> = {}; // Parsed option map.
+    const params: Record<string, string> = {};
     if (!options) return params;
 
-    let notation_option: any = null; // Track for combined notation/tablature validation.
+    // Track notation/tablature to validate mutual visibility.
+    let notation_option: any = null;
     options.forEach((option) => {
-      const error = (msg: string) => this.newError(option, msg); // Localized error helper.
-      params[option.key] = option.value; // Store raw option value.
+      const error = (msg: string) => this.newError(option, msg);
+      params[option.key] = option.value;
       switch (option.key) {
         case 'notation':
         case 'tablature':
@@ -71,7 +71,6 @@ export class VexTabParser {
         }
         case 'time':
           try {
-            // Use VexFlow's TimeSignature validation for consistency.
             new Vex.Flow.TimeSignature(option.value);
           } catch (_e) {
             throw error(`Invalid time signature: '${option.value}'`);
@@ -79,7 +78,6 @@ export class VexTabParser {
           break;
         case 'tuning':
           try {
-            // Use VexFlow's Tuning validation for consistency.
             new Vex.Flow.Tuning(option.value);
           } catch (_e) {
             throw error(`Invalid tuning: '${option.value}'`);
@@ -134,6 +132,7 @@ export class VexTabParser {
    */
   parseChord(element: any): void {
     this.artist.log('parseChord:', element);
+    // Keep only relevant fields to avoid leaking parser internals.
     this.artist.addChord(
       _.map(
         element.chord,
@@ -165,6 +164,7 @@ export class VexTabParser {
     this.artist.log('parseStaveElements:', notes);
     notes.forEach((element) => {
       if (element.time) {
+        // Duration markers apply to subsequent notes.
         this.artist.setDuration(element.time, element.dot);
       }
 
@@ -190,19 +190,22 @@ export class VexTabParser {
    */
   parseStaveText(text_line: any[]): void {
     if (!_.isEmpty(text_line)) {
+      // Text lines start a new text voice.
       this.artist.addTextVoice();
     }
 
-    let position = 0; // X position within the text stave.
-    let justification: 'center' | 'left' | 'right' = 'center'; // Text alignment.
-    let smooth = true; // Whether to smooth text note spacing.
-    let font: string | null = null; // Optional font override.
+    // X position within the text stave.
+    let position = 0;
+    let justification: 'center' | 'left' | 'right' = 'center';
+    let smooth = true;
+    let font: string | null = null;
 
-    const bartext = () => this.artist.addTextNote('', 0, justification, false, true); // Render bar separator.
+    // A bar token is represented as a zero-width spacer note.
+    const bartext = () => this.artist.addTextNote('', 0, justification, false, true);
 
     const createNote = (text: string, token: any) => {
-      let ignore_ticks = false; // Whether to ignore ticks for this note.
-      let display = text; // Display text to render.
+      let ignore_ticks = false;
+      let display = text;
       if (display[0] === '|') {
         ignore_ticks = true;
         display = display.slice(1);
@@ -216,14 +219,16 @@ export class VexTabParser {
     };
 
     text_line.forEach((token) => {
-      let text = token.text.trim(); // Token text with surrounding whitespace removed.
+      let text = token.text.trim();
       if (text.match(/\.font=.*/)) {
-        font = text.slice(6); // Extract font name after ".font=" prefix.
-        this.artist.setTextFont(font); // Apply font override.
+        // Inline font overrides are applied immediately.
+        font = text.slice(6);
+        this.artist.setTextFont(font);
       } else if (text[0] === ':') {
-        this.artist.setDuration(text); // Update duration marker.
+        // Duration markers inside text lines affect spacing.
+        this.artist.setDuration(text);
       } else if (text[0] === '.') {
-        const command = text.slice(1); // Text commands prefixed with a dot.
+        const command = text.slice(1);
         switch (command) {
           case 'center':
           case 'left':
@@ -263,17 +268,17 @@ export class VexTabParser {
       switch (stave.element) {
         case 'stave':
         case 'tabstave':
-          this.artist.addStave(stave.element, this.parseStaveOptions(stave.options)); // Create the stave.
-          if (stave.notes) this.parseStaveElements(stave.notes); // Parse notes for the stave.
-          if (stave.text) this.parseStaveText(stave.text); // Parse any text line.
+          this.artist.addStave(stave.element, this.parseStaveOptions(stave.options));
+          if (stave.notes) this.parseStaveElements(stave.notes);
+          if (stave.text) this.parseStaveText(stave.text);
           break;
         case 'voice':
-          this.artist.addVoice(this.parseStaveOptions(stave.options)); // Add a voice to current stave.
-          if (stave.notes) this.parseStaveElements(stave.notes); // Parse notes for the voice.
-          if (stave.text) this.parseStaveText(stave.text); // Parse any text line.
+          this.artist.addVoice(this.parseStaveOptions(stave.options));
+          if (stave.notes) this.parseStaveElements(stave.notes);
+          if (stave.text) this.parseStaveText(stave.text);
           break;
         case 'options': {
-          const options: Record<string, string> = {}; // Aggregate options into a map.
+          const options: Record<string, string> = {};
           stave.params.forEach((option: any) => {
             options[option.key] = option.value;
           });
