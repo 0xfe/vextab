@@ -32,6 +32,7 @@ module.exports = (env = {}) => {
       new HtmlWebpackPlugin({ template: './tests/playground.html', filename: 'playground.html', chunks: ['playground'] }),
       new HtmlWebpackPlugin({ template: './static/div.html', filename: 'static/div.html', chunks: ['div'] }),
       new CopyPlugin({ patterns: [
+        { from: 'doc/vextab.css', to: 'vextab.css' },
         { from: require.resolve('qunit'), to: 'qunit.js' },
         { from: require.resolve('qunit/qunit/qunit.css'), to: 'qunit.css' },
       ] }),

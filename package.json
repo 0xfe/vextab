@@ -1,6 +1,6 @@
 {
     "name": "vextab",
-    "version": "4.0.4",
+    "version": "4.0.6",
     "author": {
         "name": "Mohit Muthanna Cheppudira",
         "email": "mohit@muthanna.com",
@@ -45,8 +45,7 @@
         "lint": "oxlint --deny-warnings src tests scripts webpack.config.js",
         "typecheck": "tsc --noEmit",
         "test": "npm run build-dev && node scripts/test-browser.mjs",
-        "prepack": "npm run build:releases",
-        "build:releases": "npm run build-dev && npm run build && node scripts/release-bundles.mjs"
+        "prepack": "npm run clean && npm run build-dev && npm run build"
     },
     "homepage": "http://www.vexflow.com/vextab/",
     "keywords": [
@@ -56,18 +55,7 @@
         "tablature"
     ],
     "files": [
-        "dist/*.dev.js",
-        "dist/*.prod.js",
-        "dist/*.prod.js.map",
-        "dist/qunit*",
-        "dist/*.html",
-        "dist/static",
-        "dist/vextab-div.js",
-        "releases/*.dev.js",
-        "releases/*.prod.js",
-        "releases/*.prod.js.map",
-        "releases/vextab-div.js",
-        "releases/vextab.css",
+        "dist",
         "src",
         "SECURITY.md"
     ],

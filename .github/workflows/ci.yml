@@ -1,5 +1,9 @@
 name: CI
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches: ['**']
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
 
 permissions:
   contents: read
@@ -15,6 +19,9 @@ jobs:
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
+      - name: Check release tag against package version
+        if: github.ref_type == 'tag'
+        run: test "$GITHUB_REF_NAME" = "$(node -p 'require("./package.json").version')"
       - run: npm ci
       - run: npm audit
       - run: npm run lint
@@ -23,3 +30,48 @@ jobs:
         env:
           CHROME_BIN: /usr/bin/google-chrome
       - run: npm run build
+      - name: Pack the distribution and test the files consumers receive
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+        run: |
+          mkdir "$RUNNER_TEMP/assets" "$RUNNER_TEMP/unpacked"
+          npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/assets"
+          tar -xzf "$RUNNER_TEMP"/assets/*.tgz -C "$RUNNER_TEMP/unpacked"
+          node scripts/test-browser.mjs "$RUNNER_TEMP/unpacked/package/dist"
+      - name: Prepare standalone downloads and checksums
+        if: github.ref_type == 'tag'
+        run: |
+          cd "$RUNNER_TEMP/unpacked/package/dist"
+          cp main.prod.js div.dev.js div.prod.js div.prod.js.map vextab-div.js vextab.css "$RUNNER_TEMP/assets/"
+          cd "$RUNNER_TEMP/assets"
+          sha256sum * > SHA256SUMS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: github.ref_type == 'tag'
+        with:
+          name: release-assets
+          path: ${{ runner.temp }}/assets/
+          if-no-files-found: error
+
+  publish:
+    if: github.ref_type == 'tag'
+    needs: verify
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      # gh reads the release notes from the annotated tag in this checkout.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-assets
+          path: ${{ runner.temp }}/assets/
+      - name: Verify downloads and publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          (cd "$RUNNER_TEMP/assets" && sha256sum --check SHA256SUMS)
+          gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP"/assets/* \
+            --verify-tag --notes-from-tag --title "VexTab $GITHUB_REF_NAME"

@@ -13,7 +13,7 @@ The optional player uses MIDI.js, Paper.js, and soundfonts supplied by the host 
 ## Dependency and build checks
 
 - npm installs exact direct dependencies and resolves transitive dependencies from `package-lock.json`. Run `npm ci` and `npm audit` to check the full tree, including build tools.
-- GitHub Actions runs lint, TypeScript checks, browser tests, and the production build. The workflow has read-only repository access and pins actions to full commit SHAs.
+- GitHub Actions runs lint, TypeScript checks, browser tests, and the production build. Builds and tests have read-only repository access. The job that publishes a version tag to GitHub Releases has write access to repository contents. All actions are pinned to full commit SHAs.
 - Dependabot checks npm packages and GitHub Actions weekly. Fixes in the repository reach npm consumers when a maintainer publishes a new release.
 
 ## Review status on November 18, 2026

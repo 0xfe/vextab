@@ -17,7 +17,7 @@ To see what VexTab can do, take a look at the [list of features](http://my.vexfl
 
 ## Quick Start
 
-Simply include `dist/div.prod.js` into your HTML document via a script tag. The contents of all `div` elements with the class `vextab-auto` are parsed as VexTab and automatically rendered in-place as music notation.
+Download `div.prod.js` from [GitHub Releases](https://github.com/0xfe/vextab/releases/latest) and include it in your page with a script tag. The contents of all `div` elements with the class `vextab-auto` are parsed as VexTab and automatically rendered in-place as music notation.
 
 ```html
 <div class="vextab-auto"
@@ -81,22 +81,14 @@ See `tests/playground.ts` for a working example of the VexTab API in use.
 
 ## Developers
 
-Use the Node.js version in `.nvmrc` and install Google Chrome for browser tests.
+Install the Node.js version in `.nvmrc`, then run:
 
 ```sh
 npm ci
-npm run lint
-npm run typecheck
-npm test
-npm run build
-npm audit
+npm start
 ```
 
-Run `npm start` to serve the QUnit suite at <http://127.0.0.1:9005/> and the interactive editor at <http://127.0.0.1:9005/playground.html>. Set `CHROME_BIN` to use a different Chrome or Chromium executable for headless tests.
-
-### Publishing new packages
-
-Check `npm view vextab version` for the latest published version. Use `npm version <new-version> --no-git-tag-version` to update the manifest and lockfile. Run `npm run build:releases` to refresh the browser bundles in `releases/`. Commit the version, lockfile, and updated distribution files together. Use `npm pack --dry-run` to inspect the package, then `npm publish` when ready to release.
+The [developer guide](docs/developers.md) covers building, running the browser tests, cutting a GitHub Release, and publishing its tarball to npm. Download the published bundles from [GitHub Releases](https://github.com/0xfe/vextab/releases).
 
 See [SECURITY.md](SECURITY.md) for private reporting, dependency checks, and known limitations.
 
