@@ -14,3 +14,5 @@ declare module 'vexflow' {
   const VexFlow: any;
   export default VexFlow;
 }
+
+declare module '*.css';

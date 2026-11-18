@@ -82,7 +82,7 @@ export function values<T>(value: Record<string, T> | null | undefined): T[] {
 /**
  * Safe hasOwnProperty wrapper.
  */
-export function has(value: object | null | undefined, key: string): boolean {
+export function has(value: object | null | undefined, key: PropertyKey): boolean {
   if (!value) return false;
   return Object.prototype.hasOwnProperty.call(value, key);
 }
@@ -90,7 +90,7 @@ export function has(value: object | null | undefined, key: string): boolean {
 /**
  * Pick a subset of properties into a shallow clone.
  */
-export function pick<T extends Record<string, any>>(value: T, ...props: string[]): Partial<T> {
+export function pick<T extends Record<string, any>>(value: T, ...props: (keyof T)[]): Partial<T> {
   // Build a shallow object containing only requested keys.
   const result: Partial<T> = {};
   props.forEach((prop) => {

@@ -9,6 +9,7 @@ var VexTabTests, qunit, test;
 
 import Vex from '../src/vexflow';
 import Artist from '../src/artist';
+import Div from '../src/div';
 import VexTab from '../src/vextab';
 
 // QUnit globals injected by tests.html.
@@ -36,6 +37,16 @@ VexTabTests = (function() {
     static Start() {
       qunit.module("VexTab Parser");
       test("Basic Test", this.basic);
+      test("Editor errors preserve score text", (assert) => {
+        const host = document.createElement('div');
+        document.querySelector('#qunit-fixture').append(host);
+        host.setAttribute('show-errors', 'true');
+        host.textContent = 'tabstave <em>label</em>=true';
+        new Div(host);
+        const error = host.querySelector('.editor-error');
+        assert.true(error.textContent.includes('<em>label</em>'));
+        assert.strictEqual(error.querySelector('em'), null);
+      });
       test("Complex Test", this.complex);
       test("Stave Options Test", this.staveOptionsTest);
       test("Notation Only Test", this.notationOnly);
@@ -755,7 +766,7 @@ options space=60`;
     caught = false;
     try {
       tab.parse(code);
-    } catch (_e) {
+    } catch {
       caught = true;
     }
     // equal(error.code, error_type, error.message)

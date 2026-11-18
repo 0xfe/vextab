@@ -32,8 +32,8 @@ export class ArtistRenderer {
    */
   private formatAndRender(
     ctx: any,
-    tab: { stave: any; voices: any[] } | null,
-    score: { stave: any; voices: any[] } | null,
+    tab: { stave: any; voices: any[][] } | null,
+    score: { stave: any; voices: any[][] } | null,
     text_notes: any[][],
     customizations: Record<string, any>,
     options: { beam_groups: any },
@@ -62,7 +62,7 @@ export class ArtistRenderer {
       const multi_voice = tab.voices.length > 1;
       tab.voices.forEach((notes, i) => {
         if (_.isEmpty(notes)) return;
-        _.each(notes, (note) => note.setStave(tab_stave));
+        notes.forEach((note) => note.setStave(tab_stave));
         const voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4)
           .setMode(Vex.Flow.Voice.Mode.SOFT);
         voice.addTickables(notes);
@@ -93,7 +93,7 @@ export class ArtistRenderer {
       score.voices.forEach((notes, i) => {
         if (_.isEmpty(notes)) return;
         const stem_direction = i === 0 ? 1 : -1;
-        _.each(notes, (note) => note.setStave(score_stave));
+        notes.forEach((note) => note.setStave(score_stave));
 
         const voice = new Vex.Flow.Voice(Vex.Flow.TIME4_4)
           .setMode(Vex.Flow.Voice.Mode.SOFT);

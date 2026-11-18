@@ -34,7 +34,7 @@ $(() => {
     } catch (e: any) {
       // Surface errors in the playground UI for quick debugging.
       console.error(e);
-      $('#error').html(e.message.replace(/[\n]/g, '<br/>'));
+      $('#error').text(e.message);
     }
   }
 

@@ -14,53 +14,39 @@
     },
     "license": "LicenseRef-LICENSE",
     "dependencies": {
-        "vexflow": "^5.0.0"
+        "vexflow": "5.3.0"
     },
     "devDependencies": {
-        "@babel/core": "^7.28.6",
-        "@babel/preset-env": "^7.28.6",
-        "@eslint/js": "^9.39.2",
-        "@typescript-eslint/eslint-plugin": "^8.46.0",
-        "@typescript-eslint/parser": "^8.46.0",
-        "babel-loader": "^10.0.0",
-        "copy-webpack-plugin": "^13.0.1",
-        "css-loader": "^7.1.2",
-        "eslint": "^9.39.2",
-        "eslint-plugin-import": "^2.32.0",
-        "eslint-webpack-plugin": "^5.0.2",
-        "git-revision-webpack-plugin": "^5.0.0",
-        "globals": "^17.0.0",
-        "grunt": "^1.6.1",
-        "grunt-bump": "0.8.0",
-        "grunt-cli": "^1.5.0",
-        "grunt-contrib-clean": "^2.0.1",
-        "grunt-contrib-copy": "^1.0.0",
-        "grunt-contrib-qunit": "^10.1.1",
-        "grunt-contrib-watch": "^1.1.0",
-        "grunt-git": "^1.1.1",
-        "grunt-webpack": "^7.0.1",
-        "html-webpack-plugin": "^5.6.6",
-        "jison": "^0.4.18",
-        "jison-loader": "^1.0.0",
-        "qunit": "^2.25.0",
-        "style-loader": "^4.0.0",
-        "ts-loader": "^9.5.4",
-        "typescript": "^5.9.2",
-        "webpack": "^5.104.1",
-        "webpack-cli": "^6.0.1",
-        "webpack-dev-server": "^5.2.3",
-        "zepto-webpack": "^1.2.1"
+        "@lahmatiy/jison": "0.4.18-remastered.7",
+        "copy-webpack-plugin": "14.0.0",
+        "css-loader": "7.1.5",
+        "esbuild-loader": "4.5.0",
+        "html-webpack-plugin": "5.6.8",
+        "oxlint": "1.94.0",
+        "playwright-core": "1.65.1",
+        "qunit": "3.0.0",
+        "style-loader": "4.0.0",
+        "typescript": "7.0.2",
+        "webpack": "5.112.2",
+        "webpack-cli": "7.3.1",
+        "webpack-dev-server": "6.1.0",
+        "zepto-webpack": "1.2.1"
     },
     "bugs": {
-        "url": "https://github.com/0xfe/vexflow/issues"
+        "url": "https://github.com/0xfe/vextab/issues"
     },
     "scripts": {
-        "build": "webpack --progress --mode production --env NODE_ENV=production --env TAG_NAME=prod --config webpack.config.js",
-        "build-dev": "webpack --progress --mode development --env NODE_ENV=development --env TAG_NAME=dev --config webpack.config.js",
-        "start": "WATCHPACK_POLLING=1 webpack serve --progress --mode development --port 9005 --env NODE_ENV=development --env TAG_NAME=dev --config webpack.config.js",
-        "serve": "npx http-server -c 1 -p 8052",
-        "watch": "WATCHPACK_POLLING=1 webpack -w --progress --mode development --env NODE_ENV=development --env TAG_NAME=dev --config webpack.config.js",
-        "clean": "rm -rf ./dist/*"
+        "build": "webpack --mode production --env TAG_NAME=prod",
+        "build-dev": "webpack --mode development --env TAG_NAME=dev",
+        "start": "webpack serve --mode development --env TAG_NAME=dev",
+        "serve": "python3 -m http.server 8052 --bind 127.0.0.1",
+        "watch": "webpack --watch --mode development --env TAG_NAME=dev",
+        "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+        "lint": "oxlint --deny-warnings src tests scripts webpack.config.js",
+        "typecheck": "tsc --noEmit",
+        "test": "npm run build-dev && node scripts/test-browser.mjs",
+        "prepack": "npm run build:releases",
+        "build:releases": "npm run build-dev && npm run build && node scripts/release-bundles.mjs"
     },
     "homepage": "http://www.vexflow.com/vextab/",
     "keywords": [
@@ -68,5 +54,27 @@
         "notation",
         "guitar",
         "tablature"
-    ]
+    ],
+    "files": [
+        "dist/*.dev.js",
+        "dist/*.prod.js",
+        "dist/*.prod.js.map",
+        "dist/qunit*",
+        "dist/*.html",
+        "dist/static",
+        "dist/vextab-div.js",
+        "releases/*.dev.js",
+        "releases/*.prod.js",
+        "releases/*.prod.js.map",
+        "releases/vextab-div.js",
+        "releases/vextab.css",
+        "src",
+        "SECURITY.md"
+    ],
+    "engines": {
+        "node": ">=22.18.0"
+    },
+    "allowScripts": {
+        "esbuild": false
+    }
 }

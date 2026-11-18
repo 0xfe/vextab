@@ -14,7 +14,7 @@ import './vextab.css';
 
 class Div {
   // Host element + renderer state.
-  private sel: string;
+  private sel: string | HTMLElement;
   private code: string;
   private width: number;
   private height: number;
@@ -42,7 +42,7 @@ class Div {
    * Construct the Div renderer and immediately render the initial markup.
    * Design note: we read once from the DOM and then manage our own state.
    */
-  constructor(sel: string) {
+  constructor(sel: string | HTMLElement) {
     this.sel = sel;
     if (!this.sel) {
       throw new Error(`VexTab.Div: invalid selector: ${sel}`);
@@ -59,7 +59,7 @@ class Div {
     // Host sizing and renderer options from data attributes.
     this.width = parseInt($(sel).attr('width'), 10) || 400;
     this.height = parseInt($(sel).attr('height'), 10) || 200;
-    this.scale = parseFloat($(sel).attr('scale'), 10) || 1.0;
+    this.scale = parseFloat($(sel).attr('scale')) || 1.0;
     this.rendererBackend = $(sel).attr('renderer') || 'svg';
 
     if (this.rendererBackend.toLowerCase() === 'canvas') {
@@ -134,7 +134,8 @@ class Div {
    */
   private drawInternal(): this {
     if (!this.parser.isValid()) return this;
-    return this.artist.draw(this.renderer);
+    this.artist.draw(this.renderer);
+    return this;
   }
 
   /**
@@ -151,12 +152,10 @@ class Div {
     } catch (e: any) {
       if (this.editor_error) {
         // Render parse errors into the UI for user feedback.
-        this.editor_error.empty();
-        this.editor_error.append(
-          $('<div></div>').addClass('text').html(
-            `<h3>Oops!</h3> ${e.message.replace(/(?:\r\n|\r|\n)/g, '<br>')}`,
-          ),
-        );
+        const message = $('<div></div>').addClass('text');
+        message.append($('<h3></h3>').text('Oops!'));
+        message.append(document.createTextNode(' ' + e.message));
+        this.editor_error.empty().append(message);
       }
     }
     return this;
@@ -188,8 +187,7 @@ class Div {
  */
 function start(sel?: string): void {
   // Emit version info for troubleshooting in the browser console.
-  // eslint-disable-next-line
-  console.log('Running VexTab.Div:', __VERSION, __BRANCH, __COMMITHASH);
+  console.log('Running VexTab.Div:', __VERSION);
   $(sel || (window as any).VEXTAB_SEL_V3).forEach((s: any) => new Div(s));
 }
 

@@ -72,14 +72,14 @@ export class VexTabParser {
         case 'time':
           try {
             new Vex.Flow.TimeSignature(option.value);
-          } catch (_e) {
+          } catch {
             throw error(`Invalid time signature: '${option.value}'`);
           }
           break;
         case 'tuning':
           try {
             new Vex.Flow.Tuning(option.value);
-          } catch (_e) {
+          } catch {
             throw error(`Invalid tuning: '${option.value}'`);
           }
           break;
@@ -136,7 +136,7 @@ export class VexTabParser {
     this.artist.addChord(
       _.map(
         element.chord,
-        (note) => _.pick(note, 'time', 'dot', 'fret', 'abc', 'octave', 'string', 'articulation', 'decorator'),
+        (note: Record<string, any>) => _.pick(note, 'time', 'dot', 'fret', 'abc', 'octave', 'string', 'articulation', 'decorator'),
       ),
       element.articulation,
       element.decorator,
@@ -226,7 +226,7 @@ export class VexTabParser {
         this.artist.setTextFont(font);
       } else if (text[0] === ':') {
         // Duration markers inside text lines affect spacing.
-        this.artist.setDuration(text);
+        this.artist.setDuration(text.slice(1));
       } else if (text[0] === '.') {
         const command = text.slice(1);
         switch (command) {

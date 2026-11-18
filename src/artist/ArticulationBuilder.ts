@@ -505,7 +505,7 @@ export class ArticulationBuilder {
         if (fingerings) {
           try {
             fingerings.forEach((fingering) => note.addModifier(fingering.modifier, fingering.num));
-          } catch (_e) {
+          } catch {
             throw new Vex.RERR('ArtistError', `Bad note number in fingering: ${annotations[i]}`);
           }
         }

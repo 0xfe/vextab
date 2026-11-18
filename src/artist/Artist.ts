@@ -226,7 +226,7 @@ export default class Artist {
 
     // Only allow known customization keys.
     const validOptions = _.keys(this.customizations);
-    _.forEach(options, (value, key) => {
+    Object.entries(options).forEach(([key, value]) => {
       if (validOptions.includes(key)) {
         this.customizations[key] = value;
       } else {

@@ -81,32 +81,24 @@ See `tests/playground.ts` for a working example of the VexTab API in use.
 
 ## Developers
 
-Clone this repository. Then run the following commands to setup a basic build and run tests:
+Use the Node.js version in `.nvmrc` and install Google Chrome for browser tests.
 
+```sh
+npm ci
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm audit
 ```
-$ npm install
-$ npm start
-```
 
-If you have the `grunt-cli` NPM package installed, you can manually run the various build steps:
-
-Browse to http://localhost:9005 to run tests.
+Run `npm start` to serve the QUnit suite at <http://127.0.0.1:9005/> and the interactive editor at <http://127.0.0.1:9005/playground.html>. Set `CHROME_BIN` to use a different Chrome or Chromium executable for headless tests.
 
 ### Publishing new packages
 
-Update VexFlow dependency if necessary.
+Use `npm version patch --no-git-tag-version` (or the intended release increment) to update the manifest and lockfile. Run `npm run build:releases` to refresh the browser bundles in `releases/`. Commit the version, lockfile, and updated distribution files together. Use `npm pack --dry-run` to inspect the package, then `npm publish` when ready to release.
 
-```
-$ npm install -g grunt-cli
-$ npm upgrade vexflow
-$ grunt (lint|build|publish)
-
-# you might have to manuall run npm publish if NPM.org blocks you
-```
-
-Before sending in a pull request, make sure that the tests pass a visual inspection. Open `http://localhost:9005` in your browser and verify that the notation examples at the bottom of the page render correctly. Also open `http://localhost:9005/playground.html` and verify that your new feature/bug fix, etc. works correctly.
-
-Please add new tests for whatever you're working on. Don't send PRs without tests. Thanks!
+See [SECURITY.md](SECURITY.md) for private reporting, dependency checks, and known limitations.
 
 ### Working with a local VexFlow installation
 
@@ -125,7 +117,7 @@ You may have to run `npm link vexflow` everytime you install or upgrade an npm p
 This rewrite of VexTab has three key dependencies:
 
   * [TypeScript](https://www.typescriptlang.org/) - Strongly-typed source for the parser/renderer.
-  * [Jison](http://zaach.github.com/jison/) - An LALR(1) parser modeled on Bison.
+  * [Jison](https://github.com/lahmatiy/jison) - An LALR(1) parser modeled on Bison.
   * [VexFlow](http://github.com/0xfe/vexflow) - Music engraving and rendering.
 
 For the audio player feature, you need:

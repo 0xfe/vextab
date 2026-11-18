@@ -6,8 +6,7 @@
 */
 
 %{
-  var _ = require("./utils");
-  _ = _.default || _;
+  import * as _ from './utils';
 %}
 
 %lex
@@ -377,7 +376,7 @@ maybe_slash
 
 string
   : NUMBER
-    { $$ = $1 } }
+    { $$ = $1 }
   ;
 
 articulation

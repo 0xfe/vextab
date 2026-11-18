@@ -83,7 +83,7 @@ export class TextBuilder {
       text,
       duration,
       smooth,
-      ignore_ticks,
+      ignoreTicks: ignore_ticks,
       font: {
         family: font_face,
         size: font_size,
