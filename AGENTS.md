@@ -1,38 +1,60 @@
-# Repository Guidelines
+# VexTab repository guidance
 
-## Project Structure & Module Organization
-- `src/`: Core implementation in TypeScript. Rendering lives under `src/artist/`, parsing under `src/vextab/`, entry points are `main.ts`, `div.ts`, and `player.ts`, with grammar in `vextab.jison` and styles in `vextab.css`.
-- `tests/`: QUnit test runner (`tests.html`) and suite (`tests.ts`), plus a manual playground (`playground.html`, `playground.ts`).
-- `static/`: Static assets copied into builds.
-- `doc/`: Project documentation and notes.
-- `dist/`: Build output (generated). `releases/` holds versioned release bundles.
+## GitHub Comments
 
-## Build, Test, and Development Commands
-- `npm install`: Install dependencies.
-- `npm start`: Run webpack-dev-server on port 9005; open `http://localhost:9005` for tests and `http://localhost:9005/playground.html` for manual checks.
-- `npm run build`: Produce production bundles in `dist/`.
-- `npm run build-dev`: Produce development bundles.
-- `npm run watch`: Rebuild on changes.
-- `grunt lint`: Run ESLint across the codebase.
-- `grunt build`: Build both prod/dev webpack bundles.
-- `npm run clean`: Remove `dist/*`.
-- `npm run serve`: Serve built assets on port 8052.
+Whenever you make a comment (to an issue or PR or any such), start the comment with a line like so:
 
-## Coding Style & Naming Conventions
-- TypeScript uses 2-space indentation; keep class names PascalCase and methods camelCase.
-- ES modules everywhere. ESLint uses the flat config in `eslint.config.cjs` with `@typescript-eslint` rules and a 180-char max line length; webpack runs ESLint with auto-fix where possible.
-- Keep filenames lowercase and descriptive. Grammar changes live in `*.jison`, CSS in `vextab.css`.
-- Prefer small, focused methods and guard debug logs with existing `DEBUG` flags.
+Beep Boop. This is __MODEL__ (__REASONING__) on (__HARNESS__) speaking.
 
-## Testing Guidelines
-- Tests are QUnit-based and run in the browser. Main suite: `tests/tests.ts` + `tests/tests.html`.
-- Run `npm start` and verify test results in the browser; visual correctness matters for notation rendering.
-- Add tests for new behavior and confirm the playground (`playground.html`) renders the change correctly.
+For example:
 
-## Commit & Pull Request Guidelines
-- Commit messages are short and descriptive; dependency updates commonly use `Bump <pkg> from <x> to <y>`.
-- PRs should include a clear description, linked issue (if any), and notes on test/visual verification (tests page + playground).
-- Include screenshots/GIFs when rendering output changes.
+Beep Boop. This is Astra 6.0 (xhigh) on Codex speaking.
 
-## Release Notes (Maintainers)
-- Release tasks are handled via Grunt (`grunt publish`) after updating dependencies and verifying builds.
+## GitHub Issues
+
+If addressing GitHub issues, first:
+
+- Do an initial assessment, and post an update around what you observed, and your initial plan
+- Assign the issue to me, label as in progress.
+- Fix the issue
+- Post another update after the work is committed and pushed.
+- Otherwise, just post an issue with the work is done.
+- If successful, close the issue.
+
+Where relevant, if there are visual implications, attach some before/after screenshots with a couple of representative examples. Attach to the issue, not into the commit. Screenshots should have a white background, not transparent. Use the `--attach` flag of `gh` for this.
+
+GitHub comments should be short and easy to read with simple sentences, but do include detail where necessary. Try and stick to the documentation guidelines below.
+
+Keep any issue-specific files (like repro tests or notes) in the issues/ directory. Use this only when needed.
+
+If an issue is labeled ai_todo, remove it after completion.
+
+### Issue Triaging
+
+If I ask you to triage issues, then go through all open issues and assign a priority and a type (bug/feature/etc.) and any relevant labels (if necessary). Also add a "triaged" label, and a short comment with any further thoughts/observations/next steps. Mention that you're a bot.
+
+## Dependencies
+
+- In general, we try to minimize external runtime dependencies.
+- Prefer the language/platform standard library and small, readable local implementations.
+- Remove dependencies when doing so is simpler and safer than retaining them.
+- Use well-known, trusted, maintained packages when a dependency earns its complexity.
+- Do not implement cryptography or complex security protocols from scratch to reduce dependencies.
+- Pin toolchains and lock dependencies. Review updates; avoid forced bulk fixes and unexplained overrides.
+
+## Code readability
+
+- Write for human understanding, debugging, audit, and interpretation. This means clear simple comments, clear readable code.
+- Comment constants, functions, methods, structs, interfaces, and other significant declarations.
+- Explain intent, invariants, failure behavior, and non-obvious decisions.
+- Split long functions into named steps (or shorter functions.) Clearly comment complex blocks that remain.
+- Prefer explicit control flow, descriptive names, and straightforward data structures.
+- Add a short file header describing the contents of each new or substantively changed source file.
+- Keep generated/vendor assets clearly identified; do not manually annotate generated code.
+
+## Documentation
+
+- Keep documentation clean and human readable. The README.md should remain high-level, with pointers to docs/ as needed.
+- Use short sentences, bullets, tables, code blocks, and concrete examples.
+- Put detailed setup, architecture, testing, security, and deployment notes in `docs/`.
+- Avoid long prose paragraphs and duplicated instructions.
