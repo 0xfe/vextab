@@ -16,6 +16,12 @@ The optional player uses MIDI.js, Paper.js, and soundfonts supplied by the host 
 - GitHub Actions runs lint, TypeScript checks, browser tests, and the production build. The workflow has read-only repository access and pins actions to full commit SHAs.
 - Dependabot checks npm packages and GitHub Actions weekly. Fixes in the repository reach npm consumers when a maintainer publishes a new release.
 
+## Review status on November 18, 2026
+
+GitHub marked all 71 Dependabot alerts as fixed. The full npm audit reported zero known vulnerabilities in the lockfile.
+
+The latest published npm package at review time was VexTab 4.0.5. Its editor can interpret parser errors as HTML. Applications accepting untrusted scores should use the rebuilt bundles from commit [2400329](https://github.com/0xfe/vextab/commit/240032925b8e20cfd4abc344230aa48e1d912168) or a subsequent release containing that fix.
+
 ## Known limitations
 
 - Parsing and rendering run synchronously. VexTab has no built-in limit on score length, stave count, or render dimensions. Applications accepting public submissions should bound these inputs.

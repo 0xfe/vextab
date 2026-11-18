@@ -96,7 +96,7 @@ Run `npm start` to serve the QUnit suite at <http://127.0.0.1:9005/> and the int
 
 ### Publishing new packages
 
-Use `npm version patch --no-git-tag-version` (or the intended release increment) to update the manifest and lockfile. Run `npm run build:releases` to refresh the browser bundles in `releases/`. Commit the version, lockfile, and updated distribution files together. Use `npm pack --dry-run` to inspect the package, then `npm publish` when ready to release.
+Check `npm view vextab version` for the latest published version. Use `npm version <new-version> --no-git-tag-version` to update the manifest and lockfile. Run `npm run build:releases` to refresh the browser bundles in `releases/`. Commit the version, lockfile, and updated distribution files together. Use `npm pack --dry-run` to inspect the package, then `npm publish` when ready to release.
 
 See [SECURITY.md](SECURITY.md) for private reporting, dependency checks, and known limitations.
 
