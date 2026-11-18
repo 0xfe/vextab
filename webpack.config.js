@@ -42,10 +42,13 @@ module.exports = (env = {}) => {
       { test: /\.jison$/, loader: path.resolve(__dirname, 'scripts/jison-loader.cjs') },
       { test: /\.css$/, use: ['style-loader', 'css-loader'] },
     ] },
+    // Poll source files on platforms with low native file-watcher limits.
+    watchOptions: { poll: 1000, ignored: /node_modules/ },
     devServer: {
       host: '127.0.0.1',
       port: 9005,
-      static: path.resolve(__dirname, 'dist'),
+      // Webpack watches the source assets. Watching its output again exhausts file handles.
+      static: { directory: path.resolve(__dirname, 'dist'), watch: false },
     },
   };
 };
