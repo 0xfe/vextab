@@ -1,5 +1,5 @@
 // Playback overlay that uses MIDI.js to audition VexFlow notes and show a moving marker.
-import { scoreFont } from './score/engraving';
+import { PlayerOverlay } from './player-overlay';
 import Vex from './vexflow';
 import * as _ from './utils';
 
@@ -22,16 +22,12 @@ export default class Player {
   private options: Record<string, any>;
   // Playback timer and overlay UI handles.
   private interval_id: any = null;
-  private paper: any = null;
-  private marker: any = null;
-  private loading_message: any = null;
-  private play_button: any = null;
-  private stop_button: any = null;
+  private overlay?: PlayerOverlay;
+  // A stopped or replaced score must never restart from a late MIDI.js callback.
+  private pendingLoad?: () => void;
 
   // Playback timing state.
-  private tick_notes: Record<string, any> = {};
   private all_ticks: any[] = [];
-  private total_ticks: any = null;
   private tpm = 0;
   private refresh_rate = 25;
   private ticks_per_refresh = 0;
@@ -41,8 +37,6 @@ export default class Player {
   private next_event_tick = 0;
   private next_index = 0;
   private done = false;
-  private loading = false;
-  private scale = 1;
 
   // Static constants pulled from VexFlow for timing and note math.
   private Fraction = Vex.Flow.Fraction;
@@ -104,6 +98,7 @@ export default class Player {
    * Swap the Artist instance and reset cached playback data.
    */
   setArtist(artist: any): void {
+    this.dispose();
     this.artist = artist;
     this.reset();
   }
@@ -134,97 +129,42 @@ export default class Player {
    * Design note: called on every render to keep playback in sync.
    */
   reset(): void {
-    // Reset tick scheduling and overlay state after each render.
     this.artist.attachPlayer(this);
-    this.tick_notes = {};
+    this.stop();
     this.all_ticks = [];
     this.tpm = this.options.tempo * (this.RESOLUTION / 4);
-    this.refresh_rate = 25;
     this.ticks_per_refresh = this.tpm / (60 * (1000 / this.refresh_rate));
-    this.total_ticks = 0;
-    if (this.marker) {
-      this.marker.remove();
-      this.marker = null;
-    }
-    this.stop();
   }
 
-  /**
-   * Create a Paper.js overlay canvas positioned above the VexFlow surface.
-   * Design note: a separate overlay avoids interfering with VexFlow render output.
-   */
-  private getOverlay(context: any, scale: number, overlay_class: string): { paper: any; canvas: any } {
-    const canvas = context.canvas;
-    const height = canvas.height;
-    const width = canvas.width;
-
-    // The overlay is a separate canvas stacked above the main render.
-    const overlay = $('<canvas>');
-    overlay.css('position', 'absolute');
-    overlay.css('left', 0);
-    overlay.css('top', 0);
-    overlay.addClass(overlay_class);
-
-    $(canvas).after(overlay);
-    const ctx = Vex.Flow.Renderer.getCanvasContext(overlay.get(0), width, height);
-    ctx.scale(scale, scale);
-
-    // Paper.js handles drawing for the overlay UI.
-    const ps = new paper.PaperScope();
-    ps.setup(overlay.get(0));
-
-    return { paper: ps, canvas: overlay.get(0) };
-  }
-
-  /**
-   * Remove playback controls from the overlay (used when re-rendering).
-   */
+  /** Remove the entire overlay when the Artist turns playback off. */
   removeControls(): void {
-    if (this.play_button) this.play_button.remove();
-    if (this.stop_button) this.stop_button.remove();
-    if (this.paper) this.paper.view.draw();
+    this.stop();
+    this.overlay?.remove();
+    this.overlay = undefined;
   }
 
-  /**
-   * Build the overlay UI and compute tick maps for playback.
-   * Design note: we compute tick maps from the render output for accuracy.
-   */
+  /** Release the timer, pending UI work, and attachment to the Artist. */
+  dispose(): void {
+    this.removeControls();
+    this.all_ticks = [];
+    if (this.artist.player === this) this.artist.attachPlayer(null);
+  }
+
+  /** Mount the transport above the latest score Canvas after each Artist draw. */
   render(): void {
-    this.reset();
-    const data = this.artist.getPlayerData();
-    this.scale = data.scale;
-
-    if (!this.paper) {
-      const overlay = this.getOverlay(data.context, data.scale, this.options.overlay_class);
-      this.paper = overlay.paper;
+    this.removeControls();
+    const canvas = this.artist.getPlayerData().context?.canvas;
+    if (!(canvas instanceof HTMLCanvasElement)) {
+      throw new Vex.RERR('PlayerError', 'The player requires a rendered Canvas score.');
     }
+    this.overlay = new PlayerOverlay(canvas, this.options.overlay_class, this.options.show_controls,
+      () => this.play(), () => this.stop());
+  }
 
-    // Basic overlay UI elements.
-    this.marker = new this.paper.Path.Rectangle(0, 0, 13, 85);
-    this.loading_message = new this.paper.PointText(35, 12);
-    this.loading_message.fontFamily = scoreFont;
-
-    if (this.options.show_controls) {
-      // Simple play/stop controls rendered with Paper.js.
-      this.play_button = new this.paper.Path.RegularPolygon(new this.paper.Point(25, 10), 3, 7, 7);
-      this.play_button.fillColor = '#396';
-      this.play_button.opacity = 0.8;
-      this.play_button.rotate(90);
-      this.play_button.onMouseUp = () => {
-        this.play();
-      };
-
-      this.stop_button = new this.paper.Path.Rectangle(3, 3, 10, 10);
-      this.stop_button.fillColor = '#396';
-      this.stop_button.opacity = 0.8;
-      this.stop_button.onMouseUp = () => {
-        this.stop();
-      };
-    }
-
-    this.paper.view.draw();
-    const staves = data.voices;
-
+  /** Rebuild the event map from the Artist's current voices at the start of each play. */
+  private prepareEvents(): void {
+    const tickNotes: Record<string, any> = {};
+    const staves = this.artist.getPlayerData().voices;
     // Build a flattened list of tick events to drive playback.
     let total_ticks = new this.Fraction(0, 1);
     staves.forEach((voice_group: any[]) => {
@@ -239,10 +179,10 @@ export default class Player {
             abs_tick.simplify();
             const key = abs_tick.toString();
 
-            if (_.has(this.tick_notes, key)) {
-              this.tick_notes[key].notes.push(note);
+            if (_.has(tickNotes, key)) {
+              tickNotes[key].notes.push(note);
             } else {
-              this.tick_notes[key] = {
+              tickNotes[key] = {
                 tick: abs_tick,
                 value: abs_tick.value(),
                 notes: [note],
@@ -262,19 +202,8 @@ export default class Player {
     });
 
     // Sort events by absolute tick for deterministic playback.
-    this.all_ticks = _.sortBy(_.values(this.tick_notes), (tick) => tick.value);
-    this.total_ticks = _.last(this.all_ticks);
+    this.all_ticks = _.sortBy(_.values(tickNotes), (tick) => tick.value);
     this.log(this.all_ticks);
-  }
-
-  /**
-   * Move the overlay marker to the given note position.
-   */
-  private updateMarker(x: number, y: number): void {
-    this.marker.fillColor = '#369';
-    this.marker.opacity = 0.2;
-    this.marker.setPosition(new this.paper.Point(x * this.scale, y * this.scale));
-    this.paper.view.draw();
   }
 
   /**
@@ -288,7 +217,7 @@ export default class Player {
     notes.forEach((note) => {
       const x = note.getAbsoluteX() + 4;
       const y = note.getStave().getYForLine(2);
-      if (this.paper) this.updateMarker(x, y);
+      this.overlay?.moveCursor(x, y);
       if (note.isRest()) return;
 
       const keys = note.getPlayNote();
@@ -300,7 +229,7 @@ export default class Player {
         const note_value = this.noteValues[noteName];
         if (!note_value) return;
 
-        const midi_note = (24 + (parseInt(octave, 10) * 12)) + note_value.int_val;
+        const midi_note = (24 + (parseInt(octave, 10) * 12)) + note_value.intVal;
         MIDI.noteOn(0, midi_note, 127, 0);
         MIDI.noteOff(0, midi_note, duration);
       });
@@ -337,8 +266,9 @@ export default class Player {
     this.log('Stop');
     // Reset playback cursor and UI state.
     if (this.interval_id) window.clearInterval(this.interval_id);
-    if (this.play_button) this.play_button.fillColor = '#396';
-    if (this.paper) this.paper.view.draw();
+    this.pendingLoad = undefined;
+    this.overlay?.setLoading(false);
+    this.overlay?.setPlaying(false);
     this.interval_id = null;
     this.current_ticks = 0;
     this.next_event_tick = 0;
@@ -352,10 +282,11 @@ export default class Player {
   private start(): void {
     this.stop();
     this.log('Start');
-    if (this.play_button) this.play_button.fillColor = '#a36';
+    this.prepareEvents();
+    if (!this.all_ticks.length) return;
+    this.overlay?.setPlaying(true);
     // Select instrument and schedule refresh ticks.
     MIDI.programChange(0, this.INSTRUMENTS[this.options.instrument]);
-    this.render();
     this.interval_id = window.setInterval(() => this.refresh(), this.refresh_rate);
   }
 
@@ -364,26 +295,29 @@ export default class Player {
    */
   play(): void {
     this.log('Play: ', this.refresh_rate, this.ticks_per_refresh);
-    if (Player.INSTRUMENTS_LOADED[this.options.instrument] && !this.loading) {
+    if (this.pendingLoad) return;
+    if (!this.overlay) this.render();
+    const instrument = this.options.instrument;
+    if (Player.INSTRUMENTS_LOADED[instrument]) {
       this.start();
-    } else {
-      this.log('Loading instruments...');
-      this.loading_message.content = 'Loading instruments...';
-      this.loading_message.fillColor = 'green';
-      this.loading = true;
-      this.paper.view.draw();
+      return;
+    }
 
-      // Load soundfonts on demand to keep initial render lightweight.
+    this.overlay.setLoading(true);
+    const loaded = () => {
+      Player.INSTRUMENTS_LOADED[instrument] = true;
+      if (this.pendingLoad === loaded) this.start();
+    };
+    this.pendingLoad = loaded;
+    try {
       MIDI.loadPlugin({
         soundfontUrl: this.options.soundfont_url,
-        instruments: [this.options.instrument],
-        callback: () => {
-          Player.INSTRUMENTS_LOADED[this.options.instrument] = true;
-          this.loading = false;
-          this.loading_message.content = '';
-          this.start();
-        },
+        instruments: [instrument],
+        callback: loaded,
       });
+    } catch (error) {
+      this.stop();
+      throw error;
     }
   }
 }

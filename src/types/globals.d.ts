@@ -7,8 +7,6 @@ declare const $: any;
 declare const QUnit: any;
 // MIDI.js global for playback.
 declare const MIDI: any;
-// Paper.js global for overlay rendering.
-declare const paper: any;
 
 // Build-time constants.
 // Build-time version string.

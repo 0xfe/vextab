@@ -29,6 +29,7 @@ Set beam options before the stave or voice they apply to. In automatic mode `bea
 - Fretted notes take their spelling from the tuning and key. Accidental memory follows written octave and musical time across voices. A barline resets it. An explicit sign stays with its written head, including a cautionary such as `B@~/4`. Fingering numbers refer to the authored chord order.
 - A bare annotation such as `$A$` is a chord label. Use `$A4$` or a fret/string override such as `$8/4$` to replace a fret. Upper tab labels share a baseline above the strings.
 - Timed chord changes on a `text` line can span a bar. The renderer supplies the bar spacing. An explicit `|text` still places text at the barline.
+- In fixed layout, write `options font-face="Times New Roman" font-style=bold` to set the font for text and annotations. Double quotes enclose a value on one line. Single-word values such as `font-face=Arial` can stay unquoted.
 - `##` lets the engraver place a rest. `#1#` selects the bottom staff line, and `#2#` selects the space above it. On a five-line staff, `:h #0#` and `:w #9#` place long rests on the lower and upper ledger lines. The same position works with a four-string tuning.
 
 ## Editing and redrawing

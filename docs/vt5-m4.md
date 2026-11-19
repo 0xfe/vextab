@@ -46,7 +46,9 @@ console.log(publication.pages.length, publication.diagnostics);
 
 The optional one-based `voice` selects that voice in every measure. Bar numbers, repeat boundaries, rehearsal marks and ties for the selected player are preserved. An absent voice has a located diagnostic. Omit `voice` for the staff with all its voices.
 
-For an editable embed, put VexTab in the host’s `textContent`, set `layout="flow" editor="true"`, then call `new Div(host)`. Use `run()` to flush an edit, `getReadingEvents()` for the current reading order and `selectError()` for a located diagnostic. Keep the return value of `getScore()` when selecting a source ID. Call `dispose()` before replacing an editor. The embedding workbench demonstrates two independent instances.
+For an editable embed, put VexTab in the host’s `textContent`, set `data-layout="flow" data-editor="true"`, then call `new Div(host)`. Use `run()` to flush an edit, `getReadingEvents()` for the current reading order and `selectError()` for a located diagnostic. Keep the return value of `getScore()` when selecting a source ID. Call `dispose()` before replacing an editor. The embedding workbench demonstrates two independent instances.
+
+Manual and automatic embeds accept `data-width`, `data-scale`, `data-renderer`, `data-layout`, `data-editor`, `data-show-errors`, `data-editor-width` and `data-editor-height`. A nonempty prefixed attribute takes precedence over its plain spelling. For editor dimensions, the hyphenated spelling takes precedence over `data-editor_width` or `data-editor_height`. Set `data-width="auto"` to follow the host width in flow layout.
 
 Start migration with a complete measure. Flow validates rhythm and wraps at barlines. Fixed layout supports free fragments and legacy technique commands. The SVG flow view requires scale 1. Academico is the default for score text, including chord names, lyrics and fret-frame captions. Author-specified text fonts still take precedence. Slash heads use Bravura’s stem anchors. [Upstream default-attachment report](https://github.com/vexflow/vexflow/issues/362)
 
