@@ -29,9 +29,10 @@ try {
 const browser = await chromium.launch(process.env.CHROME_BIN ? {executablePath:process.env.CHROME_BIN} : {channel:'chrome'});
 try {
   const page = await browser.newPage();
-  await page.setContent('<div id="manual"></div><div id="embed">stave\nnotes C/4</div><div class="vextab-auto">stave\nnotes G/4</div>');
+  await page.setContent('<div id="manual"></div><div id="embed" data-editor="true" data-editor-height="72">stave\nnotes C/4</div><div class="vextab-auto">stave\nnotes G/4</div>');
   await page.addScriptTag({path:join(cwd,'bundle.js')});
   await page.locator('#embed svg').waitFor();
+  assert.equal(await page.locator('#embed textarea').evaluate(el => el.style.height), '72px');
   assert.match(await page.locator('#manual').getAttribute('data-event'), /C 4/);
   assert.equal(await page.locator('.vextab-auto svg').count(), 0);
 } finally { await browser.close(); }

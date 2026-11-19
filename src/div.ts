@@ -19,6 +19,13 @@ import type { ParsedScore } from './score/model';
 declare const require: (asset: './vextab.css') => void;
 require('./vextab.css');
 
+/** Prefer standard data attributes, including the original editor dimension spellings. */
+function embedAttribute(host: HTMLElement, name: string, legacyName?: string): string | null {
+  return host.getAttribute(`data-${name}`)
+    || (legacyName ? host.getAttribute(`data-${legacyName}`) : null)
+    || host.getAttribute(name);
+}
+
 class Div {
   // Host element + renderer state.
   private sel: string | HTMLElement;
@@ -67,17 +74,18 @@ class Div {
       $(sel).css('position', 'relative');
     }
 
-    // Host sizing and renderer options from data attributes.
-    this.width = parseInt($(sel).attr('width'), 10) || 400;
-    this.scale = parseFloat($(sel).attr('scale')) || 1.0;
-    this.rendererBackend = $(sel).attr('renderer') || 'svg';
-    this.flow = $(sel).attr('layout') === 'flow';
+    const host = $(sel)[0] as HTMLElement;
+    const width = embedAttribute(host, 'width');
+    this.width = parseInt(width, 10) || 400;
+    this.scale = parseFloat(embedAttribute(host, 'scale')) || 1.0;
+    this.rendererBackend = embedAttribute(host, 'renderer') || 'svg';
+    this.flow = embedAttribute(host, 'layout') === 'flow';
+    host.classList.toggle('vextab-flow', this.flow);
 
-    // Editor properties.
-    this.editor = $(sel).attr('editor') || '';
-    this.show_errors = $(sel).attr('show-errors') || '';
-    this.editor_width = parseInt($(sel).attr('editor-width'), 10) || this.width;
-    this.editor_height = parseInt($(sel).attr('editor-height'), 10) || 200;
+    this.editor = embedAttribute(host, 'editor') || '';
+    this.show_errors = embedAttribute(host, 'show-errors') || '';
+    this.editor_width = parseInt(embedAttribute(host, 'editor-width', 'editor_width'), 10) || this.width;
+    this.editor_height = parseInt(embedAttribute(host, 'editor-height', 'editor_height'), 10) || 200;
 
     if (this.editor === 'true') {
       // Build editor UI and debounce renders to avoid thrashing.
@@ -113,8 +121,7 @@ class Div {
       this.parser = new VexTab(this.artist);
     }
 
-    const host = $(sel)[0] as HTMLElement;
-    const autoWidth = this.flow && (!host.hasAttribute('width') || host.getAttribute('width') === 'auto');
+    const autoWidth = this.flow && (width === null || width === 'auto');
     if (autoWidth && host.clientWidth > 20) this.width = host.clientWidth;
     this.redraw();
     // Embedded music fonts can finish after the first synchronous draw.
