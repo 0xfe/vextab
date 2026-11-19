@@ -10,7 +10,7 @@ VexTab parses notation and draws SVG or Canvas in the host page. Webpack compile
 
 The guide stores edited source in local browser storage and falls back to memory when storage is disabled. Example links contain a score ID. Saved files and clipboard copies contain the current source. Flow requires complete measures unless the author declares a pickup or fragment. This validation does not bound resource use.
 
-The optional player uses MIDI.js, Paper.js, and soundfonts supplied by the host application. The host controls their versions and where the player loads soundfonts.
+The optional player draws its controls with browser APIs. The host supplies MIDI.js and soundfonts. The host controls their versions and where the player loads soundfonts.
 
 ## Dependency and build checks
 
