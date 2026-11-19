@@ -1,6 +1,6 @@
 # VexTab
 
-VexTab is a text language for writing guitar tablature and standard notation. The VexTab 5 development build includes an editable user guide, responsive scores and independent printed parts.
+VexTab is a text language for writing guitar tablature and standard notation. VexTab 5 includes an editable user guide, responsive scores and independent printed parts.
 
 ## Play your first score
 

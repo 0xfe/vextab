@@ -69,6 +69,7 @@ QUnit.module('Engraving', () => {
         const x = el.x.baseVal.getItem(0).value;
         const y = el.y.baseVal.getItem(0).value;
         const gap = (el.previousElementSibling as SVGRectElement).getBBox();
+        assert.equal(native.fontSizeInPoints, 11, layout + ' upstream fret size');
         assert.closeTo(parseFloat(getComputedStyle(el).fontSize), native.fontSizeInPixels, 0.01, layout);
         assert.ok(x - metrics.actualBoundingBoxLeft >= gap.x + 1, layout + ' left gap');
         assert.ok(x + metrics.actualBoundingBoxRight <= gap.x + gap.width - 1, layout + ' right gap');

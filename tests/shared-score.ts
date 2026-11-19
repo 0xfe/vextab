@@ -78,7 +78,7 @@ QUnit.module('Shared score', () => {
     assert.equal(wide.composition.sheet.getRows().length, 1);
     assert.equal(narrow.composition.sheet.getRows().length, 2);
     assert.deepEqual(narrow.tabRegions.map(r => r.row), [0,1,0,1]);
-    assert.equal(narrow.composition.sheet.getContinuousLayout().fragments.length, 4);
+    assert.equal(narrow.composition.sheet.getContinuousLayout().fragments.length, 8);
     const event = events[0];
     for (const view of [wide, narrow]) {
       const projections = view.navigation.events.filter(e => e.source === event.id);
@@ -150,15 +150,19 @@ QUnit.module('Shared score', () => {
     }
     const target = host();
     const src = phrase.replace('time=4/4', 'time=4/4 show-time=false');
-    renderScorePart(target, parseScore(phrase), 'notation');
+    const tab = renderScorePart(target, parseScore(phrase), 'tab');
+    const metadata = JSON.parse(tab.publication.pages[0].svg.querySelector('metadata').textContent);
+    assert.deepEqual(metadata.spans.map(span => span.strings), [[3], [2]]);
+    renderScorePart(target, parseScore(src), 'notation');
+    assert.equal(target.querySelectorAll('.vf-timesignature').length, 0);
+    const dotted = 'stave time=3/4\nnotes :hd C/4 !chord "C"! !lyric "home"! =||';
+    renderScorePart(target, parseScore(dotted), 'notation');
+    assert.ok(target.textContent.includes('home'));
+    assert.ok(target.textContent.includes('C'));
     const page = target.firstChild;
-    assert.throws(() => renderScorePart(target, parseScore(phrase), 'tab'),
-      (e: ScoreError) => e.code === 'fixed-layout' && excerpt(phrase, e.range) === 'T(2/3.1/2)');
-    assert.throws(() => renderScorePart(target, parseScore(src), 'notation'),
-      (e: ScoreError) => e.code === 'fixed-layout' && excerpt(src, e.range) === 'show-time=false');
-    const dotted = 'stave time=3/4\nnotes :hd C/4';
-    assert.throws(() => renderScorePart(target, parseScore(dotted), 'notation'),
-      (e: ScoreError) => e.code === 'fixed-layout' && excerpt(dotted, e.range) === ':hd');
+    const silent = 'stave time=4/4\nnotes :w ## !silent!';
+    assert.throws(() => renderScorePart(target, parseScore(silent), 'notation'),
+      (e: ScoreError) => e.code === 'fixed-layout' && excerpt(silent, e.range) === '!silent!');
     assert.strictEqual(target.firstChild, page);
   });
 

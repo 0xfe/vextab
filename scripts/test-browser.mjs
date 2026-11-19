@@ -1,12 +1,13 @@
-// Run the built QUnit suite and check the interactive playground in headless Chrome.
+// Run the built QUnit suite and check the interactive playground in the selected browser.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import manifest from '../package.json' with { type: 'json' };
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { testDisplay } from './test-display.mjs';
 import { testGuide } from './test-guide.mjs';
-import { chromium } from 'playwright-core';
+import { chromium, firefox, webkit } from 'playwright-core';
 
 // Release checks point the same suite at the files extracted from the package.
 const dist = resolve(process.argv[2] ?? 'dist');
@@ -18,12 +19,15 @@ assert.throws(() => parseScore(sample + ' ?'), error =>
 const note = parseScore(sample).measures[0].voices[0].events[0];
 assert.equal(sample.slice(note.range.start, note.range.end), 'C/4');
 assert.equal(note.duration, '1/4');
-const browser = await chromium.launch(process.env.CHROME_BIN
-  ? { executablePath: process.env.CHROME_BIN }
-  : { channel: 'chrome' });
+const engine = process.env.VEXTAB_BROWSER ?? 'chromium';
+const browsers = { chromium, firefox, webkit };
+assert.ok(Object.hasOwn(browsers, engine), 'Unknown VEXTAB_BROWSER: ' + engine);
+const chrome = process.env.CHROME_BIN ? { executablePath: process.env.CHROME_BIN } : { channel: 'chrome' };
+const browser = await browsers[engine].launch(engine === 'chromium' ? chrome : {});
 
 try {
-  const page = await browser.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
 
@@ -122,7 +126,8 @@ try {
   await waitForScoreWidth(360);
   assert.ok(await scoreHeight() > wideHeight);
   await tabs.check();
-  assert.ok(await page.locator('.vf-tab-ending').count() >= 2);
+  const endingLabels = await page.locator('#score svg text').allTextContents();
+  assert.ok(endingLabels.includes('1.') && endingLabels.includes('2.'), 'Both native tab endings are drawn');
   const draft = (await source.inputValue()).replace('capo=0', 'capo=2');
   await source.fill(draft);
   await select.selectOption('lead');
@@ -140,6 +145,7 @@ try {
   assert.equal(await scoreHeight(), wideHeight);
 
   await testGuide(page, dist);
+  await testDisplay(browser, dist, engine);
 
   // Older pages load the VexTabDiv global and use a different class and attributes.
   await page.goto('about:blank');

@@ -73,7 +73,7 @@ export const lessons: Lesson[] = [
     edit:'Insert a new tabstave notation=true time=2/4 line before the final notes line. Read the second ending on its own row and select its note.' },
   { id:'guitar-duet', title:'Guitar duet for print', source:duet, views:staff, demo:true,
     goal:'Read the waltz as two players on one staff. Guitar one carries the tied melody. Guitar two plays the lower line.',
-    edit:'Choose Guitar 2, then switch between A4 and Letter. Find the opening G3 and compare its part with Guitar 1.' },
+    edit:'Choose Guitar 2 and find its opening G3. Compare it with the full score, switch between A4 and Letter, then save a page as SVG.' },
   { id:'embed-workbench', title:'Two independent editors', source:workbench, views:guitar, demo:true,
     goal:'Two embeds start with the same music. Each owns its source, score and errors.',
     edit:'Break a bar in the first editor. Change a fret in the second, then repair the first. Resize the window and compare both.' },

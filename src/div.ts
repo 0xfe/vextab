@@ -29,6 +29,7 @@ class Div {
   private flow: boolean;
   private part: Part = 'score';
   private observer?: ResizeObserver;
+  private resizeFrame?: number;
   private disposed = false;
   private composing = false;
   private diagnostic?: SourceRange;
@@ -119,14 +120,18 @@ class Div {
     this.redraw();
     // Embedded music fonts can finish after the first synchronous draw.
     if (document.fonts.status === 'loading') {
-      void document.fonts.ready.then(() => { if (!this.disposed) this.draw(); });
+      void document.fonts.ready.then(() => { if (!this.disposed) this.redraw(); });
     }
     if (autoWidth) {
       this.observer = new ResizeObserver(([entry]) => {
         const width = Math.floor(entry.contentRect.width);
+        // A new score changes host height. Draw outside the observer delivery cycle.
+        cancelAnimationFrame(this.resizeFrame);
         if (width > 20 && width !== this.width) {
-          this.width = width;
-          this.draw();
+          this.resizeFrame = requestAnimationFrame(() => {
+            this.width = width;
+            this.draw();
+          });
         }
       });
       this.observer.observe(host);
@@ -137,6 +142,7 @@ class Div {
   dispose(): void {
     this.disposed = true;
     this.observer?.disconnect();
+    cancelAnimationFrame(this.resizeFrame);
     window.clearTimeout(this.timeoutID);
     this.text_area?.off('.vextab');
   }
@@ -213,6 +219,7 @@ class Div {
   setWidth(width: number): this {
     if (!this.flow) throw new Error('setWidth requires layout="flow"');
     this.observer?.disconnect();
+    cancelAnimationFrame(this.resizeFrame);
     this.width = width;
     return this.draw();
   }

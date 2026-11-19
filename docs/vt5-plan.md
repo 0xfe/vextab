@@ -90,6 +90,8 @@ Keep Jison and the existing fret/string notation. Extend the current semantic co
 
 ## M5 · Qualify the score, print output and release artifacts
 
+[5.0.0 qualification results and public rollout](vt5-m5.md)
+
 1. Produce screen, full-score and part views of the duet from one source via `Publication`. For the print document supply matching outline fonts. Check margins, page turns, first/last bars, title and page count on A4 and Letter. Open the exported SVG/print document offline. Surface missing-font or overflow diagnostics before offering a finished export. [Publication workflow](https://github.com/vexflow/vexflow/blob/5.4.0/docs/vf6/m5.md)
 2. Run representative notation and integration cases on Chromium, Firefox and WebKit, SVG and Canvas. Measure attack alignment, head/sign associations, span fragments and ink inside the viewport. Use tutorial step 11 at 650 px as the clipping regression. Exercise desktop/mobile widths, device scale 2, repeated resizes, paste/IME, mixed valid/invalid edits and two simultaneous embeds. Keep exact pixel comparisons limited to a pinned browser/font configuration. Spot-check the reader with a real screen reader.
 3. Compare the short exercise and long study with M0 for first render, warm edit, reflow, bundle size and retained voices/listeners. Investigate regressions against the same hardware and font state. Check package import, legacy globals and tutorial examples from the extracted candidate tarball.

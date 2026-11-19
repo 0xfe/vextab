@@ -1,36 +1,10 @@
 // Note creation and expansion logic for tab/notation, including chords and rests.
-import { slashEngraving } from '../score/engraving';
 import { Accidental, Fraction, Music, StaveNote, WrittenAccidentalState } from 'vexflow';
 import Vex from '../vexflow';
 import { spellFret } from '../score/music';
 import * as _ from '../utils';
 import type Artist from './Artist';
 import type { StaveGroup } from './Artist';
-
-/** VexFlow supplies dedicated SMuFL glyphs for long rests on a ledger line. */
-class PositionedRest extends StaveNote {
-  private writtenLine?: number;
-
-  /** Keep a specified line when VexFlow aligns automatic rests in other voices. */
-  positionOn(line: number): void {
-    this.writtenLine = line;
-    this.setKeyLine(0, line);
-  }
-
-  override setKeyLine(index: number, line: number): this {
-    return super.setKeyLine(index, this.writtenLine ?? line);
-  }
-
-  override buildNoteHeads() {
-    const heads = super.buildNoteHeads();
-    const line = this.getKeyLine(0);
-    if (line <= 5 - (this.getStave()?.getNumLines() ?? 5) || line >= 6) {
-      if (this.getDuration() === 'w' || this.getDuration() === '1') heads[0].setText('\uE4F4');
-      if (this.getDuration() === 'h' || this.getDuration() === '2') heads[0].setText('\uE4F5');
-    }
-    return heads;
-  }
-}
 
 /** A written sign belongs to one head, even if engraving reorders the chord. */
 interface HeadSign {
@@ -95,7 +69,6 @@ export class NoteBuilder {
       keys: params.spec,
       duration: this.artist.current_duration,
       type: this.artist.current_head,
-      engraving: slashEngraving(this.artist.current_head === 's'),
       clef: this.artist.current_clef,
       autoStem: true,
     });
@@ -228,7 +201,7 @@ export class NoteBuilder {
     this.artist.stavesBuilder.reserveTabRhythmSpace();
     const positioned = params.explicit || Number(params.position) !== 0;
     const makeRest = (target: any) => {
-      const rest = new PositionedRest({ keys: ['r/4'], duration: this.artist.current_duration, type: 'r' });
+      const rest = new StaveNote({ keys: ['r/4'], duration: this.artist.current_duration, type: 'r' });
       rest.setStave(target);
       if (positioned) {
         // Positions 1–8 ascend from the bottom line in half-spaces.
@@ -240,7 +213,7 @@ export class NoteBuilder {
         let line = bottom + (position - 1) / 2;
         if (position <= 0) line = bottom - 1 + position / 2;
         if (position >= above) line = 6 + (position - above) / 2;
-        rest.positionOn(line);
+        rest.setRestLine(line);
       }
       this.attachDots(rest);
       return rest;

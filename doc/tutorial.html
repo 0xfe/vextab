@@ -1,5 +1,6 @@
 <html>
 <head>
+  <meta charset="utf-8">
   <title>VexTab Tutorial</title>
   <link href='https://fonts.googleapis.com/css?family=OFL+Sorts+Mill+Goudy+TT|Yanone+Kaffeesatz|Tangerine'
    rel='stylesheet' type='text/css'>
@@ -215,7 +216,7 @@ notes 4-5-6b7v/3 10/1 | 5d-4u-Xd/3 2v/2</div>
     <h2>Step 7: Add some chords</h2>
     <div class="description">
       To render chords, group notes in parenthesis and separate each
-      <code>string/fret</code> (or <code>note/octave</code>) combination with a period. E.g., <code>(4/5.5/6)</code> or <code>C/4.E/4</code>.
+      <code>fret/string</code> (or <code>note/octave</code>) combination with a period. E.g., <code>(4/5.5/6)</code> or <code>C/4.E/4</code>.
       <p/>
       For tablature, you can bend, slide, etc. individual notes in a chord just like you would for single notes.
     </div>
@@ -333,7 +334,7 @@ notes :8 7/4 $.italic.sweep$ 6/3 5/2 3v/1 :q 7v/5 $.Arial-10-bold.P.H$ :8 3s5/5<
 
 <h2>Step Eleven: Staccatos, Fermatas, and more!</h2>
     <div class="description">
-      Add beautiful articulations to your scores using the <code>$.ariculation/position.$</code> syntax.
+      Add beautiful articulations to your scores using the <code>$.articulation/position.$</code> syntax.
       <p/>
       Articulations have different codes, e.g., <code>a.</code> for staccato, <code>a@a</code> for up-fermata, etc. They can be positioned on <code>top</code> or on the <code>bottom</code>.
       <p/>
@@ -350,14 +351,20 @@ tabstave notation=true tablature=false
   notes C/4 $.a./bottom.$
   notes E/4 $.av/bottom.$
   notes G/4 $.a>/bottom.$
-  notes B/4 $.a-/bottom.$
-  notes C/5 $.a^/top.$
-  notes E/5 $.a+/top.$
-  notes G/5 $.ao/top.$
+  text :q,.-1,.strict,Staccato,Staccatissimo,Accent
+  text ++,.12,.font=courier-12-,:q,a.,av,a>
 
-  text :q,.-1,.strict,Stacatto,Staccatissimo
-  text Accent,Tenuto,Marcato,LH pizzicato,Snap pizzicato
-  text ++,.12,.font=courier-12-,:q,a.,av,a>,a-,a^,a+,ao
+options space=100 font-face=times font-size=10 font-style=italic
+tabstave notation=true tablature=false
+  notes :q B/4 $.a-/bottom.$ C/5 $.a^/top.$
+  text :q,.-1,.strict,Tenuto,Marcato
+  text ++,.12,.font=courier-12-,:q,a-,a^
+
+options space=100 font-face=times font-size=10 font-style=italic
+tabstave notation=true tablature=false
+  notes :q E/5 $.a+/top.$ G/5 $.ao/top.$
+  text :q,.-1,.strict,LH pizzicato,Snap pizzicato
+  text ++,.12,.font=courier-12-,:q,a+,ao
 
 options space=120 font-style=italic
         font-face=times font-size=10
@@ -367,12 +374,14 @@ tabstave notation=true tablature=false
   notes C/4 $.ah/bottom.$
   notes E/4 $.a@a/top.$
   notes G/4 $.a@u/bottom.$
-  notes B/4 $.a|/bottom.$
-  notes C/5 $.am/top.$
+  text :q,.-1,.strict,Open Note,Up Fermata,Down Fermata
+  text ++,.12,.font=courier-12-,:q,ah,a@a,a@u
 
-  text :q,.-1,.strict,Open Note,Up Fermata
-  text Down Fermata,Bow Up,Bow Down
-  text ++,.12,.font=courier-12-,:q,ah,a@a,a@u,a|,am
+options space=100 font-face=times font-size=10 font-style=italic
+tabstave notation=true tablature=false
+  notes :q B/4 $.a|/bottom.$ C/5 $.am/top.$
+  text :q,.-1,.strict,Bow Up,Bow Down
+  text ++,.12,.font=courier-12-,:q,a|,am
 
 options space=40
 </div>

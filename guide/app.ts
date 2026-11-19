@@ -15,6 +15,9 @@ let partner: Div;
 let input: HTMLTextAreaElement;
 let readId: string;
 let routeRevision = 0;
+let printRevision = 0;
+let printEdition: { html: string; pages: string[]; filename: string };
+
 
 /** Persistent storage can be disabled by a host. The in-page draft still survives navigation. */
 function draft(id: string, value?: string): string | undefined {
@@ -46,21 +49,39 @@ function read(step = 0): void {
   button('select').disabled = !event;
 }
 
-function printPart(): void {
+/** Prepare a portable edition. A late font load cannot restore an obsolete preview. */
+async function printPart(): Promise<void> {
+  const revision = ++printRevision;
+  printEdition = undefined;
+  for (const id of ['print', 'save-print', 'save-svg']) button(id).disabled = true;
+  el('svg-page-label').hidden = true;
   const part = el('part');
   part.replaceChildren();
-  button('print').disabled = true;
   el('print-status').textContent = '';
   if (lesson.id !== 'guitar-duet') return;
   const score = editor?.getScore();
   if (!score) return;
-  const voice = Number(choice('player').value);
+  const voice = choice('player').value === 'score' ? undefined : Number(choice('player').value);
+  const paper = choice('paper').value as 'A4' | 'Letter';
   try {
-    const result = renderScorePart(part, score, 'notation', { voice, title: 'Guitar duet · Guitar ' + voice,
-      paper: choice('paper').value as 'A4' | 'Letter' });
-    el('print-status').textContent = result.publication.diagnostics.map(d => d.detail).join(' ');
-    button('print').disabled = !!result.publication.diagnostics.length;
-  } catch (error) { el('print-status').textContent = error.message; }
+    const title = voice ? 'Guitar duet · Guitar ' + voice : 'Guitar duet · Full score';
+    const { publication } = renderScorePart(part, score, 'notation', { voice, title, paper });
+    if (publication.diagnostics.length) {
+      el('print-status').textContent = publication.diagnostics.map(d => d.detail).join(' ');
+      return;
+    }
+    const { faces } = await import(/* webpackChunkName: "print-outlines" */ './outlines');
+    if (revision !== printRevision) return;
+    const html = publication.toPrintHTML(faces);
+    const document = new DOMParser().parseFromString(html, 'text/html');
+    const pages = Array.from(document.querySelectorAll('body > svg'), svg => new XMLSerializer().serializeToString(svg));
+    printEdition = { html, pages, filename: 'guitar-duet-' + (voice ?? 'score') + '-' + paper };
+    choice('svg-page').replaceChildren(...pages.map((_, i) => new Option(String(i + 1), String(i))));
+    el('svg-page-label').hidden = pages.length < 2;
+    for (const id of ['print', 'save-print', 'save-svg']) button(id).disabled = false;
+  } catch (error) {
+    if (revision === printRevision) el('print-status').textContent = error.message;
+  }
 }
 
 function refresh(): void {
@@ -152,6 +173,8 @@ function showIndex(isReference: boolean): void {
 /** Hash URLs work offline and on a static server. The plain triplet anchor predates this guide. */
 function navigate(): void {
   routeRevision++;
+  printRevision++;
+  printEdition = undefined;
   editor?.dispose();
   partner?.dispose();
   editor = partner = undefined;
@@ -194,11 +217,21 @@ button('copy').onclick = async () => {
   try { await navigator.clipboard.writeText(input.value); if (revision === routeRevision) el('notice').textContent = 'Source copied.'; }
   catch { if (revision === routeRevision) { input.select(); el('notice').textContent = 'Source selected. Use your copy shortcut.'; } }
 };
-button('save').onclick = () => {
-  const url = URL.createObjectURL(new Blob([input.value], { type:'text/plain;charset=utf-8' }));
-  const a = link(lesson.title, url);
-  a.download = lesson.id + '.vextab'; a.click();
+/** Save user-selected artifacts as local files, including when the guide runs offline. */
+function download(content: string, type: string, filename: string): void {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = link(filename, url);
+  a.download = filename;
+  a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+button('save').onclick = () => download(input.value, 'text/plain;charset=utf-8', lesson.id + '.vextab');
+button('save-print').onclick = () => {
+  if (printEdition) download(printEdition.html, 'text/html;charset=utf-8', printEdition.filename + '.html');
+};
+button('save-svg').onclick = () => {
+  const page = Number(choice('svg-page').value);
+  if (printEdition) download(printEdition.pages[page], 'image/svg+xml', printEdition.filename + '-' + (page + 1) + '.svg');
 };
 el<HTMLInputElement>('open').onchange = async event => {
   const picker = event.currentTarget as HTMLInputElement;
@@ -209,12 +242,21 @@ el<HTMLInputElement>('open').onchange = async event => {
   picker.value = '';
 };
 choice('player').onchange = choice('paper').onchange = printPart;
-button('print').onclick = () => { const page = document.createElement('style');
-  page.textContent = '@page { size: ' + choice('paper').value + '; margin: 0; }';
-  document.head.append(page);
-  document.body.classList.add('print-part');
-  window.addEventListener('afterprint', () => { page.remove(); document.body.classList.remove('print-part'); }, { once: true });
-  window.print(); };
+// Print the same outlined pages that the reader can download and reopen offline.
+button('print').onclick = () => {
+  if (!printEdition) return;
+  const frame = document.createElement('iframe');
+  frame.title = 'Print guitar duet';
+  frame.style.cssText = 'position:fixed;width:0;height:0;border:0';
+  frame.onload = () => {
+    const child = frame.contentWindow;
+    child.addEventListener('afterprint', () => frame.remove(), { once: true });
+    child.focus();
+    child.print();
+  };
+  frame.srcdoc = printEdition.html;
+  document.body.append(frame);
+};
 window.addEventListener('keydown', event => {
   if (!el('lesson').hidden && (event.metaKey || event.ctrlKey) && event.altKey && event.code === 'KeyR') {
     event.preventDefault(); button('reset').click();

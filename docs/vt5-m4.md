@@ -23,7 +23,7 @@ The detailed references cover [rhythm and fixed-layout syntax](vt5-m1.md), [meas
 - **Reset example** or **Ctrl/Command+Alt+R** restores the current example. The guide keeps a draft per score in local storage, falling back to memory if storage is unavailable. **Copy source**, **Save source** and **Open source** work on the current text. Opening a file replaces the current lesson’s draft.
 - In flow lessons, **Previous event** and **Next event** announce the measure, staff, voice, pitch or string and duration. **Select source** highlights the event in the editor. Switching view or width recomputes the geometry. Editing invalidates the old selection.
 - The guide follows the system’s dark appearance. Paper previews and browser printing use white pages. The fixed Canvas embed exposes a text summary of the staves, voices and attacks to assistive technology.
-- In the duet, two numbered voices represent the players. Choose **Guitar 2**, select **A4** or **Letter** and print that part. The preview uses the current score. An invalid edit clears it. The browser print dialog controls the physical printer.
+- In the duet, two numbered voices represent the players. Choose **Full score**, **Guitar 1**, or **Guitar 2**, then choose **A4** or **Letter**. Print the edition, save the complete print document as HTML, or save one page as SVG. Both downloads contain outlined music and text and open offline. An invalid edit clears the previous edition.
 
 ## Embed and migrate
 
