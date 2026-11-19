@@ -30,10 +30,11 @@
         <div class="actions"><button id="previous">Previous event</button><button id="next">Next event</button><button id="select">Select source</button></div>
       </section>
       <section id="workbench" hidden><h2>Second editor</h2><div id="second"></div></section>
-      <section id="printing" hidden><h2>Engrave a part</h2><div class="toolbar">
-        <label>Player <select id="player"><option value="1">Guitar 1</option><option value="2">Guitar 2</option></select></label>
+      <section id="printing" hidden><h2>Engrave the duet</h2><div class="toolbar">
+        <label>Edition <select id="player"><option value="1">Guitar 1</option><option value="2">Guitar 2</option><option value="score">Full score</option></select></label>
         <label>Paper <select id="paper"><option>A4</option><option>Letter</option></select></label>
-        <button id="print" disabled>Print part</button></div><p id="print-status" role="status"></p><div id="part"></div>
+        <button id="print" disabled>Print</button><button id="save-print" disabled>Save print HTML</button>
+        <label id="svg-page-label" hidden>Page <select id="svg-page"></select></label><button id="save-svg" disabled>Save SVG</button></div><p id="print-status" role="status"></p><div id="part"></div>
       </section>
       <section class="exercise"><h2>Try it</h2><p id="exercise"></p></section>
       <footer><a id="original">Open original source</a><a id="play"></a></footer>

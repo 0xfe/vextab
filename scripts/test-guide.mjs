@@ -70,7 +70,10 @@ export async function testGuide(page, dist) {
 
   // A composing editor must not run the partial syllable after the ordinary debounce.
   await source.dispatchEvent('compositionstart');
-  await source.fill(valid + '?');
+  await source.evaluate((element, text) => {
+    element.value = text;
+    element.dispatchEvent(new InputEvent('input', { bubbles:true, isComposing:true, inputType:'insertCompositionText' }));
+  }, valid + '?');
   await page.waitForTimeout(325);
   assert.equal(await status.textContent(), '');
   await source.dispatchEvent('compositionend');
@@ -95,7 +98,43 @@ export async function testGuide(page, dist) {
   const a4 = await part.getAttribute('viewBox');
   await page.locator('#paper').selectOption('Letter');
   assert.notEqual(await part.getAttribute('viewBox'), a4);
-  assert.ok(await page.locator('#print').isEnabled());
+  await page.waitForFunction(() => !document.querySelector('#print').disabled);
+  await page.locator('#player').selectOption('score');
+  const full = await metadata();
+  assert.equal(full.events.length, upper.events.length + lower.events.length);
+  assert.ok(full.spans.some(s => s.kind === 'tie'));
+  // The canonical four-bar duet fits a single page in each of its six editions.
+  for (const paper of ['A4', 'Letter']) {
+    await page.locator('#paper').selectOption(paper);
+    for (const [player, expected] of [['1', upper], ['2', lower], ['score', full]]) {
+      await page.locator('#player').selectOption(player);
+      await page.waitForFunction(() => !document.querySelector('#save-print').disabled);
+      assert.equal(await part.count(), 1);
+      const current = await metadata();
+      assert.deepEqual(current.events.map(e => [e.measure, e.keys]), expected.events.map(e => [e.measure, e.keys]));
+      assert.equal(current.events[0].measure, 1);
+      assert.equal(current.events.at(-1).measure, 4);
+    }
+  }
+  const exportMetadata = await metadata();
+  for (const [button, ext] of [['save-print','html'], ['save-svg','svg']]) {
+    const pending = page.waitForEvent('download');
+    await page.locator('#' + button).click();
+    const file = await pending;
+    assert.equal(file.suggestedFilename(), 'guitar-duet-score-Letter' + (ext === 'svg' ? '-1' : '') + '.' + ext);
+    const markup = await readFile(await file.path(), 'utf8');
+    assert.match(markup, /<path/);
+    assert.match(markup, /<metadata/);
+    assert.doesNotMatch(markup, /<text[ >]|<script[ >]|<link[ >]/);
+    const offline = await page.context().newPage();
+    try {
+      await offline.route(/^https?:/, request => request.abort());
+      await offline.goto('data:' + (ext === 'svg' ? 'image/svg+xml' : 'text/html') + ';charset=utf-8,' + encodeURIComponent(markup));
+      assert.equal(await offline.locator('parsererror').count(), 0);
+      const firstPage = JSON.parse(await offline.locator('svg metadata').first().textContent());
+      assert.deepEqual(firstPage.events, exportMetadata.events);
+    } finally { await offline.close(); }
+  }
   await source.fill('?');
   assert.equal(await part.count(), 0);
   await page.locator('#reset').click();
@@ -118,7 +157,11 @@ export async function testGuide(page, dist) {
   await page.emulateMedia({colorScheme:'dark'});
   await page.waitForFunction(() => document.querySelector('#score svg').getBoundingClientRect().width < 360);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-  assert.equal(await score.locator('.vex-canvas').evaluate(n => getComputedStyle(n).filter), 'invert(1)');
+  const paperStyle = () => score.locator('.vex-canvas').evaluate(n => {
+    const style = getComputedStyle(n);
+    return [style.filter, style.backgroundColor, style.color];
+  });
+  assert.deepEqual(await paperStyle(), ['none', 'rgb(255, 255, 255)', 'rgb(0, 0, 0)']);
   await page.emulateMedia({ media:'print', colorScheme:'dark' });
   assert.equal(await score.locator('.vex-canvas').evaluate(n => getComputedStyle(n).filter), 'none');
   await page.emulateMedia({ media:'screen', colorScheme:'light' });

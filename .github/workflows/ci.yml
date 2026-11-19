@@ -40,6 +40,12 @@ jobs:
           node scripts/test-browser.mjs "$RUNNER_TEMP/unpacked/package/dist"
           node scripts/test-consumer.mjs "$RUNNER_TEMP"/assets/*.tgz
           npm run test:baseline -- "$RUNNER_TEMP/unpacked/package/dist"
+      - name: Check the release guide in Firefox and WebKit
+        if: github.ref_type == 'tag'
+        run: |
+          npx --no-install playwright-core install --with-deps firefox webkit
+          VEXTAB_BROWSER=firefox node scripts/test-browser.mjs "$RUNNER_TEMP/unpacked/package/dist"
+          VEXTAB_BROWSER=webkit node scripts/test-browser.mjs "$RUNNER_TEMP/unpacked/package/dist"
       - name: Prepare standalone downloads and checksums
         if: github.ref_type == 'tag'
         run: |

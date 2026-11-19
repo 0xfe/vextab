@@ -40,6 +40,10 @@ module.exports = (env = {}) => {
       new HtmlWebpackPlugin({ template: './tests/playground.html', filename: 'playground.html', chunks: ['playground'] }),
       new HtmlWebpackPlugin({ template: './static/div.html', filename: 'static/div.html', chunks: ['div'] }),
       new CopyPlugin({ patterns: [
+        ...['bravura', 'academico'].map(face => ({
+          from: require.resolve('@vexflow-fonts/' + face + '/LICENSE.txt'),
+          to: 'guide/licenses/' + face + '.txt',
+        })),
         { from: 'guide/scores', to: 'guide/scores' },
         { from: 'doc/vextab.css', to: 'vextab.css' },
         { from: require.resolve('qunit'), to: 'qunit.js' },
@@ -50,6 +54,7 @@ module.exports = (env = {}) => {
     module: { rules: [
       // A standalone parser needs VexFlow's music tables but never loads engraving fonts.
       { issuerLayer: 'parser', resolve: { alias: { 'vexflow$': 'vexflow/core' } } },
+      { test: /\.otf$/, type: 'asset/bytes' },
       { test: /\.vextab$/, type: 'asset/source' },
       { test: /\.ts$/, loader: 'esbuild-loader', options: { target: 'es2019' } },
       { test: /\.jison$/, loader: path.resolve(__dirname, 'scripts/jison-loader.cjs') },

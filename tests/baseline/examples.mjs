@@ -22,7 +22,7 @@ const pages = [
     'Read the duration changes within the tapped slide on string four.',
     'Match Fi, Ga and Ro to the three notes in the triplet.',
     'Read the A7#9 label with the opening chord and sweep with the upper strings.',
-    'Find each articulation beside its named attack, including Marcato. Known label overflow at 650 px.',
+    'Find each articulation beside its named attack, including Marcato.',
     'Read G Minor and A Major over their respective half-bar spans.',
     'Follow the eight solfège syllables on the rising scale.',
     'Change chord symbols by half bars and keep the second text line distinct.',
@@ -70,7 +70,7 @@ async function serveExamples(page, dist) {
 }
 
 // Save every source with its page and example number so a failure is reproducible.
-export async function runExamples(browser, dist) {
+export async function runExamples(browser, dist, verifyInk) {
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', err => errors.push(err.message));
@@ -82,6 +82,17 @@ export async function runExamples(browser, dist) {
       await page.goto('https://examples.test/' + path);
       await page.locator(selector).nth(count - 1).waitFor({ state: 'attached' });
       await page.evaluate(() => document.fonts.ready);
+      if (verifyInk && path === 'doc/tutorial.html') {
+        const labels = await page.locator(selector).nth(14).evaluate(svg => {
+          const { left, right, width } = svg.getBoundingClientRect();
+          return { width, clipped: [...svg.querySelectorAll('text')].filter(text => {
+            const ink = text.getBoundingClientRect();
+            return ink.left < left || ink.right > right;
+          }).map(text => text.textContent) };
+        });
+        assert.equal(labels.width, 650);
+        assert.deepEqual(labels.clipped, [], 'Step 11 articulation labels must fit the printed staff');
+      }
       const scores = await page.locator(selector).evaluateAll(surfaces => surfaces.map(surface => {
         const host = surface.closest('.vex-tabdiv, .vextab-auto');
         const source = host?.querySelector('textarea')?.value ?? window.exampleSource;

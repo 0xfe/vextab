@@ -12,7 +12,7 @@ nvm use
 npm ci
 ```
 
-The browser tests use the installed Chrome. To use another Chrome or Chromium executable, set `CHROME_BIN` to its full path.
+The browser tests default to the installed Chrome. To use another Chrome or Chromium executable, set `CHROME_BIN` to its full path.
 
 ## Build and develop
 
@@ -42,6 +42,14 @@ npm run build
 ```
 
 Run these commands in order because the builds share `dist/`. The browser suite covers parsing, notation, the SVG playground, editor errors, and the legacy Canvas renderer. It also checks the DOM-free parser, reflow, independent part metadata, and keyboard source selection. [Shared-score API and coverage](vt5-m2.md)
+
+For the M5 browser checks, install the engines that match the locked Playwright version. Numeric release tags run the same suite on the extracted package in all three engines.
+
+```sh
+npx --no-install playwright-core install firefox webkit
+VEXTAB_BROWSER=firefox node scripts/test-browser.mjs
+VEXTAB_BROWSER=webkit node scripts/test-browser.mjs
+```
 
 Edit guide prose, routes and reference entries in `guide/catalog.ts`. Use stable score IDs for guide, playground and original-source links. Edit the study music in `guide/scores/*.vextab`. The guide and engraving tests import the same files. The suite exercises both scores at 360 and 960 CSS pixels, including a return to the starting width after fonts load. [Guitar and lead-sheet coverage](vt5-m3.md)
 

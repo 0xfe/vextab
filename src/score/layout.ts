@@ -1,12 +1,12 @@
 // Project the shared score into fresh VexFlow objects for each screen or publication view.
-import { scoreFont, ScoreSVGContext, slashEngraving } from './engraving';
+import { scoreFont } from './engraving';
 import {
-  Accidental, Barline, Dot, Factory, FrettedInstrument, Publication, ScoreNavigation, TabNote, TabTie, TimeSignature,
+  Accidental, Annotation, Barline, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext,
   type Beam, type StemmableNote, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
   type EasyScoreVoiceSpec, type PublicationOptions, type RenderContext, type ScoreHitRegion,
 } from 'vexflow';
-import { attachLeadMarks, drawFrames } from './lead';
-import type { Attack, Measure, MeasureVoice, ParsedScore } from './model';
+import { leadMarks, drawFrames } from './lead';
+import type { Attack, Measure, MeasureVoice, ParsedScore, ScoreSpan } from './model';
 import { ScoreError, type SourceRange } from './source';
 
 type Staff = 'notation' | 'tab';
@@ -76,7 +76,7 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     if (staff === 'tab') {
       return { id, tab: { ...rhythm, keys, notation, positions: event.heads.map(h => ({ ...h.position! })) }, drawStem: voice.tabStems && !['w', '1'].includes(event.base) };
     }
-    return { id, note: { ...rhythm, keys, notation, clef: measure.state.clef, type: event.slash ? 's' : 'n', engraving: slashEngraving(event.slash), autoStem: !direction } };
+    return { id, note: { ...rhythm, keys, notation, clef: measure.state.clef, type: event.slash ? 's' : 'n', autoStem: !direction } };
   });
   return {
     notes, stem: direction ?? 'auto',
@@ -84,6 +84,13 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
       stemDirection, beamRests: voice.beamRests, showStemlets: voice.stemlets, beamMiddleOnly: voice.middleRests },
     tuplets: voice.tuplets.map(t => ({ start: t.start, count: t.count, options: { numNotes: t.numNotes, notesOccupied: t.notesOccupied } })),
   };
+}
+
+/** Omit ordinary barlines so continuous layout can install its repeat boundaries. */
+function writtenEndBar(measure: Measure) {
+  const type = measure.voices[0].closing?.type;
+  if (type === 'end') return Barline.type.END;
+  if (type === 'double') return Barline.type.DOUBLE;
 }
 
 /** Retain declarative descriptors only. Every independently composed part gets fresh native objects. */
@@ -98,6 +105,10 @@ function project(parsed: ParsedScore, part: Part, width: number) {
   const sources = new Sources(parsed.source);
   const eventId = sources.id;
   const spans: ContinuousSpan[] = [];
+  // VexFlow can draw a tab ending between two TabNotes or two rendered rests.
+  // Mixed endpoint types still need the screen fallback for a tab-only projection.
+  const rests = new Set(parsed.measures.flatMap(m => m.voices.flatMap(v => v.events.filter(e => !e.heads.length).map(e => e.id))));
+  const mixedEndings: ScoreSpan[] = [];
   const spec: EasyScoreCompositionSpec = {
     accidentals: 'key-aware', sheet: { width, x: 10, y: 14, rowGap: 36 }, system: { spaceBetweenStaves: 9 },
     staves: staves.map(staff => ({
@@ -105,6 +116,9 @@ function project(parsed: ParsedScore, part: Part, width: number) {
       options: staff === 'tab' ? { numLines: parsed.measures[0].state.strings } : {},
       measures: parsed.measures.map(m => ({
         clef: staff === 'tab' ? 'tab' : m.state.clef, key: m.state.key, time: m.state.meter, span: m.span,
+        showTimeSignature: m.state.showTime && !(staff === 'tab' && staves.includes('notation')),
+        endBarline: writtenEndBar(m),
+        ...(staff === staves[0] && leadMarks(m, staff, id => eventId(staff, id))),
         voices: m.voices.map((v, index) => voiceSpec(v, m, staff, sources, index)),
       })),
     })),
@@ -119,9 +133,9 @@ function project(parsed: ParsedScore, part: Part, width: number) {
     },
   };
   for (const tie of parsed.ties) {
-    if (staves.includes('notation')) spans.push({
-      kind: 'tie', id: sources.project('notation', tie.id, tie.range), from: eventId('notation', tie.from),
-      to: eventId('notation', tie.to), fromHead: tie.fromHead, toHead: tie.toHead,
+    for (const staff of staves) spans.push({
+      kind: 'tie', id: sources.project(staff, tie.id, tie.range), from: eventId(staff, tie.from),
+      to: eventId(staff, tie.to), fromHead: tie.fromHead, toHead: tie.toHead,
     });
   }
   for (const mark of parsed.spans ?? []) {
@@ -132,9 +146,10 @@ function project(parsed: ParsedScore, part: Part, width: number) {
     const id = sources.project(staff, mark.id, mark.range);
     const endpoints = { id, from: eventId(staff, mark.from), to: eventId(staff, mark.to) };
     if (mark.kind === 'palmMute') spans.push({ ...endpoints, kind: mark.kind, strings: mark.strings });
-    else if (staff === 'notation') spans.push({ ...endpoints, kind: mark.kind, text: mark.label });
+    else if (staff === 'tab' && rests.has(mark.from) !== rests.has(mark.to)) mixedEndings.push(mark);
+    else spans.push({ ...endpoints, kind: mark.kind, text: mark.label });
   }
-  return { spec, staves, sources, eventId };
+  return { spec, staves, sources, eventId, mixedEndings };
 }
 type Projection = ReturnType<typeof project>;
 
@@ -160,21 +175,8 @@ function splitSilentBeams(factory: Factory, beams: Set<Beam>, silent: Set<string
 function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, factory: Factory) {
   const silent = new Set<string>();
   const split = new Set<Beam>();
-  for (const [index, m] of parsed.measures.entries()) {
-    const top = view.staves[0];
-    attachLeadMarks(m, composition, 0, id => view.eventId(top, id), (id, range) => view.sources.project(top, id, range));
-    for (const [s, staff] of view.staves.entries()) {
-      const stave = composition.staves[index][s];
-      const modifiers = stave.getModifiers();
-      const pairedTab = staff === 'tab' && view.staves.includes('notation');
-      if (!m.state.showTime || pairedTab) {
-        const sign = modifiers.findIndex(mark => mark instanceof TimeSignature);
-        if (sign >= 0) modifiers.splice(sign, 1);
-      } else if (index && !parsed.measures[index - 1].state.showTime && !modifiers.some(mark => mark instanceof TimeSignature)) {
-        stave.addTimeSignature(m.state.meter);
-      }
-      const end = m.voices[0].closing?.type;
-      if (end === 'end' || end === 'double') stave.setEndBarType(end === 'end' ? Barline.type.END : Barline.type.DOUBLE);
+  for (const m of parsed.measures) {
+    for (const staff of view.staves) {
       for (const voice of m.voices) for (const event of voice.events) {
         const note = composition.getNote(view.eventId(staff, event.id));
         if (event.silent) {
@@ -188,7 +190,15 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
           for (const tuplet of note.getTupletStack()) tuplet.setRendered();
           if (!event.heads.length) note.renderOptions.draw = false;
         }
-        for (let i = 0; i < event.dots; i++) Dot.buildAndAttach([note], note instanceof TabNote ? { index: 0 } : { all: true });
+        // Native lead descriptors own the engraving. Retain the authored source IDs for diagnostics.
+        if (staff === view.staves[0]) {
+          for (const mark of note.getModifiers()) {
+            if (!(mark instanceof Annotation)) continue;
+            const kind = mark.getVerticalJustification() === Annotation.VerticalJustify.TOP ? 'chord' : 'lyric';
+            const range = event[kind]?.range;
+            if (range) mark.setAttribute('id', view.sources.project(staff, kind + range.start, range));
+          }
+        }
         if (staff !== 'notation') continue;
         event.heads.forEach((head, i) => {
           if (!head.accidental) return;
@@ -205,45 +215,10 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
   splitSilentBeams(factory, split, silent);
 }
 
-/** Native continuous ties require pitched staff notes. Tab ties use the same head endpoints
- * and split on the actual formatted row edges, including a chord written in a new order. */
-function drawTabTies(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, ctx: RenderContext) {
-  if (!view.staves.includes('tab')) return [];
-  const rows = new Map(composition.sheet.getContinuousLayout().rows.flatMap((row, i) =>
-    row.measures.map(m => [m, i] as const)));
-  const measureOf = new Map(parsed.measures.flatMap(m => m.voices.flatMap(v => v.events.map(e => [e.id, m.number] as const))));
+/** Draw mixed rest/fret endings that the native tab span cannot yet anchor. */
+function drawTabEndings(view: Projection, composition: EasyScoreComposition, ctx: RenderContext) {
   const regions: ScoreHitRegion[] = [];
-  for (const t of parsed.ties) {
-    const firstNote = composition.getNote(view.eventId('tab', t.from)), lastNote = composition.getNote(view.eventId('tab', t.to));
-    const firstRow = rows.get(measureOf.get(t.from)), lastRow = rows.get(measureOf.get(t.to));
-    const firstIndexes = [t.fromHead], lastIndexes = [t.toHead];
-    const segments = firstRow === lastRow ? [{ firstNote, lastNote, firstIndexes, lastIndexes }]
-      : [{ firstNote, firstIndexes, lastIndexes: firstIndexes }, { lastNote, lastIndexes, firstIndexes: lastIndexes }];
-    const id = view.sources.project('tab', t.id, t.range);
-    segments.forEach((ends, i) => {
-      const tie = new TabTie(ends, '').setAttribute('id', id + '-' + i);
-      if (!ends.firstNote) {
-        // Leave a readable lead-in between the repeated TAB clef and the first fret.
-        const stave = lastNote.checkStave();
-        const clef = stave.getModifiers().find(modifier => modifier.getCategory() === 'Clef');
-        const afterClef = clef ? clef.getX() + clef.getWidth() + 2 : stave.getX() + 2;
-        tie.renderOptions.firstXShift = -Math.min(stave.getSpacingBetweenLines(), Math.max(0, stave.getTieStartX() - afterClef));
-        tie.renderOptions.cp2Short = 4;
-      }
-      tie.setContext(ctx).draw();
-      const { x, y, w, h } = tie.getRibbonBounds();
-      regions.push({ id, kind: 'span' as const, source: t.id, row: i ? lastRow : firstRow, x, y, w, h });
-    });
-  }
-  return regions;
-}
-
-/** VexFlow continuous voltas accept pitched anchors. For a tab part use the same bar
- * endpoints and draw one bracket per actual row, with hooks only at the authored ends. */
-function drawTabEndings(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, ctx: RenderContext) {
-  const regions: ScoreHitRegion[] = [];
-  if (view.staves[0] !== 'tab') return regions;
-  for (const mark of parsed.spans ?? []) {
+  for (const mark of view.mixedEndings) {
     if (mark.kind !== 'volta') continue;
     const id = view.eventId('tab', mark.id);
     for (const [i, row] of composition.sheet.getContinuousLayout().rows.entries()) {
@@ -275,17 +250,19 @@ export function renderScore(host: HTMLElement, parsed: ParsedScore, options: { w
   if (!Number.isFinite(width) || width <= 20) throw new RangeError('Score width must exceed 20 pixels');
   const view = project(parsed, options.part ?? 'score', width - 20);
   const surface = document.createElement('div');
-  const ctx = new ScoreSVGContext(surface);
+  const ctx = new SVGContext(surface);
   const frames = drawFrames(parsed, width, ctx, (id, range) => view.sources.project(view.staves[0], id, range));
-  const tabEnding = view.staves[0] === 'tab' && parsed.spans?.some(s => s.kind === 'volta');
-  view.spec.sheet.y += frames.height + (tabEnding ? 20 : 0);
+  view.spec.sheet.y += frames.height + (view.mixedEndings.length ? 20 : 0);
   const factory = new Factory({ renderer: { elementId: null, width, height: 1 } }).setContext(ctx);
   const composition = factory.EasyScore().compose(view.spec);
   prepareScreen(parsed, view, composition, factory);
   factory.draw();
-  const tabRegions = drawTabTies(parsed, view, composition, ctx);
-  const extraRegions = [...frames.regions, ...drawTabEndings(parsed, view, composition, ctx)];
+  const extraRegions = [...frames.regions, ...drawTabEndings(view, composition, ctx)];
   const navigation = new ScoreNavigation(composition, view.spec.staves, view.sources.ids);
+  // Expose the fragments of each written tie together, in source order.
+  const tabTies = new Map(parsed.ties.map(t => [view.eventId('tab', t.id), [] as ScoreHitRegion[]]));
+  for (const region of navigation.regions) tabTies.get(region.id)?.push(region);
+  const tabRegions = Array.from(tabTies.values()).flat();
   // Silent tab rests still advance the reader's clock, but have no visible pointer target.
   const hidden = new Set(parsed.measures.flatMap(m => m.voices.filter(v => !v.tabStems)
     .flatMap(v => v.events.filter(e => !e.heads.length).map(e => view.eventId('tab', e.id)))));
@@ -295,7 +272,7 @@ export function renderScore(host: HTMLElement, parsed: ParsedScore, options: { w
   function hitTest(x: number, y: number): ScoreHitRegion | undefined {
     const hit = navigation.hitTest(x, y);
     if (hit && !hidden.has(hit.id)) return hit;
-    return [...tabRegions, ...extraRegions].find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+    return extraRegions.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
   }
   const rows = composition.sheet.getRows();
   const extent = Math.max(width, frames.width, ...rows.map(r => r.x + r.width + 10));
@@ -343,21 +320,13 @@ export function renderScorePart(host: HTMLElement, parsed: ParsedScore, part: St
   const unsupported = (feature: string, range: SourceRange): never => {
     throw new ScoreError('fixed-layout', `Independent ${part} parts cannot engrave ${feature} yet`, range);
   };
-  const tabVolta = part === 'tab' && parsed.spans?.find(s => s.kind === 'volta');
-  if (tabVolta) unsupported('a tab ending', tabVolta.range);
-  if (part === 'tab' && parsed.ties.length) unsupported('a tab tie', parsed.ties[0].range);
+  if (view.mixedEndings.length) unsupported('a tab ending between a rest and a fret', view.mixedEndings[0].range);
   for (const m of parsed.measures) {
-    if (!m.state.showTime) unsupported('a hidden signature', m.state.timeRange);
-    const bar = m.voices[0].closing;
-    if (bar && ['end', 'double'].includes(bar.type)) unsupported('a final or double bar', bar.range);
     for (const voice of m.voices) {
       if (part === 'tab' && !voice.tabStems && voice.tuplets.length) unsupported('an unstemmed tab tuplet', voice.tuplets[0].range);
       for (const event of voice.events) {
         if (event.frame) unsupported('a chord frame', event.frame.range);
-        if (event.chord) unsupported('a chord label', event.chord.range);
-        if (event.lyric) unsupported('a lyric', event.lyric.range);
         if (event.silent) unsupported('a silent position', event.silent);
-        if (event.dots) unsupported('augmentation dots', event.rhythmRange);
         const sign = part === 'notation' && event.heads.find(h => h.accidental);
         if (sign) unsupported('an explicit accidental', sign.range);
         if (part === 'tab' && !voice.tabStems && !event.heads.length) unsupported('a silent tab rest', event.range);

@@ -42,7 +42,7 @@ function classify(fixture, actual, label) {
 
 /** Run the same music and compatibility surfaces against each packaged library. */
 async function examine(browser, dist, label, expectedFlow) {
-  const examples = await runExamples(browser, dist);
+  const examples = await runExamples(browser, dist, label === 'candidate');
   const page = await browser.newPage({ deviceScaleFactor: 1 });
   try {
     await page.setContent('<style>body,#score{background:white}#score{width:fit-content}</style><div id="score"></div>');

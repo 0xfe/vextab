@@ -29,7 +29,7 @@ button:disabled { opacity:.5; }
 .open input { position:absolute; inset:0; opacity:0; width:100%; cursor:pointer; }
 :focus-visible,.open:focus-within { outline:2px solid var(--accent); outline-offset:2px; }
 #score,#second,#part { max-width:100%; }
-.vex-canvas { background:white; color:black; overflow-x:auto; border-radius:4px; }
+.vex-canvas { color-scheme:light; background:white; color:black; overflow-x:auto; border-radius:4px; }
 .vex-canvas svg { display:block; }
 .fixed .vex-canvas svg { max-width:100%; height:auto !important; }
 textarea.editor { width:100% !important; max-width:100%; box-sizing:border-box; padding:.75rem; border:1px solid var(--line); border-radius:4px; background:var(--paper); color:var(--ink); font:14px/1.5 ui-monospace,monospace; }
@@ -50,14 +50,12 @@ textarea.editor { width:100% !important; max-width:100%; box-sizing:border-box; 
 }
 @media(prefers-color-scheme:dark) {
   :root { --paper:#202521; --ground:#171b18; --ink:#e8ece5; --accent:#a0d6b8; --line:#434d44; --tint:#304038; }
-  .vex-canvas { filter:invert(1); }
 }
 @media print {
   :root { color-scheme:light; }
   body { background:white; }
   body.print-part :is(header,aside,article > :not(#printing),#printing > :not(#part)) { display:none !important; }
   .book,article,#printing { display:block; border:0; padding:0; margin:0; }
-  .vex-canvas { filter:none; background:white; }
   #part svg { display:block; break-after:page; }
   #part svg:last-child { break-after:auto; }
 }

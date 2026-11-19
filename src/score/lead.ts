@@ -1,40 +1,28 @@
-// Attach measured chord and lyric marks, and draw the score's low-to-high chord-frame key.
+// Describe measured chord and lyric marks, and draw the score's low-to-high chord-frame key.
 import { scoreFont } from './engraving';
-import { Annotation, FretDiagram, StaveNote, type EasyScoreComposition, type RenderContext, type ScoreHitRegion } from 'vexflow';
+import { FretDiagram, type EasyScoreMeasureSpec, type RenderContext, type ScoreHitRegion } from 'vexflow';
 import type { Measure, ParsedScore } from './model';
 import { ScoreError, type SourceRange } from './source';
 
 type Register = (id: string, range: SourceRange) => string;
 
-/** A verse belongs to one voice. The native phrase layout also considers ink from the other voices. */
-export function attachLeadMarks(measure: Measure, composition: EasyScoreComposition, staff: number,
-  noteId: (id: string) => string, register: Register): void {
-  const index = measure.number - 1;
-  const stave = composition.staves[index][staff];
+/** Use note IDs so Publication can recreate the same marks in a fresh composition. */
+export function leadMarks(measure: Measure, staff: 'notation' | 'tab', noteId: (id: string) => string): Pick<EasyScoreMeasureSpec, 'chords' | 'verses'> {
+  const chords: EasyScoreMeasureSpec['chords'][number][] = [];
+  const verses: EasyScoreMeasureSpec['verses'][number][] = [];
   for (const voice of measure.voices) {
-    const symbols: Annotation[] = [];
-    for (const event of voice.events) {
-      if (!event.chord) continue;
-      const chord = new Annotation(event.chord.text).setFont(scoreFont, 12, 'bold').setVerticalJustification('top');
-      chord.setAttribute('id', register('chord' + event.chord.range.start, event.chord.range));
-      const anchor = composition.getNote(noteId(event.id));
-      anchor.addModifier(chord, 0);
-      if (anchor instanceof StaveNote) symbols.push(chord);
-    }
-    if (symbols.length) composition.systems[index].getPhraseLayout().addLane(stave, symbols, { side: 'above' });
-    const syllables = voice.events.flatMap((event, i) => {
-      if (!event.lyric) return [];
-      const note = composition.getNote(noteId(event.id));
-      if (!(note instanceof StaveNote)) throw new ScoreError('fixed-layout', 'This lyric needs a notation staff', event.lyric.range);
+    const syllables: EasyScoreMeasureSpec['verses'][number][number][] = [];
+    for (const [i, event] of voice.events.entries()) {
+      const note = noteId(event.id);
+      if (event.chord) chords.push({ note, text: event.chord.text });
+      if (!event.lyric) continue;
       const { text, hyphen, extend, range } = event.lyric;
-      const end = extend && composition.getNote(noteId(voice.events[i + extend].id)) as StaveNote;
-      return [{ note, text, hyphenAfter: hyphen, extendTo: end || undefined, range }];
-    });
-    if (syllables.length) {
-      const marks = composition.systems[index].getPhraseLayout().addVerse(stave, syllables);
-      marks.forEach((mark, i) => mark.setAttribute('id', register('lyric' + syllables[i].range.start, syllables[i].range)));
+      if (staff === 'tab') throw new ScoreError('fixed-layout', 'This lyric needs a notation staff', range);
+      syllables.push({ note, text, hyphenAfter: hyphen, extendTo: extend ? noteId(voice.events[i + extend].id) : undefined });
     }
+    if (syllables.length) verses.push(syllables);
   }
+  return { chords, verses };
 }
 
 /** Draw native diagrams in source order above the music, wrapping the key with the score. */
