@@ -1,4 +1,5 @@
 // Semantic compiler that turns the parsed VexTab AST into concrete Artist calls.
+import { isScoreColor } from '../score/color';
 import Vex from '../vexflow';
 import * as _ from '../utils';
 import type Artist from '../artist/Artist';
@@ -46,6 +47,9 @@ export class VexTabParser {
           if (!['true', 'false'].includes(option.value)) {
             throw error(`'${option.key}' must be 'true' or 'false'`);
           }
+          break;
+        case 'color':
+          if (element === 'voice' || !isScoreColor(option.value)) throw error('Expected a stave color as a CSS name or hex value');
           break;
         case 'pickup':
           if (!/^([1-9]\d*)\/([1-9]\d*)$/.test(option.value)) throw error('Expected a pickup span such as 1/4');

@@ -1,4 +1,5 @@
 // Layout and rendering engine for Artist state, responsible for VexFlow formatting and drawing.
+import { inkStyle } from '../score/color';
 import Vex from '../vexflow';
 import * as _ from '../utils';
 import type Artist from './Artist';
@@ -185,7 +186,7 @@ export class ArtistRenderer {
     artist.renderer_context = ctx;
 
     artist.player_voices = [];
-    artist.staves.forEach((stave) => {
+    const drawStave = (stave: StaveGroup) => {
       if (stave.note) artist.notes.applyAccidentals(stave);
       const tabNotes = this.prepareStave(stave.tab, stave.tab_voices);
       const scoreNotes = this.prepareStave(stave.note, stave.note_voices);
@@ -198,13 +199,29 @@ export class ArtistRenderer {
       if (stave.note) stave.note.setContext(ctx).draw();
       const voices = this.formatAndRender(ctx, stave, tabNotes, scoreNotes);
       artist.player_voices.push(voices);
-    });
+    };
+    for (const stave of artist.staves) {
+      if (!stave.color) {
+        drawStave(stave);
+        continue;
+      }
+      // Native glyphs inherit the row foreground. An explicit note or label can override it.
+      const defaults = ctx.getDefaultStyle();
+      ctx.save();
+      try {
+        ctx.setDefaultStyle(inkStyle(stave.color)).setStrokeStyle(stave.color).setFillStyle(stave.color);
+        drawStave(stave);
+      } finally {
+        ctx.setDefaultStyle(defaults);
+        ctx.restore();
+      }
+    }
 
     artist.log('Rendering tab articulations.');
-    artist.tab_articulations.forEach((articulation) => articulation.setContext(ctx).draw());
+    artist.tab_articulations.forEach((articulation) => articulation.setContext(ctx).drawWithStyle());
 
     artist.log('Rendering note articulations.');
-    artist.stave_articulations.forEach((articulation) => articulation.setContext(ctx).draw());
+    artist.stave_articulations.forEach((articulation) => articulation.setContext(ctx).drawWithStyle());
 
     // Synchronize the Player overlay (if enabled).
     if (artist.player) {

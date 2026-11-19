@@ -1,4 +1,5 @@
 // Modifier pipeline for articulations, bends, tuplets, annotations, and special glyphs.
+import { inkStyle, isScoreColor } from '../score/color';
 import Vex from '../vexflow';
 import { tupletOccupancy } from '../score/music';
 import * as _ from '../utils';
@@ -293,14 +294,18 @@ export class ArticulationBuilder {
         .setVerticalJustification(just)
     );
 
+    // A fourth hyphen-separated field gives just this label its own foreground.
     // Support inline font overrides like ".Times-12-italic.Text".
-    let parts = text.match(/^\.([^-]*)-([^-]*)-([^.]*)\.(.*)/);
+    let parts = text.match(/^\.([^-]*)-([^-]*)-([^.-]*)(?:-([^.]*))?\.(.*)/);
     if (parts) {
       font_face = parts[1];
       font_size = parts[2];
       font_style = parts[3];
-      const message = parts[4];
-      return message ? makeIt(message) : null;
+      const [, , , , color, message] = parts;
+      if (color !== undefined && !isScoreColor(color)) throw new Vex.RERR('ArtistError', `Invalid annotation color '${color}'`);
+      if (!message) return null;
+      const mark = makeIt(message);
+      return color ? mark.setStyle(inkStyle(color)) : mark;
     }
 
     // Support command-style prefixes like ".big." or ".top.".
@@ -555,6 +560,8 @@ export class ArticulationBuilder {
     }
 
     if (articulation) {
+      const color = _.last(this.artist.staves)?.color;
+      if (color) articulation.setStyle(inkStyle(color));
       this.artist.tab_articulations.push(articulation);
     }
   }
@@ -586,6 +593,8 @@ export class ArticulationBuilder {
     }
 
     if (articulation) {
+      const color = _.last(this.artist.staves)?.color;
+      if (color) articulation.setStyle(inkStyle(color));
       this.artist.stave_articulations.push(articulation);
     }
   }

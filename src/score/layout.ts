@@ -1,7 +1,9 @@
 // Project the shared score into fresh VexFlow objects for each screen or publication view.
+import { inkStyle } from './color';
+import { colorPublication } from './publication-color';
 import { scoreFont } from './engraving';
 import {
-  Accidental, Annotation, Barline, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext,
+  Accidental, Annotation, Barline, StaveNote, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext,
   type Beam, type StemmableNote, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
   type EasyScoreVoiceSpec, type PublicationOptions, type RenderContext, type ScoreHitRegion,
 } from 'vexflow';
@@ -177,8 +179,19 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
   const split = new Set<Beam>();
   for (const m of parsed.measures) {
     for (const staff of view.staves) {
+      const staveColor = m.state.color;
+      if (staveColor) {
+        const index = view.staves.indexOf(staff);
+        composition.staves[m.number - 1][index].setStyle(inkStyle(staveColor));
+        for (const voice of composition.voices[m.number - 1][index]) voice.setStyle(inkStyle(staveColor));
+      }
       for (const voice of m.voices) for (const event of voice.events) {
         const note = composition.getNote(view.eventId(staff, event.id));
+        if (event.color) {
+          note.setStyle(inkStyle(event.color));
+          if (note instanceof StaveNote) note.setLedgerLineStyle(inkStyle(event.color));
+        }
+        if (staveColor) note.getBeam()?.setStyle(inkStyle(staveColor));
         if (event.silent) {
           note.renderOptions.draw = false;
           silent.add(note.getAttribute('id'));
@@ -195,6 +208,7 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
           for (const mark of note.getModifiers()) {
             if (!(mark instanceof Annotation)) continue;
             const kind = mark.getVerticalJustification() === Annotation.VerticalJustify.TOP ? 'chord' : 'lyric';
+            if (kind === 'chord' && event.chord?.color) mark.setStyle(inkStyle(event.chord.color));
             const range = event[kind]?.range;
             if (range) mark.setAttribute('id', view.sources.project(staff, kind + range.start, range));
           }
@@ -334,5 +348,6 @@ export function renderScorePart(host: HTMLElement, parsed: ParsedScore, part: St
     }
   }
   const publication = new Publication(view.spec).render(host, paper);
+  colorPublication(publication, parsed, event => view.eventId(part, event.id));
   return { publication, rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };
 }
