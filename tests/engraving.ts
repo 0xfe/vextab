@@ -1,7 +1,7 @@
 // Musical regressions for the fixed-row renderer and public editor.
 import Artist from '../src/artist';
 import { renderScore, renderScorePart } from '../src/score/layout';
-import { parseScore } from '../src/score/parse';
+import { parseScore, ScoreError } from '../src/score/parse';
 import type { StaveNote } from 'vexflow';
 import Div from '../src/div';
 import Vex from '../src/vexflow';
@@ -106,6 +106,19 @@ QUnit.module('Engraving', () => {
     const { group } = score('stave\nnotes :q C/4 $Am$ D/4 $.italic.hold$ E/4 $.Times-12-bold.F$');
     const fonts = group.note_notes.map(note => note.getModifiers().find(m => m instanceof Annotation).fontInfo.family);
     assert.deepEqual(fonts, ['Academico','Academico','Times']);
+  });
+
+  QUnit.test('A quoted option sets a multi-word font on the rendered label', assert => {
+    const options = 'options font-face="Times New Roman" font-style=bold';
+    const { host, parser } = score(options + '\nstave\nnotes :q C/4 $Am$');
+    const label = [...host.querySelectorAll('svg text')].find(el => el.textContent === 'Am');
+    assert.equal(label.getAttribute('font-family'), 'Times New Roman');
+    assert.equal(label.getAttribute('font-weight'), 'bold');
+    assert.throws(() => parser.parse('options font-face="Times\nstave'), /Unexpected text/);
+    // The flow editor selects the complete option when it directs the author to fixed layout.
+    const flowSource = 'options beams=auto font-face="Times New Roman"\nstave';
+    assert.throws(() => parseScore(flowSource), error => error instanceof ScoreError &&
+      error.code === 'fixed-layout' && flowSource.slice(error.range.start, error.range.end) === 'font-face="Times New Roman"');
   });
 
   QUnit.test('A tuplet keeps exact time in every projection, including a silent rest', assert => {
