@@ -72,3 +72,5 @@ table.tabstave-keywords td {padding-right:30px;}
 div.vex-canvas {
   background-color: white;
 }
+/* Keep the original fixed-width editors centered in each tutorial example. */
+.tutorial-example { width: fit-content; max-width: 100%; margin: 0 auto; }

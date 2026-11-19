@@ -1,8 +1,8 @@
 // The guide, demo library and playground share one warmed renderer and one catalogue of scores.
 import Div from '../src/div';
 import { renderScorePart, type Part } from '../src/score/layout';
-import { lessons, reference, type Lesson } from './catalog';
-import './style.css';
+import { lessons, type Lesson } from './catalog';
+import { tutorial, features, groups, link, node, showCover, showChapter, showFeatures, showReference } from './book';
 
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const button = (id: string) => el<HTMLButtonElement>(id);
@@ -12,6 +12,7 @@ const views: Record<Part, string> = { score:'Paired', notation:'Notation', tab:'
 let lesson: Lesson;
 let editor: Div;
 let partner: Div;
+let chapterEditors: Div[] = [];
 let input: HTMLTextAreaElement;
 let readId: string;
 let routeRevision = 0;
@@ -27,13 +28,6 @@ function draft(id: string, value?: string): string | undefined {
     if (value !== undefined) localStorage.setItem(key, value);
     return drafts.get(id) ?? localStorage.getItem(key) ?? undefined;
   } catch { return drafts.get(id); }
-}
-
-function link(title: string, href: string): HTMLAnchorElement {
-  const a = document.createElement('a');
-  a.textContent = title;
-  a.href = href;
-  return a;
 }
 
 /** Retain a musical event across reflow. A new edit starts a new reading revision. */
@@ -116,6 +110,7 @@ function setSource(text: string): void {
 function showLesson(current: Lesson, section: string): void {
   const playground = section === 'playground';
   lesson = current;
+  el('lesson-section').textContent = playground ? 'Playground' : current.demo ? 'Studies' : 'Practice score';
   el('picker-label').hidden = !playground;
   choice('picker').value = lesson.id;
   readId = undefined;
@@ -149,58 +144,115 @@ function showLesson(current: Lesson, section: string): void {
   refresh();
 }
 
-/** Render repository-authored entries as text. Search includes syntax and musical terms. */
-function showIndex(isReference: boolean): void {
-  el('index-title').textContent = isReference ? 'Language reference' : 'Demo library';
-  document.title = el('index-title').textContent + ' · VexTab';
-  el('search-label').hidden = !isReference;
-  el('integration').hidden = !isReference;
-  const query = el<HTMLInputElement>('search').value.trim().toLowerCase();
-  const items = isReference ? reference : lessons.filter(l => l.demo).map(l => [l.title, l.goal, l.id]);
-  const entries = el('entries');
-  entries.replaceChildren();
-  for (const [title, description, id] of items) {
-    if (isReference && !(title + ' ' + description).toLowerCase().includes(query)) continue;
-    const section = document.createElement('section');
-    const p = document.createElement('p');
-    p.textContent = description;
-    section.append(link(title, '#lesson/' + id), p);
-    entries.append(section);
+/** List the complete studies separately from the short practice scores. */
+function showStudies(host: HTMLElement) {
+  document.title = 'Studies · VexTab';
+  const lead = node('p', 'Read a complete piece, then change one musical idea in its source.');
+  lead.className = 'goal';
+  const entries = node('div', '');
+  entries.id = 'entries';
+  for (const study of lessons.filter(l => l.demo)) {
+    const row = node('section', '');
+    const title = node('h2', '');
+    title.append(link(study.title, '#lesson/' + study.id));
+    row.append(title, node('p', study.goal));
+    entries.append(row);
   }
-  if (!entries.childElementCount) entries.textContent = 'No matching entries.';
+  host.append(node('h1', 'Studies'), lead, entries);
 }
 
-/** Hash URLs work offline and on a static server. The plain triplet anchor predates this guide. */
-function navigate(): void {
+/** The contents follow the section the reader is in, including older bookmarked lesson URLs. */
+function sidebar(section: string, active: string) {
+  const contents = el('contents');
+  contents.replaceChildren();
+  function list(title: string, prefix: string, items: {id: string; title: string}[], numbered = false) {
+    const links = document.createElement(numbered ? 'ol' : 'ul');
+    for (const item of items) {
+      const a = link(item.title, '#' + prefix + '/' + item.id);
+      if (a.hash === active) a.setAttribute('aria-current', 'page');
+      const li = node('li', '');
+      li.append(a);
+      links.append(li);
+    }
+    contents.append(node('h2', title), links);
+  }
+  if (section === 'tutorial') list('Tutorial contents', section, tutorial, true);
+  if (section === 'features') {
+    list('Beyond the tutorial', section, features);
+    list('Practice scores', 'lesson', lessons.filter(l => !l.demo));
+  }
+  if (section === 'studies') list('Studies', 'lesson', lessons.filter(l => l.demo));
+  if (section === 'reference') list('Reference categories', section, groups);
+  if (section === 'playground') list('Score library', section, lessons);
+}
+
+/** Hash routes work in the hosted and offline editions. Old lesson and demo links still resolve. */
+function navigate() {
   routeRevision++;
   printRevision++;
   printEdition = undefined;
   editor?.dispose();
   partner?.dispose();
+  chapterEditors.forEach(instance => instance.dispose());
+  chapterEditors = [];
   editor = partner = undefined;
+  el('score').replaceChildren();
   el('second').replaceChildren();
-  const [section, id] = location.hash.slice(1).split('/');
-  const isIndex = section === 'demos' || section === 'reference';
-  const selected = lessons.find(l => l.id === (id ?? section)) ?? lessons[0];
-  el('index').hidden = !isIndex;
-  el('lesson').hidden = isIndex;
-  document.querySelectorAll<HTMLAnchorElement>('header a, aside a').forEach(a => {
-    const active = a.closest('aside')
-      ? !isIndex && a.hash === '#lesson/' + selected.id
-      : a.hash.split('/')[0] === '#' + (section === 'playground' || isIndex ? section : 'lesson');
-    if (active) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current');
-  });
-  if (isIndex) showIndex(section === 'reference'); else showLesson(selected, section);
+  const host = el('index');
+  host.replaceChildren();
+  let [section, id] = location.hash.slice(1).split('/');
+  if (!section) section = 'tutorial';
+  if (section === 'demos') section = 'studies';
+  const score = lessons.find(l => l.id === (id ?? section));
+  const isLesson = ['lesson', 'original', 'playground'].includes(section) || (!id && !!score);
+  const selected = score ?? lessons[0];
+  el('main').parentElement.classList.toggle('frontispiece', section === 'tutorial' && !id);
+  let tab = section;
+  let active = '#' + section + '/' + id;
+  host.hidden = isLesson;
+  el('lesson').hidden = !isLesson;
+  if (isLesson) {
+    tab = section === 'playground' ? section : selected.demo ? 'studies' : 'features';
+    active = '#' + (tab === 'playground' ? tab : 'lesson') + '/' + selected.id;
+    showLesson(selected, section);
+  } else if (section === 'reference') {
+    showReference(host, id);
+    const category = groups.find(g => Array.from(g.element.querySelectorAll('article')).some(a => a.id === id));
+    if (category) active = '#reference/' + category.id;
+  } else if (section === 'studies') {
+    showStudies(host);
+  } else {
+    const book = section === 'features' ? 'features' : 'tutorial';
+    tab = book;
+    const chapter = (book === 'features' ? features : tutorial).find(c => c.id === id);
+    if (chapter) chapterEditors = showChapter(host, book, chapter, draft);
+    else if (book === 'features') showFeatures(host);
+    else chapterEditors = [showCover(host)];
+  }
+  sidebar(tab, active);
+  for (const a of document.querySelectorAll<HTMLAnchorElement>('header nav a')) {
+    if (a.hash.split('/')[0] === '#' + tab) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  }
   el('main').dataset.route = location.hash;
 }
 
-for (const l of lessons) {
-  el(l.demo ? 'studies' : 'lessons').append(link(l.title, '#lesson/' + l.id));
-  choice('picker').add(new Option(l.title, l.id));
-}
+for (const l of lessons) choice('picker').add(new Option(l.title, l.id));
+// Keep keyboard navigation within the current lesson when skipping the sidebar.
+document.querySelector<HTMLAnchorElement>('.skip').onclick = event => {
+  event.preventDefault();
+  el('main').focus();
+};
+const menu = button('menu');
+menu.onclick = () => menu.setAttribute('aria-expanded', String(menu.getAttribute('aria-expanded') !== 'true'));
+el('contents').onclick = event => {
+  if ((event.target as Element).closest('a') && menu.offsetWidth) {
+    menu.setAttribute('aria-expanded', 'false');
+    el('main').focus();
+  }
+};
 choice('picker').onchange = () => { location.hash = '#playground/' + choice('picker').value; };
 el('score').addEventListener('vextab-render', refresh);
-el('search').addEventListener('input', () => showIndex(true));
 choice('view').addEventListener('change', () => editor.setPart(choice('view').value as Part));
 el('narrow').addEventListener('change', () => el('score').classList.toggle('narrow', el<HTMLInputElement>('narrow').checked));
 button('run').onclick = () => editor.run();
@@ -262,5 +314,8 @@ window.addEventListener('keydown', event => {
     event.preventDefault(); button('reset').click();
   }
 });
-window.addEventListener('hashchange', navigate);
+window.addEventListener('hashchange', () => {
+  navigate();
+  window.scrollTo(0, 0);
+});
 navigate();

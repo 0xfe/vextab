@@ -4,17 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Fingerstyle and lead sheets · VexTab guide</title>
-  <style>
-    body { margin: 2rem auto; max-width: 60rem; padding: 0 1rem; font: 1rem/1.55 Academico, Georgia, serif; color: #262a2e; }
-    h1 { line-height: 1.15; }
-    button, select, input { font: inherit; }
-    .controls { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
-    .editor { width: 100% !important; font: .9rem/1.4 ui-monospace,monospace; padding: .6rem; }
-    .editor-error { color: #813b19; }
-    #score svg { display: block; }
-  </style>
+  <link rel="stylesheet" href="<%= require('./style.css') %>">
 </head>
-<body><main>
+<body class="standalone studies"><main>
   <a href="shared-score.html">VexTab guide · Follow a tied chord</a>
   <h1>Fingerstyle and lead sheets</h1>
   <div class="controls">

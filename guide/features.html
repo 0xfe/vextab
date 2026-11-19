@@ -1,0 +1,69 @@
+<!-- Short, editable scores for the techniques that follow the fixed-layout tutorial. -->
+<section id="measured-music">
+  <h2>Measures, pickups and reflow</h2>
+  <p>Write a pickup that keeps its length as the music wraps onto a narrower page.</p>
+  <p>Flow layout counts each voice against the time signature and breaks at barlines. Here the opening G is a one-quarter pickup in 3/4. The next bar has three beats. Delete its last note to see the diagnostic, then restore it. Use <code>fragment=true</code> for a deliberately incomplete excerpt.</p>
+  <pre data-score>stave time=3/4 pickup=1/4
+notes :q G/4 | A-B-C/5 | :h D/5 :q B/4 |</pre>
+  <p><a href="#lesson/diagnostics">Practice locating a missing beat →</a></p>
+</section>
+<section id="beaming">
+  <h2>Beam groups and accidental spelling</h2>
+  <p>Choose where a group of eighth notes begins and ends, or let the meter decide.</p>
+  <p>In fixed layout, <code>options beams=explicit</code> lets square brackets group beamable attacks inside a single bar and voice. Move the brackets below to group the middle three eighths. With <code>beams=auto</code>, the meter supplies the grouping. With <code>beams=off</code>, each note has its own flag. The tilde in <code>B@~/4</code> makes the written flat cautionary.</p>
+  <div class="vex-tabdiv" width="600" scale="1" editor_height="90">options beams=explicit
+stave time=3/4
+notes :8 [ C-D-E/4 ] F/4 [ A/4 B@~/4 ] |</div>
+  <p><a href="#lesson/meter">Compare the automatic beams in 3/4 and 6/8 →</a></p>
+</section>
+<section id="independent-voices">
+  <h2>Independent voices and ties</h2>
+  <p>Let a melody cross a barline while the bass keeps its own pulse.</p>
+  <p>Start the upper part with <code>voice=top</code>. A separate <code>voice voice=bottom</code> line goes back to the start of the same row. Both voices must fill the same bars. Prefix the arriving pitch or chord with <code>T</code> to tie matching heads across the boundary.</p>
+  <pre data-score>stave time=2/4 voice=top
+notes :q E/5 G/5 | T G/5 E/5 |
+voice voice=bottom
+notes :h C/4 | D/4 |</pre>
+  <p><a href="#lesson/bossa">Follow two voices in the bossa study →</a></p>
+</section>
+<section id="timed-techniques">
+  <h2>Bends and palm muting by string</h2>
+  <p>Bend one string of a chord while its neighbor keeps sounding.</p>
+  <p>The half note below stops strings two and three. <code>!bend 3 +2</code> raises string three by two semitones. The fractions specify how far through that attack the rise, hold and release end. In the next bar, <code>!pm 6!</code> starts a palm mute on the bass string. <code>!end-pm!</code> includes the attack it follows.</p>
+  <pre data-score>options tab-stems=true
+tabstave notation=true time=2/4 tuning=dropd
+notes :h (5/2.7/3) !bend 3 +2 rise=1/2 hold=3/4 release=1/1! |
+notes :q 0/6 !pm 6! 3/6 !end-pm! |</pre>
+  <p><a href="#lesson/drop-d-turnaround">Play the Drop D turnaround →</a></p>
+</section>
+<section id="lead-sheets">
+  <h2>Chord frames and lyric syllables</h2>
+  <p>Give a chord its name, its guitar fingering and a place in a lyric.</p>
+  <p>Put each mark after its attack. The Am frame lists six strings from low to high. An <code>x</code> skips the sixth string and <code>0</code> rings an open string. The barre stops strings four and three at fret two. On the next attack, <code>extend=1</code> holds “on” through one more note.</p>
+  <pre data-score>stave time=4/4
+notes :h (0/5.2/4.2/3.1/2.0/1) !chord "Am"! !frame x,0,2,2,1,0 barre=2:4-3! !lyric "Sail"!
+notes :q E/5 !lyric "on" extend=1! C/5 |</pre>
+  <p><a href="#lesson/slow-river">Read the complete Slow river lead sheet →</a></p>
+</section>
+<section id="roadmap">
+  <h2>Rehearsal marks and repeat endings</h2>
+  <p>Mark where to return and give each pass its own ending.</p>
+  <p>Place <code>!mark "A"!</code> and <code>!ending 1 bars=1!</code> before the first attack of their bars in the top voice. The ending label spans the written number of bars. The repeat barlines still tell the player where to return. Measure numbers follow the written score.</p>
+  <pre data-score>options measure-numbers=true
+stave time=2/4
+notes =|: !mark "A"! :q C-D/4 | !ending 1 bars=1! E-D/4 =:|
+notes !ending 2 bars=1! :h C/4 =|=</pre>
+  <p><a href="#lesson/repeat-endings">Try an ending across a system break →</a></p>
+</section>
+<section id="reading">
+  <h2>Read a note back to its source</h2>
+  <p>Follow the same attack in paired notation, tablature and editable text.</p>
+  <p>In a flow lesson, choose <strong>Next event</strong> to hear the bar, voice, duration and pitch or string with a screen reader. Choose <strong>Select source</strong> to select the original characters. A click on a note in the preview also selects its source. Narrow the score and try the same passage again.</p>
+  <p><a href="#lesson/tied-chord">Try the reader on a tied chord →</a></p>
+</section>
+<section id="parts">
+  <h2>Parts, print and offline SVG</h2>
+  <p>Engrave the same duet for two players or give each guitarist a separate part.</p>
+  <p>In the duet study, choose <strong>Full score</strong>, <strong>Guitar 1</strong> or <strong>Guitar 2</strong>. Switch between Letter and A4. <strong>Save print HTML</strong> keeps the whole edition together. <strong>Save SVG</strong> exports the selected page. Both carry outlined fonts and the score’s event metadata for offline use.</p>
+  <p><a href="#lesson/guitar-duet">Open the printable duet →</a></p>
+</section>

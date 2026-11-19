@@ -17,9 +17,44 @@ export async function testGuide(page, dist) {
     await page.waitForFunction(hash => document.querySelector('#main').dataset.route === hash, hash);
   };
   await page.evaluate(() => document.fonts.ready);
+  assert.equal(await page.locator('#index h1').textContent(), 'The VexTab Tutorial');
+  const chapters = await page.locator('.book-cover + h2 + .chapter-list a').evaluateAll(links => links.map(a => a.hash));
+  assert.equal(chapters.length, 15);
+  let examples = 0;
+  for (const hash of chapters) {
+    await go(hash);
+    const chapter = page.locator('.chapter-body');
+    const editors = chapter.locator('textarea');
+    const count = await editors.count();
+    assert.ok(count > 0, hash);
+    assert.equal(await chapter.locator('svg').count(), count, hash);
+    assert.ok((await chapter.locator('.editor-error').allTextContents()).every(text => !text), hash);
+    examples += count;
+  }
+  assert.equal(examples, 24);
+  await go('#tutorial/notes');
+  const tutorialInput = page.locator('.chapter-example textarea').first();
+  const written = await tutorialInput.inputValue();
+  await tutorialInput.fill(written.replace('F#/5', 'G/5'));
+  await tutorialInput.press('Control+Enter');
+  await go('#tutorial/chords');
+  await go('#tutorial/notes');
+  assert.match(await tutorialInput.inputValue(), /G\/5/);
+  await page.locator('.chapter-example button').first().click();
+  assert.equal(await tutorialInput.inputValue(), written);
+
+  await go('#features');
+  const features = await page.locator('.chapter-list a').evaluateAll(links => links.map(a => a.hash));
+  for (const hash of features) {
+    await go(hash);
+    const chapter = page.locator('.chapter-body');
+    assert.ok(await chapter.locator('a').count(), hash);
+    assert.ok((await chapter.locator('.editor-error').allTextContents()).every(text => !text), hash);
+    assert.equal(await chapter.locator('svg').count(), await chapter.locator('textarea').count(), hash);
+  }
   await go('#demos');
   assert.equal(await page.locator('#entries a').count(), 8);
-  const routes = await page.locator('aside a').evaluateAll(links => links.map(a => a.hash));
+  const routes = await page.locator('#picker option').evaluateAll(options => options.map(o => '#lesson/' + o.value));
   for (const hash of routes) {
     await go(hash);
     assert.equal(await source.inputValue(), await original(hash.split('/')[1]));
@@ -81,7 +116,15 @@ export async function testGuide(page, dist) {
   await page.locator('#reset').click();
   await go('#reference');
   await page.locator('#search').fill('capo');
-  assert.deepEqual(await page.locator('#entries a').allTextContents(), ['tuning · capo · bend · pm']);
+  assert.deepEqual(await page.locator('.reference-results h3').allTextContents(), ['tuning · capo · bend · pm']);
+  await page.locator('#search').fill('Div.setWidth()');
+  assert.ok(await page.locator('.reference-results #editor-view').count());
+  await page.locator('#search').fill('selectSource revision');
+  assert.equal(await page.locator('.reference-results article').count(), 1);
+  await page.locator('.reference-results h3 a').click();
+  assert.match(page.url(), /#reference\/editor-reading$/);
+  await page.locator('#search').fill('no-such-api-member');
+  assert.equal(await page.locator('.result-count').textContent(), 'No matching entries. Try another term.');
 
   await go('#lesson/guitar-duet');
   const part = page.locator('#part svg');
@@ -157,6 +200,15 @@ export async function testGuide(page, dist) {
   await page.emulateMedia({colorScheme:'dark'});
   await page.waitForFunction(() => document.querySelector('#score svg').getBoundingClientRect().width < 360);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  assert.equal(await page.locator('html').evaluate(n => getComputedStyle(n).colorScheme), 'light');
+  const menu = page.getByRole('button', {name:'Contents'});
+  await menu.click();
+  const firstLesson = page.locator('#contents a').first();
+  assert.ok(await firstLesson.isVisible());
+  const destination = await firstLesson.getAttribute('href');
+  await firstLesson.click();
+  await page.waitForFunction(hash => document.querySelector('#main').dataset.route === hash, destination);
+  assert.equal(await menu.getAttribute('aria-expanded'), 'false');
   const paperStyle = () => score.locator('.vex-canvas').evaluate(n => {
     const style = getComputedStyle(n);
     return [style.filter, style.backgroundColor, style.color];
