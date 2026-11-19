@@ -1,4 +1,5 @@
 // Stave creation logic that manages bars, voices, and stave layout.
+import { inkStyle } from '../score/color';
 import Vex from '../vexflow';
 import * as _ from '../utils';
 import type Artist from './Artist';
@@ -146,6 +147,7 @@ export class StaveBuilder {
         Number(this.artist.customizations.width) - 20,
         { leftBar: false },
       );
+      if (opts.color) note_stave.setDefaultLedgerLineStyle(inkStyle(opts.color));
       if (opts.clef !== 'none') {
         note_stave.addClef(opts.clef);
       }
@@ -191,6 +193,7 @@ export class StaveBuilder {
       note_notes,
       meter,
       key: opts.key,
+      color: opts.color,
       tabRhythmSpace: 0,
       voiceSettings: [{ options: { ...this.artist.customizations }, direction: opts.voice, groups: [] }],
       text_voices: [],

@@ -28,9 +28,10 @@ export interface Attack {
   dots: number;
   rhythmRange?: SourceRange; // The duration token can precede several attacks.
   slash: boolean;
+  color?: string; // Foreground override for this attack in both projections.
   silent?: SourceRange;
   bend?: { spec: TimedStringBend; range: SourceRange };
-  chord?: { text: string; range: SourceRange };
+  chord?: { text: string; color?: string; range: SourceRange };
   frame?: { spec: FretDiagramSpec; range: SourceRange };
   lyric?: { text: string; hyphen: boolean; extend: number; range: SourceRange };
   duration: string;
@@ -63,6 +64,7 @@ export interface MeasureVoice {
 }
 
 export interface StaffState {
+  color?: string; // Foreground for this stave declaration and its wrapped rows.
   declaration: SourceRange;
   notation: boolean;
   tab: boolean;

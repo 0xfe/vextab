@@ -1,5 +1,6 @@
 // Compile located Jison events to aligned measures without creating rendering objects.
 import { Fraction, KeyManager, Music, Tuning, VexFlow } from 'vexflow';
+import { isScoreColor } from './color';
 import { readSyntax, ScoreError, type SourceRange } from './source';
 import { VoiceCommands, resolveMarks } from './commands';
 import { soundingGuitarPitch, spellFret, tupletOccupancy } from './music';
@@ -54,6 +55,10 @@ function staffState(node: Token): StaffState {
   let timeGiven = false;
   for (const opt of node.options ?? []) {
     switch (opt.key) {
+      case 'color':
+        if (!isScoreColor(opt.value)) invalid(opt, 'Expected a CSS color name or hex value');
+        state.color = opt.value;
+        break;
       case 'notation': state.notation = booleanOption(opt); break;
       case 'tablature': state.tab = booleanOption(opt); break;
       case 'fragment': state.fragment = booleanOption(opt); break;
