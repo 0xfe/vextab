@@ -316,7 +316,6 @@ export class ArticulationBuilder {
           break;
         case 'italic':
         case 'italics':
-          font_face = 'Times';
           font_style = 'italic';
           break;
         case 'medium':

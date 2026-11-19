@@ -1,6 +1,7 @@
 // Project the shared score into fresh VexFlow objects for each screen or publication view.
+import { scoreFont, ScoreSVGContext, slashEngraving } from './engraving';
 import {
-  Accidental, Barline, Dot, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, TabNote, TabTie, TimeSignature,
+  Accidental, Barline, Dot, Factory, FrettedInstrument, Publication, ScoreNavigation, TabNote, TabTie, TimeSignature,
   type Beam, type StemmableNote, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
   type EasyScoreVoiceSpec, type PublicationOptions, type RenderContext, type ScoreHitRegion,
 } from 'vexflow';
@@ -75,7 +76,7 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     if (staff === 'tab') {
       return { id, tab: { ...rhythm, keys, notation, positions: event.heads.map(h => ({ ...h.position! })) }, drawStem: voice.tabStems && !['w', '1'].includes(event.base) };
     }
-    return { id, note: { ...rhythm, keys, notation, clef: measure.state.clef, type: event.slash ? 's' : 'n', autoStem: !direction } };
+    return { id, note: { ...rhythm, keys, notation, clef: measure.state.clef, type: event.slash ? 's' : 'n', engraving: slashEngraving(event.slash), autoStem: !direction } };
   });
   return {
     notes, stem: direction ?? 'auto',
@@ -257,7 +258,7 @@ function drawTabEndings(parsed: ParsedScore, view: Projection, composition: Easy
       ctx.fillRect(x, y, right - x, 1);
       if (first === mark.firstBar) {
         ctx.fillRect(x, y, 1, 12);
-        ctx.setFont('sans-serif', 11).fillText(mark.label, x + 4, y + 12);
+        ctx.setFont(scoreFont, 11).fillText(mark.label, x + 4, y + 12);
       }
       if (last === mark.lastBar) ctx.fillRect(right - 1, y, 1, 12);
       ctx.closeGroup();
@@ -274,7 +275,7 @@ export function renderScore(host: HTMLElement, parsed: ParsedScore, options: { w
   if (!Number.isFinite(width) || width <= 20) throw new RangeError('Score width must exceed 20 pixels');
   const view = project(parsed, options.part ?? 'score', width - 20);
   const surface = document.createElement('div');
-  const ctx = new SVGContext(surface);
+  const ctx = new ScoreSVGContext(surface);
   const frames = drawFrames(parsed, width, ctx, (id, range) => view.sources.project(view.staves[0], id, range));
   const tabEnding = view.staves[0] === 'tab' && parsed.spans?.some(s => s.kind === 'volta');
   view.spec.sheet.y += frames.height + (tabEnding ? 20 : 0);

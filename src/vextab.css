@@ -1,6 +1,6 @@
 /* Score and editor styles for the browser embed. */
 div.vextab-auto {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  font-family: Academico, Georgia, serif;
   font-size: 18px;
   color: #554;
 }
@@ -20,7 +20,7 @@ div.vextab-auto .editor-error, .vex-tabdiv .editor-error {
 }
 
 div.vextab-auto .title {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  font-family: Academico, Georgia, serif;
   font-size: 18px;
   padding: 10px;
   color: #554;

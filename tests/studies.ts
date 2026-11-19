@@ -115,7 +115,10 @@ QUnit.module('Responsive studies', () => {
       }
       const chord = view.composition.getNote(view.navigation.events.find(e => e.source === top[1].id).id);
       assert.ok(chord.getModifiers().some(m => m instanceof Annotation && m.getText() === 'Am/G'));
-      assert.ok(target.textContent.includes('Slow,'));
+      for (const label of ['Am', 'Am/G', 'Slow,']) {
+        const texts = Array.from(target.querySelectorAll('text')).filter(t => t.textContent === label);
+        assert.ok(texts.length && texts.every(t => getComputedStyle(t).fontFamily.split(',')[0].trim() === 'Academico'), label);
+      }
       const frame = view.extraRegions.find(r => r.source.startsWith('frame'));
       assert.deepEqual(view.rangeFor(frame.id, lead), top[0].frame.range);
       assert.equal(view.hitTest(frame.x + 18, frame.y + 24).source, frame.source);

@@ -1,5 +1,5 @@
 div.vex-tabdiv {
-  font-family: Arial, sans-serif;
+  font-family: Academico, Georgia, serif;
   font-size: 18px;
   color: #554;
   white-space: pre;
@@ -21,7 +21,7 @@ div.vex-tabdiv .editor-error .text {
 }
 
 div.vex-tabdiv .title {
-  font-family: Arial, sans-serif;
+  font-family: Academico, Georgia, serif;
   font-size: 18px;
   padding: 10px;
   color: #554;

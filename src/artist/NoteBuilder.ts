@@ -1,4 +1,5 @@
 // Note creation and expansion logic for tab/notation, including chords and rests.
+import { slashEngraving } from '../score/engraving';
 import { Accidental, Fraction, Music, StaveNote, WrittenAccidentalState } from 'vexflow';
 import Vex from '../vexflow';
 import { spellFret } from '../score/music';
@@ -94,6 +95,7 @@ export class NoteBuilder {
       keys: params.spec,
       duration: this.artist.current_duration,
       type: this.artist.current_head,
+      engraving: slashEngraving(this.artist.current_head === 's'),
       clef: this.artist.current_clef,
       autoStem: true,
     });

@@ -1,4 +1,5 @@
 // Attach measured chord and lyric marks, and draw the score's low-to-high chord-frame key.
+import { scoreFont } from './engraving';
 import { Annotation, FretDiagram, StaveNote, type EasyScoreComposition, type RenderContext, type ScoreHitRegion } from 'vexflow';
 import type { Measure, ParsedScore } from './model';
 import { ScoreError, type SourceRange } from './source';
@@ -14,7 +15,7 @@ export function attachLeadMarks(measure: Measure, composition: EasyScoreComposit
     const symbols: Annotation[] = [];
     for (const event of voice.events) {
       if (!event.chord) continue;
-      const chord = new Annotation(event.chord.text).setFont('sans-serif', 12, 'bold').setVerticalJustification('top');
+      const chord = new Annotation(event.chord.text).setFont(scoreFont, 12, 'bold').setVerticalJustification('top');
       chord.setAttribute('id', register('chord' + event.chord.range.start, event.chord.range));
       const anchor = composition.getNote(noteId(event.id));
       anchor.addModifier(chord, 0);
@@ -41,7 +42,7 @@ export function drawFrames(score: ParsedScore, width: number, ctx: RenderContext
   const regions: ScoreHitRegion[] = [];
   let x = 10, y = 6, bottom = 0, right = 0;
   ctx.save();
-  ctx.setFont('sans-serif', 12);
+  ctx.setFont(scoreFont, 12);
   for (const measure of score.measures) for (const voice of measure.voices) for (const event of voice.events) {
     if (!event.frame) continue;
     const { spec, range } = event.frame;

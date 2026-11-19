@@ -1,4 +1,5 @@
 // Playback overlay that uses MIDI.js to audition VexFlow notes and show a moving marker.
+import { scoreFont } from './score/engraving';
 import Vex from './vexflow';
 import * as _ from './utils';
 
@@ -201,6 +202,7 @@ export default class Player {
     // Basic overlay UI elements.
     this.marker = new this.paper.Path.Rectangle(0, 0, 13, 85);
     this.loading_message = new this.paper.PointText(35, 12);
+    this.loading_message.fontFamily = scoreFont;
 
     if (this.options.show_controls) {
       // Simple play/stop controls rendered with Paper.js.

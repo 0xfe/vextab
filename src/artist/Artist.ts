@@ -1,4 +1,5 @@
 // Central orchestration layer for building VexFlow structures from VexTab input.
+import { scoreFont } from '../score/engraving';
 import Vex from '../vexflow';
 import * as _ from '../utils';
 
@@ -142,7 +143,7 @@ export default class Artist {
 
     // Defaults reflect legacy VexTab behavior.
     this.options = {
-      font_face: 'Arial',
+      font_face: scoreFont,
       font_size: 10,
       font_style: null,
       bottom_spacing: 30,

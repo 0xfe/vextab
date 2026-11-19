@@ -1,5 +1,8 @@
 // Musical regressions for the fixed-row renderer and public editor.
 import Artist from '../src/artist';
+import { renderScore } from '../src/score/layout';
+import { parseScore } from '../src/score/parse';
+import type { StaveNote } from 'vexflow';
 import Div from '../src/div';
 import Vex from '../src/vexflow';
 import VexTab from '../src/vextab';
@@ -25,6 +28,31 @@ function ink(host: HTMLElement) {
 }
 
 QUnit.module('Engraving', () => {
+  QUnit.test('Both renderers join filled and hollow rhythm slashes at their Bravura anchors', assert => {
+    for (const direction of ['top', 'bottom']) {
+      const source = 'stave time=4/4 voice=' + direction + '\nnotes :qSd B/4 :8S B/4 :hS B/4';
+      const legacy = score(source);
+      const flow = renderScore(legacy.host, parseScore(source));
+      for (const notes of [legacy.group.note_notes, flow.composition.notes[0][0][0]]) {
+        for (const [i, note] of (notes as StaveNote[]).entries()) {
+          const up = direction === 'top';
+          const space = note.noteHeads[0].fontSizeInPixels / 4;
+          const anchorY = i === 2 ? 1 : up ? 0.656 : 0.664;
+          const segment = note.getStemSegment();
+          assert.closeTo(segment.baseY, note.getYs()[0] + (up ? -1 : 1) * anchorY * space, 0.02);
+          const anchorX = up ? (i === 2 ? 3.12 : 1.46) * space : 0;
+          assert.closeTo(segment.x, note.getNoteHeadBeginX() + anchorX + (up ? -1 : 1) * Vex.Flow.Stem.WIDTH / 2, 0.02);
+        }
+      }
+    }
+  });
+
+  QUnit.test('Fixed annotations default to Academico and respect an authored face', assert => {
+    const { group } = score('stave\nnotes :q C/4 $Am$ D/4 $.italic.hold$ E/4 $.Times-12-bold.F$');
+    const fonts = group.note_notes.map(note => note.getModifiers().find(m => m instanceof Annotation).fontInfo.family);
+    assert.deepEqual(fonts, ['Academico','Academico','Times']);
+  });
+
   QUnit.test('A tuplet keeps exact time in every projection, including a silent rest', assert => {
     for (const stave of ['stave', 'tabstave', 'tabstave notation=true']) {
       for (const stems of ['true', 'false']) {
