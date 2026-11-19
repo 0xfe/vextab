@@ -63,29 +63,33 @@ export default class VexTab {
 
   /**
    * Parse VexTab source, compile the AST, and return the parsed elements.
-   * Design note: we trim each line to keep whitespace predictable and consistent.
+   * Preserve horizontal whitespace so diagnostics refer to the original source.
    */
   parse(code?: string): any {
-    const parserInstance = parser as any;
+    this.reset();
+    // Jison reports the last shifted token in hash.loc. Keep the live lookahead
+    // lexer for this parse so rejected tokens and EOF have their original position.
+    const parserInstance = Object.create(parser);
+    parserInstance.lexer = Object.create(parserInstance.lexer);
+    let lexer: any;
+    const setInput = parserInstance.lexer.setInput;
+    parserInstance.lexer.setInput = function (...args: any[]) {
+      lexer = setInput.apply(this, args);
+      return lexer;
+    };
     parserInstance.parseError = (message: string, hash: any) => {
       this.log('VexTab parse error: ', message, hash);
-      const formatted = `Unexpected text '${hash.text}' at line ${hash.loc.first_line} column ${hash.loc.first_column}.`;
+      const formatted = `Unexpected text '${hash.text}' at line ${lexer.yylloc.first_line} column ${lexer.yylloc.first_column}.`;
       throw new Vex.RERR('ParseError', formatted);
     };
 
-    if (!code) {
+    if (!code?.trim()) {
       throw new Vex.RERR('ParseError', 'No code');
     }
 
     this.log(`Parsing:\n${code}`);
 
-    // Normalize whitespace to keep the grammar deterministic.
-    const stripped_code = code
-      .split(/\r\n|\r|\n/)
-      .map((line) => line.trim())
-      .join('\n');
-
-    this.elements = parserInstance.parse(stripped_code);
+    this.elements = parserInstance.parse(code.replace(/\r\n?/g, '\n'));
     if (this.elements) {
       // Translate the AST into Artist calls.
       this.compiler.generate(this.elements);

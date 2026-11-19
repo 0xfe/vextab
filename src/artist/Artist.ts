@@ -51,9 +51,24 @@ export type StaveGroup = {
   note_notes: any[];
   // Text voices aligned with this stave group.
   text_voices: any[];
+  // Meter drives timing even when its printed signature is hidden.
+  meter: string;
+  // Written key signature shared by all voices on this staff.
+  key: string;
+  // Shared clearance above tab stems and their tuplet numerals.
+  tabRhythmSpace: number;
+  // Each voice retains its own stem and beam settings and authored bracket ranges.
+  voiceSettings: VoiceSettings[];
   // Beam groups collected for formatting.
   beam_groups: any;
 };
+
+/** Formatting settings captured at a stave or voice declaration. */
+export interface VoiceSettings {
+  options: CustomizationMap;
+  direction?: string;
+  groups: Array<[number, number]>;
+}
 
 /**
  * Artist orchestrates the VexFlow rendering pipeline. It tracks mutable state
@@ -90,6 +105,8 @@ export default class Artist {
   // Current render cursor / note state.
   last_y = 0;
   current_duration = 'q';
+  current_dots = 0;
+  current_head = 'n';
   current_clef = 'treble';
   current_bends: Record<string, any[]> = {};
   current_octave_shift = 0;
@@ -185,6 +202,7 @@ export default class Artist {
       accidentals: 'standard',
       'tab-stems': 'false',
       'tab-stem-direction': 'up',
+      beams: 'auto',
       'beam-rests': 'true',
       'beam-stemlets': 'true',
       'beam-middle-only': 'false',
@@ -202,6 +220,8 @@ export default class Artist {
     // Current state.
     this.last_y = this.y;
     this.current_duration = 'q';
+    this.current_dots = 0;
+    this.current_head = 'n';
     this.current_clef = 'treble';
     this.current_bends = {};
     this.current_octave_shift = 0;
@@ -221,22 +241,41 @@ export default class Artist {
   /**
    * Apply user-provided options and validate known keys.
    */
-  setOptions(options: Record<string, string>): void {
+  setOptions(options: Record<string, string>, error = (_key: string, message: string): Error =>
+    new Vex.RERR('ArtistError', message)): void {
     this.log('setOptions: ', options);
 
     // Only allow known customization keys.
     const validOptions = _.keys(this.customizations);
     Object.entries(options).forEach(([key, value]) => {
-      if (validOptions.includes(key)) {
-        this.customizations[key] = value;
-      } else {
-        throw new Vex.RERR('ArtistError', `Invalid option '${key}'`);
+      if (!validOptions.includes(key)) throw error(key, `Invalid option '${key}'`);
+      if (['width', 'scale', 'font-size', 'tempo', 'space', 'stave-distance', 'connector-space'].includes(key)) {
+        const number = Number(value);
+        const positive = ['width', 'scale', 'font-size', 'tempo'].includes(key);
+        if (!Number.isFinite(number) || String(value).trim() === '' || (positive && number <= 0)) {
+          throw error(key, `Invalid numeric value for '${key}': ${value}`);
+        }
+      }
+      if (key === 'accidentals' && !['standard', 'cautionary'].includes(value)) {
+        throw error(key, 'accidentals must be standard or cautionary');
+      }
+      if (key === 'beams' && !['auto', 'off', 'explicit'].includes(value)) {
+        throw error(key, 'beams must be auto, explicit or off');
       }
     });
+    Object.assign(this.customizations, options);
+
+    // A host may resize an already rendered score before drawing it again.
+    if (this.rendered && options.width !== undefined) {
+      for (const group of this.staves) {
+        group.note?.setWidth(Number(options.width) - 20);
+        group.tab?.setWidth(Number(options.width) - 20);
+      }
+    }
 
     // Apply vertical spacing immediately so subsequent staves start lower.
-    this.last_y += parseInt(String(this.customizations.space), 10);
-    if (this.customizations.player === 'true') {
+    this.last_y += Number(options.space ?? 0);
+    if (options.player === 'true') {
       // Reserve extra space for playback controls.
       this.last_y += 15;
     }
@@ -286,7 +325,7 @@ export default class Artist {
   /**
    * Set the duration used for subsequent notes.
    */
-  setDuration(time: string, dot = false): void {
+  setDuration(time: string, dot: boolean | number = false): void {
     this.notes.setDuration(time, dot);
   }
 
@@ -410,7 +449,10 @@ export default class Artist {
     switch (words[0]) {
       case 'octave-shift':
         // Apply octave changes to playback pitch only.
-        this.current_octave_shift = parseInt(words[1], 10);
+        if (words.length !== 2 || !/^[+-]?\d+$/.test(words[1]) || !Number.isSafeInteger(Number(words[1]))) {
+          throw new Vex.RERR('ArtistError', `Invalid octave shift at line ${lineNumber} column ${column}`);
+        }
+        this.current_octave_shift = Number(words[1]);
         this.log('Octave shift: ', this.current_octave_shift);
         break;
       default:

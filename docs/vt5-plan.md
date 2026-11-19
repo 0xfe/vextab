@@ -17,6 +17,8 @@ The [gap assessment](vt5-gaps.md) records the baseline, issue evidence and prior
 
 ## M1 · Repair the existing language and renderer
 
+[M1 results, notation reference and editable triplet lesson](vt5-m1.md)
+
 - **Duration and beams.** Separate duration, dots, notehead and rest status before constructing a VexFlow note. Translate the two VexTab tuplet operands into capture count and musical ratio. Construct tuplets before voices and beams, including tab-only and hidden-stem timing. Give voices their actual meter. Use typed VexFlow options for stems, rest beams, stemlets, left bars and aligned rests. Define precedence for explicit beam brackets, auto grouping and beams disabled.
 - **Pitch and attachments.** Preserve written head, accidental, string and fingering identity through chord expansion. Test notation by name and by fret, including key-signature cancellation and cautionaries. Protect the working #164 case. Establish expected endpoints for chord ties across a bar or after a tuplet. Fix any confirmed placement error at the stage that loses the association.
 - **Drawing and boundaries.** Capture effective options per stave/voice. Finalize pending notes, bends and end bars once. Render from a consistent snapshot and create fresh layout-owned objects where VexFlow mutates them. Keep player data in step with the current draw. Exercise two Artists and switching width, scale and backend. Use a staff-relative position for rests. Verify that the four-string half-rest example draws at the requested height.

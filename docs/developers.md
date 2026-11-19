@@ -20,7 +20,7 @@ The browser tests use the installed Chrome. To use another Chrome or Chromium ex
 npm start
 ```
 
-The development server watches the source. Open the [QUnit suite](http://127.0.0.1:9005/) or the [interactive playground](http://127.0.0.1:9005/playground.html).
+The development server watches the source. Open the [QUnit suite](http://127.0.0.1:9005/), the [triplet guide](http://127.0.0.1:9005/guide/#triplets), or the [interactive playground](http://127.0.0.1:9005/playground.html).
 
 | Command | Output |
 | --- | --- |

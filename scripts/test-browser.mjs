@@ -34,6 +34,35 @@ try {
   await page.locator('#blah').press('End');
   await page.waitForFunction(() => document.querySelector('#error').textContent.includes('<em>label</em>'));
   assert.equal(await page.locator('#error em').count(), 0);
+  assert.equal(await page.locator('#boo').getAttribute('data-preview-stale'), 'true');
+  await page.locator('#blah').fill('stave\nnotes C/4');
+  await page.waitForFunction(() => !document.querySelector('#boo').hasAttribute('data-preview-stale'));
+
+  // Exercise the packaged guide with keyboard editing, both views, and a mobile viewport.
+  await page.goto(pathToFileURL(resolve(dist, 'guide/index.html')).href);
+  const source = page.getByRole('textbox', { name: 'VexTab source' });
+  const toggle = page.getByRole('checkbox', { name: 'Show standard notation' });
+  const original = await source.inputValue();
+  await page.locator('#score svg path').first().waitFor({ state: 'attached' });
+  const pairedHeight = await page.locator('#score svg').getAttribute('height');
+  await toggle.focus();
+  await toggle.press('Space');
+  await page.waitForFunction(h => document.querySelector('#score svg').getAttribute('height') !== h, pairedHeight);
+  assert.match(await source.inputValue(), /notation=false/);
+  await source.fill((await source.inputValue()).replace('4/1 |', '5/1 |'));
+  await toggle.check();
+  assert.match(await source.inputValue(), /5\/1 \|/);
+  await source.fill('stave\nnotes ?');
+  await page.locator('[data-preview-stale="true"]').waitFor();
+  assert.equal(await toggle.isDisabled(), true);
+  await page.getByRole('button', { name: 'Reset example' }).click();
+  await page.waitForFunction(() => !document.querySelector('[data-preview-stale]'));
+  assert.equal(await source.inputValue(), original);
+  assert.equal(await toggle.isChecked(), true);
+  await page.setViewportSize({ width: 360, height: 740 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.setViewportSize({ width: 1280, height: 720 });
+
   // Older pages load the VexTabDiv global and use a different class and attributes.
   await page.goto('about:blank');
   await page.setContent('<div class="vex-tabdiv" editor="true" editor_width="520">tabstave\nnotes 5/2</div>');

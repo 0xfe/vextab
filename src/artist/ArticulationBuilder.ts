@@ -61,7 +61,7 @@ export class ArticulationBuilder {
 
     // Track the first note of the bend phrase so later notes can extend it.
     if (_.isEmpty(this.artist.current_bends)) {
-      this.artist.bend_start_index = tab_notes.length - 2;
+      this.artist.bend_start_index = tab_notes.indexOf(first_note);
       this.artist.bend_start_strings = first_indices;
     } else {
       start_note = tab_notes[this.artist.bend_start_index as number];
@@ -117,32 +117,26 @@ export class ArticulationBuilder {
    */
   makeTuplets(tuplets: number, notes?: number): void {
     this.artist.log('makeTuplets', tuplets, notes);
-    const tuple_notes = notes ?? tuplets;
-    const stave = _.last(this.artist.staves);
-    if (!stave || !stave.note) return;
-
-    const stave_notes = stave.note_notes;
-    const tab_notes = stave.tab_notes;
-
-    if (stave_notes.length < tuple_notes) {
-      throw new Vex.RERR('ArtistError', 'Not enough notes for tuplet');
+    const count = Number(notes ?? tuplets);
+    const numNotes = Number(tuplets);
+    const stave = _.last(this.artist.staves)!;
+    if (!Number.isSafeInteger(count) || count < 1 || !Number.isSafeInteger(numNotes) || numNotes < 1) {
+      throw new Vex.RERR('ArtistError', 'Tuplet counts must be positive integers');
     }
-
-    const modifier = new Vex.Flow.Tuplet(
-      stave_notes.slice(stave_notes.length - tuple_notes),
-      { num_notes: tuplets },
-    );
-    this.artist.stave_articulations.push(modifier);
-
-    // Tuplet creation adjusts ticks, so create one for tab as well.
-    const tab_modifier = new Vex.Flow.Tuplet(
-      tab_notes.slice(tab_notes.length - tuple_notes),
-      { num_notes: tuplets },
-    );
-
-    if (this.artist.customizations['tab-stems'] === 'true') {
-      this.artist.tab_articulations.push(tab_modifier);
-    }
+    const [beats, unit] = stave.meter.split('/').map(Number);
+    const compound = unit >= 8 && beats >= 6 && beats % 3 === 0;
+    const notesOccupied = compound && (numNotes === 2 || numNotes === 4) ? 3
+      : Math.max(2, 2 ** Math.floor(Math.log2(numNotes - 1)));
+    const attach = (voice: any[], visible: boolean, marks: any[]) => {
+      const members = voice.slice(-count);
+      if (members.length !== count || members.some(note => note instanceof Vex.Flow.BarNote)) {
+        throw new Vex.RERR('ArtistError', 'Not enough notes for tuplet in this bar and voice');
+      }
+      const tuplet = new Vex.Flow.Tuplet(members, { numNotes, notesOccupied });
+      if (visible) marks.push(tuplet);
+    };
+    if (stave.note) attach(stave.note_notes, true, this.artist.stave_articulations);
+    attach(stave.tab_notes, !!stave.tab && this.artist.customizations['tab-stems'] === 'true', this.artist.tab_articulations);
   }
 
   // ---- Fingerings / strokes / score articulations ----
@@ -360,7 +354,7 @@ export class ArticulationBuilder {
 
     // Match note text with optional accidentals, octave, and string override.
     const note_match = text.match(/^([A-G])([#@n]{1,2})?(~?)(\d+)?(?:_(\d+)\/(\d+))?$/);
-    if (note_match) {
+    if (note_match && (note_match[4] || note_match[6])) {
       const note = note_match[1];
       const accidental = note_match[2] ?? '';
       const octave = note_match[4] ?? '';
@@ -600,7 +594,7 @@ export class ArticulationBuilder {
   }
 
   /**
-   * Find the previous (second-to-last) non-bar, non-ghost tab note index.
+   * Find the previous (second-to-last) pitched attack, allowing ties across written barlines.
    */
   private getPreviousNoteIndex(): number {
     const tab_notes = _.last(this.artist.staves)!.tab_notes;
@@ -610,6 +604,7 @@ export class ArticulationBuilder {
       if (note instanceof Vex.Flow.TabNote) {
         return tab_notes.length - index;
       }
+      if (!(note instanceof Vex.Flow.BarNote)) break;
       index += 1;
     }
 
@@ -692,32 +687,34 @@ export class ArticulationBuilder {
       const prev_index = this.getPreviousNoteIndex();
       let prev_tab_note: any = null;
       let prev_indices: number[] | null = null;
-      let current_indices: number[] = [];
+      const current_indices: number[] = [];
 
       if (prev_index === -1) {
         prev_tab_note = null;
         prev_indices = null;
       } else {
         prev_tab_note = tab_notes[prev_index];
-        const this_strings = current_tab_note
-          .getPositions()
-          .filter((_: any, i: number) => indices.includes(i))
-          .map((n: any) => n.str);
-
-        const valid_strings = prev_tab_note
-          .getPositions()
-          .filter((pos: any) => this_strings.includes(pos.str))
-          .map((pos: any) => pos.str);
-
-        prev_indices = prev_tab_note
-          .getPositions()
-          .map((n: any, i: number) => (valid_strings.includes(n.str) ? i : -1))
-          .filter((idx: number) => idx >= 0);
-
-        current_indices = current_tab_note
-          .getPositions()
-          .map((n: any, i: number) => (valid_strings.includes(n.str) ? i : -1))
-          .filter((idx: number) => idx >= 0);
+        // Pair endpoints in current chord order so reordering strings cannot cross ties.
+        const previous = prev_tab_note.getPositions();
+        prev_indices = [];
+        for (const i of indices) {
+          const position = current_tab_note.getPositions()[i];
+          if (!position) continue;
+          const pitchOnly = position.fret === 'X' && valid_articulation === 'T';
+          const j = previous.findIndex((prior: any, index: number) => {
+            if (prev_indices!.includes(index)) return false;
+            if (pitchOnly) {
+              const previousKeys = stave.note ? stave_notes[prev_index].getKeys() : prev_tab_note.getPlayNote();
+              const keys = stave.note ? _.last(stave_notes).getKeys() : current_tab_note.getPlayNote();
+              return prior.fret === 'X' && previousKeys[index] === keys[i];
+            }
+            return prior.str === position.str;
+          });
+          if (j >= 0) {
+            prev_indices.push(j);
+            current_indices.push(i);
+          }
+        }
       }
 
       if (stave.tab) {
@@ -730,7 +727,7 @@ export class ArticulationBuilder {
         );
       }
 
-      if (stave.note && prev_index !== -1) {
+      if (stave.note && current_indices.length) {
         this.addStaveArticulation(
           valid_articulation,
           stave_notes[prev_index],

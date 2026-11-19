@@ -15,6 +15,8 @@ If you want to save and share your VexTab, try out [My Vexflow](http://my.vexflo
 
 To see what VexTab can do, take a look at the [list of features](http://my.vexflow.com/articles/53?source=enabled).
 
+The VexTab 5 development guide starts with an editable triplet lesson. [Run the lesson and see the new rhythm syntax](docs/vt5-m1.md)
+
 ## Quick Start
 
 Download `div.prod.js` from [GitHub Releases](https://github.com/0xfe/vextab/releases/latest) and include it in your page with a script tag. The contents of all `div` elements with the class `vextab-auto` are parsed as VexTab and automatically rendered in-place as music notation.

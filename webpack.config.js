@@ -28,6 +28,7 @@ module.exports = (env = {}) => {
     plugins: [
       new webpack.ProvidePlugin({ $: 'zepto-webpack' }),
       new webpack.DefinePlugin({ __VERSION: JSON.stringify(version) }),
+      new HtmlWebpackPlugin({ template: './guide/index.html', filename: 'guide/index.html', chunks: ['div'] }),
       new HtmlWebpackPlugin({ template: './tests/tests.html', filename: 'index.html', chunks: ['tests'] }),
       new HtmlWebpackPlugin({ template: './tests/playground.html', filename: 'playground.html', chunks: ['playground'] }),
       new HtmlWebpackPlugin({ template: './static/div.html', filename: 'static/div.html', chunks: ['div'] }),

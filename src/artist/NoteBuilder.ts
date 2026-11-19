@@ -1,7 +1,43 @@
 // Note creation and expansion logic for tab/notation, including chords and rests.
+import { Accidental, Fraction, Music, StaveNote, WrittenAccidentalState } from 'vexflow';
 import Vex from '../vexflow';
 import * as _ from '../utils';
 import type Artist from './Artist';
+import type { StaveGroup } from './Artist';
+
+/** VexFlow supplies dedicated SMuFL glyphs for long rests on a ledger line. */
+class PositionedRest extends StaveNote {
+  private writtenLine?: number;
+
+  /** Keep a specified line when VexFlow aligns automatic rests in other voices. */
+  positionOn(line: number): void {
+    this.writtenLine = line;
+    this.setKeyLine(0, line);
+  }
+
+  override setKeyLine(index: number, line: number): this {
+    return super.setKeyLine(index, this.writtenLine ?? line);
+  }
+
+  override buildNoteHeads() {
+    const heads = super.buildNoteHeads();
+    const line = this.getKeyLine(0);
+    if (line <= 5 - (this.getStave()?.getNumLines() ?? 5) || line >= 6) {
+      if (this.getDuration() === 'w' || this.getDuration() === '1') heads[0].setText('\uE4F4');
+      if (this.getDuration() === 'h' || this.getDuration() === '2') heads[0].setText('\uE4F5');
+    }
+    return heads;
+  }
+}
+
+/** A written sign belongs to one head, even if engraving reorders the chord. */
+interface HeadSign {
+  key: string;
+  sign: string;
+  literal: boolean;
+  cautionary: boolean;
+  mark?: Accidental;
+}
 
 /**
  * NoteBuilder handles note creation, durations, rests, and chord expansion.
@@ -10,6 +46,7 @@ import type Artist from './Artist';
 export class NoteBuilder {
   // Shared Artist state for tuning, key, and layout options.
   private artist: Artist;
+  private signs = new WeakMap<StaveNote, (HeadSign | null)[]>();
 
   /**
    * Create a note builder bound to an Artist.
@@ -26,32 +63,13 @@ export class NoteBuilder {
     const spec = this.artist.tuning.getNoteForFret(fret, string);
     const spec_props = Vex.Flow.keyProperties(spec);
 
-    // Use the key manager to select the canonical spelling for the current key.
+    // Spell from the signature. The stave's chronological pass handles bar memory
+    // after all voices and tuplets have their final onsets.
+    this.artist.key_manager.reset();
     const selected_note = this.artist.key_manager.selectNote(spec_props.key);
-    let accidental: string | null = null;
+    const accidental = selected_note.accidental ?? 'n';
 
-    // Determine explicit accidentals based on custom strategy.
-    switch (this.artist.customizations.accidentals) {
-      case 'standard':
-        if (selected_note.change) {
-          accidental = selected_note.accidental ? selected_note.accidental : 'n';
-        }
-        break;
-      case 'cautionary':
-        if (selected_note.change) {
-          accidental = selected_note.accidental ? selected_note.accidental : 'n';
-        } else {
-          accidental = selected_note.accidental ? `${selected_note.accidental}_c` : null;
-        }
-        break;
-      default:
-        throw new Vex.RERR(
-          'ArtistError',
-          `Invalid value for option 'accidentals': ${this.artist.customizations.accidentals}`,
-        );
-    }
-
-    let new_note = selected_note.note;
+    const new_note = selected_note.note;
     let new_octave = spec_props.octave;
 
     // Adjust octave when the key manager changes the root letter.
@@ -75,7 +93,7 @@ export class NoteBuilder {
     const octave = string;
     let accidental = abc.accidental;
     if (abc.accidental_type) {
-      accidental += `_${abc.accidental_type}`;
+      accidental = `${accidental || 'n'}_${abc.accidental_type}`;
     }
     return [key, octave, accidental];
   }
@@ -94,31 +112,16 @@ export class NoteBuilder {
     const stave_notes = _.last(this.artist.staves)!.note_notes;
     const stave_note = new Vex.Flow.StaveNote({
       keys: params.spec,
-      duration: this.artist.current_duration + (params.is_rest ? 'r' : ''),
-      clef: params.is_rest ? 'treble' : this.artist.current_clef,
-      auto_stem: params.is_rest ? false : true,
+      duration: this.artist.current_duration,
+      type: this.artist.current_head,
+      clef: this.artist.current_clef,
+      autoStem: true,
     });
 
-    // Attach accidentals per note head.
-    params.accidentals.forEach((acc: string | null, index: number) => {
-      if (!acc) return;
-      const parts = acc.split('_');
-      const new_accidental = new Vex.Flow.Accidental(parts[0]);
-      if (parts.length > 1 && parts[1] === 'c') {
-        new_accidental.setAsCautionary();
-      }
-
-      if (typeof stave_note.addAccidental === 'function') {
-        stave_note.addAccidental(index, new_accidental);
-      } else if (typeof stave_note.addModifier === 'function') {
-        stave_note.addModifier(new_accidental, index);
-      }
-    });
+    this.signs.set(stave_note, params.signs);
 
     // VexFlow uses a dotted flag in the duration string.
-    if (this.artist.current_duration.endsWith('d')) {
-      Vex.Flow.Dot.buildAndAttach([stave_note], { all: true });
-    }
+    this.attachDots(stave_note);
 
     // Playback pitch is optional and only used when Player is enabled.
     if (params.play_note) {
@@ -128,12 +131,77 @@ export class NoteBuilder {
     stave_notes.push(stave_note);
   }
 
+  /** Resolve signs in musical time. A barline in any voice resets the staff. */
+  applyAccidentals(group: StaveGroup): void {
+    const signature: Record<string, string> = {};
+    for (const [name, pitch] of Object.entries(new Music().createScaleMap(group.key))) {
+      signature[name] = pitch.slice(1) || 'n';
+    }
+    const state = new WrittenAccidentalState(signature);
+    const onsets = new Map<string, { at: Fraction; bar: boolean; notes: StaveNote[] }>();
+    for (const voice of group.note_voices) {
+      const time = new Fraction(0, 1);
+      for (const note of voice) {
+        const id = time.clone().simplify().toString();
+        let onset = onsets.get(id);
+        if (!onset) {
+          onset = { at: time.clone(), bar: false, notes: [] };
+          onsets.set(id, onset);
+        }
+        if (note instanceof Vex.Flow.BarNote) onset.bar = true;
+        else {
+          if (this.signs.has(note)) onset.notes.push(note);
+          time.add(note.getTicks());
+        }
+      }
+    }
+    for (const onset of [...onsets.values()].sort((a, b) => a.at.value() - b.at.value())) {
+      if (onset.bar) state.reset();
+      // Decide simultaneous unisons together, including conflicting written signs.
+      const pitches = new Map<string, { head: HeadSign; note: StaveNote; index: number }[]>();
+      for (const note of onset.notes) {
+        this.signs.get(note)!.forEach((head, index) => {
+          if (!head) return;
+          const entries = pitches.get(head.key) ?? [];
+          entries.push({ head, note, index });
+          pitches.set(head.key, entries);
+        });
+      }
+      for (const [key, entries] of pitches) {
+        const sign = entries[0].head.sign;
+        const conflict = entries.some(entry => entry.head.sign !== sign);
+        const changed = state.sign(key, conflict ? 'ambiguous' : sign) !== undefined;
+        for (const { head, note, index } of entries) {
+          this.updateSign(note, index, head, changed || conflict);
+        }
+      }
+    }
+  }
+
+  /** Reuse the sign across draws. An edit can change which sign a later voice needs. */
+  private updateSign(note: StaveNote, index: number, head: HeadSign, changed: boolean): void {
+    const caution = head.cautionary && (head.literal || !changed);
+    const show = head.literal || changed || caution;
+    if (head.mark && (!show || head.mark.isCautionary() !== caution)) {
+      const modifiers = note.getModifiers();
+      const previous = modifiers.indexOf(head.mark);
+      if (previous >= 0) modifiers.splice(previous, 1);
+      delete head.mark;
+    }
+    if (show && !head.mark) {
+      head.mark = new Accidental(head.sign);
+      if (caution) head.mark.setAsCautionary();
+      note.addModifier(head.mark, index);
+    }
+  }
+
   /**
    * Add a tablature note (TabNote) with optional playback pitches.
    */
   addTabNote(spec: any, play_note: any = null): void {
     // Tab notes are built from positions and the current duration.
     const tab_notes = _.last(this.artist.staves)!.tab_notes;
+    this.artist.stavesBuilder.reserveTabRhythmSpace();
     const new_tab_note = new Vex.Flow.TabNote(
       {
         positions: spec,
@@ -150,69 +218,54 @@ export class NoteBuilder {
     tab_notes.push(new_tab_note);
 
     // Dotted notes need an explicit dot glyph on tab notes.
-    if (this.artist.current_duration.endsWith('d')) {
-      Vex.Flow.Dot.buildAndAttach([new_tab_note], { all: true });
+    this.attachDots(new_tab_note);
+  }
+
+  /** Draw one dot per augmentation on every head of the attack. */
+  private attachDots(note: any): void {
+    for (let i = 0; i < this.artist.current_dots; i++) {
+      // A tab chord has one rhythmic stem and no VexFlow pitch keys.
+      Vex.Flow.Dot.buildAndAttach([note], note instanceof Vex.Flow.TabNote ? { index: 0 } : { all: true });
     }
   }
 
-  /**
-   * Create a VexFlow duration string including a dotted flag.
-   */
-  private makeDuration(time: string, dot?: boolean): string {
-    return `${time}${dot ? 'd' : ''}`;
+  /** Keep slash heads separate from the rhythmic value shared with tab and text. */
+  setDuration(time: string, dot: boolean | number = false): void {
+    const match = /^(\d+|[whq])(s?)(d*)$/i.exec(time.trim());
+    if (!match) throw new Vex.RERR('ArtistError', `Invalid duration '${time}'`);
+    const dots = Number(dot) || match[3].length;
+    this.artist.current_dots = dots;
+    this.artist.current_head = match[2] ? 's' : 'n';
+    this.artist.current_duration = match[1] + 'd'.repeat(dots);
   }
 
-  /**
-   * Update the current duration used for subsequent notes.
-   */
-  setDuration(time: string, dot = false): void {
-    // Support "q" or "q ." style tokens from the parser.
-    const t = time.split(/\s+/);
-    this.artist.log('setDuration: ', t[0], dot);
-    this.artist.current_duration = this.makeDuration(t[0], dot);
-  }
-
-  /**
-   * Add a rest into both tab and notation staves.
-   */
+  /** Position rests in staff coordinates. ## leaves the default line to VexFlow. */
   addRest(params: Record<string, string>): void {
-    this.artist.log('addRest: ', params);
     this.artist.closeBends();
-
-    const position_value = parseInt(String(params.position), 10);
-    // Position 0 uses a generic rest marker; other positions use a placeholder pitch.
-    if (position_value === 0) {
-      this.addStaveNote({
-        spec: ['r/4'],
-        accidentals: [],
-        is_rest: true,
-      });
-    } else {
-      const position = this.artist.tuning.getNoteForFret((position_value + 5) * 2, 6);
-      this.addStaveNote({
-        spec: [position],
-        accidentals: [],
-        is_rest: true,
-      });
-    }
-
-    const tab_notes = _.last(this.artist.staves)!.tab_notes;
-    if (this.artist.customizations['tab-stems'] === 'true') {
-      // With tab stems enabled, render rests as stave notes for consistent stems.
-      const tab_note = new Vex.Flow.StaveNote({
-        keys: [position_value === 0 ? 'r/4' : this.artist.tuning.getNoteForFret((position_value + 5) * 2, 6)],
-        duration: `${this.artist.current_duration}r`,
-        clef: 'treble',
-        auto_stem: false,
-      });
-      if (this.artist.current_duration.endsWith('d')) {
-        Vex.Flow.Dot.buildAndAttach([tab_note], { all: true });
+    const stave = _.last(this.artist.staves)!;
+    this.artist.stavesBuilder.reserveTabRhythmSpace();
+    const positioned = params.explicit || Number(params.position) !== 0;
+    const makeRest = (target: any) => {
+      const rest = new PositionedRest({ keys: ['r/4'], duration: this.artist.current_duration, type: 'r' });
+      rest.setStave(target);
+      if (positioned) {
+        // Positions 1–8 ascend from the bottom line in half-spaces.
+        // 0 and 9 anchor on the adjacent ledger lines, with further positions beyond.
+        const position = Number(params.position);
+        const lines = target.getNumLines();
+        const bottom = 6 - lines;
+        const above = 2 * lines - 1;
+        let line = bottom + (position - 1) / 2;
+        if (position <= 0) line = bottom - 1 + position / 2;
+        if (position >= above) line = 6 + (position - above) / 2;
+        rest.positionOn(line);
       }
-      tab_notes.push(tab_note);
-    } else {
-      // Ghost notes maintain spacing without rendering a glyph.
-      tab_notes.push(new Vex.Flow.GhostNote(this.artist.current_duration));
-    }
+      this.attachDots(rest);
+      return rest;
+    };
+    if (stave.note) stave.note_notes.push(makeRest(stave.note));
+    stave.tab_notes.push(stave.tab && this.artist.customizations['tab-stems'] === 'true'
+      ? makeRest(stave.tab) : new Vex.Flow.GhostNote(this.artist.current_duration));
   }
 
   /**
@@ -228,11 +281,11 @@ export class NoteBuilder {
     // Per-position arrays track stacked chord notes on the same string.
     const specs: string[][] = [];
     const play_notes: string[][] = [];
-    const accidentals: Array<Array<string | null>> = [];
+    const signs: Array<Array<HeadSign | null>> = [];
     const articulations: Array<Array<string | null>> = [];
     const decorators: Array<string | null> = [];
     const tab_specs: any[][] = [];
-    const durations: Array<{ time: string; dot: boolean } | null> = [];
+    const durations: Array<{ time: string; dot: boolean | number } | null> = [];
 
     // Track chord size so global articulations can be fanned out.
     let num_notes = 0;
@@ -250,7 +303,7 @@ export class NoteBuilder {
       if (!specs[current_position]) {
         specs[current_position] = [];
         play_notes[current_position] = [];
-        accidentals[current_position] = [];
+        signs[current_position] = [];
         tab_specs[current_position] = [];
         articulations[current_position] = [];
         decorators[current_position] = null;
@@ -282,9 +335,16 @@ export class NoteBuilder {
       const play_octave = parseInt(String(new_octave), 10) + this.artist.current_octave_shift;
 
       const current_duration = note.time ? { time: note.time, dot: note.dot } : null;
-      specs[current_position].push(`${new_note}/${new_octave}`);
+      const sign = accidental?.split('_')[0];
+      const written = note.abc && sign && sign !== 'n' ? new_note + sign : new_note;
+      specs[current_position].push(`${written}/${new_octave}`);
       play_notes[current_position].push(`${play_note}/${play_octave}`);
-      accidentals[current_position].push(accidental);
+      signs[current_position].push(sign && /^[a-g]/i.test(new_note) ? {
+        key: `${new_note[0].toLowerCase()}/${new_octave}`, sign,
+        literal: !!note.abc,
+        cautionary: note.abc ? note.abc.accidental_type === 'c'
+          : this.artist.customizations.accidentals === 'cautionary' && sign !== 'n',
+      } : null);
       tab_specs[current_position].push({ fret: note.fret, str: note.string });
       if (note.articulation) {
         articulations[current_position].push(note.articulation);
@@ -306,7 +366,7 @@ export class NoteBuilder {
       }
       this.addTabNote(tab_specs[i], play_notes[i]);
       if (stave.note) {
-        this.addStaveNote({ spec, accidentals: accidentals[i], play_note: play_notes[i] });
+        this.addStaveNote({ spec, signs: signs[i], play_note: play_notes[i] });
       }
       this.artist.addArticulations(articulations[i]);
       if (decorators[i]) {

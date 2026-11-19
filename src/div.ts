@@ -17,13 +17,9 @@ class Div {
   private sel: string | HTMLElement;
   private code: string;
   private width: number;
-  private height: number;
   private scale: number;
   private rendererBackend: string;
-  private canvas: any;
-  private renderer: any;
-  private ctx_sel: any;
-  private ctx: any;
+  private surface: HTMLElement | null = null;
 
   // Optional editor UI state.
   private editor: string;
@@ -58,26 +54,8 @@ class Div {
 
     // Host sizing and renderer options from data attributes.
     this.width = parseInt($(sel).attr('width'), 10) || 400;
-    this.height = parseInt($(sel).attr('height'), 10) || 200;
     this.scale = parseFloat($(sel).attr('scale')) || 1.0;
     this.rendererBackend = $(sel).attr('renderer') || 'svg';
-
-    if (this.rendererBackend.toLowerCase() === 'canvas') {
-      this.canvas = $('<canvas></canvas>').addClass('vex-canvas');
-      $(sel).append(this.canvas);
-      this.renderer = new Vex.Flow.Renderer(this.canvas[0], Vex.Flow.Renderer.Backends.CANVAS);
-    } else {
-      this.canvas = $('<div></div>').addClass('vex-canvas');
-      $(sel).append(this.canvas);
-      this.renderer = new Vex.Flow.Renderer(this.canvas[0], Vex.Flow.Renderer.Backends.SVG);
-    }
-
-    // Cache the render context and apply scale/background.
-    this.ctx_sel = $(sel).find('.vex-canvas');
-    this.renderer.resize(this.width, this.height);
-    this.ctx = this.renderer.getContext();
-    this.ctx.setBackgroundFillStyle(this.ctx_sel.css('background-color'));
-    this.ctx.scale(this.scale, this.scale);
 
     // Editor properties.
     this.editor = $(sel).attr('editor') || '';
@@ -87,14 +65,14 @@ class Div {
 
     if (this.editor === 'true') {
       // Build editor UI and debounce renders to avoid thrashing.
-      this.text_area = $('<textarea></textarea>').addClass('editor')
+      this.text_area = $('<textarea aria-label="VexTab source"></textarea>').addClass('editor')
         .val(this.code);
-      this.editor_error = $('<div></div>').addClass('editor-error');
+      this.editor_error = $('<div role="status"></div>').addClass('editor-error');
       $(sel).append($('<p/>')).append(this.editor_error);
       $(sel).append($('<p/>')).append(this.text_area);
       this.text_area.width(this.editor_width);
       this.text_area.height(this.editor_height);
-      this.text_area.keyup(() => {
+      this.text_area.on('input', () => {
         if (this.timeoutID) window.clearTimeout(this.timeoutID);
         this.timeoutID = window.setTimeout(() => {
           if (this.code !== this.text_area.val()) {
@@ -105,7 +83,7 @@ class Div {
       });
     } else if (this.show_errors === 'true') {
       // Error display without the editor UI.
-      this.editor_error = $('<div></div>').addClass('editor-error');
+      this.editor_error = $('<div role="status"></div>').addClass('editor-error');
       $(sel).append($('<p/>')).append(this.editor_error);
     }
 
@@ -129,34 +107,43 @@ class Div {
     return this;
   }
 
-  /**
-   * Draw if parsing succeeded; otherwise do nothing to avoid stale output.
-   */
+  /** Report errors as text and identify the last successfully drawn score. */
+  private reportError(error: Error): void {
+    this.surface?.setAttribute('data-preview-stale', 'true');
+    const prefix = this.surface ? 'Showing the last valid score. ' : '';
+    this.editor_error?.text(prefix + error.message);
+  }
+
+  /** Commit a new surface only after engraving succeeds, including Canvas pixels. */
   private drawInternal(): this {
     if (!this.parser.isValid()) return this;
-    this.artist.draw(this.renderer);
+    const canvas = this.rendererBackend.toLowerCase() === 'canvas';
+    const next = document.createElement(canvas ? 'canvas' : 'div');
+    next.className = 'vex-canvas';
+    const host = $(this.sel)[0] as HTMLElement;
+    host.insertBefore(next, host.firstChild);
+    try {
+      const backend = canvas ? Vex.Flow.Renderer.Backends.CANVAS : Vex.Flow.Renderer.Backends.SVG;
+      const renderer = new Vex.Flow.Renderer(next, backend);
+      renderer.getContext().setBackgroundFillStyle($(next).css('background-color'));
+      this.artist.draw(renderer);
+      this.surface?.remove();
+      this.surface = next;
+      this.editor_error?.empty();
+    } catch (error) {
+      next.remove();
+      this.reportError(error);
+    }
     return this;
   }
 
-  /**
-   * Parse the current VexTab code and surface any errors in the UI.
-   * Design note: we keep errors in-band (DOM) so the editor experience is clear.
-   */
+  /** Reset the construction state before parsing each editor revision. */
   private parseInternal(): this {
     try {
-      // Reset state before parsing so errors never leak a partial render.
       this.artist.reset();
-      this.parser.reset();
       this.parser.parse(this.code);
-      if (this.editor_error) this.editor_error.empty();
-    } catch (e: any) {
-      if (this.editor_error) {
-        // Render parse errors into the UI for user feedback.
-        const message = $('<div></div>').addClass('text');
-        message.append($('<h3></h3>').text('Oops!'));
-        message.append(document.createTextNode(' ' + e.message));
-        this.editor_error.empty().append(message);
-      }
+    } catch (error) {
+      this.reportError(error);
     }
     return this;
   }

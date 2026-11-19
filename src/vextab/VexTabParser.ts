@@ -2,6 +2,7 @@
 import Vex from '../vexflow';
 import * as _ from '../utils';
 import type Artist from '../artist/Artist';
+import { staveMeter } from '../artist/StaveBuilder';
 
 /**
  * VexTabParser translates the parsed Jison AST into concrete Artist calls.
@@ -29,7 +30,7 @@ export class VexTabParser {
    * Parse and validate stave options into a simple key/value map.
    * Design note: validation happens here so the Artist stays focused on rendering.
    */
-  parseStaveOptions(options?: any[]): Record<string, string> {
+  parseStaveOptions(options?: any[], element = 'voice'): Record<string, string> {
     const params: Record<string, string> = {};
     if (!options) return params;
 
@@ -45,6 +46,9 @@ export class VexTabParser {
           if (!['true', 'false'].includes(option.value)) {
             throw error(`'${option.key}' must be 'true' or 'false'`);
           }
+          break;
+        case 'show-time':
+          if (!['true', 'false'].includes(option.value)) throw error('show-time must be true or false');
           break;
         case 'key': {
           const has_key = Vex.Flow?.hasKeySignature
@@ -71,7 +75,7 @@ export class VexTabParser {
         }
         case 'time':
           try {
-            new Vex.Flow.TimeSignature(option.value);
+            staveMeter(option.value);
           } catch {
             throw error(`Invalid time signature: '${option.value}'`);
           }
@@ -84,8 +88,8 @@ export class VexTabParser {
           }
           break;
         case 'strings': {
-          const num_strings = parseInt(option.value, 10);
-          if (num_strings < 4 || num_strings > 8) {
+          const num_strings = Number(option.value);
+          if (!Number.isInteger(num_strings) || num_strings < 4 || num_strings > 8) {
             throw error(`Invalid number of strings: ${num_strings}`);
           }
           break;
@@ -95,7 +99,9 @@ export class VexTabParser {
       }
     });
 
-    if (params.notation === 'false' && params.tablature === 'false') {
+    const notation = params.notation ?? (element === 'tabstave' ? 'false' : 'true');
+    const tab = params.tablature ?? (element === 'stave' ? 'false' : 'true');
+    if (notation === 'false' && tab === 'false') {
       throw this.newError(notation_option, "Both 'notation' and 'tablature' can't be invisible");
     }
 
@@ -162,7 +168,26 @@ export class VexTabParser {
    */
   parseStaveElements(notes: any[]): void {
     this.artist.log('parseStaveElements:', notes);
+    const stave = _.last(this.artist.staves)!;
+    const settings = _.last(stave.voiceSettings)!;
+    let opening: { index: number; token: any } | undefined;
     notes.forEach((element) => {
+      if (settings.options.beams === 'explicit') {
+        if (element.command === 'open_beam') {
+          if (opening) throw this.newError(element, 'Nested beam group');
+          opening = { index: stave.tab_notes.length, token: element };
+        }
+        if (element.command === 'close_beam') {
+          if (!opening) throw this.newError(element, 'Missing opening beam bracket');
+          const members = stave.tab_notes.slice(opening.index);
+          if (members.length < 2 || members.some(note => note.getIntrinsicTicks() >= Vex.Flow.RESOLUTION / 4)) {
+            throw this.newError(element, 'Beams need at least two eighth notes or shorter values');
+          }
+          settings.groups.push([opening.index, stave.tab_notes.length]);
+          opening = undefined;
+        }
+        if (opening && element.command === 'bar') throw this.newError(element, 'Beam crosses a barline');
+      }
       if (element.time) {
         // Duration markers apply to subsequent notes.
         this.artist.setDuration(element.time, element.dot);
@@ -182,6 +207,7 @@ export class VexTabParser {
         this.parseFret(element);
       }
     });
+    if (opening) throw this.newError(opening.token, 'Missing closing beam bracket');
   }
 
   /**
@@ -246,7 +272,8 @@ export class VexTabParser {
             bartext();
             break;
           default:
-            position = parseInt(text.slice(1), 10);
+            if (!/^[+-]?\d+$/.test(command)) throw this.newError(token, `Invalid text position '${command}'`);
+            position = Number(command);
             break;
         }
       } else if (text === '|') {
@@ -268,12 +295,12 @@ export class VexTabParser {
       switch (stave.element) {
         case 'stave':
         case 'tabstave':
-          this.artist.addStave(stave.element, this.parseStaveOptions(stave.options));
+          this.artist.addStave(stave.element, this.parseStaveOptions(stave.options, stave.element));
           if (stave.notes) this.parseStaveElements(stave.notes);
           if (stave.text) this.parseStaveText(stave.text);
           break;
         case 'voice':
-          this.artist.addVoice(this.parseStaveOptions(stave.options));
+          this.artist.addVoice(this.parseStaveOptions(stave.options, stave.element));
           if (stave.notes) this.parseStaveElements(stave.notes);
           if (stave.text) this.parseStaveText(stave.text);
           break;
@@ -282,11 +309,8 @@ export class VexTabParser {
           stave.params.forEach((option: any) => {
             options[option.key] = option.value;
           });
-          try {
-            this.artist.setOptions(options);
-          } catch (e: any) {
-            throw this.newError(stave, e.message);
-          }
+          this.artist.setOptions(options, (key, message) =>
+            this.newError(stave.params.find((param: any) => param.key === key), message));
           break;
         }
         default:

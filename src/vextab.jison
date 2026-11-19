@@ -86,7 +86,7 @@
 
 /* Newlines reset your state */
 [\r\n]+               { this.begin('INITIAL'); }
-\s+                   /* skip whitespace */
+[ \t]+                 /* horizontal space only; newlines reset the lexer */
 <<EOF>>               return 'EOF'
 .                     return 'INVALID'
 
@@ -367,6 +367,7 @@ time_unit
 maybe_dot
   :         { $$ = false }
   | 'd'     { $$ = true }
+  | 'd' 'd' { $$ = 2 }
   ;
 
 maybe_slash
@@ -419,7 +420,7 @@ command
 
 rest
   : '#' '#'             { $$ = {position: 0} }
-  | '#' NUMBER '#'      { $$ = {position: $2} }
+  | '#' NUMBER '#'      { $$ = {position: $2, explicit: true} }
   | '#' '-' NUMBER '#'  { $$ = {position: $3 * -1} }
   ;
 

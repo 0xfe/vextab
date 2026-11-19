@@ -12,8 +12,7 @@ $(() => {
   Artist.DEBUG = true;
   VexTab.DEBUG = false;
 
-  // Create VexFlow renderer from the playground canvas element.
-  const renderer = new Renderer($('#boo')[0], Renderer.Backends.SVG);
+  const host = document.querySelector<HTMLElement>('#boo')!;
 
   // Initialize VexTab artist and parser.
   const artist = new Artist(10, 10, 700, { scale: 0.8 });
@@ -29,16 +28,20 @@ $(() => {
       tab.reset();
       artist.reset();
       tab.parse($('#blah').val());
-      artist.render(renderer);
+      const next = document.createElement('div');
+      artist.render(new Renderer(next, Renderer.Backends.SVG));
+      host.replaceChildren(next);
+      delete host.dataset.previewStale;
       $('#error').text('');
     } catch (e: any) {
       // Surface errors in the playground UI for quick debugging.
       console.error(e);
-      $('#error').text(e.message);
+      if (host.firstChild) host.dataset.previewStale = 'true';
+      $('#error').text((host.firstChild ? 'Showing the last valid score. ' : '') + e.message);
     }
   }
 
   // Debounce keystrokes to avoid flooding renders.
-  $('#blah').keyup(_.throttle(render, 250));
+  $('#blah').on('input', _.throttle(render, 250));
   render();
 });

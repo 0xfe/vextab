@@ -31,6 +31,8 @@ notes :8 1-2-3/1 ^3^
 
 These measurements cover specific inputs. Historical reports below still need their own reproduction on the supported backend, with the original tuning, voice structure and meter where relevant.
 
+The assessment below records the pre-M1 behavior. [M1 fixes and reviewed examples](vt5-m1.md)
+
 ## P0 · Correctness and regression coverage
 
 | Gap | Evidence and work to prioritize | Acceptance example |

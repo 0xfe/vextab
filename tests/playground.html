@@ -12,6 +12,8 @@
             height: 80%;
         }
 
+        [data-preview-stale="true"] { opacity: 0.65; }
+
         #error {
             white-space: pre-wrap;
             font-family: Courier;
@@ -36,7 +38,7 @@
 
     <div style="float:left;width:600;">
         <div id="boo"></div>
-        <div id="error"></div>
+        <div id="error" role="status"></div>
     </div>
 
     <div style="float:left;">

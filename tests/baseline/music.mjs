@@ -8,7 +8,7 @@ export const cases = [
   {
     id: 'tab-triplet', issue: 131, source: tabTriplet, probe: 'tab-ticks',
     expectation: 'Three eighths occupy one quarter even when the staff is hidden.',
-    wanted: ['4096/3', '4096/3', '4096/3'], released: ['2048/1', '2048/1', '2048/1'],
+    wanted: ['4096/3', '4096/3', '4096/3'], fixed: true, released: ['2048/1', '2048/1', '2048/1'],
     picture: true,
   },
   {
@@ -19,17 +19,17 @@ export const cases = [
   {
     id: 'mixed-tuplet', issue: 100, source: 'stave\nnotes :q C/4 :8 D/4 ^3,2^', probe: 'staff-ticks',
     expectation: 'The long and short attacks share one quarter in a two-to-one proportion.',
-    wanted: ['8192/3', '4096/3'], released: ['4096/1', '2048/1'],
+    wanted: ['8192/3', '4096/3'], fixed: true, released: ['4096/1', '2048/1'],
   },
   {
     id: 'dotted-slash', issue: 62, source: 'stave\nnotes :qSd X/5', probe: 'staff-ticks',
     expectation: 'The dotted quarter slash renders and lasts one and a half beats.',
-    wanted: ['6144/1'], released: 'invalid qsd duration',
+    wanted: ['6144/1'], fixed: true, released: 'invalid qsd duration',
   },
   {
     id: 'second-draw', source: 'tabstave notation=true\nnotes :q 5/2 |', probe: 'redraw',
     expectation: 'The second draw still has one tab voice, one staff voice and one player group.',
-    wanted: [1, 1, 1], released: [2, 2, 2],
+    wanted: [1, 1, 1], fixed: true, released: [2, 2, 2],
   },
   {
     id: 'g-natural', issue: 164, source: 'tabstave notation=true key=A\nnotes :q (2/2.0/3.2/4.0/5)', probe: 'natural',
@@ -45,8 +45,9 @@ export const cases = [
     expectation: 'All four attacks still line up after adding a final bar.', wanted: [0, 0, 0, 0],
   },
   {
-    id: 'repeat-at-left', issue: 163, source: 'tabstave\nnotes =|: 0/4 2/3', probe: 'visual',
-    expectation: 'Review the left edge and repeat dots against the historical report.', picture: true,
+    id: 'repeat-at-left', issue: 163, source: 'tabstave\nnotes =|: 0/4 2/3', probe: 'repeat-bars',
+    expectation: 'The opening repeat follows the tab clef, with an open left edge.',
+    wanted: ['NONE', 'REPEAT_BEGIN'], released: ['SINGLE', 'REPEAT_BEGIN'], fixed: true, picture: true,
   },
 ];
 
@@ -90,9 +91,12 @@ export function measureScore({ source, probe }) {
       return { key: chord.getKeys()[index], glyphs: glyphs.length, offset: Number(glyphs[0]?.getAttribute('y')) - chord.getYs()[index] };
     }
     case 'alignment':
-      return stave.note_notes.map((note, i) => note.getAbsoluteX() - stave.tab_notes[i].getAbsoluteX());
-    case 'visual':
-      return 'manual review';
+      return stave.note_notes.filter(note => !note.shouldIgnoreTicks()).map((note, i) => note.getAbsoluteX() - stave.tab_notes[i].getAbsoluteX());
+    case 'repeat-bars': {
+      const types = Vex.Flow.Barline.type;
+      const names = ['NONE', 'SINGLE', 'REPEAT_BEGIN'];
+      return [stave.tab.getModifiers()[0], stave.tab_notes[0]].map(bar => names.find(name => types[name] === bar.getType()));
+    }
     default:
       throw new Error('Unknown score probe: ' + probe);
   }

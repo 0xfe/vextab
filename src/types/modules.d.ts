@@ -9,10 +9,4 @@ declare module '*.jison' {
   export default parser;
 }
 
-declare module 'vexflow' {
-  // VexFlow is consumed as a default export in this codebase.
-  const VexFlow: any;
-  export default VexFlow;
-}
-
 declare module '*.css';

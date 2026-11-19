@@ -34,7 +34,6 @@ async function loadRelease() {
 
 /** Distinguish verified music, exact known failures and reports needing visual review. */
 function classify(fixture, actual, label) {
-  if (fixture.probe === 'visual') return 'historical / manual review';
   const expectDefect = fixture.released !== undefined && (label === 'release' || !fixture.fixed);
   const expected = expectDefect ? fixture.released : fixture.wanted;
   assert.deepEqual(actual, expected, label + ' ' + fixture.id + ': ' + fixture.expectation);
