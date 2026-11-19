@@ -28,6 +28,22 @@ function ink(host: HTMLElement) {
 }
 
 QUnit.module('Engraving', () => {
+  QUnit.test('A pre-bent fret sounds at the raised pitch for one written attack', assert => {
+    const source = 'tabstave notation=true time=2/4\nnotes :q (5/2.7z8z7/3) 7z9/3';
+    const { group, host, parser } = score(source);
+    const tab = group.tab_voices[0];
+    assert.equal(tab.length, 2);
+    assert.deepEqual(tab[0].getPositions().map(p => p.fret), ['5', '7']);
+    const bends = tab[0].getModifiers().filter(m => m instanceof Vex.Flow.Bend);
+    assert.deepEqual(bends.map(m => m.getIndex()), [1]);
+    assert.deepEqual(tab[0].getPlayNote().map(s => s.toLowerCase()), ['e/5', 'd#/5']);
+    assert.ok([...host.querySelectorAll('text')].some(t => t.textContent === '½'));
+    assert.throws(() => parser.parse(source.replace('7z8z7', '7z7')), /above the fretted pitch/);
+    assert.throws(() => parser.parse(source.replace('7z8z7', '7z8z6')), /original fret/);
+    const onlyStaff = score('stave\nnotes :q 7z8z7/3');
+    assert.ok(onlyStaff.host.textContent.includes('Pre-bend ½ on string 3, release'));
+  });
+
   QUnit.test('Fixed SVG embeds clear every fret with opaque paper', assert => {
     const fixture = document.querySelector('#qunit-fixture');
     const style = document.createElement('style');

@@ -168,6 +168,32 @@ QUnit.module('Responsive studies', () => {
     assert.deepEqual(f.getBeam().getNotes(), [f, rest]);
   });
 
+  QUnit.test('A pre-bend stays on its chord head through reflow and independent publication', assert => {
+    const src = 'tabstave notation=true time=2/4\nnotes :q (5/2.7z8z7/3) 7z9/3';
+    const target = host();
+    const parsed = parseScore(src);
+    const [chord, held] = parsed.measures[0].voices[0].events;
+    assert.deepEqual(chord.heads.map(h => h.sounding), ['e/4', 'd#/4']);
+    assert.deepEqual(chord.heads[1].position, { str: 3, fret: 7 });
+    assert.deepEqual(chord.heads[1].prebend, { semitones: 1, release: true });
+    assert.deepEqual([chord.duration, held.onset, held.duration], ['1/4', '1/4', '1/4']);
+    assert.equal(src.slice(held.range.start, held.range.end), '7z9/3');
+    for (const width of [320, 720]) {
+      const result = renderScore(target, parsed, { width });
+      const tab = result.navigation.events.find(e => e.source === chord.id && e.staff === 'tab');
+      assert.ok(tab.label.includes('Pre-bend ½ on string 3, release'));
+      assert.deepEqual(result.composition.getNote(tab.id).getModifiers().filter(m => m instanceof Bend).map(m => m.getIndex()), [1]);
+    }
+    for (const part of ['tab', 'notation'] as const) {
+      const { publication } = renderScorePart(target, parsed, part);
+      const page = publication.pages[0].svg;
+      const text = [...page.querySelectorAll('text')].map(el => el.textContent);
+      assert.ok(text.includes('Pre-bend ½ on string 3, release'), part);
+      assert.ok(text.includes('Pre-bend full on string 3'), part);
+      assert.ok(page.querySelector('metadata').textContent.includes('pre-bend'), part);
+    }
+  });
+
   QUnit.test('A printable tab gesture retains its string and envelope, and unsupported print attachments are located', assert => {
     const src = 'options tab-stems=true\ntabstave time=4/4 capo=2\nnotes :h (5/2.7/3) !bend 3 +2 rise=1/2 release=1/1! !pm 3! (5/2.7/3) !end-pm!';
     const target = host();

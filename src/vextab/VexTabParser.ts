@@ -148,7 +148,7 @@ export class VexTabParser {
     this.artist.addChord(
       _.map(
         element.chord,
-        (note: Record<string, any>) => _.pick(note, 'time', 'dot', 'fret', 'abc', 'octave', 'string', 'articulation', 'decorator'),
+        (note: Record<string, any>) => _.pick(note, 'time', 'dot', 'fret', 'prebend', 'abc', 'octave', 'string', 'articulation', 'decorator'),
       ),
       element.articulation,
       element.decorator,
@@ -159,14 +159,14 @@ export class VexTabParser {
    * Convert a fret-based note AST node into an Artist note call.
    */
   parseFret(note: any): void {
-    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'string', 'articulation', 'decorator'));
+    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'prebend', 'string', 'articulation', 'decorator'));
   }
 
   /**
    * Convert an ABC note AST node into an Artist note call.
    */
   parseABC(note: any): void {
-    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'abc', 'octave', 'string', 'articulation', 'decorator'));
+    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'prebend', 'abc', 'octave', 'string', 'articulation', 'decorator'));
   }
 
   /**

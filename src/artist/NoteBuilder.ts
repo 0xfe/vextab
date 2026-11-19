@@ -1,7 +1,7 @@
 // Note creation and expansion logic for tab/notation, including chords and rests.
 import { Accidental, Fraction, Music, StaveNote, WrittenAccidentalState } from 'vexflow';
 import Vex from '../vexflow';
-import { spellFret } from '../score/music';
+import { describePrebend, makePrebend, spellFret } from '../score/music';
 import * as _ from '../utils';
 import type Artist from './Artist';
 import type { StaveGroup } from './Artist';
@@ -159,7 +159,7 @@ export class NoteBuilder {
     this.artist.stavesBuilder.reserveTabRhythmSpace();
     const new_tab_note = new Vex.Flow.TabNote(
       {
-        positions: spec,
+        positions: spec.map(({ str, fret }) => ({ str, fret })),
         duration: this.artist.current_duration,
       },
       this.artist.customizations['tab-stems'] === 'true',
@@ -170,6 +170,9 @@ export class NoteBuilder {
       new_tab_note.setPlayNote(play_note);
     }
 
+    spec.forEach(({ prebend }, index) => {
+      if (prebend) new_tab_note.addModifier(makePrebend(prebend), index);
+    });
     tab_notes.push(new_tab_note);
 
     // Dotted notes need an explicit dot glyph on tab notes.
@@ -280,8 +283,9 @@ export class NoteBuilder {
         }
       } else if (note.fret) {
         // Tab notes are translated through the tuning map.
-        [new_note, new_octave, accidental] = this.getNoteForFret(note.fret, note.string);
-        play_note = this.artist.tuning.getNoteForFret(note.fret, note.string).split('/')[0];
+        const attackFret = note.prebend ? String(Number(note.fret) + note.prebend.semitones) : note.fret;
+        [new_note, new_octave, accidental] = this.getNoteForFret(attackFret, note.string);
+        play_note = this.artist.tuning.getNoteForFret(attackFret, note.string).split('/')[0];
       } else {
         throw new Vex.RERR('ArtistError', 'No note specified');
       }
@@ -300,7 +304,7 @@ export class NoteBuilder {
         cautionary: note.abc ? note.abc.accidental_type === 'c'
           : this.artist.customizations.accidentals === 'cautionary' && sign !== 'n',
       } : null);
-      tab_specs[current_position].push({ fret: note.fret, str: note.string });
+      tab_specs[current_position].push({ fret: note.fret, str: note.string, prebend: note.prebend });
       if (note.articulation) {
         articulations[current_position].push(note.articulation);
       } else {
@@ -322,6 +326,14 @@ export class NoteBuilder {
       this.addTabNote(tab_specs[i], play_notes[i]);
       if (stave.note) {
         this.addStaveNote({ spec, signs: signs[i], play_note: play_notes[i] });
+        if (!stave.tab) {
+          const instructions = tab_specs[i].filter(p => p.prebend).map(p => describePrebend(p.prebend, p.str));
+          if (instructions.length) {
+            const mark = new Vex.Flow.Annotation(instructions.join(' · '));
+            mark.setVerticalJustification(Vex.Flow.Annotation.VerticalJustify.TOP);
+            _.last(stave.note_notes).addModifier(mark, 0);
+          }
+        }
       }
       this.artist.addArticulations(articulations[i]);
       if (decorators[i]) {
