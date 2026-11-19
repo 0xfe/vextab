@@ -36,13 +36,13 @@
         "url": "https://github.com/0xfe/vextab/issues"
     },
     "scripts": {
-        "build": "webpack --mode production --env TAG_NAME=prod",
+        "build": "tsc -p tsconfig.types.json && webpack --mode production --env TAG_NAME=prod",
         "build-dev": "webpack --mode development --env TAG_NAME=dev",
         "start": "webpack serve --mode development --env TAG_NAME=dev",
         "serve": "python3 -m http.server 8052 --bind 127.0.0.1",
         "watch": "webpack --watch --mode development --env TAG_NAME=dev",
         "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
-        "lint": "oxlint --deny-warnings src tests scripts webpack.config.js",
+        "lint": "oxlint --deny-warnings src guide tests scripts webpack.config.js",
         "typecheck": "tsc --noEmit",
         "test": "npm run build-dev && node scripts/test-browser.mjs",
         "test:baseline": "node scripts/test-baseline.mjs",
@@ -65,5 +65,25 @@
     },
     "allowScripts": {
         "esbuild": false
+    },
+    "types": "dist/types/browser.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/types/browser.d.ts",
+            "default": "./dist/main.prod.js"
+        },
+        "./browser": {
+            "types": "./dist/types/browser.d.ts",
+            "default": "./dist/browser.cjs"
+        },
+        "./parse": {
+            "types": "./dist/types/score/parse.d.ts",
+            "default": "./dist/score.cjs"
+        },
+        "./auto": {
+            "types": "./dist/types/auto.d.ts",
+            "default": "./dist/div.prod.js"
+        },
+        "./*": "./*"
     }
 }

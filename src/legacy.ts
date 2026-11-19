@@ -1,4 +1,5 @@
 // Preserve the original VexTabDiv global and markup using the current renderer.
+import './auto';
 import ModernDiv, { Artist, Vex, VexTab } from './div';
 
 /** Adapter for pages that use the original class, attributes, and canvas default. */

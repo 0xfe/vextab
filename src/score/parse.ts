@@ -5,7 +5,8 @@ import { VoiceCommands, resolveMarks } from './commands';
 import { soundingGuitarPitch, spellFret, tupletOccupancy } from './music';
 import type { Attack, Head, Measure, MeasureVoice, ParsedScore, StaffState, Tie, ScoreSpan } from './model';
 
-export { ScoreError } from './source';
+export { ScoreError, type SourceRange } from './source';
+export type { ParsedScore } from './model';
 
 type Token = { range: SourceRange; [key: string]: any };
 type Settings = Record<string, string>;

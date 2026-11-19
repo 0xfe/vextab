@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Follow a tied chord · VexTab guide</title>
   <style>
-    body { margin: 2rem auto; padding: 0 1rem; max-width: 42rem; font: 1rem/1.55 system-ui, sans-serif; color: #262a2e; }
+    body { margin: 2rem auto; padding: 0 1rem; max-width: 42rem; font: 1rem/1.55 Academico, Georgia, serif; color: #262a2e; }
     h1 { line-height: 1.15; }
     button, input { font: inherit; }
     .controls { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
@@ -28,9 +28,7 @@
       <button id="select">Select the tied chord</button>
       <button id="reset">Reset example</button>
     </div>
-    <div id="score" layout="flow" width="640" editor="true" editor-height="130"><pre>options tab-stems=true
-tabstave notation=true time=4/4
-notes :q 0/3 ## :h (1/2.2/3) | :h T(2/3.1/2) :q 3-1/2 |</pre></div>
+    <div id="score" layout="flow" width="640" editor="true" editor-height="130"><pre><%- require('./scores/tied-chord.vextab').trimEnd() %></pre></div>
     <p>Narrow the score to split the tie across two rows. Click a note or use the select button
       to find its source. Try changing the order of the notes inside the tied chord.</p>
     <h2>Read the notation part</h2>

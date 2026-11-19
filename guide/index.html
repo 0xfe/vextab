@@ -3,58 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Triplets in tab and notation · VexTab guide</title>
-  <style>
-    body { margin: 2rem auto; padding: 0 1rem; max-width: 42rem; font: 1rem/1.55 system-ui, sans-serif; color: #262a2e; }
-    h1 { line-height: 1.15; }
-    button, input { font: inherit; }
-    button { margin-left: 1rem; }
-    code, textarea { font-family: ui-monospace, monospace; }
-    .vex-canvas { max-width: 100%; overflow-x: auto; }
-    .vex-canvas svg { display: block; max-width: 100%; height: auto !important; }
-    textarea.editor { box-sizing: border-box; max-width: 100%; padding: .75rem; }
-    .editor-error { color: #813b19; }
-  </style>
+  <title>VexTab · User guide</title>
 </head>
 <body>
-  <main id="triplets">
-    <p>VexTab user guide</p>
-    <h1>Triplets in tab and notation</h1>
-    <p>Play the first three frets evenly on beat one. The fourth fret lands on beat two.
-      <code>:8</code> selects eighth notes. <code>^3^</code> fits the preceding three into the time of two.</p>
-    <label><input id="notation" type="checkbox" checked> Show standard notation</label>
-    <button id="reset" type="button">Reset example</button>
-    <div id="score" width="540" editor="true" editor-height="110"><pre>options tab-stems=true
-tabstave notation=true time=2/4
-notes :8 1-2-3/1 ^3^ :q 4/1 |</pre></div>
-    <p>Hide the standard staff and find the triplet on the tab. Delete <code>^3^</code>
-      and count three straight eighths. The fourth fret now starts halfway through beat two.</p>
-    <p><a href="shared-score.html">Next lesson · Follow a tied chord</a></p>
+<header><a class="brand" href="#lesson/first-fret">VexTab</a><nav aria-label="Guide sections">
+  <a href="#lesson/first-fret">Guide</a><a href="#demos">Demos</a><a href="#playground/first-fret">Playground</a><a href="#reference">Reference</a>
+</nav></header>
+<div class="book">
+  <aside><nav aria-label="Lessons and studies"><h2>Lessons</h2><div id="lessons"></div><h2>Studies</h2><div id="studies"></div></nav></aside>
+  <main id="main">
+    <section id="index" hidden><h1 id="index-title"></h1><label id="search-label">Search the reference <input type="search" id="search"></label><div id="entries"></div>
+      <section id="integration" hidden><h2>Embedding and migration</h2>
+        <p>Flow lessons use the VexTab 5 development build. Fixed-layout lessons use the existing Artist language. Set <code>layout="flow"</code> for measure-aware SVG.</p>
+        <p>Import <code>vextab/parse</code> for a DOM-free validator, <code>vextab/browser</code> for an explicitly mounted editor, or <code>vextab/auto</code> for script-tag style mounting.</p>
+        <a href="https://github.com/0xfe/vextab/blob/master/docs/vt5-m4.md">Embedding, keyboard controls and independent parts</a>
+      </section></section>
+    <article id="lesson">
+      <label id="picker-label" hidden>Playground score <select id="picker"></select></label>
+      <h1 id="title"></h1><p class="goal" id="goal"></p>
+      <div class="toolbar"><label>View <select id="view"></select></label><label id="narrow-control"><input id="narrow" type="checkbox"> Narrow score</label></div>
+      <div id="score"></div>
+      <div class="actions"><button id="run">Run</button><button id="reset">Reset example</button><button id="error" disabled>Find error</button><button id="copy">Copy source</button><button id="save">Save source</button><label class="open">Open source <input type="file" id="open" accept=".vextab,.txt,text/plain"></label></div>
+      <p id="notice" role="status"></p>
+      <section id="reader" aria-label="Score reader">
+        <h2>Read the score</h2><p aria-live="polite" id="reading"></p>
+        <div class="actions"><button id="previous">Previous event</button><button id="next">Next event</button><button id="select">Select source</button></div>
+      </section>
+      <section id="workbench" hidden><h2>Second editor</h2><div id="second"></div></section>
+      <section id="printing" hidden><h2>Engrave a part</h2><div class="toolbar">
+        <label>Player <select id="player"><option value="1">Guitar 1</option><option value="2">Guitar 2</option></select></label>
+        <label>Paper <select id="paper"><option>A4</option><option>Letter</option></select></label>
+        <button id="print" disabled>Print part</button></div><p id="print-status" role="status"></p><div id="part"></div>
+      </section>
+      <section class="exercise"><h2>Try it</h2><p id="exercise"></p></section>
+      <footer><a id="original">Open original source</a><a id="play"></a></footer>
+    </article>
   </main>
-  <script>
-    // Keep the view toggle and editable example in sync without discarding edits.
-    document.addEventListener('DOMContentLoaded', () => {
-      const host = document.querySelector('#score');
-      const original = host.textContent;
-      new vextab.Div(host);
-      const editor = host.querySelector('textarea');
-      const toggle = document.querySelector('#notation');
-      const visibility = /^(\s*tabstave\b[^\n]*?\bnotation=)(true|false)\b/m;
-      function syncToggle() {
-        const match = visibility.exec(editor.value);
-        toggle.disabled = !match;
-        toggle.checked = match?.[2] === 'true';
-      }
-      function edit(source) {
-        editor.value = source;
-        editor.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-      toggle.addEventListener('change', () => {
-        edit(editor.value.replace(visibility, (_, prefix) => prefix + toggle.checked));
-      });
-      editor.addEventListener('input', syncToggle);
-      document.querySelector('#reset').addEventListener('click', () => edit(original));
-    });
-  </script>
+</div>
 </body>
 </html>

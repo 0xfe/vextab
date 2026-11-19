@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import manifest from '../package.json' with { type: 'json' };
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { testGuide } from './test-guide.mjs';
 import { chromium } from 'playwright-core';
 
 // Release checks point the same suite at the files extracted from the package.
@@ -48,7 +49,7 @@ try {
   await page.waitForFunction(() => !document.querySelector('#boo').hasAttribute('data-preview-stale'));
 
   // Exercise the packaged guide with keyboard editing, both views, and a mobile viewport.
-  await page.goto(pathToFileURL(resolve(dist, 'guide/index.html')).href);
+  await page.goto(pathToFileURL(resolve(dist, 'guide/triplets.html')).href);
   const source = page.getByRole('textbox', { name: 'VexTab source' });
   const toggle = page.getByRole('checkbox', { name: 'Show standard notation' });
   const original = await source.inputValue();
@@ -138,11 +139,14 @@ try {
   await waitForScoreWidth(960);
   assert.equal(await scoreHeight(), wideHeight);
 
+  await testGuide(page, dist);
+
   // Older pages load the VexTabDiv global and use a different class and attributes.
   await page.goto('about:blank');
   await page.setContent('<div class="vex-tabdiv" editor="true" editor_width="520">tabstave\nnotes 5/2</div>');
   await page.addScriptTag({ path: resolve(dist, 'vextab-div.js') });
   await page.locator('.vex-tabdiv canvas').waitFor();
+  assert.match(await page.locator('.vex-tabdiv canvas').getAttribute('aria-label'), /string 2 fret 5/);
   assert.equal(await page.locator('.vex-tabdiv textarea').inputValue(), 'tabstave\nnotes 5/2');
   assert.equal(await page.locator('.editor-error').innerText(), '');
   assert.equal(await page.evaluate(() => window.VexTabDiv.Flow.BUILD.VERSION), manifest.dependencies.vexflow);

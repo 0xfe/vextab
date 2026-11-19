@@ -8,6 +8,8 @@ Email the maintainer at [mohit@muthanna.com](mailto:mohit@muthanna.com). Include
 
 VexTab parses notation and draws SVG or Canvas in the host page. Webpack compiles the repository's grammar at build time. The editor and playground display parser errors as text. When embedding a score from another user, assign it with `textContent` or a textarea's `value`.
 
+The guide stores edited source in local browser storage and falls back to memory when storage is disabled. Example links contain a score ID. Saved files and clipboard copies contain the current source. Flow requires complete measures unless the author declares a pickup or fragment. This validation does not bound resource use.
+
 The optional player uses MIDI.js, Paper.js, and soundfonts supplied by the host application. The host controls their versions and where the player loads soundfonts.
 
 ## Dependency and build checks

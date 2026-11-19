@@ -1,147 +1,33 @@
-# VexTab 4.0
+# VexTab
 
-A VexTab Parser for VexFlow.
-Copyright (c) 2012 Mohit Muthanna Cheppudira.
+VexTab is a text language for writing guitar tablature and standard notation. The VexTab 5 development build includes an editable user guide, responsive scores and independent printed parts.
 
-## Need Help? Ask on the [VexFlow Google Group.](https://groups.google.com/forum/?fromgroups#!forum/vexflow)
+## Play your first score
 
-## What is VexTab?
-
-VexTab is a language that allows you to easily create, edit, and share music notation and guitar tablature. Unlike ASCII tab, which is designed for readability, VexTab is designed for writeability.
-
-Go try it out at [The VexTab Tutorial](http://vexflow.com/vextab/tutorial.html).
-
-If you want to save and share your VexTab, try out [My Vexflow](http://my.vexflow.com).
-
-To see what VexTab can do, take a look at the [list of features](http://my.vexflow.com/articles/53?source=enabled).
-
-The VexTab 5 development guide has editable lessons on triplets, tied chords, fingerstyle guitar and lead sheets. [Triplets in tab and notation](docs/vt5-m1.md) · [Follow a tied chord into a printed part](docs/vt5-m2.md) · [Play the Drop D turnaround and write a lead sheet](docs/vt5-m3.md)
-
-## Quick Start
-
-Download `div.prod.js` from [GitHub Releases](https://github.com/0xfe/vextab/releases/latest) and include it in your page with a script tag. The contents of all `div` elements with the class `vextab-auto` are parsed as VexTab and automatically rendered in-place as music notation.
-
-```html
-<div class="vextab-auto"
-    width=680 scale=1.0 editor="true"
-    editor-width=680 editor-height=330>
-    options space=20
-    tabstave notation=true key=A time=4/4
-
-    notes :q =|: (5/2.5/3.7/4) :8 7-5h6/3 ^3^ 5h6-7/5 ^3^ :q 7V/4 |
-    notes :8 t12p7/4 s5s3/4 :8 3s:16:5-7/5 :h p5/4
-    text :w, |#segno, ,|, :hd, , #tr
-
-    options space=25
-</div>
-```
-
-Some of the available `div` attributes are:
-
-* `editor`: `true`|`false` -- Enable/disable live editor. Default `false`.
-* `scale`: `0.5` -> `3.0` -- Scale factor for rendering. Default `1.0`.
-* `editor-width`, `editor-height`: pixels -- Dimensions of editor.
-
-Note that the provided `dist/div.dev.js` bundle is unminified, and `dist/div.prod.js` is minified. They include bundled versions of zepto and VexFlow, plus a small internal utility helper. You can get access to some of these classes, and the VexTab API (see below) via the `vextab` global.
-
-* `vextab.Div`: The TabDiv class used to implement the auto-render functionality for `div` elements.
-* `vextab.VexTab`: The parser. See API below.
-* `vextab.Artist`: The renderer. See API below.
-* `vextab.Vex`: The `Vex` namespace from the VexFlow library.
-
-## VexTab API
-
-If you want to do more interesting things with VexTab, you can use the API directly.
-
-```
-$ npm install vextab
-```
-
-Basic usage [jsfiddle](https://jsfiddle.net/ogL5w6ja/2/)
-
-```js
-import {VexTab, Artist, Vex} from 'vextab';
-
-const Renderer = Vex.Flow.Renderer;
-
-// Create VexFlow Renderer from canvas element with id #boo
-const renderer = new Renderer($('#boo')[0], Renderer.Backends.SVG);
-
-// Initialize VexTab artist and parser.
-const artist = new Artist(10, 10, 600, { scale: 0.8 });
-const tab = new VexTab(artist);
-
-try {
-    tab.parse('tabstave');
-    artist.render(renderer);
-} catch (e) {
-    console.error(e);
-}
-```
-
-See `tests/playground.ts` for a working example of the VexTab API in use.
-
-## Developers
-
-Install the Node.js version in `.nvmrc`, then run:
+From a checkout, use the Node.js version in `.nvmrc` and run:
 
 ```sh
 npm ci
 npm start
 ```
 
-The [developer guide](docs/developers.md) covers building, running the browser tests, cutting a GitHub Release, and publishing its tarball to npm. Download the published bundles from [GitHub Releases](https://github.com/0xfe/vextab/releases).
+Open [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). Change a fret, switch to tab and select the note from the keyboard. Explore [eight playable demos](http://127.0.0.1:9005/guide/#demos) or [search the language reference](http://127.0.0.1:9005/guide/#reference).
 
-See [SECURITY.md](SECURITY.md) for private reporting, dependency checks, and known limitations.
+## Embed an editable score
 
-### Working with a local VexFlow installation
+Build the development bundles with `npm run build-dev`. Put this HTML beside `dist/div.dev.js` and open it in a browser. The script includes VexFlow and the engraving fonts.
 
+```html
+<!doctype html>
+<meta charset="utf-8">
+<div class="vextab-auto" layout="flow" editor="true">options tab-stems=true
+tabstave notation=true time=4/4
+notes :q 0-2-3-2/1 |</div>
+<script src="./div.dev.js"></script>
 ```
-$ git clone vexflow_repo
-$ cd vexflow
-$ npm link
-$ cd ~/git/vextab
-$ npm link vexflow
-```
 
-You may have to run `npm link vexflow` everytime you install or upgrade an npm package.
-
-## Other Dependencies
-
-This rewrite of VexTab has three key dependencies:
-
-  * [TypeScript](https://www.typescriptlang.org/) - Strongly-typed source for the parser/renderer.
-  * [Jison](https://github.com/lahmatiy/jison) - An LALR(1) parser modeled on Bison.
-  * [VexFlow](http://github.com/0xfe/vexflow) - Music engraving and rendering.
-
-For the audio player feature, you need:
-
-  * [MIDI.js](https://github.com/mudcube/MIDI.js) - A soundfont renderer for the web.
-  * Soundfonts for various instruments - See MIDI.js for more information.
-
-## Help
-
-Questions? Ask the [VexFlow Google Group](https://groups.google.com/forum/?fromgroups#!forum/vexflow).
+See the [user guide and integration reference](docs/vt5-m4.md) for typed imports, keyboard controls, print, and migration from fixed layout. The [developer guide](docs/developers.md) covers testing and releases. [GitHub Release downloads](https://github.com/0xfe/vextab/releases) · [Security and score limits](SECURITY.md) · [Historical tutorial](doc/tutorial.html)
 
 ## License
 
-VexTab is an open specification and the reference implementation (this repository) is open source. It is freely available complete and uncrippled for non-commercial use.
-
-If you would like to use this code on commercial websites, products, blogs, plugins, or tools, please get in touch with me. (I'm very reasonable.)
-
-Copyright (c) 2012 Mohit Muthanna Cheppudira
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-The above copyright notice shall be included in all copies or substantial portions of the Software.
-
-**Note**: The underlying library, VexFlow, is completely open source and distributed under the MIT license. See the [VexFlow GitHub Page](http://github.com/0xfe/vexflow) for details.
-
-## Links
-
-* [VexTab Home](http://vexflow.com/vextab/)
-* [The VexTab Tutorial](http://vexflow.com/vextab/tutorial.html)
-* [Google Group](https://groups.google.com/forum/?fromgroups#!forum/vexflow)
-* [VexFlow Home](http://vexflow.com)
-* [My VexFlow](http://my.vexflow.com)
-* [Me](http://0xfe.muthanna.com)
+VexTab is free for non-commercial use. Contact Mohit Muthanna Cheppudira about commercial use. [License](LICENSE)

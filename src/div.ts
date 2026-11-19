@@ -9,11 +9,15 @@ import Vex from './vexflow';
 import Artist from './artist';
 import VexTab from './vextab';
 import Player from './player';
+import type { SourceRange } from './score/source';
+import type { ScoreReadingEvent } from 'vexflow';
 import { parseScore } from './score/parse';
 import { renderScore, type Part } from './score/layout';
 import type { ParsedScore } from './score/model';
 
-import './vextab.css';
+// Webpack embeds the stylesheet here. Consumers of the declarations need no CSS loader.
+declare const require: (asset: './vextab.css') => void;
+require('./vextab.css');
 
 class Div {
   // Host element + renderer state.
@@ -26,6 +30,8 @@ class Div {
   private part: Part = 'score';
   private observer?: ResizeObserver;
   private disposed = false;
+  private composing = false;
+  private diagnostic?: SourceRange;
   private candidate?: ParsedScore;
   private current?: { score: ParsedScore; layout: ReturnType<typeof renderScore> };
   private surface: HTMLElement | null = null;
@@ -83,14 +89,17 @@ class Div {
       $(sel).append($('<p/>')).append(this.text_area);
       this.text_area.width(this.editor_width);
       this.text_area.height(this.editor_height);
-      this.text_area.on('input.vextab', () => {
-        if (this.timeoutID) window.clearTimeout(this.timeoutID);
-        this.timeoutID = window.setTimeout(() => {
-          if (this.code !== this.text_area.val()) {
-            this.code = this.text_area.val();
-            this.redraw();
-          }
-        }, 250);
+      this.text_area.on('compositionstart.vextab', () => {
+        this.composing = true;
+        window.clearTimeout(this.timeoutID);
+      });
+      this.text_area.on('compositionend.vextab', () => { this.composing = false; this.scheduleEdit(); });
+      this.text_area.on('input.vextab', () => this.scheduleEdit());
+      this.text_area.on('keydown.vextab', (event: KeyboardEvent) => {
+        if (!this.composing && (event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+          event.preventDefault();
+          this.run();
+        }
       });
     } else if (this.show_errors === 'true') {
       // Error display without the editor UI.
@@ -109,7 +118,7 @@ class Div {
     if (autoWidth && host.clientWidth > 20) this.width = host.clientWidth;
     this.redraw();
     // Embedded music fonts can finish after the first synchronous draw.
-    if (this.flow && document.fonts.status === 'loading') {
+    if (document.fonts.status === 'loading') {
       void document.fonts.ready.then(() => { if (!this.disposed) this.draw(); });
     }
     if (autoWidth) {
@@ -129,7 +138,40 @@ class Div {
     this.disposed = true;
     this.observer?.disconnect();
     window.clearTimeout(this.timeoutID);
-    this.text_area?.off('input.vextab');
+    this.text_area?.off('.vextab');
+  }
+
+  /** Wait for a complete IME composition before parsing the edited source. */
+  private scheduleEdit(): void {
+    window.clearTimeout(this.timeoutID);
+    if (!this.composing) this.timeoutID = window.setTimeout(() => this.run(), 250);
+  }
+
+  /** Engrave the live editor contents immediately. */
+  run(): this {
+    window.clearTimeout(this.timeoutID);
+    if (this.disposed || this.composing) return this;
+    this.code = this.text_area?.val() ?? this.code;
+    return this.redraw();
+  }
+
+  /** Reader IDs are valid only for the current, successfully drawn source revision. */
+  getReadingEvents(): readonly ScoreReadingEvent[] {
+    return this.getScore() ? this.current.layout.navigation.events : [];
+  }
+
+  /** Return the current source diagnostic, including a located engraving warning. */
+  getDiagnosticRange(): SourceRange | undefined {
+    return !this.disposed && this.code === (this.text_area?.val() ?? this.code) ? this.diagnostic : undefined;
+  }
+
+  /** Select the precise compiler diagnostic in the editor that produced it. */
+  selectError(): boolean {
+    const range = this.getDiagnosticRange();
+    if (!range || !this.text_area) return false;
+    this.text_area[0].focus();
+    this.text_area[0].setSelectionRange(range.start, range.end);
+    return true;
   }
 
   /** Change the projection without rewriting the score or losing the current editor revision. */
@@ -154,14 +196,16 @@ class Div {
 
   /** Report errors as text and identify the last successfully drawn score. */
   private reportError(error: Error): void {
+    this.diagnostic = (error as Error & { range?: SourceRange }).range;
     this.surface?.setAttribute('data-preview-stale', 'true');
     const prefix = this.surface ? 'Showing the last valid score. ' : '';
     this.editor_error?.text(prefix + error.message);
+    $(this.sel)[0].dispatchEvent(new Event('vextab-render'));
   }
 
   /** Only expose a flow score while its source matches the live editor, even during debounce. */
   getScore(): ParsedScore | undefined {
-    if (this.current && this.current.score === this.candidate && !this.surface?.hasAttribute('data-preview-stale')
+    if (!this.disposed && this.current && this.current.score === this.candidate && !this.surface?.hasAttribute('data-preview-stale')
         && this.current.score.source === (this.text_area?.val() ?? this.code)) return this.current.score;
   }
 
@@ -217,14 +261,32 @@ class Div {
         const renderer = new Vex.Flow.Renderer(next, backend);
         renderer.getContext().setBackgroundFillStyle($(next).css('background-color'));
         this.artist.draw(renderer);
+        if (canvas) {
+          const summary = this.artist.staves.map((group, i) => {
+            const voices = group.tab ? group.tab_voices : group.note_voices;
+            const lines = voices.map((notes, v) => 'Voice ' + (v + 1) + '. ' + notes
+              .filter(note => !note.shouldIgnoreTicks()).map(note => {
+                const positions = note.getPositions?.();
+                const pitch = note.isRest() ? 'rest' : positions?.map(p => 'string ' + p.str + ' fret ' + p.fret).join(', ')
+                  ?? note.getKeys().join(', ');
+                return pitch + ' (' + note.getDuration() + ')';
+              }).join('. '));
+            return 'Stave ' + (i + 1) + ', meter ' + group.meter + '. ' + lines.join('. ');
+          }).join('. ');
+          next.setAttribute('role', 'img');
+          next.setAttribute('aria-label', summary);
+          next.textContent = summary;
+        }
       }
       this.surface?.remove();
       this.surface = next;
       const warnings = this.flow ? this.current.layout.diagnostics : [];
+      this.diagnostic = warnings[0]?.range;
       this.editor_error?.text(warnings.map(d => {
         const where = d.range ? ' (line ' + d.range.line + ', column ' + d.range.column + ')' : '';
         return (d.code === 'RowOverflow' ? 'Bar ' + d.measures.join(', ') + ' exceeds this width' : d.code) + where;
       }).join('\n'));
+      host.dispatchEvent(new Event('vextab-render'));
     } catch (error) {
       next.remove();
       this.reportError(error);
@@ -267,25 +329,5 @@ class Div {
   }
 }
 
-(window as any).VEXTAB_SEL_V3 = 'div.vextab-auto';
-
-/**
- * Start auto-rendering any VexTab elements found in the document.
- */
-function start(sel?: string): void {
-  // Emit version info for troubleshooting in the browser console.
-  console.log('Running VexTab.Div:', __VERSION);
-  $(sel || (window as any).VEXTAB_SEL_V3).forEach((s: any) => new Div(s));
-}
-
-$(() => { if ((window as any).VEXTAB_SEL_V3) { start(); } });
-
 export default Div;
-
-export {
-  Div,
-  Vex,
-  Artist,
-  VexTab,
-  Player,
-};
+export { Div, Vex, Artist, VexTab, Player };

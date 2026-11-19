@@ -20,12 +20,12 @@ The browser tests use the installed Chrome. To use another Chrome or Chromium ex
 npm start
 ```
 
-The development server watches the source. Open the [QUnit suite](http://127.0.0.1:9005/), the [triplet guide](http://127.0.0.1:9005/guide/#triplets), the [tied-chord lesson](http://127.0.0.1:9005/guide/shared-score.html), the [guitar and lead-sheet studies](http://127.0.0.1:9005/guide/studies.html), or the [interactive playground](http://127.0.0.1:9005/playground.html).
+The development server watches the source. Open the [QUnit suite](http://127.0.0.1:9005/), the [editable user guide](http://127.0.0.1:9005/guide/), the [triplet guide](http://127.0.0.1:9005/guide/#triplets), the [tied-chord lesson](http://127.0.0.1:9005/guide/shared-score.html), the [guitar and lead-sheet studies](http://127.0.0.1:9005/guide/studies.html), or the [interactive playground](http://127.0.0.1:9005/playground.html).
 
 | Command | Output |
 | --- | --- |
 | `npm run build-dev` | Readable browser bundles and test pages in `dist/` |
-| `npm run build` | Minified bundles, source maps, and the legacy `vextab-div.js` entry point |
+| `npm run build` | Type declarations in `dist/types/`, minified bundles, source maps, and the legacy `vextab-div.js` entry point |
 | `npm run watch` | Development bundles rebuilt on source changes |
 | `npm run clean` | Removes the generated `dist/` directory |
 
@@ -43,7 +43,7 @@ npm run build
 
 Run these commands in order because the builds share `dist/`. The browser suite covers parsing, notation, the SVG playground, editor errors, and the legacy Canvas renderer. It also checks the DOM-free parser, reflow, independent part metadata, and keyboard source selection. [Shared-score API and coverage](vt5-m2.md)
 
-Edit the study music in `guide/scores/*.vextab`. The guide and engraving tests import the same files. The suite exercises both scores at 360 and 960 CSS pixels, including a return to the starting width after fonts load. [Guitar and lead-sheet coverage](vt5-m3.md)
+Edit guide prose, routes and reference entries in `guide/catalog.ts`. Use stable score IDs for guide, playground and original-source links. Edit the study music in `guide/scores/*.vextab`. The guide and engraving tests import the same files. The suite exercises both scores at 360 and 960 CSS pixels, including a return to the starting width after fonts load. [Guitar and lead-sheet coverage](vt5-m3.md)
 
 To test the package a consumer will download, build a tarball and run the browser suite against its extracted files. GitHub Actions performs this check on pushes, pull requests, and release tags.
 
@@ -52,7 +52,10 @@ package_dir=$(mktemp -d)
 npm pack --pack-destination "$package_dir"
 tar -xzf "$package_dir"/vextab-*.tgz -C "$package_dir"
 node scripts/test-browser.mjs "$package_dir/package/dist"
+node scripts/test-consumer.mjs "$package_dir"/vextab-*.tgz
 ```
+
+The consumer check installs the local tarball into a temporary project. It exercises CommonJS and ES parser imports, compiles a strict TypeScript example, bundles it and opens it in Chrome.
 
 After building production bundles, run `npm run test:baseline` to compare the musical fixtures with VexTab 4.0.6. The [M0 baseline](vt5-baseline.md) covers the scores, known failures and visual references.
 

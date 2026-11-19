@@ -71,7 +71,7 @@ export default class VexTab {
     try {
       this.elements = readSyntax(code);
     } catch (error) {
-      if (error instanceof ScoreError) throw new Vex.RERR('ParseError', error.message);
+      if (error instanceof ScoreError) throw Object.assign(new Vex.RERR('ParseError', error.message), { range: error.range });
       throw error;
     }
     if (this.elements) {

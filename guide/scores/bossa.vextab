@@ -1,0 +1,6 @@
+options tab-stems=true
+tabstave notation=true time=4/4 voice=top
+notes :8 ## (1/2.0/1) :q ## (1/2.0/1) :8 ## (0/2.0/1) |
+notes :h T(0/2.0/1) :q (1/2.0/1) ## |
+voice voice=bottom
+notes :h 0/5 2/4 | 3/5 2/4 |

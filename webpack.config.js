@@ -10,8 +10,10 @@ module.exports = (env = {}) => {
   return {
     entry: {
       main: './src/main.ts',
-      score: { import: './src/score/parse.ts', layer: 'parser', filename: 'score.cjs', library: { type: 'commonjs2' } },
-      div: './src/div.ts',
+      score: { import: './src/score/parse.ts', layer: 'parser', filename: 'score.cjs', library: { type: 'commonjs-static' } },
+      div: './src/auto.ts',
+      browser: { import: './src/browser.ts', filename: 'browser.cjs', library: { type: 'commonjs-static' } },
+      guide: './guide/app.ts',
       tests: './tests/tests.ts',
       playground: './tests/playground.ts',
       studies: './guide/studies.ts',
@@ -30,13 +32,15 @@ module.exports = (env = {}) => {
     plugins: [
       new webpack.ProvidePlugin({ $: 'zepto-webpack' }),
       new webpack.DefinePlugin({ __VERSION: JSON.stringify(version) }),
-      new HtmlWebpackPlugin({ template: './guide/index.html', filename: 'guide/index.html', chunks: ['div'] }),
+      new HtmlWebpackPlugin({ template: './guide/index.html', filename: 'guide/index.html', chunks: ['guide'] }),
+      new HtmlWebpackPlugin({ template: './guide/triplets.html', filename: 'guide/triplets.html', chunks: ['div'] }),
       new HtmlWebpackPlugin({ template: './guide/shared-score.html', filename: 'guide/shared-score.html', chunks: ['main'] }),
       new HtmlWebpackPlugin({ template: './guide/studies.html', filename: 'guide/studies.html', chunks: ['studies'] }),
       new HtmlWebpackPlugin({ template: './tests/tests.html', filename: 'index.html', chunks: ['tests'] }),
       new HtmlWebpackPlugin({ template: './tests/playground.html', filename: 'playground.html', chunks: ['playground'] }),
       new HtmlWebpackPlugin({ template: './static/div.html', filename: 'static/div.html', chunks: ['div'] }),
       new CopyPlugin({ patterns: [
+        { from: 'guide/scores', to: 'guide/scores' },
         { from: 'doc/vextab.css', to: 'vextab.css' },
         { from: require.resolve('qunit'), to: 'qunit.js' },
         { from: require.resolve('qunit/qunit/qunit.css'), to: 'qunit.css' },

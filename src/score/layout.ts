@@ -316,9 +316,29 @@ export function renderScore(host: HTMLElement, parsed: ParsedScore, options: { w
     rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };
 }
 
+/** Extract one numbered voice across all measures. Shared endings follow its boundary events. */
+function selectVoice(score: ParsedScore, number: number): ParsedScore {
+  const events = new Set<string>();
+  const measures = score.measures.map(m => {
+    const voice = m.voices[number - 1];
+    if (!Number.isInteger(number) || !voice) throw new ScoreError('measure', 'Missing voice ' + number + ' in bar ' + m.number, m.range);
+    for (const event of voice.events) events.add(event.id);
+    return { ...m, voices: [{ ...voice, stem: undefined, rehearsal: m.voices[0].rehearsal }] };
+  });
+  const ties = score.ties.filter(t => events.has(t.from) && events.has(t.to));
+  const spans = (score.spans ?? []).filter(s => s.kind === 'volta' || events.has(s.from)).map(s => {
+    if (s.kind !== 'volta') return s;
+    const end = measures[s.lastBar - 1].voices[0].events;
+    return { ...s, from: measures[s.firstBar - 1].voices[0].events[0].id, to: end[end.length - 1].id };
+  });
+  return { ...score, measures, ties, spans };
+}
+
 /** Publication recomposes from descriptors. Reject any selected mark that needs the screen pass. */
 export function renderScorePart(host: HTMLElement, parsed: ParsedScore, part: Staff,
-  options: Omit<PublicationOptions, 'staves'> = {}) {
+  options: Omit<PublicationOptions, 'staves'> & { voice?: number } = {}) {
+  const { voice, ...paper } = options;
+  if (voice !== undefined) parsed = selectVoice(parsed, voice);
   const view = project(parsed, part, 600);
   const unsupported = (feature: string, range: SourceRange): never => {
     throw new ScoreError('fixed-layout', `Independent ${part} parts cannot engrave ${feature} yet`, range);
@@ -344,6 +364,6 @@ export function renderScorePart(host: HTMLElement, parsed: ParsedScore, part: St
       }
     }
   }
-  const publication = new Publication(view.spec).render(host, options);
+  const publication = new Publication(view.spec).render(host, paper);
   return { publication, rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };
 }

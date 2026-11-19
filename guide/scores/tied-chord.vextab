@@ -1,0 +1,3 @@
+options tab-stems=true
+tabstave notation=true time=4/4
+notes :q 0/3 ## :h (1/2.2/3) | :h T(2/3.1/2) :q 3-1/2 |

@@ -57,6 +57,8 @@ Keep Jison and the existing fret/string notation. Extend the current semantic co
 
 ## M4 · Make the guide, demos and embedding experience release features
 
+[M4 user guide, demo library, integration and migration reference](vt5-m4.md)
+
 **Guide.** Follow the VexFlow guide's one-concept lessons, editable examples, stable lesson links, exercises and reset behavior. Use VexTab source everywhere a learner writes music. Keep lesson prose and plain-text scores independently editable. Give each score one stable ID with a title, learning goal, expected result and supported views. Load the same source into the guide, playground, demos and tests. [VexFlow guide](https://vexflow.com/guide/) · [Guide source and authoring conventions](https://github.com/vexflow/vexflow/blob/5.4.0/docs/guide.md)
 
 | Guide sequence | What the reader should be able to do |

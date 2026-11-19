@@ -1,0 +1,5 @@
+options measure-numbers=true
+stave time=3/4 voice=top
+notes !mark "A"! :q G/4 A/4 B/4 | :h D/5 :q B/4 | :h T B/4 :q A/4 | :h G/4 :q ## |
+voice voice=bottom
+notes :h G/3 :q D/4 | :h B/3 :q D/4 | :h C/4 :q E/4 | :h G/3 :q ## |
