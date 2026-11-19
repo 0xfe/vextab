@@ -28,6 +28,33 @@ function ink(host: HTMLElement) {
 }
 
 QUnit.module('Engraving', () => {
+  QUnit.test('Fixed SVG embeds clear every fret with opaque paper', assert => {
+    const fixture = document.querySelector('#qunit-fixture');
+    const style = document.createElement('style');
+    style.textContent = '.fret-paper .vex-canvas { background-color: var(--paper); }';
+    fixture.append(style);
+
+    for (const [paper, expected] of [
+      ['', 'rgb(255, 255, 255)'],
+      ['rgba(20, 40, 60, 0)', 'rgb(255, 255, 255)'],
+      ['color(srgb 0.2 0.3 0.4 / 0.5)', 'rgb(255, 255, 255)'],
+      ['#fff4d6', 'rgb(255, 244, 214)'],
+    ]) {
+      const host = document.createElement('div');
+      if (paper) {
+        host.className = 'fret-paper';
+        host.style.setProperty('--paper', paper);
+      }
+      host.textContent = 'tabstave\nnotes :q 0/1 12/1 (10/2.12/3) 4/1 |';
+      fixture.append(host);
+      const editor = new Div(host);
+      const frets = host.querySelectorAll('.vf-tabnote text');
+      const fills = Array.from(frets, fret => getComputedStyle(fret.previousElementSibling).fill);
+      assert.deepEqual(fills, Array(5).fill(expected), paper || 'unstyled embed');
+      editor.dispose();
+    }
+  });
+
   QUnit.test('Both renderers join filled and hollow rhythm slashes at their Bravura anchors', assert => {
     for (const direction of ['top', 'bottom']) {
       const source = 'stave time=4/4 voice=' + direction + '\nnotes :qSd B/4 :8S B/4 :hS B/4';

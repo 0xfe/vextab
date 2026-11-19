@@ -259,7 +259,14 @@ class Div {
       else {
         const backend = canvas ? Vex.Flow.Renderer.Backends.CANVAS : Vex.Flow.Renderer.Backends.SVG;
         const renderer = new Vex.Flow.Renderer(next, backend);
-        renderer.getContext().setBackgroundFillStyle($(next).css('background-color'));
+        if (!canvas) {
+          // SVG clears strings by painting over them. Keep VexFlow's white default
+          // when the computed paper color has alpha (rgba or modern CSS slash syntax).
+          const paper = getComputedStyle(next).backgroundColor;
+          if (paper && !paper.startsWith('rgba(') && !paper.includes('/')) {
+            renderer.getContext().setBackgroundFillStyle(paper);
+          }
+        }
         this.artist.draw(renderer);
         if (canvas) {
           const summary = this.artist.staves.map((group, i) => {
