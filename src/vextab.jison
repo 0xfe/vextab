@@ -20,7 +20,9 @@
 <INITIAL>"options"            { this.begin('options'); return 'OPTIONS'; }
 <INITIAL>"text"               { this.begin('text'); return 'TEXT'; }
 <INITIAL>"slur"               { this.begin('options'); return 'SLUR'; }
-<INITIAL,options>[^\s=]+      return 'WORD'
+/* Keep the quotes in the token so source ranges cover the written value. */
+<options>["][^"\r\n]*["]      return 'QUOTED_VALUE'
+<INITIAL,options>[^\s="][^\s=]*  return 'WORD'
 
 
 /* Annotations */
@@ -183,8 +185,14 @@ maybe_options
     { $$ = $1 }
   ;
 
+option_value
+  : WORD
+  | QUOTED_VALUE
+    { $$ = $1.slice(1, -1) }
+  ;
+
 options
-  : WORD '=' WORD
+  : WORD '=' option_value
     { $$ = [{
         key: $1,
         value: $3,
@@ -193,7 +201,7 @@ options
         _c: @1.first_column
       }]
     }
-  | options WORD '=' WORD
+  | options WORD '=' option_value
     { $$ = [].concat($1, [{
         key: $2,
         value: $4,
