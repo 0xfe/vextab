@@ -1,10 +1,11 @@
 // Project the shared score into fresh VexFlow objects for each screen or publication view.
 import {
-  Accidental, Barline, Dot, Factory, Publication, ScoreNavigation, SVGContext, TabNote, TabTie, TimeSignature,
-  type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
+  Accidental, Barline, Dot, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, TabNote, TabTie, TimeSignature,
+  type Beam, type StemmableNote, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
   type EasyScoreVoiceSpec, type PublicationOptions, type RenderContext, type ScoreHitRegion,
 } from 'vexflow';
-import type { Measure, MeasureVoice, ParsedScore } from './model';
+import { attachLeadMarks, drawFrames } from './lead';
+import type { Attack, Measure, MeasureVoice, ParsedScore } from './model';
 import { ScoreError, type SourceRange } from './source';
 
 type Staff = 'notation' | 'tab';
@@ -44,19 +45,37 @@ class Sources {
   sourceFor = (projection: string): string | undefined => this.ids[projection];
 }
 
+/** Ask the instrument for string identities, dead heads and a selected-string bend.
+ * The compiler owns written spelling, including explicit pitch overrides and the key. */
+function guitarNotation(event: Attack, instrument: FrettedInstrument) {
+  const physical = event.heads.flatMap((h, index) => h.position ? [{ ...h.position, displayKey: h.written, index }] : []);
+  if (event.bend) {
+    const pitched = physical.map(p => ({ str: p.str, fret: Number(p.fret) }));
+    return instrument.bentAttack(pitched, event.base, event.bend.spec).note.notation;
+  }
+  const labels = physical.length ? instrument.attack(physical, event.base).note.notation
+    .map(mark => ({ ...mark, index: physical[mark.index].index })) : [];
+  event.heads.forEach((h, index) => {
+    if (!h.position && h.sounding === null) labels.push({ kind: 'unpitched', id: 'slash', label: 'Rhythm slash', index });
+  });
+  return labels;
+}
+
 /** Both projections use the written duration, including dots before tuplet scaling. */
 function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources: Sources, index: number): EasyScoreVoiceSpec {
   const direction = voice.stem ?? (measure.voices.length > 1 ? (index === 0 ? 'up' : 'down') : undefined);
   const stemDirection = direction ? (direction === 'up' ? 1 : -1) : staff === 'tab' ? voice.tabDirection : undefined;
+  const instrument = new FrettedInstrument(measure.state.tuning, measure.state.capo);
   const notes: EasyScoreContent[] = voice.events.map(event => {
     const id = sources.project(staff, event.id, event.range);
     const rhythm = { duration: event.base, dots: event.dots, stemDirection };
     if (!event.heads.length) return { id, note: { ...rhythm, keys: ['r/4'], clef: 'treble', type: 'r' } };
-    const keys = event.heads.map(h => h.written);
+    const notation = guitarNotation(event, instrument);
+    const keys = event.heads.map(h => h.position?.fret === 'X' ? h.written + '/X' : h.written);
     if (staff === 'tab') {
-      return { id, tab: { ...rhythm, keys, positions: event.heads.map(h => ({ ...h.position! })) }, drawStem: voice.tabStems };
+      return { id, tab: { ...rhythm, keys, notation, positions: event.heads.map(h => ({ ...h.position! })) }, drawStem: voice.tabStems && !['w', '1'].includes(event.base) };
     }
-    return { id, note: { ...rhythm, keys, clef: measure.state.clef, type: event.slash ? 's' : 'n', autoStem: !direction } };
+    return { id, note: { ...rhythm, keys, notation, clef: measure.state.clef, type: event.slash ? 's' : 'n', autoStem: !direction } };
   });
   return {
     notes, stem: direction ?? 'auto',
@@ -69,6 +88,12 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
 /** Retain declarative descriptors only. Every independently composed part gets fresh native objects. */
 function project(parsed: ParsedScore, part: Part, width: number) {
   const staves = projections(parsed, part);
+  if (!staves.includes('tab')) {
+    for (const m of parsed.measures) for (const v of m.voices) {
+      const bend = v.events.find(e => e.bend)?.bend;
+      if (bend) throw new ScoreError('fixed-layout', 'A timed bend contour needs a tab staff', bend.range);
+    }
+  }
   const sources = new Sources(parsed.source);
   const eventId = sources.id;
   const spans: ContinuousSpan[] = [];
@@ -83,10 +108,10 @@ function project(parsed: ParsedScore, part: Part, width: number) {
       })),
     })),
     continuous: {
-      courtesy: false, measureNumbers: false, spans,
+      courtesy: false, measureNumbers: parsed.measureNumbers, spans,
       groups: staves.length === 2 ? [{ first: 'notation', last: 'tab', type: 'bracket' }] : [],
       boundaries: parsed.measures.map(m => ({
-        measure: m.number, breakBefore: m.newRow && m.number > 1 ? 'force' : undefined,
+        measure: m.number, rehearsal: m.voices[0].rehearsal, breakBefore: m.newRow && m.number > 1 ? 'force' : undefined,
         repeatStart: ['repeat-begin', 'repeat-both'].includes(m.voices[0].opening?.type),
         repeatEnd: ['repeat-end', 'repeat-both'].includes(m.voices[0].closing?.type),
       })),
@@ -98,13 +123,45 @@ function project(parsed: ParsedScore, part: Part, width: number) {
       to: eventId('notation', tie.to), fromHead: tie.fromHead, toHead: tie.toHead,
     });
   }
+  for (const mark of parsed.spans ?? []) {
+    if (mark.kind === 'palmMute' && !staves.includes('tab')) {
+      throw new ScoreError('fixed-layout', 'A string-specific palm mute needs a tab staff', mark.range);
+    }
+    const staff = mark.kind === 'palmMute' ? 'tab' : staves[0];
+    const id = sources.project(staff, mark.id, mark.range);
+    const endpoints = { id, from: eventId(staff, mark.from), to: eventId(staff, mark.to) };
+    if (mark.kind === 'palmMute') spans.push({ ...endpoints, kind: mark.kind, strings: mark.strings });
+    else if (staff === 'notation') spans.push({ ...endpoints, kind: mark.kind, text: mark.label });
+  }
   return { spec, staves, sources, eventId };
 }
 type Projection = ReturnType<typeof project>;
 
+/** A timed space breaks its own beam. Keep native metric groups and visible rest stemlets elsewhere. */
+function splitSilentBeams(factory: Factory, beams: Set<Beam>, silent: Set<string>): void {
+  for (const beam of beams) {
+    beam.setRendered();
+    let group: StemmableNote[] = [];
+    const finish = () => {
+      if (group.length > 1) factory.Beam({ notes: group }).renderOptions.showStemlets = beam.renderOptions.showStemlets;
+      group = [];
+    };
+    for (const note of beam.getNotes()) {
+      note.setBeam(undefined);
+      if (silent.has(note.getAttribute('id'))) finish();
+      else group.push(note);
+    }
+    finish();
+  }
+}
+
 /** Install screen-only modifiers before formatting, while note IDs still refer to both projections. */
-function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition) {
+function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, factory: Factory) {
+  const silent = new Set<string>();
+  const split = new Set<Beam>();
   for (const [index, m] of parsed.measures.entries()) {
+    const top = view.staves[0];
+    attachLeadMarks(m, composition, 0, id => view.eventId(top, id), (id, range) => view.sources.project(top, id, range));
     for (const [s, staff] of view.staves.entries()) {
       const stave = composition.staves[index][s];
       const modifiers = stave.getModifiers();
@@ -119,6 +176,12 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
       if (end === 'end' || end === 'double') stave.setEndBarType(end === 'end' ? Barline.type.END : Barline.type.DOUBLE);
       for (const voice of m.voices) for (const event of voice.events) {
         const note = composition.getNote(view.eventId(staff, event.id));
+        if (event.silent) {
+          note.renderOptions.draw = false;
+          silent.add(note.getAttribute('id'));
+          const beam = note.getBeam();
+          if (beam) split.add(beam);
+        }
         if (staff === 'tab' && !voice.tabStems) {
           // Keep VexFlow's exact tuplet multiplier. Skip the numeral on an unstemmed tab staff.
           for (const tuplet of note.getTupletStack()) tuplet.setRendered();
@@ -138,6 +201,7 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
       }
     }
   }
+  splitSilentBeams(factory, split, silent);
 }
 
 /** Native continuous ties require pitched staff notes. Tab ties use the same head endpoints
@@ -173,6 +237,37 @@ function drawTabTies(parsed: ParsedScore, view: Projection, composition: EasySco
   return regions;
 }
 
+/** VexFlow continuous voltas accept pitched anchors. For a tab part use the same bar
+ * endpoints and draw one bracket per actual row, with hooks only at the authored ends. */
+function drawTabEndings(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, ctx: RenderContext) {
+  const regions: ScoreHitRegion[] = [];
+  if (view.staves[0] !== 'tab') return regions;
+  for (const mark of parsed.spans ?? []) {
+    if (mark.kind !== 'volta') continue;
+    const id = view.eventId('tab', mark.id);
+    for (const [i, row] of composition.sheet.getContinuousLayout().rows.entries()) {
+      const bars = row.measures.filter(n => n >= mark.firstBar && n <= mark.lastBar);
+      if (!bars.length) continue;
+      const first = bars[0], last = bars[bars.length - 1];
+      const x = composition.staves[first - 1][0].getX() + 1;
+      const right = composition.staves[last - 1][0].getNoteEndX();
+      const y = row.y - 15;
+      ctx.save();
+      ctx.openGroup('tab-ending', id + '-' + i);
+      ctx.fillRect(x, y, right - x, 1);
+      if (first === mark.firstBar) {
+        ctx.fillRect(x, y, 1, 12);
+        ctx.setFont('sans-serif', 11).fillText(mark.label, x + 4, y + 12);
+      }
+      if (last === mark.lastBar) ctx.fillRect(right - 1, y, 1, 12);
+      ctx.closeGroup();
+      ctx.restore();
+      regions.push({ id, kind: 'span', source: mark.id, row: i, x, y, w: right - x, h: 14 });
+    }
+  }
+  return regions;
+}
+
 /** Recompose off-screen, then replace the host after all layout, drawing and indexing succeeds. */
 export function renderScore(host: HTMLElement, parsed: ParsedScore, options: { width?: number; part?: Part } = {}) {
   const width = options.width ?? (host.clientWidth || 640);
@@ -180,25 +275,43 @@ export function renderScore(host: HTMLElement, parsed: ParsedScore, options: { w
   const view = project(parsed, options.part ?? 'score', width - 20);
   const surface = document.createElement('div');
   const ctx = new SVGContext(surface);
+  const frames = drawFrames(parsed, width, ctx, (id, range) => view.sources.project(view.staves[0], id, range));
+  const tabEnding = view.staves[0] === 'tab' && parsed.spans?.some(s => s.kind === 'volta');
+  view.spec.sheet.y += frames.height + (tabEnding ? 20 : 0);
   const factory = new Factory({ renderer: { elementId: null, width, height: 1 } }).setContext(ctx);
   const composition = factory.EasyScore().compose(view.spec);
-  prepareScreen(parsed, view, composition);
+  prepareScreen(parsed, view, composition, factory);
   factory.draw();
   const tabRegions = drawTabTies(parsed, view, composition, ctx);
+  const extraRegions = [...frames.regions, ...drawTabEndings(parsed, view, composition, ctx)];
   const navigation = new ScoreNavigation(composition, view.spec.staves, view.sources.ids);
   // Silent tab rests still advance the reader's clock, but have no visible pointer target.
   const hidden = new Set(parsed.measures.flatMap(m => m.voices.filter(v => !v.tabStems)
     .flatMap(v => v.events.filter(e => !e.heads.length).map(e => view.eventId('tab', e.id)))));
+  for (const m of parsed.measures) for (const v of m.voices) for (const e of v.events) {
+    if (e.silent) for (const staff of view.staves) hidden.add(view.eventId(staff, e.id));
+  }
   function hitTest(x: number, y: number): ScoreHitRegion | undefined {
     const hit = navigation.hitTest(x, y);
     if (hit && !hidden.has(hit.id)) return hit;
-    return tabRegions.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+    return [...tabRegions, ...extraRegions].find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
   }
   const rows = composition.sheet.getRows();
-  const extent = Math.max(width, ...rows.map(r => r.x + r.width + 10));
+  const extent = Math.max(width, frames.width, ...rows.map(r => r.x + r.width + 10));
   ctx.resize(extent, Math.ceil(composition.sheet.getHeight() + 20));
   host.replaceChildren(surface);
-  return { composition, navigation, hitTest, tabRegions, diagnostics: composition.sheet.getContinuousLayout().diagnostics,
+  const diagnostics: { code: string; measures: number[]; range: SourceRange; source?: string }[] =
+    composition.sheet.getContinuousLayout().diagnostics.map(d => ({
+    ...d, range: (d.source && view.sources.rangeFor(d.source, parsed.source)) || parsed.measures[d.measures[0] - 1]?.range,
+  }));
+  for (const m of parsed.measures) {
+    if (!m.voices.some(v => v.events.some(e => e.chord || e.lyric))) continue;
+    for (const d of composition.systems[m.number - 1].getPhraseLayout().diagnostics) {
+      const source = d.sources.find(id => view.sources.rangeFor(id, parsed.source));
+      diagnostics.push({ code: d.code, measures: [m.number], source, range: view.sources.rangeFor(source, parsed.source) ?? m.range });
+    }
+  }
+  return { composition, navigation, hitTest, tabRegions, extraRegions, diagnostics,
     rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };
 }
 
@@ -207,8 +320,10 @@ export function renderScorePart(host: HTMLElement, parsed: ParsedScore, part: St
   options: Omit<PublicationOptions, 'staves'> = {}) {
   const view = project(parsed, part, 600);
   const unsupported = (feature: string, range: SourceRange): never => {
-    throw new ScoreError('fixed-layout', `Use fixed layout for ${feature} in a printed ${part} part`, range);
+    throw new ScoreError('fixed-layout', `Independent ${part} parts cannot engrave ${feature} yet`, range);
   };
+  const tabVolta = part === 'tab' && parsed.spans?.find(s => s.kind === 'volta');
+  if (tabVolta) unsupported('a tab ending', tabVolta.range);
   if (part === 'tab' && parsed.ties.length) unsupported('a tab tie', parsed.ties[0].range);
   for (const m of parsed.measures) {
     if (!m.state.showTime) unsupported('a hidden signature', m.state.timeRange);
@@ -217,6 +332,10 @@ export function renderScorePart(host: HTMLElement, parsed: ParsedScore, part: St
     for (const voice of m.voices) {
       if (part === 'tab' && !voice.tabStems && voice.tuplets.length) unsupported('an unstemmed tab tuplet', voice.tuplets[0].range);
       for (const event of voice.events) {
+        if (event.frame) unsupported('a chord frame', event.frame.range);
+        if (event.chord) unsupported('a chord label', event.chord.range);
+        if (event.lyric) unsupported('a lyric', event.lyric.range);
+        if (event.silent) unsupported('a silent position', event.silent);
         if (event.dots) unsupported('augmentation dots', event.rhythmRange);
         const sign = part === 'notation' && event.heads.find(h => h.accidental);
         if (sign) unsupported('an explicit accidental', sign.range);

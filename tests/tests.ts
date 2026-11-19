@@ -12,6 +12,7 @@ import Artist from '../src/artist';
 import Div from '../src/div';
 import './engraving';
 import './shared-score';
+import './studies';
 import VexTab from '../src/vextab';
 
 // QUnit globals injected by tests.html.

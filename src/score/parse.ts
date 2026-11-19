@@ -1,8 +1,9 @@
 // Compile located Jison events to aligned measures without creating rendering objects.
 import { Fraction, KeyManager, Music, Tuning, VexFlow } from 'vexflow';
 import { readSyntax, ScoreError, type SourceRange } from './source';
+import { VoiceCommands, resolveMarks } from './commands';
 import { soundingGuitarPitch, spellFret, tupletOccupancy } from './music';
-import type { Attack, Head, Measure, MeasureVoice, ParsedScore, StaffState, Tie } from './model';
+import type { Attack, Head, Measure, MeasureVoice, ParsedScore, StaffState, Tie, ScoreSpan } from './model';
 
 export { ScoreError } from './source';
 
@@ -46,7 +47,7 @@ function declarationRange(node: Token): SourceRange {
 /** A stave declaration starts a written row and resets its instrument and signature. */
 function staffState(node: Token): StaffState {
   const state: StaffState = { tab: node.element === 'tabstave', notation: node.element !== 'tabstave',
-    strings: 6, tuning: 'standard', key: 'C', clef: 'treble', meter: '4/4', showTime: false, fragment: false,
+    capo: 0, strings: 6, tuning: 'standard', key: 'C', clef: 'treble', meter: '4/4', showTime: false, fragment: false,
     declaration: declarationRange(node), timeRange: { ...node.range, end: node.range.start + node.element.length } };
   let visible = true;
   let timeGiven = false;
@@ -73,6 +74,10 @@ function staffState(node: Token): StaffState {
       case 'tuning':
         try { new Tuning(opt.value); } catch { invalid(opt, 'Invalid tuning'); }
         state.tuning = opt.value;
+        break;
+      case 'capo':
+        state.capo = Number(opt.value);
+        if (!/^\d+$/.test(opt.value) || !Number.isSafeInteger(state.capo)) invalid(opt, 'Expected a nonnegative capo fret');
         break;
       case 'strings':
         state.strings = Number(opt.value);
@@ -105,7 +110,7 @@ function startVoice(settings: Settings, direction: string | undefined, declarati
 function readSettings(settings: Settings, node: Token): void {
   for (const opt of node.params) {
     switch (opt.key) {
-      case 'tab-stems': case 'beam-rests': case 'beam-stemlets': case 'beam-middle-only': booleanOption(opt); break;
+      case 'measure-numbers': case 'tab-stems': case 'beam-rests': case 'beam-stemlets': case 'beam-middle-only': booleanOption(opt); break;
       case 'tab-stem-direction':
         if (!['up','down'].includes(opt.value)) invalid(opt, 'Invalid tab stem direction');
         break;
@@ -126,7 +131,7 @@ function readRhythm(node: Token): Rhythm {
 }
 
 /** Resolve pitches and physical positions independently. A named pitch need not have a fret. */
-function chordHead(note: Token, state: StaffState, tuning: Tuning, manager: KeyManager, music: Music): Head {
+function chordHead(note: Token, state: StaffState, tuning: Tuning, manager: KeyManager, music: Music, slash: boolean): Head {
   if (note.decorator) fixed(note, `decorator '${note.decorator}'`);
   if (note.articulation && !['T', '-'].includes(note.articulation)) fixed(note, `technique '${note.articulation}'`);
   const str = Number(note.string);
@@ -135,11 +140,18 @@ function chordHead(note: Token, state: StaffState, tuning: Tuning, manager: KeyM
   if (note.fret !== undefined) {
     const fret = Number(note.fret);
     if (str < 1 || str > state.strings || !Number.isSafeInteger(fret)) invalid(note, 'Invalid fret or string');
-    try { sounding = soundingGuitarPitch(tuning, fret, str); }
+    try { sounding = soundingGuitarPitch(tuning, fret + state.capo, str); }
     catch { invalid(note, 'String outside the tuning'); }
     position = { str, fret };
   }
   if (note.abc) {
+    if (note.abc.key === 'X' && !note.abc.accidental && !note.abc.accidental_type && note.fret === undefined) {
+      if (slash && !state.tab) return { range: note.range, written: 'b/4', sounding: null };
+      if (str < 1 || str > state.strings) invalid(note, 'Dead strike needs a physical string');
+      let written: string;
+      try { written = tuning.getNoteForFret(state.capo, str).toLowerCase(); } catch { invalid(note, 'String outside the tuning'); }
+      return { range: note.range, written, sounding: null, position: { str, fret: 'X' } };
+    }
     if (!/^[A-G]$/.test(note.abc.key)) fixed(note, `notehead '${note.abc.key}'`);
     const sign = note.abc.accidental;
     const pitch = note.abc.key.toLowerCase() + (sign && sign !== 'n' ? sign : '') + '/' + (note.octave ?? str);
@@ -147,7 +159,7 @@ function chordHead(note: Token, state: StaffState, tuning: Tuning, manager: KeyM
     return { range: note.range, written: pitch, sounding: sounding ?? pitch, position,
       inheritSign: !sign && !note.abc.accidental_type, accidental: sign || (note.abc.accidental_type ? 'n' : undefined), cautionary: note.abc.accidental_type === 'c' };
   }
-  const [name, octave] = spellFret(tuning, manager, music, note.fret, str);
+  const [name, octave] = spellFret(tuning, manager, music, String(Number(note.fret) + state.capo), str);
   return { range: note.range, written: name + '/' + octave, sounding, position };
 }
 
@@ -156,6 +168,7 @@ function connect(previous: Attack | undefined, next: Attack, indexes: number[], 
   const used = new Set<number>();
   for (const toHead of indexes) {
     const head = next.heads[toHead];
+    if (head.sounding === null) invalid(token, 'Only a pitched head can be tied');
     const fromHead = previous?.heads.findIndex((prior, i) =>
       !used.has(i) && prior.position?.str === head.position?.str && prior.position?.fret === head.position?.fret &&
       (prior.written === head.written || ((head.inheritSign || prior.inheritSign) && staffPitch(prior) === staffPitch(head)))) ?? -1;
@@ -182,14 +195,21 @@ function applyTuplet(bar: MeasureVoice, node: Token, meter: string): void {
 
 /** A voice owns its bar cursor. A trailing boundary closes the bar without creating an empty one. */
 function compileVoice(voiceNode: Token, state: StaffState, settings: Settings, direction: string, ties: Tie[],
-  cursor: { rhythm: Rhythm }): MeasureVoice[] {
+  cursor: { rhythm: Rhythm }, spans: ScoreSpan[], reference?: MeasureVoice[]): MeasureVoice[] {
   const tuning = new Tuning(state.tuning), manager = new KeyManager(state.key), music = new Music();
   const bars: MeasureVoice[] = [];
   const declaration = declarationRange(voiceNode);
   let bar = startVoice(settings, direction, declaration);
+  const commands = new VoiceCommands(state, spans, !reference);
+  if (reference?.[0].keyChange) manager.setKey(reference[0].keyChange);
   let previous: Attack;
   for (const node of voiceNode.notes) {
     if (node.time) cursor.rhythm = readRhythm(node);
+    if (node.command === 'command') {
+      commands.apply(node as { params: string; range: SourceRange }, bar);
+      if (bar.keyChange && !bar.events.length) manager.setKey(bar.keyChange);
+      continue;
+    }
     if (node.command === 'bar') {
       const boundary = { type: node.type, range: node.range };
       if (!bar.events.length && bars.length && !bar.opening) fixed(node, 'consecutive barlines');
@@ -198,6 +218,7 @@ function compileVoice(voiceNode: Token, state: StaffState, settings: Settings, d
         bar.closing = boundary;
         bars.push(bar);
         bar = startVoice(settings, direction, declaration);
+        if (reference?.[bars.length]?.keyChange) manager.setKey(reference[bars.length].keyChange);
       } else if (bar.opening) fixed(node, 'consecutive empty barlines');
       if (!bars.length || ['repeat-begin', 'repeat-both'].includes(node.type)) bar.opening = boundary;
       continue;
@@ -215,7 +236,7 @@ function compileVoice(voiceNode: Token, state: StaffState, settings: Settings, d
     if (!node.command && !node.chord && !node.abc && node.fret === undefined) continue;
     const members: Token[] = node.command === 'rest' ? [] : node.chord ?? [node];
     if (node.chord && members.some(n => n.time)) fixed(node, 'duration changes inside a chord');
-    const heads = members.map(n => chordHead(n, state, tuning, manager, music));
+    const heads = members.map(n => chordHead(n, state, tuning, manager, music, cursor.rhythm.slash));
     const strings = heads.flatMap(h => h.position ? [h.position.str] : []);
     if (new Set(strings).size !== strings.length) fixed(node, 'a multi-stop chord on one string');
     const { base, dots, slash } = cursor.rhythm;
@@ -228,6 +249,8 @@ function compileVoice(voiceNode: Token, state: StaffState, settings: Settings, d
     bar.events.push(event);
     previous = event;
   }
+  commands.finish();
+  if (!bar.events.length && bar.boundaryRange) invalid({ range: bar.boundaryRange }, 'Boundary command needs a following measure');
   if (bar.events.length) bars.push(bar);
   else if (bar.opening) fixed({ range: bar.opening.range }, 'a barline without a following measure');
   for (const voice of bars) {
@@ -254,7 +277,9 @@ function finishRow(row: Row, measures: Measure[]) {
   for (const { bars, node } of row.voices) {
     if (bars.length !== first.length) throw new ScoreError('measure', 'Voices have different bar counts', node.range);
   }
+  let state = row.state;
   for (let i = 0; i < first.length; i++) {
+    if (first[i].keyChange) state = { ...state, key: first[i].keyChange };
     const voices = row.voices.map(v => v.bars[i]);
     const pickup = i === 0 ? row.state.pickup : undefined;
     const wanted = pickup ?? (row.state.fragment ? first[i].span : fraction(row.state.meter).toString());
@@ -272,7 +297,7 @@ function finishRow(row: Row, measures: Measure[]) {
     }
     const firstEvent = first[i].events[0], lastEvent = first[i].events[first[i].events.length - 1];
     const range = { ...(first[i].opening?.range ?? firstEvent.range), end: (first[i].closing?.range ?? lastEvent.range).end };
-    measures.push({ number: measures.length + 1, range, span: wanted, state: row.state, voices, newRow: i === 0 });
+    measures.push({ number: measures.length + 1, range, span: wanted, state, voices, newRow: i === 0 });
   }
 }
 
@@ -300,6 +325,7 @@ function resolvePitches(measures: Measure[], ties: Tie[]): void {
       for (const event of beats.get(beat)) {
         heads.set(event.id, event.heads);
         event.heads.forEach((h, index) => {
+          if (h.sounding === null) return; // A display head cannot change accidental memory.
           const pitch = staffPitch(h);
           const tie = arrivals.get(event.id + '/' + index);
           const prior = tie && heads.get(tie.from)[tie.fromHead];
@@ -322,12 +348,17 @@ function resolvePitches(measures: Measure[], ties: Tie[]): void {
 /** Pure parse/validation entry. All mutable compiler state is local to this source revision. */
 export function parseScore(source: string): ParsedScore {
   const nodes: Token[] = readSyntax(source, true);
-  const measures: Measure[] = [], ties: Tie[] = [];
+  const measures: Measure[] = [], ties: Tie[] = [], spans: ScoreSpan[] = [];
   const cursor = { rhythm: { base: 'q', dots: 0, slash: false } };
   const settings: Settings = {};
   let row: Row;
   for (const node of nodes) {
-    if (node.element === 'options') { readSettings(settings, node); continue; }
+    if (node.element === 'options') {
+      const numbering = node.params.find((p: Token) => p.key === 'measure-numbers');
+      if (row && numbering) invalid(numbering, 'Set measure numbering before the first stave');
+      readSettings(settings, node);
+      continue;
+    }
     if (node.element !== 'voice' || !row) {
       if (row) finishRow(row, measures);
       row = { node, state: staffState(node), voices: [] };
@@ -338,11 +369,12 @@ export function parseScore(source: string): ParsedScore {
     if (node.slurs?.length) fixed(node.slurs[0], 'slur');
     const direction = node.options?.find((o: Token) => o.key === 'voice')?.value;
     if (direction && !['top', 'bottom', 'new'].includes(direction)) invalid(node, 'Invalid voice direction');
-    if (node.notes?.length) row.voices.push({ bars: compileVoice(node, row.state, settings, direction, ties, cursor), node });
+    if (node.notes?.length) row.voices.push({ bars: compileVoice(node, row.state, settings, direction, ties, cursor, spans, row.voices[0]?.bars), node });
     else if (node.element === 'voice') invalid(node, 'Empty voice');
   }
   if (!row) invalid(nodes[0], 'Expected a stave');
   finishRow(row, measures);
   resolvePitches(measures, ties);
-  return { source, measures, ties };
+  resolveMarks(measures, spans);
+  return { source, measures, ties, spans, measureNumbers: settings['measure-numbers'] === 'true' };
 }

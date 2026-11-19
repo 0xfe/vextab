@@ -20,7 +20,7 @@ The browser tests use the installed Chrome. To use another Chrome or Chromium ex
 npm start
 ```
 
-The development server watches the source. Open the [QUnit suite](http://127.0.0.1:9005/), the [triplet guide](http://127.0.0.1:9005/guide/#triplets), the [tied-chord lesson](http://127.0.0.1:9005/guide/shared-score.html), or the [interactive playground](http://127.0.0.1:9005/playground.html).
+The development server watches the source. Open the [QUnit suite](http://127.0.0.1:9005/), the [triplet guide](http://127.0.0.1:9005/guide/#triplets), the [tied-chord lesson](http://127.0.0.1:9005/guide/shared-score.html), the [guitar and lead-sheet studies](http://127.0.0.1:9005/guide/studies.html), or the [interactive playground](http://127.0.0.1:9005/playground.html).
 
 | Command | Output |
 | --- | --- |
@@ -42,6 +42,8 @@ npm run build
 ```
 
 Run these commands in order because the builds share `dist/`. The browser suite covers parsing, notation, the SVG playground, editor errors, and the legacy Canvas renderer. It also checks the DOM-free parser, reflow, independent part metadata, and keyboard source selection. [Shared-score API and coverage](vt5-m2.md)
+
+Edit the study music in `guide/scores/*.vextab`. The guide and engraving tests import the same files. The suite exercises both scores at 360 and 960 CSS pixels, including a return to the starting width after fonts load. [Guitar and lead-sheet coverage](vt5-m3.md)
 
 To test the package a consumer will download, build a tarball and run the browser suite against its extracted files. GitHub Actions performs this check on pushes, pull requests, and release tags.
 

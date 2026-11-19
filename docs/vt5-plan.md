@@ -44,6 +44,8 @@ Keep Jison and the existing fret/string notation. Extend the current semantic co
 
 ## M3 · Deliver responsive scores and a small guitar vocabulary
 
+[M3 results, syntax and editable guitar and lead-sheet studies](vt5-m3.md)
+
 | Deliverable | Implementation choice | Musical acceptance test |
 | --- | --- | --- |
 | Continuous score | Opt in to measure-aware wrapping. Explicit stave/line breaks remain meaningful. Use continuous boundaries for repeats, rehearsal marks and numbering. Add first/second endings and ties as anchored spans. Add key changes at bar boundaries first, then qualify inline changes before documenting broader support. | A 12-bar study wraps at different bars on phone and desktop. Tab/notation barlines coincide. A tie, volta and mute that cross a break retain their endpoints. A too-wide bar produces a located diagnostic. |

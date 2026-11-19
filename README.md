@@ -15,7 +15,7 @@ If you want to save and share your VexTab, try out [My Vexflow](http://my.vexflo
 
 To see what VexTab can do, take a look at the [list of features](http://my.vexflow.com/articles/53?source=enabled).
 
-The VexTab 5 development guide has editable lessons on triplets and on following a tied chord from an editor to a printed part. [Triplets in tab and notation](docs/vt5-m1.md) · [Follow a tied chord](docs/vt5-m2.md)
+The VexTab 5 development guide has editable lessons on triplets, tied chords, fingerstyle guitar and lead sheets. [Triplets in tab and notation](docs/vt5-m1.md) · [Follow a tied chord into a printed part](docs/vt5-m2.md) · [Play the Drop D turnaround and write a lead sheet](docs/vt5-m3.md)
 
 ## Quick Start
 

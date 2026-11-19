@@ -31,6 +31,8 @@
 /* Commands */
 <notes>[!]                { this.begin('command'); return "!" }
 <command>[!]              { this.begin('notes'); return "!" }
+/* A quoted lyric can contain the command delimiter, e.g. !lyric "Go!"!. */
+<command>([^!"\r\n]|["]([^"\\\r\n]|\\.)*["])+  return 'COMMAND'
 <command>[^!]+            return 'COMMAND'
 
 /* Text Lines */

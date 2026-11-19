@@ -29,3 +29,7 @@ div.vextab-auto .title {
 .vex-canvas[data-preview-stale="true"] {
   opacity: 0.65;
 }
+
+/* An indivisible bar can scroll inside a narrow flow embed. */
+[layout="flow"] > .vex-canvas { max-width: 100%; overflow-x: auto; }
+[layout="flow"] textarea.editor { max-width: 100%; box-sizing: border-box; }

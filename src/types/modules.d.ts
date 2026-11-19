@@ -10,3 +10,9 @@ declare module '*.jison' {
 }
 
 declare module '*.css';
+
+/** Canonical editable scores are imported as plain text in lessons and tests. */
+declare module '*.vextab' {
+  const source: string;
+  export default source;
+}

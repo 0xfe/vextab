@@ -1,11 +1,12 @@
 // Layout-independent score values. Fractions are reduced strings in whole notes.
+import type { FretDiagramSpec, TimedStringBend } from 'vexflow';
 import type { SourceRange } from './source';
 
 export interface Head {
   range: SourceRange;
   written: string;
-  sounding: string;
-  position?: { str: number; fret: number };
+  sounding: string | null; // A dead strike has a display position and no pitch.
+  position?: { str: number; fret: number | 'X' };
   accidental?: string;
   cautionary?: boolean;
   // A bare letter inherits the sign in force on the staff.
@@ -20,6 +21,11 @@ export interface Attack {
   dots: number;
   rhythmRange?: SourceRange; // The duration token can precede several attacks.
   slash: boolean;
+  silent?: SourceRange;
+  bend?: { spec: TimedStringBend; range: SourceRange };
+  chord?: { text: string; range: SourceRange };
+  frame?: { spec: FretDiagramSpec; range: SourceRange };
+  lyric?: { text: string; hyphen: boolean; extend: number; range: SourceRange };
   duration: string;
   onset: string; // Relative to the start of this bar.
 }
@@ -43,6 +49,10 @@ export interface MeasureVoice {
   middleRests: boolean;
   opening?: Bar;
   closing?: Bar;
+  boundaryRange?: SourceRange; // First prefix command awaiting an attack.
+  keyChange?: string;
+  rehearsal?: string;
+  ending?: { label: string; bars: number; range: SourceRange };
 }
 
 export interface StaffState {
@@ -50,6 +60,7 @@ export interface StaffState {
   notation: boolean;
   tab: boolean;
   strings: number;
+  capo: number;
   tuning: string;
   key: string;
   clef: string;
@@ -79,8 +90,16 @@ export interface Tie {
   range: SourceRange;
 }
 
+/** Endings cover whole bars. A palm mute follows the selected physical strings in one voice. */
+export type ScoreSpan = { id: string; from: string; to: string; range: SourceRange } & (
+  { kind: 'volta'; label: string; firstBar: number; lastBar: number } |
+  { kind: 'palmMute'; strings: number[] }
+);
+
 export interface ParsedScore {
   source: string;
   measures: Measure[];
   ties: Tie[];
+  spans: ScoreSpan[];
+  measureNumbers: boolean;
 }

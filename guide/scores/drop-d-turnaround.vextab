@@ -1,0 +1,19 @@
+options tab-stems=true measure-numbers=true
+tabstave notation=true time=4/4 tuning=dropd capo=0 voice=top
+notes =|: !mark "A"! :q 3/2 2/3 :h (3/2.2/3) |
+notes :q 5/2 7/3 :h (5/2.7/3) |
+notes :h T(7/3.5/2) :q 3/2 2/3 |
+notes :h (5/2.7/3) !bend 3 +2 rise=1/2 hold=3/4 release=1/1! :q 3/2 2/3 |
+notes !mark "B"! :q 1/2 X/3 :h 2/3 |
+notes :q 3/2 1/2 :h 2/3 |
+notes !ending 1 bars=4! :q 3/2 5/2 :h (5/2.7/3) |
+notes :h T(7/3.5/2) :q 3/2 1/2 |
+notes :q 1/2 2/3 :h 3/2 |
+notes :h 2/3 3/2 =:|
+notes !ending 2 bars=2! :q 3/2 1/2 :h 2/3 |
+notes :w (3/2.2/3) =|=
+voice voice=bottom
+notes =|: :w 0/6 !pm 6! | :h 0/6 0/5 | :w 0/6 |
+notes :h 0/6 0/5 | :w 3/6 | :h 0/6 0/5 |
+notes :w 0/6 | :h 0/6 0/5 | :w 3/6 | :w 0/6 !end-pm! =:|
+notes :h 0/6 ## !silent! | :w 0/6 =|=

@@ -10,7 +10,7 @@ import Artist from './artist';
 import VexTab from './vextab';
 import Player from './player';
 import { parseScore } from './score/parse';
-import { renderScore } from './score/layout';
+import { renderScore, type Part } from './score/layout';
 import type { ParsedScore } from './score/model';
 
 import './vextab.css';
@@ -23,6 +23,9 @@ class Div {
   private scale: number;
   private rendererBackend: string;
   private flow: boolean;
+  private part: Part = 'score';
+  private observer?: ResizeObserver;
+  private disposed = false;
   private candidate?: ParsedScore;
   private current?: { score: ParsedScore; layout: ReturnType<typeof renderScore> };
   private surface: HTMLElement | null = null;
@@ -80,7 +83,7 @@ class Div {
       $(sel).append($('<p/>')).append(this.text_area);
       this.text_area.width(this.editor_width);
       this.text_area.height(this.editor_height);
-      this.text_area.on('input', () => {
+      this.text_area.on('input.vextab', () => {
         if (this.timeoutID) window.clearTimeout(this.timeoutID);
         this.timeoutID = window.setTimeout(() => {
           if (this.code !== this.text_area.val()) {
@@ -101,7 +104,39 @@ class Div {
       this.parser = new VexTab(this.artist);
     }
 
+    const host = $(sel)[0] as HTMLElement;
+    const autoWidth = this.flow && (!host.hasAttribute('width') || host.getAttribute('width') === 'auto');
+    if (autoWidth && host.clientWidth > 20) this.width = host.clientWidth;
     this.redraw();
+    // Embedded music fonts can finish after the first synchronous draw.
+    if (this.flow && document.fonts.status === 'loading') {
+      void document.fonts.ready.then(() => { if (!this.disposed) this.draw(); });
+    }
+    if (autoWidth) {
+      this.observer = new ResizeObserver(([entry]) => {
+        const width = Math.floor(entry.contentRect.width);
+        if (width > 20 && width !== this.width) {
+          this.width = width;
+          this.draw();
+        }
+      });
+      this.observer.observe(host);
+    }
+  }
+
+  /** Stop observing an embed when a host removes it or replaces the editor. */
+  dispose(): void {
+    this.disposed = true;
+    this.observer?.disconnect();
+    window.clearTimeout(this.timeoutID);
+    this.text_area?.off('input.vextab');
+  }
+
+  /** Change the projection without rewriting the score or losing the current editor revision. */
+  setPart(part: Part): this {
+    if (!this.flow) throw new Error('setPart requires layout="flow"');
+    this.part = part;
+    return this.draw();
   }
 
   /**
@@ -133,6 +168,7 @@ class Div {
   /** Rebuild flow geometry from the same parsed revision at a new width. */
   setWidth(width: number): this {
     if (!this.flow) throw new Error('setWidth requires layout="flow"');
+    this.observer?.disconnect();
     this.width = width;
     return this.draw();
   }
@@ -154,7 +190,7 @@ class Div {
       throw new Error('Flow layout requires SVG at scale 1. Use width to reflow.');
     }
     const score = this.candidate;
-    const layout = renderScore(next, score, { width: this.width });
+    const layout = renderScore(next, score, { width: this.width, part: this.part });
     if (this.text_area) next.addEventListener('click', event => {
       const svg = next.querySelector('svg');
       const transform = svg.getScreenCTM();
@@ -184,7 +220,11 @@ class Div {
       }
       this.surface?.remove();
       this.surface = next;
-      this.editor_error?.empty();
+      const warnings = this.flow ? this.current.layout.diagnostics : [];
+      this.editor_error?.text(warnings.map(d => {
+        const where = d.range ? ' (line ' + d.range.line + ', column ' + d.range.column + ')' : '';
+        return (d.code === 'RowOverflow' ? 'Bar ' + d.measures.join(', ') + ' exceeds this width' : d.code) + where;
+      }).join('\n'));
     } catch (error) {
       next.remove();
       this.reportError(error);

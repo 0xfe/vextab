@@ -107,6 +107,37 @@ try {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.setViewportSize({ width: 1280, height: 720 });
 
+  // Exercise the two packaged studies through the real editor and its ResizeObserver.
+  await page.getByRole('link', { name: /fingerstyle turnaround and a lead sheet/ }).click();
+  const select = page.getByRole('combobox', { name: 'Study' });
+  const tabs = page.getByRole('checkbox', { name: 'Tab only' });
+  await page.locator('#score svg').waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  const scoreHeight = () => page.locator('#score svg').evaluate(svg => Number(svg.getAttribute('height')));
+  const wideHeight = await scoreHeight();
+  await page.setViewportSize({ width: 392, height: 800 }); // 360 px after page gutters.
+  const waitForScoreWidth = width => page.waitForFunction(expected =>
+    Math.abs(Number(document.querySelector('#score svg').getAttribute('width')) - expected) < 0.01, width);
+  await waitForScoreWidth(360);
+  assert.ok(await scoreHeight() > wideHeight);
+  await tabs.check();
+  assert.ok(await page.locator('.vf-tab-ending').count() >= 2);
+  const draft = (await source.inputValue()).replace('capo=0', 'capo=2');
+  await source.fill(draft);
+  await select.selectOption('lead');
+  assert.equal(await tabs.isVisible(), false);
+  await page.locator('.vf-fret-diagram').waitFor();
+  assert.equal(await page.locator('#score .editor-error').innerText(), '');
+  await source.fill((await source.inputValue()).replace('Slow,', 'Go!'));
+  await page.waitForFunction(() => document.querySelector('#score svg').textContent.includes('Go!'));
+  await select.selectOption('guitar');
+  assert.equal(await source.inputValue(), draft);
+  await page.getByRole('button', { name: 'Reset study' }).click();
+  assert.match(await source.inputValue(), /capo=0/);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await waitForScoreWidth(960);
+  assert.equal(await scoreHeight(), wideHeight);
+
   // Older pages load the VexTabDiv global and use a different class and attributes.
   await page.goto('about:blank');
   await page.setContent('<div class="vex-tabdiv" editor="true" editor_width="520">tabstave\nnotes 5/2</div>');
