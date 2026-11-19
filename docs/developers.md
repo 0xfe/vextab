@@ -52,6 +52,8 @@ tar -xzf "$package_dir"/vextab-*.tgz -C "$package_dir"
 node scripts/test-browser.mjs "$package_dir/package/dist"
 ```
 
+After building production bundles, run `npm run test:baseline` to compare the musical fixtures with VexTab 4.0.6. The [M0 baseline](vt5-baseline.md) covers the scores, known failures and visual references.
+
 ## Release a version on GitHub
 
 1. Check the GitHub tags and the latest npm version. Choose an unused stable version. Set `release_version` to that number.

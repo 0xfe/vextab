@@ -45,6 +45,7 @@
         "lint": "oxlint --deny-warnings src tests scripts webpack.config.js",
         "typecheck": "tsc --noEmit",
         "test": "npm run build-dev && node scripts/test-browser.mjs",
+        "test:baseline": "node scripts/test-baseline.mjs",
         "prepack": "npm run clean && npm run build-dev && npm run build"
     },
     "homepage": "http://www.vexflow.com/vextab/",

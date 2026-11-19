@@ -38,6 +38,7 @@ jobs:
           npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/assets"
           tar -xzf "$RUNNER_TEMP"/assets/*.tgz -C "$RUNNER_TEMP/unpacked"
           node scripts/test-browser.mjs "$RUNNER_TEMP/unpacked/package/dist"
+          npm run test:baseline -- "$RUNNER_TEMP/unpacked/package/dist"
       - name: Prepare standalone downloads and checksums
         if: github.ref_type == 'tag'
         run: |

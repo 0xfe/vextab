@@ -6,6 +6,8 @@ The [gap assessment](vt5-gaps.md) records the baseline, issue evidence and prior
 
 ## M0 · Record the musical baseline and adopt VexFlow 5.4
 
+[M0 results, compatibility checks and reproduction instructions](vt5-baseline.md)
+
 1. Pin VexFlow 5.4.0 and update the lockfile in an isolated dependency change. Preserve the 4.0.6 tarball as the comparison point. The trial build passed 40 QUnit tests on both versions. Repeat CI, package and legacy entry checks on the actual locked dependency.
 2. Extract fixture sources from the 24 historical tutorial snippets, both demos, the two playgrounds under `doc/`, and representative issue reports. Record each expectation as a musician would describe it, with the tuning, meter, intended voice and affected bar. Mark current failures explicitly. Treat reproduced, historical and already-working cases separately in the fixture results.
 3. Start with six comparisons from the [baseline table](vt5-gaps.md#what-the-baseline-actually-does). Measure rational ticks for the tab triplet and mixed tuplet, capture the dotted slash exception, draw the trailing-bar example twice, locate the natural on the G, and measure the four aligned attacks from #99. Compare SVG coordinates after fonts load. Add a Canvas smoke check and a few opaque white-background visual references for engraving.
