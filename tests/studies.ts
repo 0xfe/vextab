@@ -35,7 +35,8 @@ QUnit.module('Responsive studies', () => {
     assert.equal(dead.heads[0].sounding, null);
     assert.equal(dead.heads[0].position.fret, 'X');
     for (const part of ['score', 'tab'] as const) {
-      const view = renderScore(target, parsed, { width: 360, part });
+      // At phone width the held chord crosses a system break with both the 9 pt and 11 pt fret defaults.
+      const view = renderScore(target, parsed, { width: 320, part });
       assert.deepEqual(view.diagnostics, []);
       const layout = view.composition.sheet.getContinuousLayout();
       assert.ok(layout.rows.length > initial.rows.length);

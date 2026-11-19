@@ -1,6 +1,6 @@
 // Musical regressions for the fixed-row renderer and public editor.
 import Artist from '../src/artist';
-import { renderScore } from '../src/score/layout';
+import { renderScore, renderScorePart } from '../src/score/layout';
 import { parseScore } from '../src/score/parse';
 import type { StaveNote } from 'vexflow';
 import Div from '../src/div';
@@ -53,6 +53,34 @@ QUnit.module('Engraving', () => {
       assert.deepEqual(fills, Array(5).fill(expected), paper || 'unstyled embed');
       editor.dispose();
     }
+  });
+
+  QUnit.test('Fixed, flow and print keep the native fret size and clear the strings', assert => {
+    const source = 'tabstave time=4/4\nnotes :q 0/1 3/2 (12/2.10/3) 15/4 |';
+    const { host } = score(source);
+    const parsed = parseScore(source);
+    // Use the installed VexFlow face and size, including when its defaults change upstream.
+    function checkFrets(layout: string) {
+      const frets = [...host.querySelectorAll<SVGTextElement>('.vf-tabnote text')];
+      assert.deepEqual(frets.map(el => el.textContent), ['0', '3', '12', '10', '15'], layout);
+      const bounds = frets.map(el => {
+        const native = Vex.Flow.TabNote.tabToElement(el.textContent);
+        const metrics = native.getTextMetrics();
+        const x = el.x.baseVal.getItem(0).value;
+        const y = el.y.baseVal.getItem(0).value;
+        const gap = (el.previousElementSibling as SVGRectElement).getBBox();
+        assert.closeTo(parseFloat(getComputedStyle(el).fontSize), native.fontSizeInPixels, 0.01, layout);
+        assert.ok(x - metrics.actualBoundingBoxLeft >= gap.x + 1, layout + ' left gap');
+        assert.ok(x + metrics.actualBoundingBoxRight <= gap.x + gap.width - 1, layout + ' right gap');
+        return { top: y - metrics.actualBoundingBoxAscent, bottom: y + metrics.actualBoundingBoxDescent };
+      });
+      assert.ok(bounds[3].top - bounds[2].bottom >= 2, layout + ' stacked two-digit frets');
+    }
+    checkFrets('fixed');
+    renderScore(host, parsed, { width: 240, part: 'tab' });
+    checkFrets('flow');
+    renderScorePart(host, parsed, 'tab', { paper: 'Letter' });
+    checkFrets('Letter part');
   });
 
   QUnit.test('Both renderers join filled and hollow rhythm slashes at their Bravura anchors', assert => {
