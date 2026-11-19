@@ -2,6 +2,12 @@
 import type { FretDiagramSpec, TimedStringBend } from 'vexflow';
 import type { SourceRange } from './source';
 
+/** One picked attack starts above the physical fret and may return to it. */
+export interface Prebend {
+  semitones: number;
+  release: boolean;
+}
+
 export interface Head {
   range: SourceRange;
   written: string;
@@ -9,6 +15,7 @@ export interface Head {
   position?: { str: number; fret: number | 'X' };
   accidental?: string;
   cautionary?: boolean;
+  prebend?: Prebend;
   // A bare letter inherits the sign in force on the staff.
   inheritSign?: boolean;
 }

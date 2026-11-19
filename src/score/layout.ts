@@ -3,8 +3,9 @@ import { scoreFont } from './engraving';
 import {
   Accidental, Annotation, Barline, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext,
   type Beam, type StemmableNote, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
-  type EasyScoreVoiceSpec, type PublicationOptions, type RenderContext, type ScoreHitRegion,
+  type EasyScoreVoiceSpec, type NotationIdentity, type PublicationOptions, type RenderContext, type ScoreHitRegion,
 } from 'vexflow';
+import { describePrebend, makePrebend } from './music';
 import { leadMarks, drawFrames } from './lead';
 import type { Attack, Measure, MeasureVoice, ParsedScore, ScoreSpan } from './model';
 import { ScoreError, type SourceRange } from './source';
@@ -50,13 +51,17 @@ class Sources {
  * The compiler owns written spelling, including explicit pitch overrides and the key. */
 function guitarNotation(event: Attack, instrument: FrettedInstrument) {
   const physical = event.heads.flatMap((h, index) => h.position ? [{ ...h.position, displayKey: h.written, index }] : []);
+  const labels: NotationIdentity[] = [];
   if (event.bend) {
     const pitched = physical.map(p => ({ str: p.str, fret: Number(p.fret) }));
-    return instrument.bentAttack(pitched, event.base, event.bend.spec).note.notation;
+    labels.push(...instrument.bentAttack(pitched, event.base, event.bend.spec).note.notation);
+  } else if (physical.length) {
+    for (const mark of instrument.attack(physical, event.base).note.notation) {
+      labels.push({ ...mark, index: physical[mark.index].index });
+    }
   }
-  const labels = physical.length ? instrument.attack(physical, event.base).note.notation
-    .map(mark => ({ ...mark, index: physical[mark.index].index })) : [];
   event.heads.forEach((h, index) => {
+    if (h.prebend) labels.push({ kind: 'technique', id: 'pre-bend', index, label: describePrebend(h.prebend, h.position.str) });
     if (!h.position && h.sounding === null) labels.push({ kind: 'unpitched', id: 'slash', label: 'Rhythm slash', index });
   });
   return labels;
@@ -94,7 +99,7 @@ function writtenEndBar(measure: Measure) {
 }
 
 /** Retain declarative descriptors only. Every independently composed part gets fresh native objects. */
-function project(parsed: ParsedScore, part: Part, width: number) {
+function project(parsed: ParsedScore, part: Part, width: number, publication = false) {
   const staves = projections(parsed, part);
   if (!staves.includes('tab')) {
     for (const m of parsed.measures) for (const v of m.voices) {
@@ -118,7 +123,7 @@ function project(parsed: ParsedScore, part: Part, width: number) {
         clef: staff === 'tab' ? 'tab' : m.state.clef, key: m.state.key, time: m.state.meter, span: m.span,
         showTimeSignature: m.state.showTime && !(staff === 'tab' && staves.includes('notation')),
         endBarline: writtenEndBar(m),
-        ...(staff === staves[0] && leadMarks(m, staff, id => eventId(staff, id))),
+        ...(staff === staves[0] && leadMarks(m, staff, id => eventId(staff, id), publication || !staves.includes('tab'))),
         voices: m.voices.map((v, index) => voiceSpec(v, m, staff, sources, index)),
       })),
     })),
@@ -184,6 +189,11 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
           silent.add(note.getAttribute('id'));
           const beam = note.getBeam();
           if (beam) split.add(beam);
+        }
+        if (staff === 'tab') {
+          event.heads.forEach((head, index) => {
+            if (head.prebend) note.addModifier(makePrebend(head.prebend), index);
+          });
         }
         if (staff === 'tab' && !voice.tabStems) {
           // Keep VexFlow's exact tuplet multiplier. Skip the numeral on an unstemmed tab staff.
@@ -316,7 +326,7 @@ export function renderScorePart(host: HTMLElement, parsed: ParsedScore, part: St
   options: Omit<PublicationOptions, 'staves'> & { voice?: number } = {}) {
   const { voice, ...paper } = options;
   if (voice !== undefined) parsed = selectVoice(parsed, voice);
-  const view = project(parsed, part, 600);
+  const view = project(parsed, part, 600, true);
   const unsupported = (feature: string, range: SourceRange): never => {
     throw new ScoreError('fixed-layout', `Independent ${part} parts cannot engrave ${feature} yet`, range);
   };

@@ -30,8 +30,19 @@ export function readSyntax(source: string, track = false) {
       line: loc.first_line, column: loc.first_column };
   }
   if (!source?.trim()) throw new ScoreError('syntax', 'No code', { start: 0, end: 0, line: 1, column: 0 });
+  // Both compilers receive one fretted head for the entire pre-bend gesture.
+  function prebend(text: string, loc: any) {
+    const [fret, peak, release] = text.split('z').map(Number);
+    if (!Number.isSafeInteger(fret) || !Number.isSafeInteger(peak) || peak <= fret) {
+      throw new ScoreError('syntax', 'A pre-bend must start above the fretted pitch', range(loc));
+    }
+    if (release !== undefined && release !== fret) {
+      throw new ScoreError('syntax', 'Release the pre-bend to its original fret', range(loc));
+    }
+    return { fret: String(fret), prebend: { semitones: peak - fret, release: release !== undefined } };
+  }
   const instance = Object.create(parser);
-  instance.yy = { ...instance.yy, locate: track ? range : undefined };
+  instance.yy = { ...instance.yy, locate: track ? range : undefined, prebend };
   // Jison's error hash describes the last shifted token. The lexer has the rejected lookahead.
   instance.lexer = Object.create(instance.lexer);
   let lexer: any;

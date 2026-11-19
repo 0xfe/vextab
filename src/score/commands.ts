@@ -29,6 +29,7 @@ function bend(text: string, event: Attack, state: StaffState, range: SourceRange
     return [n, d];
   }
   const spec = { string: +match[1], semitones: +match[2], rise: pair(match[3]), hold: pair(match[4]), release: pair(match[5]) };
+  if (event.heads.some(h => h.prebend && h.position.str === spec.string)) fail(range, 'This string already has a pre-bend');
   const positions = event.heads.map(h => h.position);
   if (!positions.length || positions.some(p => !p || p.fret === 'X')) fail(range, 'A bend needs a pitched fretted attack');
   try {

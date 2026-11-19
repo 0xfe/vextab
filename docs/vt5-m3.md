@@ -17,6 +17,7 @@ notes :w 0/6 |
 | To write | Enter | What to read |
 | --- | --- | --- |
 | Capo and tuning | `tuning=dropd capo=2` on the stave | Fret numbers are relative to the capo. Open string six sounds E2 and is written E3. Removing the capo gives D2. In standard tuning with no capo it sounds E2. These are score pitches. Playback is a separate feature. |
+| Pick an already bent string | `7z8/3` or `7z8z7/3` | Fret 7 on string three, bend up to the pitch at fret 8, then pick. The last `z7` releases to the original fret within the same attack. The written duration applies once. |
 | Bend one string in a chord | `!bend 3 +2 rise=1/2 hold=3/4 release=1/1!` after the chord | The string number picks the head. The amount is in semitones. Phase endpoints are fractions of the full attack. Hold and release are optional. Read the contour on tab, including in the paired view. |
 | Palm mute | `0/6 !pm 6!` through `0/6 !end-pm!` | Both endpoint attacks are included. The line follows the selected strings in this voice across automatic breaks. A comma-separated list such as `6,5` targets two strings. Close the span within the same voice declaration. |
 | Dead strike | `X/3` | Play the muted third string at the written time. Tab shows X. The event has a string and no sounding pitch. |
@@ -52,6 +53,8 @@ notes :qSd X/5 !chord "Am/G"! !lyric "riv" -! :8S X/5 !lyric "er"! :qS X/5 |
 ## Verification and scope
 
 In Chrome at 960 CSS pixels the 12-bar paired turnaround occupied two rows, breaking after bar 5. At 360 pixels it occupied six rows. Its first ending and sixth-string mute continued across row breaks. The 12-bar lead sheet occupied three and seven rows respectively. Its written breaks before bars 5 and 9 survived at both widths. Returning to the original width restored the positions and timing. The browser checks also compare tab and staff barlines, bend attachment, string targets and the extender’s clearance over the bass. The maintainer confirmed the string-three bend, stationary second string and bass mute in the desktop guitar study, and the barre and held lyric in the mobile lead-sheet opening. [Engraving checks](../tests/studies.ts) · [Guide and package checks](../scripts/test-browser.mjs)
+
+In fixed and flow tab, the vertical arrow marks a pre-bent attack. In `(5/2.7z8z7/3)`, only the third string bends. The standard staff shows its raised attack pitch. A notation-only view or independent printed part names the pre-bend amount, string and release above that attack. The optional fixed-layout player plays the attack pitch and does not synthesize the release.
 
 Independent tab parts can carry a timed bend and its palm-mute string targets. VexFlow 5.6 also engraves chord labels, notation lyrics, tab ties, and repeat endings in independent parts. Chord frames, silent positions, and tab endings that join a fret to a rest still need the screen pass. Requesting one in an independent part returns a diagnostic at the source. Use the existing fixed-layout Artist for legacy multi-note bend phrases.
 

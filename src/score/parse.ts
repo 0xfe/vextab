@@ -137,11 +137,12 @@ function chordHead(note: Token, state: StaffState, tuning: Tuning, manager: KeyM
   if (note.articulation && !['T', '-'].includes(note.articulation)) fixed(note, `technique '${note.articulation}'`);
   const str = Number(note.string);
   let position: Head['position'];
+  const attackFret = Number(note.fret) + state.capo + (note.prebend?.semitones ?? 0);
   let sounding: string;
   if (note.fret !== undefined) {
     const fret = Number(note.fret);
     if (str < 1 || str > state.strings || !Number.isSafeInteger(fret)) invalid(note, 'Invalid fret or string');
-    try { sounding = soundingGuitarPitch(tuning, fret + state.capo, str); }
+    try { sounding = soundingGuitarPitch(tuning, attackFret, str); }
     catch { invalid(note, 'String outside the tuning'); }
     position = { str, fret };
   }
@@ -160,8 +161,8 @@ function chordHead(note: Token, state: StaffState, tuning: Tuning, manager: KeyM
     return { range: note.range, written: pitch, sounding: sounding ?? pitch, position,
       inheritSign: !sign && !note.abc.accidental_type, accidental: sign || (note.abc.accidental_type ? 'n' : undefined), cautionary: note.abc.accidental_type === 'c' };
   }
-  const [name, octave] = spellFret(tuning, manager, music, String(Number(note.fret) + state.capo), str);
-  return { range: note.range, written: name + '/' + octave, sounding, position };
+  const [name, octave] = spellFret(tuning, manager, music, String(attackFret), str);
+  return { range: note.range, written: name + '/' + octave, sounding, position, ...(note.prebend && { prebend: note.prebend }) };
 }
 
 /** Match each tied head once. Reordering the destination chord preserves string identity. */
