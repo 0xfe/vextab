@@ -64,8 +64,8 @@ export type StaveGroup = {
 export default class Artist {
   // Enables verbose logging for debugging.
   static DEBUG = false;
-  // Hide the VexTab logo when true.
-  static NOLOGO = false;
+  /** @deprecated Scores are always unbranded. Retained for existing embeds. */
+  static NOLOGO = true;
 
   // Core configuration + user customization state.
   // Immutable options set at construction.
@@ -128,7 +128,7 @@ export default class Artist {
       font_face: 'Arial',
       font_size: 10,
       font_style: null,
-      bottom_spacing: 20 + (Artist.NOLOGO ? 0 : 10),
+      bottom_spacing: 30,
       tab_stave_lower_spacing: 10,
       note_stave_lower_spacing: 0,
       scale: 1.0,
@@ -277,10 +277,10 @@ export default class Artist {
   }
 
   /**
-   * Whether the logo is suppressed via global flag.
+   * @deprecated All scores are unbranded.
    */
   isLogoHidden(): boolean {
-    return Artist.NOLOGO;
+    return true;
   }
 
   /**

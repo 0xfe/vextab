@@ -256,15 +256,5 @@ export class ArtistRenderer {
     }
 
     artist.rendered = true;
-
-    // Optionally draw the VexTab logo at the bottom of the render.
-    if (!artist.isLogoHidden()) {
-      const LOGO = 'vexflow.com';
-      const width = ctx.measureText(LOGO).width;
-      ctx.save();
-      ctx.setFont('Times', 10, 'italic');
-      ctx.fillText(LOGO, (Number(artist.customizations.width) - width) / 2, artist.last_y + 25);
-      ctx.restore();
-    }
   }
 }
