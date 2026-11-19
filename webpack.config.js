@@ -10,6 +10,7 @@ module.exports = (env = {}) => {
   return {
     entry: {
       main: './src/main.ts',
+      score: { import: './src/score/parse.ts', layer: 'parser', filename: 'score.cjs', library: { type: 'commonjs2' } },
       div: './src/div.ts',
       tests: './tests/tests.ts',
       playground: './tests/playground.ts',
@@ -29,6 +30,7 @@ module.exports = (env = {}) => {
       new webpack.ProvidePlugin({ $: 'zepto-webpack' }),
       new webpack.DefinePlugin({ __VERSION: JSON.stringify(version) }),
       new HtmlWebpackPlugin({ template: './guide/index.html', filename: 'guide/index.html', chunks: ['div'] }),
+      new HtmlWebpackPlugin({ template: './guide/shared-score.html', filename: 'guide/shared-score.html', chunks: ['main'] }),
       new HtmlWebpackPlugin({ template: './tests/tests.html', filename: 'index.html', chunks: ['tests'] }),
       new HtmlWebpackPlugin({ template: './tests/playground.html', filename: 'playground.html', chunks: ['playground'] }),
       new HtmlWebpackPlugin({ template: './static/div.html', filename: 'static/div.html', chunks: ['div'] }),
@@ -40,6 +42,8 @@ module.exports = (env = {}) => {
     ],
     resolve: { extensions: ['.ts', '.js', '.json'] },
     module: { rules: [
+      // A standalone parser needs VexFlow's music tables but never loads engraving fonts.
+      { issuerLayer: 'parser', resolve: { alias: { 'vexflow$': 'vexflow/core' } } },
       { test: /\.ts$/, loader: 'esbuild-loader', options: { target: 'es2019' } },
       { test: /\.jison$/, loader: path.resolve(__dirname, 'scripts/jison-loader.cjs') },
       { test: /\.css$/, use: ['style-loader', 'css-loader'] },

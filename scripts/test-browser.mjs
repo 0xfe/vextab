@@ -1,6 +1,7 @@
 // Run the built QUnit suite and check the interactive playground in headless Chrome.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import manifest from '../package.json' with { type: 'json' };
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -8,6 +9,14 @@ import { chromium } from 'playwright-core';
 
 // Release checks point the same suite at the files extracted from the package.
 const dist = resolve(process.argv[2] ?? 'dist');
+// The same packaged parser is usable by a command-line validator without a browser.
+const { parseScore, ScoreError } = createRequire(import.meta.url)(resolve(dist, 'score.cjs'));
+const sample = 'stave time=1/4\r\nnotes C/4';
+assert.throws(() => parseScore(sample + ' ?'), error =>
+  error instanceof ScoreError && error.range.start === sample.length + 1);
+const note = parseScore(sample).measures[0].voices[0].events[0];
+assert.equal(sample.slice(note.range.start, note.range.end), 'C/4');
+assert.equal(note.duration, '1/4');
 const browser = await chromium.launch(process.env.CHROME_BIN
   ? { executablePath: process.env.CHROME_BIN }
   : { channel: 'chrome' });
@@ -59,6 +68,41 @@ try {
   await page.waitForFunction(() => !document.querySelector('[data-preview-stale]'));
   assert.equal(await source.inputValue(), original);
   assert.equal(await toggle.isChecked(), true);
+  await page.setViewportSize({ width: 360, height: 740 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  // A keyboard selection follows the same source through reflow and independent print.
+  await page.getByRole('link', { name: /Follow a tied chord/ }).click();
+  const selecting = page.getByRole('button', { name: 'Select the tied chord' });
+  const selection = () => source.evaluate(input => input.value.slice(input.selectionStart, input.selectionEnd));
+  const phrase = await source.inputValue();
+  await page.locator('#score svg').waitFor();
+  const height = Number(await page.locator('#score svg').getAttribute('height'));
+  await page.getByRole('checkbox', { name: 'Narrow the score' }).check();
+  assert.ok(Number(await page.locator('#score svg').getAttribute('height')) > height);
+  await selecting.focus();
+  await selecting.press('Enter');
+  assert.equal(await selection(), 'T(2/3.1/2)');
+  await page.getByRole('button', { name: 'Engrave notation part' }).click();
+  await page.locator('#part svg').waitFor();
+  await page.getByRole('button', { name: 'Find the chord from the part' }).click();
+  assert.equal(await selection(), 'T(2/3.1/2)');
+  await source.fill(phrase + ' ?');
+  // Exercise the revision guard before the debounced parser has even run.
+  assert.equal(await page.evaluate(() => {
+    document.querySelector('#select').click();
+    const input = document.querySelector('textarea');
+    return input.selectionStart === input.selectionEnd;
+  }), true);
+  await page.locator('#score [data-preview-stale="true"] svg').waitFor();
+  assert.equal(await page.locator('#part svg').count(), 0);
+  await selecting.click();
+  assert.equal(await selection(), '');
+  await page.getByRole('button', { name: 'Reset example' }).click();
+  await page.waitForFunction(() => !document.querySelector('#score [data-preview-stale]'));
+  await selecting.click();
+  assert.equal(await selection(), 'T(2/3.1/2)');
   await page.setViewportSize({ width: 360, height: 740 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.setViewportSize({ width: 1280, height: 720 });

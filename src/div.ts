@@ -9,6 +9,9 @@ import Vex from './vexflow';
 import Artist from './artist';
 import VexTab from './vextab';
 import Player from './player';
+import { parseScore } from './score/parse';
+import { renderScore } from './score/layout';
+import type { ParsedScore } from './score/model';
 
 import './vextab.css';
 
@@ -19,6 +22,9 @@ class Div {
   private width: number;
   private scale: number;
   private rendererBackend: string;
+  private flow: boolean;
+  private candidate?: ParsedScore;
+  private current?: { score: ParsedScore; layout: ReturnType<typeof renderScore> };
   private surface: HTMLElement | null = null;
 
   // Optional editor UI state.
@@ -56,6 +62,7 @@ class Div {
     this.width = parseInt($(sel).attr('width'), 10) || 400;
     this.scale = parseFloat($(sel).attr('scale')) || 1.0;
     this.rendererBackend = $(sel).attr('renderer') || 'svg';
+    this.flow = $(sel).attr('layout') === 'flow';
 
     // Editor properties.
     this.editor = $(sel).attr('editor') || '';
@@ -67,6 +74,7 @@ class Div {
       // Build editor UI and debounce renders to avoid thrashing.
       this.text_area = $('<textarea aria-label="VexTab source"></textarea>').addClass('editor')
         .val(this.code);
+      this.code = this.text_area.val(); // The browser normalizes textarea newlines to LF.
       this.editor_error = $('<div role="status"></div>').addClass('editor-error');
       $(sel).append($('<p/>')).append(this.editor_error);
       $(sel).append($('<p/>')).append(this.text_area);
@@ -88,8 +96,10 @@ class Div {
     }
 
     // Initialize parser and renderer.
-    this.artist = new Artist(10, 0, this.width, { scale: this.scale });
-    this.parser = new VexTab(this.artist);
+    if (!this.flow) {
+      this.artist = new Artist(10, 0, this.width, { scale: this.scale });
+      this.parser = new VexTab(this.artist);
+    }
 
     this.redraw();
   }
@@ -114,19 +124,64 @@ class Div {
     this.editor_error?.text(prefix + error.message);
   }
 
+  /** Only expose a flow score while its source matches the live editor, even during debounce. */
+  getScore(): ParsedScore | undefined {
+    if (this.current && this.current.score === this.candidate && !this.surface?.hasAttribute('data-preview-stale')
+        && this.current.score.source === (this.text_area?.val() ?? this.code)) return this.current.score;
+  }
+
+  /** Rebuild flow geometry from the same parsed revision at a new width. */
+  setWidth(width: number): this {
+    if (!this.flow) throw new Error('setWidth requires layout="flow"');
+    this.width = width;
+    return this.draw();
+  }
+
+  /** Accept either a musical ID or a projection ID from the current layout. */
+  selectSource(id: string, revision: ParsedScore): boolean {
+    const score = this.getScore();
+    const range = score && score === revision && this.current.layout.rangeFor(id, score.source);
+    if (!range || !this.text_area) return false;
+    const editor = this.text_area[0] as HTMLTextAreaElement;
+    editor.focus();
+    editor.setSelectionRange(range.start, range.end);
+    return true;
+  }
+
+  /** Convert pointer coordinates through the SVG transform, including CSS scaling. */
+  private drawFlow(next: HTMLElement): void {
+    if (this.rendererBackend.toLowerCase() !== 'svg' || this.scale !== 1) {
+      throw new Error('Flow layout requires SVG at scale 1. Use width to reflow.');
+    }
+    const score = this.candidate;
+    const layout = renderScore(next, score, { width: this.width });
+    if (this.text_area) next.addEventListener('click', event => {
+      const svg = next.querySelector('svg');
+      const transform = svg.getScreenCTM();
+      if (!transform) return;
+      const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(transform.inverse());
+      const hit = layout.hitTest(point.x, point.y);
+      if (hit) this.selectSource(hit.id, score);
+    });
+    this.current = { score, layout };
+  }
+
   /** Commit a new surface only after engraving succeeds, including Canvas pixels. */
   private drawInternal(): this {
-    if (!this.parser.isValid()) return this;
+    if (this.flow ? !this.candidate : !this.parser.isValid()) return this;
     const canvas = this.rendererBackend.toLowerCase() === 'canvas';
     const next = document.createElement(canvas ? 'canvas' : 'div');
     next.className = 'vex-canvas';
     const host = $(this.sel)[0] as HTMLElement;
     host.insertBefore(next, host.firstChild);
     try {
-      const backend = canvas ? Vex.Flow.Renderer.Backends.CANVAS : Vex.Flow.Renderer.Backends.SVG;
-      const renderer = new Vex.Flow.Renderer(next, backend);
-      renderer.getContext().setBackgroundFillStyle($(next).css('background-color'));
-      this.artist.draw(renderer);
+      if (this.flow) this.drawFlow(next);
+      else {
+        const backend = canvas ? Vex.Flow.Renderer.Backends.CANVAS : Vex.Flow.Renderer.Backends.SVG;
+        const renderer = new Vex.Flow.Renderer(next, backend);
+        renderer.getContext().setBackgroundFillStyle($(next).css('background-color'));
+        this.artist.draw(renderer);
+      }
       this.surface?.remove();
       this.surface = next;
       this.editor_error?.empty();
@@ -140,8 +195,13 @@ class Div {
   /** Reset the construction state before parsing each editor revision. */
   private parseInternal(): this {
     try {
-      this.artist.reset();
-      this.parser.parse(this.code);
+      if (this.flow) {
+        this.candidate = undefined;
+        this.candidate = parseScore(this.code);
+      } else {
+        this.artist.reset();
+        this.parser.parse(this.code);
+      }
     } catch (error) {
       this.reportError(error);
     }

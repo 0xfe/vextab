@@ -20,7 +20,7 @@ The browser tests use the installed Chrome. To use another Chrome or Chromium ex
 npm start
 ```
 
-The development server watches the source. Open the [QUnit suite](http://127.0.0.1:9005/), the [triplet guide](http://127.0.0.1:9005/guide/#triplets), or the [interactive playground](http://127.0.0.1:9005/playground.html).
+The development server watches the source. Open the [QUnit suite](http://127.0.0.1:9005/), the [triplet guide](http://127.0.0.1:9005/guide/#triplets), the [tied-chord lesson](http://127.0.0.1:9005/guide/shared-score.html), or the [interactive playground](http://127.0.0.1:9005/playground.html).
 
 | Command | Output |
 | --- | --- |
@@ -41,7 +41,7 @@ npm test
 npm run build
 ```
 
-Run these commands in order because the builds share `dist/`. The browser suite covers parsing, notation, the SVG playground, editor errors, and the legacy Canvas renderer.
+Run these commands in order because the builds share `dist/`. The browser suite covers parsing, notation, the SVG playground, editor errors, and the legacy Canvas renderer. It also checks the DOM-free parser, reflow, independent part metadata, and keyboard source selection. [Shared-score API and coverage](vt5-m2.md)
 
 To test the package a consumer will download, build a tarball and run the browser suite against its extracted files. GitHub Actions performs this check on pushes, pull requests, and release tags.
 

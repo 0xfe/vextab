@@ -1,6 +1,6 @@
 // Public-facing VexTab wrapper that wires the parser to the Artist renderer.
 import Vex from '../vexflow';
-import parser from '../vextab.jison';
+import { readSyntax, ScoreError } from '../score/source';
 import type Artist from '../artist/Artist';
 import { VexTabParser } from './VexTabParser';
 
@@ -67,29 +67,13 @@ export default class VexTab {
    */
   parse(code?: string): any {
     this.reset();
-    // Jison reports the last shifted token in hash.loc. Keep the live lookahead
-    // lexer for this parse so rejected tokens and EOF have their original position.
-    const parserInstance = Object.create(parser);
-    parserInstance.lexer = Object.create(parserInstance.lexer);
-    let lexer: any;
-    const setInput = parserInstance.lexer.setInput;
-    parserInstance.lexer.setInput = function (...args: any[]) {
-      lexer = setInput.apply(this, args);
-      return lexer;
-    };
-    parserInstance.parseError = (message: string, hash: any) => {
-      this.log('VexTab parse error: ', message, hash);
-      const formatted = `Unexpected text '${hash.text}' at line ${lexer.yylloc.first_line} column ${lexer.yylloc.first_column}.`;
-      throw new Vex.RERR('ParseError', formatted);
-    };
-
-    if (!code?.trim()) {
-      throw new Vex.RERR('ParseError', 'No code');
-    }
-
     this.log(`Parsing:\n${code}`);
-
-    this.elements = parserInstance.parse(code.replace(/\r\n?/g, '\n'));
+    try {
+      this.elements = readSyntax(code);
+    } catch (error) {
+      if (error instanceof ScoreError) throw new Vex.RERR('ParseError', error.message);
+      throw error;
+    }
     if (this.elements) {
       // Translate the AST into Artist calls.
       this.compiler.generate(this.elements);

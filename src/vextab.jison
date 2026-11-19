@@ -112,9 +112,9 @@ maybe_vextab
 
 vextab
   : stave
-    { $$ = [$1] }
+    { if (yy.locate) $1.range = yy.locate(@1); $$ = [$1] }
   | vextab stave
-    { $$ = [].concat($1, $2) }
+    { if (yy.locate) $2.range = yy.locate(@2); $$ = [].concat($1, $2) }
   ;
 
 stave
@@ -124,6 +124,7 @@ stave
         options: $2,
         notes: $3.notes,
         text: $3.text,
+        ...(yy.locate ? {slurs: $3.slurs} : {}),
         _l: @1.first_line,
         _c: @1.first_column
       }
@@ -166,11 +167,11 @@ stave_data
 
 stave_additions
   : TEXT text
-    {$$ = {text: $2, notes: [], slurs: []}}
+    {if (yy.locate) $2[0].declaration = yy.locate(@$); $$ = {text: $2, notes: [], slurs: []}}
   | NOTES notes
     {$$ = {notes: $2, text: [], slurs: []}}
   | SLUR maybe_options
-    {$$ = {slurs: $2, notes: [], text: []}}
+    {$$ = {slurs: yy.locate ? [{range: yy.locate(@$)}] : $2, notes: [], text: []}}
   ;
 
 maybe_options
@@ -185,6 +186,7 @@ options
     { $$ = [{
         key: $1,
         value: $3,
+        ...(yy.locate ? {range: yy.locate(@$)} : {}),
         _l: @1.first_line,
         _c: @1.first_column
       }]
@@ -193,6 +195,7 @@ options
     { $$ = [].concat($1, [{
         key: $2,
         value: $4,
+        ...(yy.locate ? {range: yy.locate({...@2, last_line: @4.last_line, last_column: @4.last_column})} : {}),
         _l: @2.first_line,
         _c: @2.first_column
         }])
@@ -201,16 +204,16 @@ options
 
 text
   : STR
-    { $$ = [{text: $1, _l: @1.first_line, _c: @1.first_column}] }
+    { $$ = [{text: $1, ...(yy.locate ? {range: yy.locate(@1)} : {}), _l: @1.first_line, _c: @1.first_column}] }
   | text ',' STR
-    { $$ = [].concat($1, {text: $3, _l: @3.first_line, _c: @3.first_column}) }
+    { $$ = [].concat($1, {text: $3, ...(yy.locate ? {range: yy.locate(@3)} : {}), _l: @3.first_line, _c: @3.first_column}) }
   ;
 
 notes
   : lingo
-    { $$ = $1 }
+    { if (yy.locate) [].concat($1).forEach(n => n.range ||= yy.locate(@1)); $$ = yy.locate ? [].concat($1) : $1 }
   | notes lingo
-    { $$ = [].concat($1, $2)  }
+    { if (yy.locate) [].concat($2).forEach(n => n.range ||= yy.locate(@2)); $$ = [].concat($1, $2) }
   ;
 
 lingo
@@ -289,6 +292,7 @@ line
     {
       _.extend(_.last($1), {decorator: $2})
       _.each($1, function(fret) { fret['string'] = $4 })
+      if (yy.locate) _.last($1).range.end = yy.locate(@4).end
       $$ = $1
     }
   ;
@@ -310,21 +314,23 @@ chord
 frets
   : NUMBER
     { $$ = [{
-        fret: $1,
+        fret: $1, ...(yy.locate ? {range: yy.locate(@$)} : {}),
         _l: @1.first_line,
         _c: @1.first_column}]
     }
   | abc
-    { $$ = [{abc: $1, _l: @1.first_line, _c: @1.first_column}]}
+    { $$ = [{abc: $1, ...(yy.locate ? {range: yy.locate(@$)} : {}), _l: @1.first_line, _c: @1.first_column}]}
   | abc NUMBER '_' NUMBER
-    { $$ = [{abc: $1, octave: $2,
+    { $$ = [{abc: $1, ...(yy.locate ? {range: yy.locate(@$)} : {}), octave: $2,
              fret: $4, _l: @1.first_line, _c: @1.first_column}]}
   | articulation timed_fret
-    { $$ = [_.extend($2, {articulation: $1})] }
+    { $$ = [_.extend($2, {articulation: $1, ...(yy.locate ? {range: yy.locate(@$)} : {})})] }
   | frets maybe_decorator articulation timed_fret
     {
       _.extend(_.last($1), {decorator: $2})
+      if (yy.locate && $2) _.last($1).range.end = yy.locate(@2).end;
       _.extend($4, {articulation: $3})
+      if (yy.locate) $4.range = yy.locate({...@3, last_line: @4.last_line, last_column: @4.last_column});
       $1.push($4)
       $$ = $1
     }

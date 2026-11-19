@@ -1,0 +1,348 @@
+// Compile located Jison events to aligned measures without creating rendering objects.
+import { Fraction, KeyManager, Music, Tuning, VexFlow } from 'vexflow';
+import { readSyntax, ScoreError, type SourceRange } from './source';
+import { soundingGuitarPitch, spellFret, tupletOccupancy } from './music';
+import type { Attack, Head, Measure, MeasureVoice, ParsedScore, StaffState, Tie } from './model';
+
+export { ScoreError } from './source';
+
+type Token = { range: SourceRange; [key: string]: any };
+type Settings = Record<string, string>;
+type Rhythm = { base: string; dots: number; slash: boolean; range?: SourceRange };
+
+/** Fixed engraving accepts additional instructions. Point at the first one a view would lose. */
+function fixed(token: Token, feature: string): never {
+  throw new ScoreError('fixed-layout', `Use fixed layout for ${feature}`, token.range);
+}
+
+function invalid(token: Token, message: string): never {
+  throw new ScoreError('syntax', message, token.range);
+}
+
+/** Convert a validated musical fraction to its canonical whole-note value. */
+function fraction(value: string): Fraction {
+  return new Fraction().parse(value).simplify();
+}
+
+function span(value: string, token: Token): string {
+  if (!/^[1-9]\d*\/[1-9]\d*$/.test(value) || !value.split('/').every(n => Number.isSafeInteger(Number(n)))) {
+    invalid(token, `Invalid span '${value}'`);
+  }
+  return fraction(value).toString();
+}
+
+function booleanOption(token: Token): boolean {
+  if (!['true', 'false'].includes(token.value)) invalid(token, `Expected true or false for ${token.key}`);
+  return token.value === 'true';
+}
+
+/** A declaration ends at its last option, before its notes or the next voice. */
+function declarationRange(node: Token): SourceRange {
+  const options = node.options ?? [];
+  const end = options.length ? options[options.length - 1].range.end : node.range.start + node.element.length;
+  return { ...node.range, end };
+}
+
+/** A stave declaration starts a written row and resets its instrument and signature. */
+function staffState(node: Token): StaffState {
+  const state: StaffState = { tab: node.element === 'tabstave', notation: node.element !== 'tabstave',
+    strings: 6, tuning: 'standard', key: 'C', clef: 'treble', meter: '4/4', showTime: false, fragment: false,
+    declaration: declarationRange(node), timeRange: { ...node.range, end: node.range.start + node.element.length } };
+  let visible = true;
+  let timeGiven = false;
+  for (const opt of node.options ?? []) {
+    switch (opt.key) {
+      case 'notation': state.notation = booleanOption(opt); break;
+      case 'tablature': state.tab = booleanOption(opt); break;
+      case 'fragment': state.fragment = booleanOption(opt); break;
+      case 'show-time': visible = booleanOption(opt); state.timeRange = opt.range; break;
+      case 'time':
+        if (['C', 'C|'].includes(opt.value) || /^(?:\(\d+(?:\+\d+)+\)|\d+(?:\+\d+)+)\/\d+$/.test(opt.value)) {
+          fixed(opt, `printed time signature '${opt.value}'`);
+        }
+        span(opt.value, opt);
+        state.meter = opt.value;
+        timeGiven = true;
+        break;
+      case 'pickup': state.pickup = span(opt.value, opt); break;
+      case 'key':
+        if (!VexFlow.hasKeySignature(opt.value)) invalid(opt, 'Invalid key signature');
+        try { new KeyManager(opt.value); } catch { fixed(opt, `key signature '${opt.value}'`); }
+        state.key = opt.value;
+        break;
+      case 'tuning':
+        try { new Tuning(opt.value); } catch { invalid(opt, 'Invalid tuning'); }
+        state.tuning = opt.value;
+        break;
+      case 'strings':
+        state.strings = Number(opt.value);
+        if (!Number.isInteger(state.strings) || state.strings < 4 || state.strings > 8) invalid(opt, 'Expected 4–8 strings');
+        break;
+      case 'clef':
+        if (['percussion', 'none'].includes(opt.value)) fixed(opt, `clef '${opt.value}'`);
+        if (!['treble', 'bass', 'tenor', 'alto'].includes(opt.value)) invalid(opt, 'Invalid clef');
+        state.clef = opt.value;
+        break;
+      case 'voice': break; // Applied when the voice is opened.
+      default: fixed(opt, `stave option '${opt.key}'`);
+    }
+  }
+  state.showTime = visible && timeGiven;
+  if (!state.notation && !state.tab) invalid(node, 'At least one staff must be visible');
+  if (state.pickup && !fraction(state.pickup).lessThan(fraction(state.meter))) invalid(node, 'Pickup must be shorter than the meter');
+  return state;
+}
+
+/** Snapshot options when opening a voice. Later declarations cannot restyle it. */
+function startVoice(settings: Settings, direction: string | undefined, declaration: SourceRange): MeasureVoice {
+  return { declaration, events: [], tuplets: [], span: '0/1', beams: settings.beams !== 'off',
+    stem: direction === 'top' ? 'up' : direction === 'bottom' ? 'down' : undefined,
+    tabStems: settings['tab-stems'] === 'true', tabDirection: settings['tab-stem-direction'] === 'down' ? -1 : 1,
+    beamRests: settings['beam-rests'] !== 'false', stemlets: settings['beam-stemlets'] !== 'false',
+    middleRests: settings['beam-middle-only'] === 'true' };
+}
+
+function readSettings(settings: Settings, node: Token): void {
+  for (const opt of node.params) {
+    switch (opt.key) {
+      case 'tab-stems': case 'beam-rests': case 'beam-stemlets': case 'beam-middle-only': booleanOption(opt); break;
+      case 'tab-stem-direction':
+        if (!['up','down'].includes(opt.value)) invalid(opt, 'Invalid tab stem direction');
+        break;
+      case 'beams':
+        if (opt.value === 'explicit') fixed(opt, 'explicit beam groups');
+        if (!['auto', 'off'].includes(opt.value)) invalid(opt, 'Invalid beam mode');
+        break;
+      default: fixed(opt, `option '${opt.key}'`);
+    }
+    settings[opt.key] = opt.value;
+  }
+}
+
+function readRhythm(node: Token): Rhythm {
+  const base = node.time.replace(/s$/, '');
+  try { VexFlow.durationToTicks(base); } catch { invalid(node, `Invalid duration '${node.time}'`); }
+  return { base, dots: Number(node.dot || 0), slash: node.time.endsWith('s'), range: node.range };
+}
+
+/** Resolve pitches and physical positions independently. A named pitch need not have a fret. */
+function chordHead(note: Token, state: StaffState, tuning: Tuning, manager: KeyManager, music: Music): Head {
+  if (note.decorator) fixed(note, `decorator '${note.decorator}'`);
+  if (note.articulation && !['T', '-'].includes(note.articulation)) fixed(note, `technique '${note.articulation}'`);
+  const str = Number(note.string);
+  let position: Head['position'];
+  let sounding: string;
+  if (note.fret !== undefined) {
+    const fret = Number(note.fret);
+    if (str < 1 || str > state.strings || !Number.isSafeInteger(fret)) invalid(note, 'Invalid fret or string');
+    try { sounding = soundingGuitarPitch(tuning, fret, str); }
+    catch { invalid(note, 'String outside the tuning'); }
+    position = { str, fret };
+  }
+  if (note.abc) {
+    if (!/^[A-G]$/.test(note.abc.key)) fixed(note, `notehead '${note.abc.key}'`);
+    const sign = note.abc.accidental;
+    const pitch = note.abc.key.toLowerCase() + (sign && sign !== 'n' ? sign : '') + '/' + (note.octave ?? str);
+    if (!position && state.tab) fixed(note, 'a named pitch without an explicit fret on tab');
+    return { range: note.range, written: pitch, sounding: sounding ?? pitch, position,
+      inheritSign: !sign && !note.abc.accidental_type, accidental: sign || (note.abc.accidental_type ? 'n' : undefined), cautionary: note.abc.accidental_type === 'c' };
+  }
+  const [name, octave] = spellFret(tuning, manager, music, note.fret, str);
+  return { range: note.range, written: name + '/' + octave, sounding, position };
+}
+
+/** Match each tied head once. Reordering the destination chord preserves string identity. */
+function connect(previous: Attack | undefined, next: Attack, indexes: number[], ties: Tie[], token: Token) {
+  const used = new Set<number>();
+  for (const toHead of indexes) {
+    const head = next.heads[toHead];
+    const fromHead = previous?.heads.findIndex((prior, i) =>
+      !used.has(i) && prior.position?.str === head.position?.str && prior.position?.fret === head.position?.fret &&
+      (prior.written === head.written || ((head.inheritSign || prior.inheritSign) && staffPitch(prior) === staffPitch(head)))) ?? -1;
+    if (fromHead < 0) invalid(token, 'Tie needs the same pitch and string on the previous attack');
+    used.add(fromHead);
+    ties.push({ id: next.id + '-tie-' + toHead, from: previous.id, to: next.id, fromHead, toHead, range: token.range });
+  }
+}
+
+/** Apply the ratio to the captured attacks before computing the bar's onsets. */
+function applyTuplet(bar: MeasureVoice, node: Token, meter: string): void {
+  const numNotes = Number(node.params.tuplet);
+  const count = Number(node.params.notes ?? numNotes);
+  const start = bar.events.length - count;
+  if (!Number.isSafeInteger(numNotes) || numNotes < 1 || !Number.isSafeInteger(count) || count < 1 || start < 0) {
+    invalid(node, 'Tuplet must fit in this bar and voice');
+  }
+  const notesOccupied = tupletOccupancy(numNotes, meter);
+  for (const event of bar.events.slice(start)) {
+    event.duration = fraction(event.duration).multiply(notesOccupied, numNotes).simplify().toString();
+  }
+  bar.tuplets.push({ start, count, numNotes, notesOccupied, range: node.range });
+}
+
+/** A voice owns its bar cursor. A trailing boundary closes the bar without creating an empty one. */
+function compileVoice(voiceNode: Token, state: StaffState, settings: Settings, direction: string, ties: Tie[],
+  cursor: { rhythm: Rhythm }): MeasureVoice[] {
+  const tuning = new Tuning(state.tuning), manager = new KeyManager(state.key), music = new Music();
+  const bars: MeasureVoice[] = [];
+  const declaration = declarationRange(voiceNode);
+  let bar = startVoice(settings, direction, declaration);
+  let previous: Attack;
+  for (const node of voiceNode.notes) {
+    if (node.time) cursor.rhythm = readRhythm(node);
+    if (node.command === 'bar') {
+      const boundary = { type: node.type, range: node.range };
+      if (!bar.events.length && bars.length && !bar.opening) fixed(node, 'consecutive barlines');
+      if (!bar.events.length && !bars.length && !['single', 'repeat-begin'].includes(node.type)) fixed(node, 'this opening barline');
+      if (bar.events.length) {
+        bar.closing = boundary;
+        bars.push(bar);
+        bar = startVoice(settings, direction, declaration);
+      } else if (bar.opening) fixed(node, 'consecutive empty barlines');
+      if (!bars.length || ['repeat-begin', 'repeat-both'].includes(node.type)) bar.opening = boundary;
+      continue;
+    }
+    if (node.command === 'tuplet') {
+      applyTuplet(bar, node, state.meter);
+      continue;
+    }
+    if (['open_beam', 'close_beam'].includes(node.command)) continue; // Legacy auto/off brackets.
+    if (node.command && node.command !== 'rest') fixed(node, node.command);
+    if (node.command === 'rest' && (node.params.explicit || Number(node.params.position))) fixed(node, 'positioned rest');
+    if (node.decorator || (node.articulation && !['T', '-'].includes(node.articulation))) {
+      fixed(node, `technique '${node.decorator || node.articulation}'`);
+    }
+    if (!node.command && !node.chord && !node.abc && node.fret === undefined) continue;
+    const members: Token[] = node.command === 'rest' ? [] : node.chord ?? [node];
+    if (node.chord && members.some(n => n.time)) fixed(node, 'duration changes inside a chord');
+    const heads = members.map(n => chordHead(n, state, tuning, manager, music));
+    const strings = heads.flatMap(h => h.position ? [h.position.str] : []);
+    if (new Set(strings).size !== strings.length) fixed(node, 'a multi-stop chord on one string');
+    const { base, dots, slash } = cursor.rhythm;
+    const ticks = VexFlow.durationToTicks(base);
+    const duration = new Fraction(ticks, VexFlow.RESOLUTION).multiply(2 ** (dots + 1) - 1, 2 ** dots).simplify().toString();
+    const event: Attack = { id: 'a' + node.range.start, range: node.range, heads, base, dots,
+      rhythmRange: cursor.rhythm.range, slash, duration, onset: '0/1' };
+    const tied = members.flatMap((n, i) => node.articulation === 'T' || n.articulation === 'T' ? [i] : []);
+    connect(previous, event, tied, ties, node);
+    bar.events.push(event);
+    previous = event;
+  }
+  if (bar.events.length) bars.push(bar);
+  else if (bar.opening) fixed({ range: bar.opening.range }, 'a barline without a following measure');
+  for (const voice of bars) {
+    const time = new Fraction(0, 1);
+    for (const event of voice.events) {
+      event.onset = time.simplify().toString();
+      time.add(fraction(event.duration));
+    }
+    voice.span = time.simplify().toString();
+  }
+  return bars;
+}
+
+interface Row {
+  node: Token;
+  state: StaffState;
+  voices: { bars: MeasureVoice[]; node: Token }[];
+}
+
+/** Check every voice before exposing the measures. Never fill missing time with inferred rests. */
+function finishRow(row: Row, measures: Measure[]) {
+  const first = row.voices[0]?.bars;
+  if (!first?.length) throw new ScoreError('measure', 'Empty stave', row.node.range);
+  for (const { bars, node } of row.voices) {
+    if (bars.length !== first.length) throw new ScoreError('measure', 'Voices have different bar counts', node.range);
+  }
+  for (let i = 0; i < first.length; i++) {
+    const voices = row.voices.map(v => v.bars[i]);
+    const pickup = i === 0 ? row.state.pickup : undefined;
+    const wanted = pickup ?? (row.state.fragment ? first[i].span : fraction(row.state.meter).toString());
+    for (const voice of voices) {
+      const range = voice.closing?.range ?? voice.events[voice.events.length - 1].range;
+      if (voice.span !== wanted) {
+        const hint = voice !== first[i] ? 'All voices must fill the same bar'
+          : 'Declare a pickup or fragment for an intentional partial bar';
+        throw new ScoreError('measure', `Bar ${measures.length + 1} lasts ${voice.span}, expected ${wanted}. ${hint}`, range);
+      }
+      if (voice !== first[i] && ((voice.closing?.type ?? 'single') !== (first[i].closing?.type ?? 'single')
+          || (voice.opening?.type ?? 'single') !== (first[i].opening?.type ?? 'single'))) {
+        throw new ScoreError('measure', 'Voice barlines disagree', range);
+      }
+    }
+    const firstEvent = first[i].events[0], lastEvent = first[i].events[first[i].events.length - 1];
+    const range = { ...(first[i].opening?.range ?? firstEvent.range), end: (first[i].closing?.range ?? lastEvent.range).end };
+    measures.push({ number: measures.length + 1, range, span: wanted, state: row.state, voices, newRow: i === 0 });
+  }
+}
+
+/** Octave-specific position, independent of the sign printed beside the head. */
+function staffPitch(head: Head): string {
+  return head.written[0] + head.written.slice(head.written.indexOf('/'));
+}
+
+/** Resolve implicit named pitches at simultaneous onsets after all voices have been read. */
+function resolvePitches(measures: Measure[], ties: Tie[]): void {
+  const music = new Music();
+  const heads = new Map<string, Head[]>();
+  const arrivals = new Map(ties.map(t => [t.to + '/' + t.toHead, t]));
+  for (const m of measures) {
+    const signature = music.createScaleMap(m.state.key);
+    const memory = new Map<string, string>();
+    const beats = new Map<string, Attack[]>();
+    for (const voice of m.voices) for (const event of voice.events) {
+      const group = beats.get(event.onset) ?? [];
+      group.push(event);
+      beats.set(event.onset, group);
+    }
+    for (const beat of [...beats.keys()].sort((a,b) => fraction(a).value() - fraction(b).value())) {
+      const updates = new Map<string, string>();
+      for (const event of beats.get(beat)) {
+        heads.set(event.id, event.heads);
+        event.heads.forEach((h, index) => {
+          const pitch = staffPitch(h);
+          const tie = arrivals.get(event.id + '/' + index);
+          const prior = tie && heads.get(tie.from)[tie.fromHead];
+          if (h.inheritSign) {
+            const name = prior?.written.split('/')[0] ?? memory.get(pitch) ?? signature[pitch[0]].replace(/n$/, '');
+            if (name === '?') throw new ScoreError('syntax', 'Write the accidental after a conflicting unison', h.range);
+            h.written = name + pitch.slice(1);
+            if (!h.position) h.sounding = h.written;
+          }
+          if (prior && prior.written !== h.written) throw new ScoreError('syntax', 'Tied pitches differ', h.range);
+          const name = h.written.split('/')[0];
+          updates.set(pitch, updates.has(pitch) && updates.get(pitch) !== name ? '?' : name);
+        });
+      }
+      for (const [pitch, name] of updates) memory.set(pitch, name);
+    }
+  }
+}
+
+/** Pure parse/validation entry. All mutable compiler state is local to this source revision. */
+export function parseScore(source: string): ParsedScore {
+  const nodes: Token[] = readSyntax(source, true);
+  const measures: Measure[] = [], ties: Tie[] = [];
+  const cursor = { rhythm: { base: 'q', dots: 0, slash: false } };
+  const settings: Settings = {};
+  let row: Row;
+  for (const node of nodes) {
+    if (node.element === 'options') { readSettings(settings, node); continue; }
+    if (node.element !== 'voice' || !row) {
+      if (row) finishRow(row, measures);
+      row = { node, state: staffState(node), voices: [] };
+    } else {
+      for (const opt of node.options ?? []) if (opt.key !== 'voice') fixed(opt, `voice option '${opt.key}'`);
+    }
+    if (node.text?.length) fixed({ range: node.text[0].declaration }, 'timed text');
+    if (node.slurs?.length) fixed(node.slurs[0], 'slur');
+    const direction = node.options?.find((o: Token) => o.key === 'voice')?.value;
+    if (direction && !['top', 'bottom', 'new'].includes(direction)) invalid(node, 'Invalid voice direction');
+    if (node.notes?.length) row.voices.push({ bars: compileVoice(node, row.state, settings, direction, ties, cursor), node });
+    else if (node.element === 'voice') invalid(node, 'Empty voice');
+  }
+  if (!row) invalid(nodes[0], 'Expected a stave');
+  finishRow(row, measures);
+  resolvePitches(measures, ties);
+  return { source, measures, ties };
+}

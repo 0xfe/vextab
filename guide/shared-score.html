@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Follow a tied chord · VexTab guide</title>
+  <style>
+    body { margin: 2rem auto; padding: 0 1rem; max-width: 42rem; font: 1rem/1.55 system-ui, sans-serif; color: #262a2e; }
+    h1 { line-height: 1.15; }
+    button, input { font: inherit; }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+    code, textarea { font-family: ui-monospace, monospace; }
+    .vex-canvas { overflow-x: auto; max-width: 100%; }
+    svg { display: block; }
+    textarea.editor { box-sizing: border-box; max-width: 100%; padding: .75rem; }
+    .editor-error { color: #813b19; }
+    #part svg { width: 100%; height: auto; background: white; border: 1px solid #ccc; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <main>
+    <a href="index.html#triplets">VexTab guide · Triplets in tab and notation</a>
+    <h1>Follow a tied chord</h1>
+    <p>Play open G, rest for a beat, then hold the two-note chord across the barline.
+      The second chord lists the same strings in reverse order. <code>T</code> carries each pitch to its matching string.</p>
+    <div class="controls">
+      <label><input type="checkbox" id="narrow"> Narrow the score</label>
+      <button id="select">Select the tied chord</button>
+      <button id="reset">Reset example</button>
+    </div>
+    <div id="score" layout="flow" width="640" editor="true" editor-height="130"><pre>options tab-stems=true
+tabstave notation=true time=4/4
+notes :q 0/3 ## :h (1/2.2/3) | :h T(2/3.1/2) :q 3-1/2 |</pre></div>
+    <p>Narrow the score to split the tie across two rows. Click a note or use the select button
+      to find its source. Try changing the order of the notes inside the tied chord.</p>
+    <h2>Read the notation part</h2>
+    <p>Engrave just the standard staff on its own page. Both views use the music in the editor.</p>
+    <div class="controls"><button id="engrave">Engrave notation part</button>
+      <button id="find" disabled>Find the chord from the part</button></div>
+    <p id="message" role="status"></p>
+    <div id="part" aria-label="Notation part"></div>
+  </main>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const host = document.querySelector('#score');
+      const original = host.textContent;
+      const editor = new vextab.Div(host);
+      const input = host.querySelector('textarea');
+      const narrow = document.querySelector('#narrow');
+      const part = document.querySelector('#part');
+      const find = document.querySelector('#find');
+      const message = document.querySelector('#message');
+      let printedChord;
+      function resize() {
+        editor.setWidth(Math.min(host.clientWidth, narrow.checked ? 220 : 640));
+      }
+      resize();
+      narrow.addEventListener('change', resize);
+      window.addEventListener('resize', resize);
+      document.querySelector('#select').addEventListener('click', () => {
+        const score = editor.getScore();
+        const tie = score?.ties[0];
+        if (tie) editor.selectSource(tie.to, score);
+        else message.textContent = 'The current score needs a valid tie.';
+      });
+      function clearPart() {
+        printedChord = undefined;
+        part.replaceChildren();
+        find.disabled = true;
+        message.textContent = '';
+      }
+      input.addEventListener('input', clearPart);
+      document.querySelector('#reset').addEventListener('click', () => {
+        input.value = original;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      document.querySelector('#engrave').addEventListener('click', () => {
+        clearPart();
+        const score = editor.getScore();
+        if (!score) { message.textContent = 'Finish editing a valid score first.'; return; }
+        try {
+          const view = vextab.renderScorePart(part, score, 'notation');
+          const target = score.ties[0]?.to;
+          for (const page of view.publication.pages) {
+            const events = JSON.parse(page.svg.querySelector('metadata').textContent).events;
+            const chord = events.find(e => view.sourceFor(e.id) === target);
+            if (chord) printedChord = () => view.rangeFor(chord.id, input.value);
+          }
+          find.disabled = !printedChord;
+          const pages = view.publication.pages.length;
+          message.textContent = view.publication.diagnostics.map(d => d.detail).join(' ') ||
+            (pages === 1 ? 'One page engraved.' : pages + ' pages engraved.');
+        } catch (error) { message.textContent = error.message; }
+      });
+      find.addEventListener('click', () => {
+        const range = printedChord?.();
+        if (range) { input.focus(); input.setSelectionRange(range.start, range.end); }
+      });
+    });
+  </script>
+</body>
+</html>

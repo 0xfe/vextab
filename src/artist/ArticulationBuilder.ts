@@ -1,5 +1,6 @@
 // Modifier pipeline for articulations, bends, tuplets, annotations, and special glyphs.
 import Vex from '../vexflow';
+import { tupletOccupancy } from '../score/music';
 import * as _ from '../utils';
 import type Artist from './Artist';
 
@@ -123,10 +124,7 @@ export class ArticulationBuilder {
     if (!Number.isSafeInteger(count) || count < 1 || !Number.isSafeInteger(numNotes) || numNotes < 1) {
       throw new Vex.RERR('ArtistError', 'Tuplet counts must be positive integers');
     }
-    const [beats, unit] = stave.meter.split('/').map(Number);
-    const compound = unit >= 8 && beats >= 6 && beats % 3 === 0;
-    const notesOccupied = compound && (numNotes === 2 || numNotes === 4) ? 3
-      : Math.max(2, 2 ** Math.floor(Math.log2(numNotes - 1)));
+    const notesOccupied = tupletOccupancy(numNotes, stave.meter);
     const attach = (voice: any[], visible: boolean, marks: any[]) => {
       const members = voice.slice(-count);
       if (members.length !== count || members.some(note => note instanceof Vex.Flow.BarNote)) {

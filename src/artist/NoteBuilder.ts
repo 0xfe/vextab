@@ -1,6 +1,7 @@
 // Note creation and expansion logic for tab/notation, including chords and rests.
 import { Accidental, Fraction, Music, StaveNote, WrittenAccidentalState } from 'vexflow';
 import Vex from '../vexflow';
+import { spellFret } from '../score/music';
 import * as _ from '../utils';
 import type Artist from './Artist';
 import type { StaveGroup } from './Artist';
@@ -60,28 +61,7 @@ export class NoteBuilder {
    * Design note: this uses the Artist key manager to respect the current key.
    */
   getNoteForFret(fret: string, string: number): [string, string | number, string | null] {
-    const spec = this.artist.tuning.getNoteForFret(fret, string);
-    const spec_props = Vex.Flow.keyProperties(spec);
-
-    // Spell from the signature. The stave's chronological pass handles bar memory
-    // after all voices and tuplets have their final onsets.
-    this.artist.key_manager.reset();
-    const selected_note = this.artist.key_manager.selectNote(spec_props.key);
-    const accidental = selected_note.accidental ?? 'n';
-
-    const new_note = selected_note.note;
-    let new_octave = spec_props.octave;
-
-    // Adjust octave when the key manager changes the root letter.
-    const old_root = this.artist.music_api.getNoteParts(spec_props.key).root;
-    const new_root = this.artist.music_api.getNoteParts(selected_note.note).root;
-    if (new_root === 'b' && old_root === 'c') {
-      new_octave -= 1;
-    } else if (new_root === 'c' && old_root === 'b') {
-      new_octave += 1;
-    }
-
-    return [new_note, new_octave, accidental];
+    return spellFret(this.artist.tuning, this.artist.key_manager, this.artist.music_api, fret, string);
   }
 
   /**

@@ -29,6 +29,8 @@ The [gap assessment](vt5-gaps.md) records the baseline, issue evidence and prior
 
 ## M2 · Give layout, the editor and print a shared score
 
+[M2 results, integration reference and editable tied-chord lesson](vt5-m2.md)
+
 Keep Jison and the existing fret/string notation. Extend the current semantic compiler in small slices. Begin with a two-bar paired score containing a rest, a chord and a tie. Compare it through both layout paths before moving other constructs.
 
 | Boundary | Proposed contract | Compatibility decision |

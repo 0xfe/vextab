@@ -17,3 +17,6 @@ export {
   // Playback overlay for rendered notes.
   Player,
 };
+
+export { parseScore, ScoreError } from './score/parse';
+export { renderScore, renderScorePart } from './score/layout';

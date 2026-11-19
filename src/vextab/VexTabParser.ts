@@ -47,6 +47,12 @@ export class VexTabParser {
             throw error(`'${option.key}' must be 'true' or 'false'`);
           }
           break;
+        case 'pickup':
+          if (!/^([1-9]\d*)\/([1-9]\d*)$/.test(option.value)) throw error('Expected a pickup span such as 1/4');
+          break;
+        case 'fragment':
+          if (!['true', 'false'].includes(option.value)) throw error('fragment must be true or false');
+          break;
         case 'show-time':
           if (!['true', 'false'].includes(option.value)) throw error('show-time must be true or false');
           break;
