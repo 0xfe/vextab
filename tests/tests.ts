@@ -13,6 +13,7 @@ import Div from '../src/div';
 import './engraving';
 import './shared-score';
 import './studies';
+import './player';
 import VexTab from '../src/vextab';
 
 // QUnit globals injected by tests.html.
