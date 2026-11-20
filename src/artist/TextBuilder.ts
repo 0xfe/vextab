@@ -1,4 +1,5 @@
 // Text voice builder for lyric/annotation staves in the VexTab layout.
+import { inkStyle, isScoreColor } from '../score/color';
 import Vex from '../vexflow';
 import * as _ from '../utils';
 import type Artist from './Artist';
@@ -9,6 +10,8 @@ import type Artist from './Artist';
 export class TextBuilder {
   // Owning Artist instance, used for shared state and customizations.
   private artist: Artist;
+  // A text-voice ink override ends when the next voice or font begins.
+  private color?: string;
 
   /**
    * Create a text builder bound to an Artist.
@@ -21,6 +24,7 @@ export class TextBuilder {
    * Start a new text voice in the current stave group.
    */
   addTextVoice(): void {
+    this.color = undefined;
     _.last(this.artist.staves)!.text_voices.push([]);
   }
 
@@ -30,8 +34,10 @@ export class TextBuilder {
   setTextFont(font: string): void {
     if (!font) return;
     // Parse the "face-size-style" convention used by VexTab text commands.
-    const parts = font.match(/([^-]*)-([^-]*)-([^.]*)/);
+    const parts = font.match(/^([^-]*)-([^-]*)-([^-]*)(?:-(.*))?$/);
     if (parts) {
+      if (parts[4] !== undefined && !isScoreColor(parts[4])) throw new Vex.RERR('ArtistError', `Invalid text color '${parts[4]}'`);
+      this.color = parts[4];
       this.artist.customizations['font-face'] = parts[1];
       this.artist.customizations['font-size'] = parseInt(parts[2], 10);
       this.artist.customizations['font-style'] = parts[3];
@@ -102,6 +108,7 @@ export class TextBuilder {
       .setLine(position)
       .setJustification(just);
 
+    if (this.color) note.setStyle(inkStyle(this.color));
     _.last(voices)!.push(note);
   }
 }

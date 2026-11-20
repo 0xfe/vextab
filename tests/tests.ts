@@ -11,9 +11,11 @@ import Vex from '../src/vexflow';
 import Artist from '../src/artist';
 import Div from '../src/div';
 import './engraving';
+import './colors';
 import './shared-score';
 import './studies';
 import './player';
+import './playback';
 import VexTab from '../src/vextab';
 
 // QUnit globals injected by tests.html.

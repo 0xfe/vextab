@@ -73,6 +73,9 @@
 <notes>[u]                return 'u'
 <notes>[d]                return 'd'
 
+/* A pre-bend has one picked attack, its raised pitch, and an optional release. */
+<notes>[0-9]+z[0-9]+(z[0-9]+)?  return 'PREBEND'
+
 /* Time values */
 <notes,text>[0-9]+        return 'NUMBER'
 <notes,text>[q]           return 'q'
@@ -321,13 +324,17 @@ chord
     { $$ = [{chord: $3, articulation: $1, decorator: $5}] }
   ;
 
-frets
+fret
   : NUMBER
-    { $$ = [{
-        fret: $1, ...(yy.locate ? {range: yy.locate(@$)} : {}),
-        _l: @1.first_line,
-        _c: @1.first_column}]
-    }
+    { $$ = {fret: $1} }
+  | PREBEND
+    { $$ = yy.prebend($1, @$) }
+  ;
+
+frets
+  : fret
+    { $$ = [{...$1, ...(yy.locate ? {range: yy.locate(@$)} : {}),
+        _l: @1.first_line, _c: @1.first_column}] }
   | abc
     { $$ = [{abc: $1, ...(yy.locate ? {range: yy.locate(@$)} : {}), _l: @1.first_line, _c: @1.first_column}]}
   | abc NUMBER '_' NUMBER
@@ -347,12 +354,12 @@ frets
   ;
 
 timed_fret
-  : ':' time_values maybe_dot ':' NUMBER
+  : ':' time_values maybe_dot ':' fret
     { $$ = {
-      time: $2, dot: $3, fret: $5,
+      time: $2, dot: $3, ...$5,
       _l: @1.first_line, _c: @1.first_column}}
-  | NUMBER
-    { $$ = {fret: $1, _l: @1.first_line, _c: @1.first_column} }
+  | fret
+    { $$ = {...$1, _l: @1.first_line, _c: @1.first_column} }
   | ':' time_values maybe_dot ':' abc
     { $$ = {time: $2, dot: $3, abc: $5}}
   | ':' time_values maybe_dot ':' abc NUMBER '_' NUMBER

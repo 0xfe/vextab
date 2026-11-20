@@ -11,7 +11,7 @@ npm ci
 npm start
 ```
 
-Start with the [15-step VexTab tutorial](http://127.0.0.1:9005/guide/) or open [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). Change a fret, switch to tab and select the note from the keyboard. Explore [eight editable studies](http://127.0.0.1:9005/guide/#studies) or [search the API and notation reference](http://127.0.0.1:9005/guide/#reference).
+Open the [project index](http://127.0.0.1:9005/) for demos, tests, tools, and downloads. Start with the [15-step VexTab tutorial](http://127.0.0.1:9005/guide/) or open [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). Change a fret, switch to tab and select the note from the keyboard. Explore [eight editable studies](http://127.0.0.1:9005/guide/#studies) or [search the API and notation reference](http://127.0.0.1:9005/guide/#reference).
 
 ## Embed an editable score
 
@@ -31,3 +31,5 @@ See the [user guide and integration reference](docs/vt5-m4.md) for typed imports
 ## License
 
 VexTab is free for non-commercial use. Contact Mohit Muthanna Cheppudira about commercial use. [License](LICENSE)
+
+See [Playback plugins](docs/playback.md) for native audio, SpessaSynth and custom instruments.

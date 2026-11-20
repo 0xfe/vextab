@@ -1,5 +1,6 @@
 // Interpret flow commands at musical boundaries and on their preceding attack.
 import { FrettedInstrument, VexFlow, KeyManager, type TimedStringBend, type FretDiagramSpec } from 'vexflow';
+import { isScoreColor } from './color';
 import type { Attack, Measure, MeasureVoice, ScoreSpan, StaffState } from './model';
 import { ScoreError, type SourceRange } from './source';
 
@@ -29,6 +30,7 @@ function bend(text: string, event: Attack, state: StaffState, range: SourceRange
     return [n, d];
   }
   const spec = { string: +match[1], semitones: +match[2], rise: pair(match[3]), hold: pair(match[4]), release: pair(match[5]) };
+  if (event.heads.some(h => h.prebend && h.position.str === spec.string)) fail(range, 'This string already has a pre-bend');
   const positions = event.heads.map(h => h.position);
   if (!positions.length || positions.some(p => !p || p.fret === 'X')) fail(range, 'A bend needs a pitched fretted attack');
   try {
@@ -102,6 +104,10 @@ export class VoiceCommands {
     const event = bar.events[bar.events.length - 1];
     if (!event) fail(range, 'Put this command immediately after an attack in this bar');
     switch (name) {
+      case 'color':
+        if (!isScoreColor(args)) fail(range, 'Expected a CSS color name or hex value');
+        event.color = args;
+        break;
       case 'bend':
         if (event.bend) fail(range, 'One timed bend per attack');
         event.bend = { spec: bend(args, event, this.state, range), range };
@@ -128,11 +134,14 @@ export class VoiceCommands {
         if (args || event.heads.length || event.silent) fail(range, 'Put !silent! after a rest');
         event.silent = range;
         break;
-      case 'chord':
+      case 'chord': {
         if (!event.heads.length) fail(range, 'A chord label needs a note or slash');
         if (event.chord) fail(range, 'Duplicate chord label');
-        event.chord = { text: label(args, range), range };
+        const match = /^("(?:[^"\\]|\\.)*")(?:\s+color=(\S+))?$/.exec(args);
+        if (!match || (match[2] && !isScoreColor(match[2]))) fail(range, 'Expected chord "label" with an optional color=NAME or hex value');
+        event.chord = { text: label(match[1], range), ...(match[2] && { color: match[2] }), range };
         break;
+      }
       case 'frame':
         if (event.frame) fail(range, 'Duplicate chord frame');
         event.frame = { spec: frame(args, event, this.state, range), range };

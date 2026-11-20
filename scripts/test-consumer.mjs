@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtemp, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { chromium } from 'playwright-core';
@@ -11,15 +12,20 @@ const archive = resolve(process.argv[2]);
 const cwd = await mkdtemp(join(tmpdir(), 'vextab-consumer-'));
 await writeFile(join(cwd,'package.json'), JSON.stringify({name:'vextab-consumer',version:'1.0.0',private:true}));
 execFileSync('npm', ['install','--ignore-scripts','--no-audit','--no-fund','--no-package-lock',archive], { cwd, stdio:'inherit' });
+// Hosts can compile and mount every public playback adapter without installing a synth.
+const consumerRequire = createRequire(join(cwd, 'package.json'));
+assert.throws(() => consumerRequire.resolve('spessasynth_lib'), { code: 'MODULE_NOT_FOUND' });
 const check = 'if (parseScore("stave time=1/4\\nnotes C/4").measures.length !== 1) process.exit(1)';
 execFileSync(process.execPath, ['--input-type=module','-e',"import {parseScore} from 'vextab/parse';" + check], { cwd });
 execFileSync(process.execPath, ['-e',"const {parseScore}=require('vextab/parse');" + check], { cwd });
-await writeFile(join(cwd,'consumer.ts'), `import { Div, parseScore, renderScore, type ParsedScore } from 'vextab/browser';
+await writeFile(join(cwd,'consumer.ts'), `import { Div, parseScore, renderScore, type ParsedScore, type PlaybackPlugin, createSpessaSynthPlayback } from 'vextab/browser';
 const host = document.getElementById('manual')!;
 const score: ParsedScore = parseScore('stave time=1/4\\nnotes C/4');
 const screen = renderScore(host, score);
 host.dataset.event = screen.navigation.events[0].label;
-new Div(document.getElementById('embed')!);`);
+const example: PlaybackPlugin = { open: () => ({ playNote() {}, stop() {} }) };
+new Div(document.getElementById('embed')!, { playback: example });
+if (typeof createSpessaSynthPlayback !== 'function') throw new Error('missing host adapter');`);
 execFileSync(resolve('node_modules/.bin/tsc'), ['--module','esnext','--target','es2022','--moduleResolution','bundler','--strict','consumer.ts'], {cwd,stdio:'inherit'});
 const compiler = webpack({ mode:'development',devtool:false,context:cwd,entry:'./consumer.js',output:{path:cwd,filename:'bundle.js'} });
 try {

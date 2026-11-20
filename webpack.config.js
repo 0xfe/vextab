@@ -11,6 +11,12 @@ module.exports = (env = {}) => {
   const guidePrefix = guideSite ? '' : 'guide/';
   const guideEntries = { guide: './guide/app.ts', div: './src/auto.ts', main: './src/main.ts', studies: './guide/studies.ts' };
   const guidePages = { index: 'guide', triplets: 'div', 'shared-score': 'main', studies: 'studies' };
+  // Repository examples load ../dist or /dist when served from a checkout. Their
+  // packaged copies sit one level below the bundles and use the current build tag.
+  function examplePage(content) {
+    return content.toString().replaceAll('href="../dist/', 'href="../').replace(/src="(?:\.\.)?\/dist\/([^"]+\.js)"/g, (_, bundle) =>
+      'src="../' + bundle.replace('.dev.js', '.' + tag + '.js') + '"');
+  }
   return {
     entry: {
       ...guideEntries,
@@ -40,7 +46,7 @@ module.exports = (env = {}) => {
         template: './guide/' + name + '.html', filename: guidePrefix + name + '.html', chunks: [entry],
       })),
       ...(!guideSite ? [
-        new HtmlWebpackPlugin({ template: './tests/tests.html', filename: 'index.html', chunks: ['tests'] }),
+        new HtmlWebpackPlugin({ template: './tests/tests.html', filename: 'tests.html', chunks: ['tests'] }),
         new HtmlWebpackPlugin({ template: './tests/playground.html', filename: 'playground.html', chunks: ['playground'] }),
         new HtmlWebpackPlugin({ template: './static/div.html', filename: 'static/div.html', chunks: ['div'] }),
       ] : []),
@@ -53,6 +59,10 @@ module.exports = (env = {}) => {
         // The stylesheet lives under assets/ in both the package and the hosted build.
         { from: 'guide/fonts', to: 'fonts' },
         ...(!guideSite ? [
+          { from: 'static/index.html', to: 'index.html' },
+          { from: 'demos/*.html', transform: examplePage },
+          { from: 'doc/tutorial.html', to: 'doc/tutorial.html', transform: examplePage },
+          { from: 'doc/*.css' },
           { from: 'doc/vextab.css', to: 'vextab.css' },
           { from: require.resolve('qunit'), to: 'qunit.js' },
           { from: require.resolve('qunit/qunit/qunit.css'), to: 'qunit.css' },

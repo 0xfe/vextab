@@ -1,7 +1,8 @@
 // Note creation and expansion logic for tab/notation, including chords and rests.
 import { Accidental, Fraction, Music, StaveNote, WrittenAccidentalState } from 'vexflow';
 import Vex from '../vexflow';
-import { spellFret } from '../score/music';
+import { fixedHeads } from '../playback/performance';
+import { describePrebend, makePrebend, spellFret } from '../score/music';
 import * as _ from '../utils';
 import type Artist from './Artist';
 import type { StaveGroup } from './Artist';
@@ -159,7 +160,7 @@ export class NoteBuilder {
     this.artist.stavesBuilder.reserveTabRhythmSpace();
     const new_tab_note = new Vex.Flow.TabNote(
       {
-        positions: spec,
+        positions: spec.map(({ str, fret }) => ({ str, fret })),
         duration: this.artist.current_duration,
       },
       this.artist.customizations['tab-stems'] === 'true',
@@ -170,6 +171,9 @@ export class NoteBuilder {
       new_tab_note.setPlayNote(play_note);
     }
 
+    spec.forEach(({ prebend }, index) => {
+      if (prebend) new_tab_note.addModifier(makePrebend(prebend), index);
+    });
     tab_notes.push(new_tab_note);
 
     // Dotted notes need an explicit dot glyph on tab notes.
@@ -236,6 +240,7 @@ export class NoteBuilder {
     // Per-position arrays track stacked chord notes on the same string.
     const specs: string[][] = [];
     const play_notes: string[][] = [];
+    const sounding: string[][] = [];
     const signs: Array<Array<HeadSign | null>> = [];
     const articulations: Array<Array<string | null>> = [];
     const decorators: Array<string | null> = [];
@@ -258,6 +263,7 @@ export class NoteBuilder {
       if (!specs[current_position]) {
         specs[current_position] = [];
         play_notes[current_position] = [];
+        sounding[current_position] = [];
         signs[current_position] = [];
         tab_specs[current_position] = [];
         articulations[current_position] = [];
@@ -268,6 +274,7 @@ export class NoteBuilder {
       let new_octave: string | number | null = null;
       let accidental: string | null = null;
       let play_note: string | null = null;
+      let fretOctave: number | undefined;
 
       if (note.abc) {
         // ABC notes carry a pitch name; the octave is derived.
@@ -280,8 +287,12 @@ export class NoteBuilder {
         }
       } else if (note.fret) {
         // Tab notes are translated through the tuning map.
-        [new_note, new_octave, accidental] = this.getNoteForFret(note.fret, note.string);
-        play_note = this.artist.tuning.getNoteForFret(note.fret, note.string).split('/')[0];
+        const attackFret = note.prebend ? String(Number(note.fret) + note.prebend.semitones) : note.fret;
+        [new_note, new_octave, accidental] = this.getNoteForFret(attackFret, note.string);
+        const [pitch, octave] = this.artist.tuning.getNoteForFret(attackFret, note.string).split('/');
+        play_note = pitch;
+        // Guitar tuning gives written pitches one octave above the sounding fret.
+        fretOctave = Number(octave) - 1;
       } else {
         throw new Vex.RERR('ArtistError', 'No note specified');
       }
@@ -293,14 +304,16 @@ export class NoteBuilder {
       const sign = accidental?.split('_')[0];
       const written = note.abc && sign && sign !== 'n' ? new_note + sign : new_note;
       specs[current_position].push(`${written}/${new_octave}`);
+      const soundingOctave = (fretOctave ?? Number(new_octave)) + this.artist.current_octave_shift;
       play_notes[current_position].push(`${play_note}/${play_octave}`);
+      sounding[current_position].push(`${play_note}/${soundingOctave}`);
       signs[current_position].push(sign && /^[a-g]/i.test(new_note) ? {
         key: `${new_note[0].toLowerCase()}/${new_octave}`, sign,
         literal: !!note.abc,
         cautionary: note.abc ? note.abc.accidental_type === 'c'
           : this.artist.customizations.accidentals === 'cautionary' && sign !== 'n',
       } : null);
-      tab_specs[current_position].push({ fret: note.fret, str: note.string });
+      tab_specs[current_position].push({ fret: note.fret, str: note.string, prebend: note.prebend });
       if (note.articulation) {
         articulations[current_position].push(note.articulation);
       } else {
@@ -322,7 +335,21 @@ export class NoteBuilder {
       this.addTabNote(tab_specs[i], play_notes[i]);
       if (stave.note) {
         this.addStaveNote({ spec, signs: signs[i], play_note: play_notes[i] });
+        if (!stave.tab) {
+          const instructions = tab_specs[i].filter(p => p.prebend).map(p => describePrebend(p.prebend, p.str));
+          if (instructions.length) {
+            const mark = new Vex.Flow.Annotation(instructions.join(' · '));
+            mark.setVerticalJustification(Vex.Flow.Annotation.VerticalJustify.TOP);
+            _.last(stave.note_notes).addModifier(mark, 0);
+          }
+        }
       }
+      const heads = sounding[i].map((key, index) => {
+        const bend = tab_specs[i][index].prebend;
+        return { key, release: bend?.release ? bend.semitones : 0 };
+      });
+      fixedHeads.set(_.last(stave.tab_notes), heads);
+      if (stave.note) fixedHeads.set(_.last(stave.note_notes), heads);
       this.artist.addArticulations(articulations[i]);
       if (decorators[i]) {
         this.artist.addDecorator(decorators[i]);

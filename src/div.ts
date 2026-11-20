@@ -9,6 +9,8 @@ import Vex from './vexflow';
 import Artist from './artist';
 import VexTab from './vextab';
 import Player from './player';
+import { createWebAudioPlayback } from './playback/web-audio';
+import type { PlaybackPlugin } from './playback/transport';
 import type { SourceRange } from './score/source';
 import type { ScoreReadingEvent } from 'vexflow';
 import { parseScore } from './score/parse';
@@ -26,7 +28,12 @@ function embedAttribute(host: HTMLElement, name: string, legacyName?: string): s
     || host.getAttribute(name);
 }
 
+/** Host integrations can supply an instrument without loading any synthesizer into VexTab. */
+export interface DivOptions { playback?: PlaybackPlugin }
+
 class Div {
+  private player?: Player;
+  private readonly playback: PlaybackPlugin;
   // Host element + renderer state.
   private sel: string | HTMLElement;
   private code: string;
@@ -61,7 +68,8 @@ class Div {
    * Construct the Div renderer and immediately render the initial markup.
    * Design note: we read once from the DOM and then manage our own state.
    */
-  constructor(sel: string | HTMLElement) {
+  constructor(sel: string | HTMLElement, options: DivOptions = {}) {
+    this.playback = options.playback ?? createWebAudioPlayback();
     this.sel = sel;
     if (!this.sel) {
       throw new Error(`VexTab.Div: invalid selector: ${sel}`);
@@ -148,6 +156,7 @@ class Div {
   /** Stop observing an embed when a host removes it or replaces the editor. */
   dispose(): void {
     this.disposed = true;
+    this.player?.dispose();
     this.observer?.disconnect();
     cancelAnimationFrame(this.resizeFrame);
     window.clearTimeout(this.timeoutID);
@@ -157,6 +166,7 @@ class Div {
   /** Wait for a complete IME composition before parsing the edited source. */
   private scheduleEdit(): void {
     window.clearTimeout(this.timeoutID);
+    this.player?.removeControls();
     if (!this.composing) this.timeoutID = window.setTimeout(() => this.run(), 250);
   }
 
@@ -209,6 +219,7 @@ class Div {
 
   /** Report errors as text and identify the last successfully drawn score. */
   private reportError(error: Error): void {
+    this.player?.removeControls();
     this.diagnostic = (error as Error & { range?: SourceRange }).range;
     this.surface?.setAttribute('data-preview-stale', 'true');
     const prefix = this.surface ? 'Showing the last valid score. ' : '';
@@ -257,6 +268,16 @@ class Div {
       const hit = layout.hitTest(point.x, point.y);
       if (hit) this.selectSource(hit.id, score);
     });
+    this.player?.dispose();
+    this.player = undefined;
+    if (score.playback?.enabled) {
+      const player = this.player = new Player(score, { playback: this.playback });
+      const events = new Map(layout.navigation.events.map(event => [event.source, event.id]));
+      player.render(next.querySelector('svg'), id => {
+        const glyph = layout.composition.getNote(events.get(id));
+        if (glyph) player.moveCursor(glyph.getAbsoluteX() + 4, glyph.getStave().getYForLine(2));
+      });
+    }
     this.current = { score, layout };
   }
 
@@ -280,6 +301,9 @@ class Div {
           if (paper && !paper.startsWith('rgba(') && !paper.includes('/')) {
             renderer.getContext().setBackgroundFillStyle(paper);
           }
+        }
+        if (!this.player && this.artist.customizations.player === 'true') {
+          this.player = new Player(this.artist, { playback: this.playback });
         }
         this.artist.draw(renderer);
         if (canvas) {

@@ -1,5 +1,23 @@
 // Musical rules shared by the fixed Artist and the source-based score compiler.
-import { KeyManager, Music, Tuning, VexFlow } from 'vexflow';
+import { Bend, KeyManager, Music, Tuning, VexFlow } from 'vexflow';
+import type { Prebend } from './model';
+
+/** Use guitar bend amounts in both the tab arrow and the printed playing instruction. */
+function bendAmount(semitones: number): string {
+  return semitones === 1 ? '½' : semitones === 2 ? 'full' : semitones + ' st';
+}
+
+/** Name the physical string so a chord's stationary heads remain unambiguous. */
+export function describePrebend(prebend: Prebend, string: number): string {
+  return 'Pre-bend ' + bendAmount(prebend.semitones) + ' on string ' + string + (prebend.release ? ', release' : '');
+}
+
+/** A vertical arrow starts at the attack; a following downstroke returns to its fret. */
+export function makePrebend({ semitones, release }: Prebend): Bend {
+  const phrase = [{ type: Bend.PREBEND, text: bendAmount(semitones) }];
+  if (release) phrase.push({ type: Bend.DOWN, text: '' });
+  return new Bend(phrase);
+}
 
 /** VexTab tunings give written open strings. A guitar sounds one octave below its staff. */
 export function soundingGuitarPitch(tuning: Tuning, fret: number, string: number): string {

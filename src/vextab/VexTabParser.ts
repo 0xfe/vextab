@@ -1,4 +1,5 @@
 // Semantic compiler that turns the parsed VexTab AST into concrete Artist calls.
+import { isScoreColor } from '../score/color';
 import Vex from '../vexflow';
 import * as _ from '../utils';
 import type Artist from '../artist/Artist';
@@ -46,6 +47,9 @@ export class VexTabParser {
           if (!['true', 'false'].includes(option.value)) {
             throw error(`'${option.key}' must be 'true' or 'false'`);
           }
+          break;
+        case 'color':
+          if (element === 'voice' || !isScoreColor(option.value)) throw error('Expected a stave color as a CSS name or hex value');
           break;
         case 'pickup':
           if (!/^([1-9]\d*)\/([1-9]\d*)$/.test(option.value)) throw error('Expected a pickup span such as 1/4');
@@ -148,7 +152,7 @@ export class VexTabParser {
     this.artist.addChord(
       _.map(
         element.chord,
-        (note: Record<string, any>) => _.pick(note, 'time', 'dot', 'fret', 'abc', 'octave', 'string', 'articulation', 'decorator'),
+        (note: Record<string, any>) => _.pick(note, 'time', 'dot', 'fret', 'prebend', 'abc', 'octave', 'string', 'articulation', 'decorator'),
       ),
       element.articulation,
       element.decorator,
@@ -159,14 +163,14 @@ export class VexTabParser {
    * Convert a fret-based note AST node into an Artist note call.
    */
   parseFret(note: any): void {
-    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'string', 'articulation', 'decorator'));
+    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'prebend', 'string', 'articulation', 'decorator'));
   }
 
   /**
    * Convert an ABC note AST node into an Artist note call.
    */
   parseABC(note: any): void {
-    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'abc', 'octave', 'string', 'articulation', 'decorator'));
+    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'prebend', 'abc', 'octave', 'string', 'articulation', 'decorator'));
   }
 
   /**

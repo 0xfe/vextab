@@ -15,7 +15,7 @@ Run `npm ci` and `npm start`. Open the [VexTab tutorial](http://127.0.0.1:9005/g
 | Chords and fingerings, independent voices, repeats, bends, lyrics, lead sheets and printing | [Eight editable demos](http://127.0.0.1:9005/guide/#demos) |
 | Look up a token, its default, scope and layout | [Search the language reference](http://127.0.0.1:9005/guide/#reference) |
 
-The detailed references cover [rhythm and fixed-layout syntax](vt5-m1.md), [measures, ties and source ranges](vt5-m2.md), and [lead sheets, string techniques and print coverage](vt5-m3.md).
+The detailed references cover [rhythm and fixed-layout syntax](vt5-m1.md), [stave, note and label colours](colors.md), [measures, ties and source ranges](vt5-m2.md), and [lead sheets, string techniques and print coverage](vt5-m3.md).
 
 ## Edit and read
 

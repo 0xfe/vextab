@@ -122,6 +122,8 @@ export async function testGuide(page, dist) {
   await page.locator('#search').fill('selectSource revision');
   assert.equal(await page.locator('.reference-results article').count(), 1);
   await page.locator('.reference-results h3 a').click();
+  // The hash changes before the guide replaces the search box for the selected entry.
+  await page.locator('#main[data-route="#reference/editor-reading"]').waitFor();
   assert.match(page.url(), /#reference\/editor-reading$/);
   await page.locator('#search').fill('no-such-api-member');
   assert.equal(await page.locator('.result-count').textContent(), 'No matching entries. Try another term.');

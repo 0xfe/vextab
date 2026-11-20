@@ -1,4 +1,5 @@
 // Central orchestration layer for building VexFlow structures from VexTab input.
+import { inkStyle, isScoreColor } from '../score/color';
 import { scoreFont } from '../score/engraving';
 import Vex from '../vexflow';
 import * as _ from '../utils';
@@ -54,6 +55,8 @@ export type StaveGroup = {
   text_voices: any[];
   // Meter drives timing even when its printed signature is hidden.
   meter: string;
+  // Optional foreground for this written row, including both projections.
+  color?: string;
   // Written key signature shared by all voices on this staff.
   key: string;
   // Shared clearance above tab stems and their tuplet numerals.
@@ -448,6 +451,21 @@ export default class Artist {
     this.log('runCommand: ', line);
     const words = line.split(/\s+/);
     switch (words[0]) {
+      case 'color': {
+        if (words.length !== 2 || !isScoreColor(words[1])) {
+          throw new Vex.RERR('ArtistError', `Expected a CSS color name or hex value at line ${lineNumber} column ${column}`);
+        }
+        const group = _.last(this.staves);
+        const note = group && _.last(group.note_notes);
+        const tab = group && _.last(group.tab_notes);
+        if ((!note && !tab) || (note || tab) instanceof Vex.Flow.BarNote) {
+          throw new Vex.RERR('ArtistError', `Put !color! after a note or rest at line ${lineNumber} column ${column}`);
+        }
+        note?.setStyle(inkStyle(words[1]));
+        note?.setLedgerLineStyle?.(inkStyle(words[1]));
+        tab?.setStyle(inkStyle(words[1]));
+        break;
+      }
       case 'octave-shift':
         // Apply octave changes to playback pitch only.
         if (words.length !== 2 || !/^[+-]?\d+$/.test(words[1]) || !Number.isSafeInteger(Number(words[1]))) {

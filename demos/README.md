@@ -1,6 +1,6 @@
 # VexTab demos
 
-Run `npm ci` and `npm start`, then open the [demo library](http://127.0.0.1:9005/guide/#demos). Each study has an edit to try. Open it in the playground to save a draft or download the score. The same demos ship offline at `dist/guide/index.html#demos`.
+Run `npm ci` and `npm start`, then open the [demo library](http://127.0.0.1:9005/guide/#studies). Each study has an edit to try. Open it in the playground to save a draft or download the score. The same demos ship offline at `dist/guide/index.html#studies`.
 
 | Study | What to try |
 | --- | --- |
@@ -13,4 +13,4 @@ Run `npm ci` and `npm start`, then open the [demo library](http://127.0.0.1:9005
 | Guitar duet for print | Switch player and paper size, then inspect the independent page. |
 | Two independent editors | Edit, break, recover and resize two embeds independently. |
 
-The [canonical VexTab files](../guide/scores/) feed the guide and its tests. The distribution includes plain-text copies in `dist/guide/scores/`. To run the two minimal integration demos, run `npm run build-dev` and `npm run serve`. Open the [DOM embed](http://127.0.0.1:8052/demos/div-plugin.html) or [Artist API example](http://127.0.0.1:8052/demos/api.html).
+The [canonical VexTab files](../guide/scores/) feed the guide and its tests. The distribution includes plain-text copies in `dist/guide/scores/`. The [project index](http://127.0.0.1:9005/) also links to both playback demos, the DOM embed, and the Artist API example. SpessaSynth loads its worklet and SoundFont on demand over the network.

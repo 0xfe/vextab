@@ -32,6 +32,7 @@ try {
   page.on('pageerror', error => errors.push(error.message));
 
   await page.goto(pathToFileURL(resolve(dist, 'index.html')).href);
+  await page.getByRole('link', { name: 'Browser test suite' }).click();
   await page.locator('#qunit-banner.qunit-pass, #qunit-banner.qunit-fail').waitFor({ state: 'attached' });
   const result = await page.locator('#qunit-testresult').innerText();
   console.log(result);

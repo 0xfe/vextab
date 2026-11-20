@@ -1,5 +1,6 @@
 // Compile located Jison events to aligned measures without creating rendering objects.
 import { Fraction, KeyManager, Music, Tuning, VexFlow } from 'vexflow';
+import { isScoreColor } from './color';
 import { readSyntax, ScoreError, type SourceRange } from './source';
 import { VoiceCommands, resolveMarks } from './commands';
 import { soundingGuitarPitch, spellFret, tupletOccupancy } from './music';
@@ -54,6 +55,10 @@ function staffState(node: Token): StaffState {
   let timeGiven = false;
   for (const opt of node.options ?? []) {
     switch (opt.key) {
+      case 'color':
+        if (!isScoreColor(opt.value)) invalid(opt, 'Expected a CSS color name or hex value');
+        state.color = opt.value;
+        break;
       case 'notation': state.notation = booleanOption(opt); break;
       case 'tablature': state.tab = booleanOption(opt); break;
       case 'fragment': state.fragment = booleanOption(opt); break;
@@ -111,7 +116,11 @@ function startVoice(settings: Settings, direction: string | undefined, declarati
 function readSettings(settings: Settings, node: Token): void {
   for (const opt of node.params) {
     switch (opt.key) {
-      case 'measure-numbers': case 'tab-stems': case 'beam-rests': case 'beam-stemlets': case 'beam-middle-only': booleanOption(opt); break;
+      case 'tempo':
+        if (!Number.isFinite(Number(opt.value)) || Number(opt.value) <= 0) invalid(opt, 'Tempo must be positive');
+        break;
+      case 'instrument': break;
+      case 'player': case 'measure-numbers': case 'tab-stems': case 'beam-rests': case 'beam-stemlets': case 'beam-middle-only': booleanOption(opt); break;
       case 'tab-stem-direction':
         if (!['up','down'].includes(opt.value)) invalid(opt, 'Invalid tab stem direction');
         break;
@@ -137,11 +146,12 @@ function chordHead(note: Token, state: StaffState, tuning: Tuning, manager: KeyM
   if (note.articulation && !['T', '-'].includes(note.articulation)) fixed(note, `technique '${note.articulation}'`);
   const str = Number(note.string);
   let position: Head['position'];
+  const attackFret = Number(note.fret) + state.capo + (note.prebend?.semitones ?? 0);
   let sounding: string;
   if (note.fret !== undefined) {
     const fret = Number(note.fret);
     if (str < 1 || str > state.strings || !Number.isSafeInteger(fret)) invalid(note, 'Invalid fret or string');
-    try { sounding = soundingGuitarPitch(tuning, fret + state.capo, str); }
+    try { sounding = soundingGuitarPitch(tuning, attackFret, str); }
     catch { invalid(note, 'String outside the tuning'); }
     position = { str, fret };
   }
@@ -160,8 +170,8 @@ function chordHead(note: Token, state: StaffState, tuning: Tuning, manager: KeyM
     return { range: note.range, written: pitch, sounding: sounding ?? pitch, position,
       inheritSign: !sign && !note.abc.accidental_type, accidental: sign || (note.abc.accidental_type ? 'n' : undefined), cautionary: note.abc.accidental_type === 'c' };
   }
-  const [name, octave] = spellFret(tuning, manager, music, String(Number(note.fret) + state.capo), str);
-  return { range: note.range, written: name + '/' + octave, sounding, position };
+  const [name, octave] = spellFret(tuning, manager, music, String(attackFret), str);
+  return { range: note.range, written: name + '/' + octave, sounding, position, ...(note.prebend && { prebend: note.prebend }) };
 }
 
 /** Match each tied head once. Reordering the destination chord preserves string identity. */
@@ -355,6 +365,8 @@ export function parseScore(source: string): ParsedScore {
   let row: Row;
   for (const node of nodes) {
     if (node.element === 'options') {
+      const audio = node.params.find((p: Token) => ['tempo', 'instrument', 'player'].includes(p.key));
+      if (row && audio) invalid(audio, 'Set flow playback options before the first stave');
       const numbering = node.params.find((p: Token) => p.key === 'measure-numbers');
       if (row && numbering) invalid(numbering, 'Set measure numbering before the first stave');
       readSettings(settings, node);
@@ -377,5 +389,10 @@ export function parseScore(source: string): ParsedScore {
   finishRow(row, measures);
   resolvePitches(measures, ties);
   resolveMarks(measures, spans);
-  return { source, measures, ties, spans, measureNumbers: settings['measure-numbers'] === 'true' };
+  const parsed: ParsedScore = { source, measures, ties, spans, measureNumbers: settings['measure-numbers'] === 'true' };
+  if (settings.player || settings.tempo || settings.instrument) {
+    parsed.playback = { enabled: settings.player === 'true', tempo: settings.tempo ? Number(settings.tempo) : undefined,
+      instrument: settings.instrument };
+  }
+  return parsed;
 }
