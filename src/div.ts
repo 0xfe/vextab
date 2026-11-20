@@ -275,12 +275,13 @@ class Div {
 
   /** Map clicks on either drawing surface back to the current source revision. */
   private drawFlow(next: HTMLElement): void {
-    if ((!this.grammar2 && this.rendererBackend.toLowerCase() !== 'svg') || this.scale !== 1) {
+    if (!this.grammar2 && (this.rendererBackend.toLowerCase() !== 'svg' || this.scale !== 1)) {
       throw new Error('Flow layout requires SVG at scale 1. Use width to reflow.');
     }
     const score = this.candidate;
     const canvas = this.rendererBackend.toLowerCase() === 'canvas';
     const layout = renderScore(next, score, { width: this.width, part: this.part, renderer: canvas ? 'canvas' : 'svg' });
+    if (this.grammar2 && this.scale !== 1) next.style.zoom = String(this.scale);
     if (this.text_area) next.addEventListener('click', event => {
       const svg = next.querySelector('svg');
       const transform = svg?.getScreenCTM();

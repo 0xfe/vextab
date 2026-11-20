@@ -40,21 +40,21 @@ function rational(n: bigint, d: bigint, fail: Fail, range: TextRange, trace: Exp
 const fractionText = ([n, d]: Fraction) => n + '/' + d;
 
 /** Resolve a hammer to the head on the same physical string, even in a reordered chord. */
-function hammerSource(head: Head, previous: ScoreEvent | undefined): HeadRef | undefined {
+function hammerSource(head: Head, previous: ScoreEvent | undefined, kind: 'hammer' | 'pull' | 'slide'): HeadRef | undefined {
   if (!previous || !('fret' in head) || typeof head.fret !== 'number') return;
   const fret = head.fret;
   const index = previous.heads.findIndex(h =>
-    'fret' in h && h.string === head.string && typeof h.fret === 'number' && h.fret < fret);
+    'fret' in h && h.string === head.string && typeof h.fret === 'number' && (kind === 'hammer' ? h.fret < fret : kind === 'pull' ? h.fret > fret : h.fret !== fret));
   if (index >= 0) return { event: previous.id, head: index };
 }
 
 /** Every invocation has fresh budgets and IDs. No parsing or expansion state survives an edit. */
 export function compile(source: string): ScoreV2 {
   const fail: Fail = (code, reason, range, trace = []) => { throw new ScoreV2Error(code, reason, source, range, trace); };
-  const { patterns, parts, meter, meterRange, pickup } = readScore(source, fail);
+  const { patterns, parts, meter, meterRange, initialSign, pickup, meterChanges, playback, measureNumbers, layout, transpose: scoreTranspose } = readScore(source, fail);
   const meterText = fractionText(meter);
-  const measureLength = fractionText(rational(...meter, fail, [0, 0], []));
-  const firstLength = pickup ? fractionText(rational(...pickup, fail, [0, 0], [])) : measureLength;
+  const firstLength = pickup && fractionText(rational(...pickup, fail, [0, 0], []));
+  const grid: string[] = [];
   const quarter: Fraction = [BigInt(1), BigInt(4)];
   const zero: Fraction = [BigInt(0), BigInt(1)];
   let steps = 0, eventCount = 0, measureCount: number | undefined;
@@ -64,10 +64,46 @@ export function compile(source: string): ScoreV2 {
   }
 
   /** One voice owns one clock. Patterns and tuplets temporarily change its rhythmic environment. */
-  function lower(part: PartSyntax, staff: StaffSyntax, voice: VoiceSyntax, partIndex: number): ScoreVoice {
-    const result: ScoreVoice = { name: voice.name, range: voice.range, events: [], measures: [], spans: [] };
+  function lower(part: PartSyntax, staff: StaffSyntax, voice: VoiceSyntax, partIndex: number, textLane = false): ScoreVoice {
+    const result: ScoreVoice = { name: voice.name, ...(voice.settings && { settings: voice.settings }), range: voice.range, events: [], measures: [], spans: [] };
     const { events, measures, spans } = result;
     let bar = 1, firstEvent = 0, beat = zero;
+
+    let currentMeter = meter, fragment = false, transpose = 0, soundingOctaves = 0, newRow = false;
+    let meterSign = initialSign;
+    let rehearsal: string | undefined, opening: string | undefined;
+
+    /** Text follows the established musical grid, including partial bars with no meter sign. */
+    function expectedLength(): Fraction {
+      if (textLane && grid[bar - 1]) {
+        const [n, d] = grid[bar - 1].split('/');
+        return [BigInt(n), BigInt(d)];
+      }
+      return bar === 1 && pickup ? pickup : currentMeter;
+    }
+
+    /** A single grid governs every instrument, including pickups and deliberately short excerpts. */
+    function finishBar(range: TextRange, trace: ExpansionFrame[], closing?: string) {
+      const span = fractionText(beat);
+      const expected = expectedLength();
+      if (!fragment && beat[0] * expected[1] !== expected[0] * beat[1])
+        fail('bar-length', 'Bar ' + bar + ' contains ' + span + ' of a whole note, expected ' + fractionText(expected), range, trace);
+      if (grid[bar - 1] !== undefined && grid[bar - 1] !== span)
+        fail('alignment', 'Voices disagree on the length of bar ' + bar, range, trace);
+      grid[bar - 1] = span;
+      measures.push({
+        number: bar, start: firstEvent, end: events.length, barlineRange: range, trace,
+        span, meter: fractionText(currentMeter), meterSign, fragment, newRow, rehearsal, closing, opening
+      });
+      opening = closing === 'repeat-both' ? 'repeat-begin' : undefined;
+      firstEvent = events.length;
+      bar++;
+      beat = zero;
+      rehearsal = undefined;
+      newRow = false;
+      const change = meterChanges.get(bar);
+      if (change) { currentMeter = change.value; meterSign = change.sign; }
+    }
 
     /** Advance this voice by one timed event and resolve references to earlier heads. */
     function emit(node: TimedNode, duration: Fraction, rhythmRange: TextRange | undefined, scale: Fraction, trace: ExpansionFrame[]) {
@@ -81,18 +117,19 @@ export function compile(source: string): ScoreV2 {
           if (['bend', 'prebend', 'slideIn', 'slideOut'].includes(mark.kind) && (!('fret' in head) || typeof head.fret !== 'number'))
             fail('instrument', 'This technique needs a pitched fret', mark.range, trace);
         }
-        const hammer = head.marks.find(mark => mark.kind === 'hammer');
-        if (!hammer) return head;
-        const from = hammerSource(head, events[events.length - 1]);
-        if (!from) fail('hammer', 'Expected a lower fret on this string in the preceding attack', hammer.range, trace);
-        spans.push({ kind: 'hammer', from, to: { event: id, head: index }, range: hammer.range });
-        return { ...head, hammerFrom: from };
+        const hammer = head.marks.find(mark => mark.kind === 'hammer' || mark.kind === 'slide' || mark.kind === 'pull');
+        if (!hammer || (hammer.kind !== 'hammer' && hammer.kind !== 'slide' && hammer.kind !== 'pull')) return head;
+        const from = hammerSource(head, events[events.length - 1], hammer.kind);
+        if (!from) fail('hammer', hammer.kind === 'hammer' ? 'Expected a lower fret on this string in the preceding attack' : 'Expected a compatible preceding fret on this string', hammer.range, trace);
+        spans.push({ kind: hammer.kind, from, to: { event: id, head: index }, range: hammer.range });
+        return hammer.kind === 'hammer' ? { ...head, hammerFrom: from } : head;
       }) : [];
       events.push({ id, bar, at: fractionText(beat), duration: fractionText(length), writtenDuration: fractionText(duration),
-        kind: node.kind, heads, marks: node.kind === 'attack' ? node.marks : [], range: node.range, rhythmRange, trace });
+        kind: node.kind, ...(transpose && { transpose }), ...(soundingOctaves && { soundingOctaves }), heads, marks: node.marks ?? [], range: node.range, rhythmRange, trace
+      });
       beat = rational(beat[0] * length[1] + length[0] * beat[1], beat[1] * length[1], fail, node.range, trace);
-      const limit = bar === 1 && pickup ? pickup : meter;
-      if (beat[0] * limit[1] > limit[0] * beat[1]) fail('bar-length', 'Attack crosses the end of bar ' + bar, node.range, trace);
+      const limit = expectedLength();
+      if (!fragment && beat[0] * limit[1] > limit[0] * beat[1]) fail('bar-length', 'Attack crosses the end of bar ' + bar, node.range, trace);
     }
 
     function walk(body: Node[], duration: Fraction, rhythmRange: TextRange | undefined, scale: Fraction, trace: ExpansionFrame[]) {
@@ -105,12 +142,58 @@ export function compile(source: string): ScoreV2 {
             rhythmRange = node.range;
             break;
           case '|':
-            if (fractionText(beat) !== (bar === 1 ? firstLength : measureLength))
-              fail('bar-length', 'Bar ' + bar + ' contains ' + fractionText(beat) + ' of a whole note, expected ' + (bar === 1 && pickup ? firstLength : meterText), node.range, trace);
-            measures.push({ number: bar++, start: firstEvent, end: events.length, barlineRange: node.range, trace });
-            firstEvent = events.length;
-            beat = zero;
+            finishBar(node.range, trace, node.closing);
             break;
+          case 'textBoundary': {
+            const unit = expectedLength();
+            if (node.boundary.edge === 'start' ? beat[0] !== zero[0] : beat[0] * unit[1] !== unit[0] * beat[1])
+              fail('alignment', 'Put a text boundary at the indicated bar edge', node.range, trace);
+            (result.boundaries ??= []).push({ ...node.boundary, bar });
+            break;
+          }
+          case 'mark': case 'break': case 'repeatStart':
+            if (beat[0]) fail('alignment', 'Place this directive at the beginning of a bar', node.range, trace);
+            if (node.kind === 'mark') rehearsal = node.text;
+            else if (node.kind === 'repeatStart') opening = 'repeat-begin';
+            else newRow = true;
+            break;
+          case 'fragment': {
+            if (beat[0] || fragment) fail('alignment', 'Start a fragment at a bar boundary', node.range, trace);
+            fragment = true;
+            const first = bar;
+            walk(node.body, duration, rhythmRange, scale, trace);
+            if (beat[0] || first === bar) finishBar(node.range, trace);
+            fragment = false;
+            break;
+          }
+          case 'octave': {
+            const outer = soundingOctaves;
+            soundingOctaves += node.semitones! / 12;
+            walk(node.body, duration, rhythmRange, scale, trace);
+            soundingOctaves = outer;
+            break;
+          }
+          case 'transpose': {
+            const outer = transpose;
+            transpose += node.semitones!;
+            if (Math.abs(transpose) > 127) fail('instrument', 'Transposition exceeds the MIDI range', node.range, trace);
+            walk(node.body, duration, rhythmRange, scale, trace);
+            transpose = outer;
+            break;
+          }
+          case 'palmMute': case 'slur': case 'beam': {
+            const start = events.length;
+            walk(node.body, duration, rhythmRange, scale, trace);
+            const members = events.slice(start);
+            if (!members.length || (node.kind !== 'palmMute' && members.length < 2))
+              fail('syntax', 'This span needs more notes', node.range, trace);
+            if (node.kind === 'palmMute' && part.kind !== 'guitar') fail('instrument', 'Palm mute needs a guitar', node.range, trace);
+            if (node.kind === 'beam' && (members[0].bar !== members[members.length - 1].bar ||
+              members.some(e => Number(e.writtenDuration.split('/')[0]) * 4 >= Number(e.writtenDuration.split('/')[1]))))
+              fail('syntax', 'Beam short notes within one bar', node.range, trace);
+            spans.push({ kind: node.kind, first: members[0].id, last: members[members.length - 1].id, strings: node.strings ?? [], range: node.range });
+            break;
+          }
           case 'use':
             // The reader accepts only previously defined pattern names.
             walk(patterns.get(node.name)!, quarter, undefined, scale, [...trace, { pattern: node.name, range: node.range }]);
@@ -160,10 +243,20 @@ export function compile(source: string): ScoreV2 {
     measureCount = measures.length;
     return result;
   }
-  const compiled = parts.map((part, index) => ({
-    ...part, staves: part.staves.map(staff => ({
+  const compiled = parts.map((part, index) => {
+    const { lanes, ...instrument } = part;
+    const staves = part.staves.map(staff => ({
       name: staff.name, range: staff.range, voices: staff.voices.map(voice => lower(part, staff, voice, index)),
-    })),
-  }));
-  return { language: 2, source, meter: meterText, meterRange, ...(pickup && { pickup: firstLength }), measureCount: compiled[0].staves[0].voices[0].measures.length, parts: compiled };
+    }));
+    const text = lanes?.map(lane => ({
+      name: lane.voice.name, style: lane.style,
+      voice: lower(part, { name: 'main', range: part.range, voices: [] }, { ...lane.voice, name: 'text-' + lane.voice.name }, index, true)
+    }));
+    return { ...instrument, staves, ...(text && { text }) };
+  });
+  for (const [number, change] of meterChanges) if (number > grid.length) fail('alignment', 'Meter change lies beyond the score', change.range);
+  for (const part of parts) for (const n of Object.keys(part.keys ?? {})) {
+    if (Number(n) > grid.length) fail('alignment', 'Key change lies beyond the score', part.range);
+  }
+  return { language: 2, ...(scoreTranspose && { transpose: scoreTranspose }), ...(layout && { layout }), ...(playback && { playback }), ...(measureNumbers !== undefined && { measureNumbers }), source, meter: meterText, meterRange, ...(pickup && { pickup: firstLength }), measureCount: compiled[0].staves[0].voices[0].measures.length, parts: compiled };
 }
