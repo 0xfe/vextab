@@ -29,25 +29,18 @@ const playback: PlaybackPlugin = {
   },
 };
 
-/** Place the transport in an existing control bar, or immediately above a score. */
-export function scoreOptions(host: HTMLElement, bar?: HTMLElement): DivOptions {
-  let controls = bar ? bar.querySelector<HTMLElement>('.guide-audio') : host.previousElementSibling as HTMLElement;
-  if (!controls?.classList.contains('guide-audio')) {
-    controls = document.createElement('div');
-    controls.className = 'guide-audio';
-    if (bar) bar.prepend(controls);
-    else host.before(controls);
-  }
-  // Capture the Play action before the button changes to Stop.
-  controls.addEventListener('click', stopPrevious, true);
-  return { playback, playbackControls: controls };
+/** Enable the default sheet player with the guide's shared, lazily loaded instrument. */
+export function scoreOptions(host: HTMLElement): DivOptions {
+  host.addEventListener('click', stopPrevious, true);
+  return { playback, player: true };
 }
 
-/** A route may reuse its toolbar, so share one listener across remounts. */
-function stopPrevious(event: Event) {
-  if (!(event.target instanceof Element) || !event.target.closest('.vextab-play')) return;
-  const controls = event.currentTarget as HTMLElement;
-  for (const stop of document.querySelectorAll<HTMLButtonElement>('.guide-audio .vextab-stop')) {
-    if (!controls.contains(stop)) stop.click();
-  }
+let lastPlay: HTMLButtonElement;
+
+/** Capture Play before the toggle switches to Stop. Each guide page plays one example at a time. */
+function stopPrevious(event: Event): void {
+  const play = event.target instanceof Element && event.target.closest<HTMLButtonElement>('button.vextab-play');
+  if (!play) return;
+  if (lastPlay !== play && lastPlay?.classList.contains('vextab-stop')) lastPlay.click();
+  lastPlay = play;
 }

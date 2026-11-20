@@ -1,5 +1,5 @@
 // Exercise the public plugin contract, score semantics, cancellation and injected synth ownership.
-import { createWebAudioPlayback, createSpessaSynthPlayback, Div, parseScore, Player, type PlaybackNote, type PlaybackPlugin } from '../src/browser';
+import { createWebAudioPlayback, createSpessaSynthPlayback, Div, parseScore, Player, type PlaybackNote, type PlaybackPlugin, type PlaybackSession } from '../src/browser';
 
 QUnit.module('Playback plugins', () => {
   QUnit.test('A custom instrument receives sounding pitches, ties and per-string bends', async assert => {
@@ -21,6 +21,33 @@ QUnit.module('Playback plugins', () => {
     player.dispose();
   });
 
+  QUnit.test('Tempo changes carry the current beat through loading and into the next attack', async assert => {
+    const notes: PlaybackNote[] = [];
+    let clock = 0;
+    let ready: (session: PlaybackSession) => void;
+    const score = parseScore('options tempo=60\ntabstave time=2/4\nnotes :q 0/1 7z8z7/3 |');
+    const player = new Player(score, { playback: { open: () => new Promise(resolve => { ready = resolve; }) } });
+    try {
+      const finished = player.play();
+      player.setTempo(120);
+      ready({ get currentTime() { return clock; }, playNote: note => notes.push(note), stop() {} });
+      await Promise.resolve();
+      assert.equal(notes[0].duration, 0.5, 'a change during loading reaches the first note');
+      clock = 0.25; // Half a beat has elapsed at 120 BPM.
+      player.setTempo(60);
+      clock = 0.74;
+      player.setTempo(60);
+      assert.equal(notes.length, 1, 'the new rate preserves the fraction of the beat already played');
+      clock = 0.75;
+      player.setTempo(240);
+      assert.equal(notes.length, 2);
+      assert.equal(notes[1].duration, 0.25);
+      assert.deepEqual(notes[1].bend, [{ time: 0.25, semitones: -1 }]);
+      player.stop();
+      await finished;
+    } finally { player.dispose(); }
+  });
+
   QUnit.test('Both fixed and flow embeds open the injected plugin only on Play', async assert => {
     for (const layout of ['fixed', 'flow']) {
       const host = document.createElement('div');
@@ -38,7 +65,7 @@ QUnit.module('Playback plugins', () => {
       assert.equal(opens, 0);
       const button = (name: string) => host.querySelector<HTMLButtonElement>('button[aria-label="' + name + '"]');
       button('Play').click();
-      button('Play').click();
+      assert.ok(button('Stop'), 'the same control can cancel a pending load');
       assert.equal(opens, 1);
       button('Stop').click();
       assert.true(signal.aborted);

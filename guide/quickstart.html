@@ -64,19 +64,18 @@ npm pack</code></pre></figure>
 tabstave notation=true time=4/4
 notes :q 0-2-3-2/1 |</pre>
   <p><code>tempo</code> sets quarter-note beats per minute. <code>instrument</code> accepts a General MIDI program from 0 to 127 or a name such as <code>acoustic_guitar_nylon</code>. A fresh embed uses native Web Audio for a synthesized tone. This guide uses SpessaSynth and a bundled SoundFont, so you can hear sampled instruments here.</p>
-  <h3>Put Play and Stop in a toolbar</h3>
-  <p>Add an empty toolbar above the score and pass it to <code>Div</code> when mounting the editor. The embed supplies one button that switches between Play and Stop. Passing the toolbar enables playback even when the source omits <code>player=true</code>.</p>
-  <figure class="code-sample"><figcaption>HTML</figcaption><pre data-language="html"><code>&lt;div id="transport"&gt;&lt;/div&gt;
-&lt;div id="score" layout="flow" editor="true"&gt;
+  <h3>Enable the sheet controls from JavaScript</h3>
+  <p>Pass <code>{ player: true }</code> to <code>Div</code> to enable playback for any source. Play and Stop share a button in the lower left. Hover over the metronome in the lower right, or activate it with a tap or keyboard, to change the tempo.</p>
+  <figure class="code-sample"><figcaption>HTML</figcaption><pre data-language="html"><code>&lt;div id="score" layout="flow" editor="true"&gt;
 tabstave notation=true time=4/4
 notes :q 0-2-3-2/1 |
 &lt;/div&gt;</code></pre></figure>
   <figure class="code-sample"><figcaption>JavaScript</figcaption><pre data-language="javascript"><code>import { Div } from 'vextab/browser';
 
 const editor = new Div(document.querySelector('#score'), {
-  playbackControls: document.querySelector('#transport'),
+  player: true,
 });</code></pre></figure>
-  <p>To use your own SoundFont, load it into a connected SpessaSynth synthesizer, then pass <code>playback: createSpessaSynthPlayback(synth)</code> alongside <code>playbackControls</code>. For custom buttons, call <code>player.play()</code> from a click handler and <code>player.stop()</code> to cancel. See the <a href="#reference/player">Player API</a> and the <a href="#quickstart/spessasynth">SpessaSynth setup and examples</a>.</p>
+  <p>To use your own SoundFont, load it into a connected SpessaSynth synthesizer, then pass <code>playback: createSpessaSynthPlayback(synth)</code> alongside <code>player: true</code>. For custom buttons, call <code>player.play()</code> from a click handler and <code>player.stop()</code> to cancel. See the <a href="#reference/player">Player API</a> and the <a href="#quickstart/spessasynth">SpessaSynth setup and examples</a>.</p>
 </section>
 
 <section id="spessasynth">
@@ -119,10 +118,9 @@ export async function loadInstrument(audio) {
 }</code></pre></figure>
 
   <h3>Connect the score</h3>
-  <p>Put these elements on the page. The first button opens audio from a user gesture. Once the samples are ready, the toolbar gains a Play button for the editable score.</p>
+  <p>Put these elements on the page. The first button opens audio from a user gesture. Once the samples are ready, the editable score displays its playback controls.</p>
   <figure class="code-sample"><figcaption>HTML</figcaption><pre data-language="html"><code>&lt;button id="enable"&gt;Enable sound&lt;/button&gt;
 &lt;span id="status" role="status"&gt;&lt;/span&gt;
-&lt;div id="transport"&gt;&lt;/div&gt;
 &lt;div id="score" layout="flow" editor="true"&gt;
 options tempo=84 instrument=24
 tabstave notation=true time=2/4
@@ -145,7 +143,7 @@ enable.onclick = async () =&gt; {
     const playback = createSpessaSynthPlayback(synth, [0, 1, 2, 3]);
     const editor = new Div(document.querySelector('#score'), {
       playback,
-      playbackControls: document.querySelector('#transport'),
+      player: true,
     });
     enable.hidden = true;
     status.textContent = '';

@@ -41,6 +41,7 @@ export default class Player {
   private artist?: Artist;
   private score?: ParsedScore;
   private generation = 0;
+  private performanceTempo = 120;
   private geometry?: () => Geometry;
   private animation?: PlaybackAnimation;
   private mark?: (id: string) => void;
@@ -69,10 +70,12 @@ export default class Player {
     this.reset();
   }
 
+  /** Apply a new tempo to future attacks and keep the playhead at its current beat. */
   setTempo(tempo: number): void {
     if (!Number.isFinite(tempo) || tempo <= 0) throw new RangeError('Tempo must be positive');
     this.options.tempo = tempo;
-    this.stop();
+    this.overlay?.setTempo(tempo);
+    if (this.transport.active) this.transport.setRate(tempo / this.performanceTempo);
   }
 
   setInstrument(instrument: string | number): void {
@@ -104,7 +107,8 @@ export default class Player {
     const element = surface ?? ctx?.canvas ?? ctx?.svg;
     if (!element && !this.options.controls) throw new Error('Render the score before mounting playback controls');
     this.overlay = new PlayerOverlay(element, this.options.overlay_class, this.options.show_controls,
-      () => { void this.play().catch(() => { /* play displays the error on this overlay. */ }); }, () => this.stop(), this.options.controls);
+      () => { void this.play().catch(() => { /* play displays the error on this overlay. */ }); }, () => this.stop(),
+      this.options.tempo, bpm => this.setTempo(bpm), this.options.controls);
   }
 
   /** Move the cursor using score coordinates, including reflowed SVG note positions. */
@@ -115,11 +119,12 @@ export default class Player {
     if (this.transport.active) return;
     const generation = ++this.generation;
     const { tempo, instrument, playback, soundfont_url } = this.options;
+    this.performanceTempo = tempo;
     const music = this.score ? scorePerformance(this.score, tempo, this.mark)
       : artistPerformance(this.artist, tempo);
     const plugin = playback ?? (!this.artist || typeof MIDI === 'undefined' ? createWebAudioPlayback()
       : legacyMidiPlayback(String(instrument), soundfont_url, Player.INSTRUMENTS_LOADED));
-    if (this.options.controls && !music.events.some(event => event.notes.length)) {
+    if (this.overlay && !music.events.some(event => event.notes.length)) {
       this.overlay?.setStatus('This example has no pitched notes to play.');
       return;
     }

@@ -1,10 +1,12 @@
 # Playback plugins
 
-Add `options player=true tempo=100` before the first stave of an embed to mount Play and Stop. This works with the fixed SVG and Canvas renderers, responsive SVG and the legacy `.vex-tabdiv` class. The default embed uses native Web Audio and needs no samples. The first Play gesture opens audio. [Runnable bass chords and guitar pre-bend](../demos/player.html)
+Add `options player=true tempo=100` before the first stave of an embed to show playback controls on the sheet. This works with the fixed SVG and Canvas renderers, responsive SVG and the legacy `.vex-tabdiv` class. The default embed uses native Web Audio and needs no samples. The first Play gesture opens audio. [Runnable bass chords and guitar pre-bend](../demos/player.html)
+
+The controls fade after three seconds. Hover over the sheet, tap it, or tab to a control to reveal them. Hover over the metronome in the lower right, or activate it with a tap or keyboard, to adjust the tempo in steps of 5 BPM. Changes apply to upcoming notes during playback and leave the written tempo in the source intact.
 
 ## Listen in the guide
 
-Press **Play** above a tutorial example, study or playground score. The button becomes **Stop** and can cancel the first instrument load. Changing an edit or starting a different score ends playback. The duet edition has its own button for the selected voice. An empty stave or an example containing only rests has no pitches to play.
+Press **Play** in the lower-left corner of a tutorial example, study or playground score. The button becomes **Stop** and can cancel the first instrument load. Changing an edit or starting a different score ends playback. The duet edition has its own button for the selected voice. An empty stave or an example containing only rests has no pitches to play.
 
 A soft blue dot appears just before each sounding head or fret, reaches full strength on the beat and fades at the end of its written duration. The vertical playhead spans the system and continues through rests. It follows the spacing of the selected layout, including printed parts.
 
@@ -40,7 +42,7 @@ async function mountScore() {
 
 Use a plain host element for manual mounting. The adapter resumes the context on Play and waits for the synth's readiness. Reserve the supplied MIDI channels for VexTab. Straight notes share channels. A bent string or an overlapping unison needs a separate channel. The default pool uses the 15 melodic channels of the first MIDI port. Stop releases only notes owned by the session. Dispose the returned embed when removing it and close the audio context when the host has finished using it.
 
-To put buttons in your own toolbar, pass <code>{ playback, playbackControls: toolbar }</code> as the second argument to <code>new Div</code>. This enables playback for the embed without changing its source text. A standalone <code>Player</code> accepts <code>{ playback, controls: toolbar }</code> and mounts the buttons when you call <code>render()</code>. To animate a score drawn with <code>renderScore</code>, pass its SVG to <code>player.render(svg)</code>. For an extracted part, construct the player with the score returned by <code>renderScorePart</code> and pass its first page SVG.
+To enable the sheet controls from JavaScript, pass <code>{ player: true }</code> to <code>new Div(host, options)</code>. To put buttons in your own toolbar, pass <code>{ playback, playbackControls: toolbar }</code> as the second argument to <code>new Div</code>. This enables playback for the embed without changing its source text. A standalone <code>Player</code> accepts <code>{ playback, controls: toolbar }</code> and mounts the buttons when you call <code>render()</code>. To animate a score drawn with <code>renderScore</code>, pass its SVG to <code>player.render(svg)</code>. For an extracted part, construct the player with the score returned by <code>renderScorePart</code> and pass its first page SVG.
 
 ## Play a score without a renderer
 

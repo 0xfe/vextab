@@ -33,7 +33,7 @@
       VexTabSyntax.highlightCode(document.querySelector('main'), 'vextab');
       const host = document.querySelector('#score');
       const original = host.textContent;
-      const editor = new vextab.Div(host, VexTabAudio.scoreOptions(host, document.querySelector('.controls')));
+      const editor = new vextab.Div(host, VexTabAudio.scoreOptions(host));
       const input = host.querySelector('textarea');
       VexTabSyntax.highlightEditor(input);
       const narrow = document.querySelector('#narrow');
@@ -72,8 +72,8 @@
         if (!score) { message.textContent = 'Finish editing a valid score first.'; return; }
         try {
           const view = vextab.renderScorePart(part, score, 'notation');
-          const options = VexTabAudio.scoreOptions(part, document.querySelector('#engrave').parentElement);
-          partPlayer = new vextab.Player(score, { playback: options.playback, controls: options.playbackControls });
+          const options = VexTabAudio.scoreOptions(part);
+          partPlayer = new vextab.Player(score, { playback: options.playback });
           partPlayer.render(view.publication.pages[0].svg);
           const target = score.ties[0]?.to;
           for (const page of view.publication.pages) {
