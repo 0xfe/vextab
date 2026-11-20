@@ -6,7 +6,7 @@ import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import { arch, platform, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { chromium } from 'playwright-core';
-import lockfile from '../package-lock.json' with { type: 'json' };
+import manifest from '../package.json' with { type: 'json' };
 import { cases, measureScore, timeScores } from '../tests/baseline/music.mjs';
 import { runExamples } from '../tests/baseline/examples.mjs';
 
@@ -77,7 +77,7 @@ const browser = await chromium.launch(process.env.CHROME_BIN
   ? { executablePath: process.env.CHROME_BIN } : { channel: 'chrome' });
 try {
   const release = await examine(browser, releaseDist, 'release', '5.3.0');
-  const candidate = await examine(browser, candidateDist, 'candidate', lockfile.packages['node_modules/vexflow'].version);
+  const candidate = await examine(browser, candidateDist, 'candidate', manifest.dependencies.vexflow);
   const observable = ({ id, expectation, backend, hasInk, error }) => ({ id, expectation, backend, hasInk, error });
   // The current tutorial introduces the four notes before the empty staff. Match by stable example ID.
   for (const original of release.examples) {

@@ -4,7 +4,6 @@ import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import manifest from '../package.json' with { type: 'json' };
-import lockfile from '../package-lock.json' with { type: 'json' };
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { testDisplay } from './test-display.mjs';
@@ -179,7 +178,7 @@ try {
   assert.equal(await piano.count(), 1);
   assert.match(await piano.textContent(), /R\.H\./);
   assert.match(await piano.textContent(), /L\.H\./);
-  assert.equal(await page.evaluate(() => window.VexTabDiv.Flow.BUILD.VERSION), lockfile.packages['node_modules/vexflow'].version);
+  assert.equal(await page.evaluate(() => window.VexTabDiv.Flow.BUILD.VERSION), manifest.dependencies.vexflow);
 
   // Namespaced settings work for both entry points, including older editor_height markup.
   assert.equal(Number(await page.locator('#fixed svg').getAttribute('width')), 300);
