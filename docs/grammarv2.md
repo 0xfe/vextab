@@ -12,16 +12,36 @@ This is executable prototype syntax. The comparable current example starts with 
 
 ## What to try
 
-Run the experiments from the repository root. The compiler and tests use Node.js with zero additional packages.
+Select the preview with the second argument to the public parser. Both `vextab/parse` and `vextab/browser` export this API. Omitting the option selects v1.
+
+```js
+import { parseScore } from 'vextab/parse';
+
+const score = parseScore('piano { upper { :w C4 | } lower { :w C3 | } }', { language: 2 });
+const upper = score.parts[0].staves[0].voices[0];
+const bar = upper.measures[0];
+const notes = upper.events.slice(bar.start, bar.end);
+console.log(notes[0].duration); // 1/1 of a whole note
+```
+
+Run the same reader from the repository root with the Node version in `.nvmrc`. The CLI and standalone grammar tests need no installed dependencies.
 
 ```sh
 echo 'guitar { 0/1 2/1 3/1 2/1 | }' | node experiments/grammarv2/cli.mjs
 node --test experiments/grammarv2/compiler.test.mjs
 ```
 
-The CLI prints the meter, parts, staves and voices. Each event has an exact onset within its bar, written and scaled durations, head and event marks, original source offsets and an expansion trace. Paste the examples into the visual preview after running `npm run build-dev` and `npm run serve`. [Open the local preview](http://127.0.0.1:8052/experiments/grammarv2/preview.html) · [Experimental compiler](../experiments/grammarv2/compiler.mjs)
+The CLI prints the meter, parts, staves and voices. Each event has an exact onset within its bar, written and scaled durations, head and event marks, original source offsets and an expansion trace. Paste the examples into the visual preview after running `npm run build-dev` and `npm run serve`. [Open the local preview](http://127.0.0.1:8052/experiments/grammarv2/preview.html) · [Parser source](../src/score/grammar2/compiler.mts) · [ScoreV2 types](../src/score/grammar2/model.ts)
 
-Fences labelled `vextab2` in this document are executable and exercised by the test suite. Fences labelled `text` illustrate the wider proposal. The prototype runs alongside the current parser. The sketchbook engraves individual parts, including independent piano voices, silent skips, ordinary values with up to two dots and common 3:2 and 5:4 tuplets. The fixed guitar engraver shows hammer-ons and finger placement. Other tuplet ratios, nested tuplets and cross-bar tuplets appear in the checked timeline. Select an expanded event to inspect its authored source. Choosing this language as the public default requires the release criteria below.
+Fences labelled `vextab2` in this document are executable and exercised by the test suite. Fences labelled `text` illustrate the wider proposal. The sketchbook calls the public v2 parser and uses a preview adapter for drawing. The sketchbook engraves individual parts, including independent piano voices, silent skips, ordinary values with up to two dots and common 3:2 and 5:4 tuplets. The fixed guitar engraver shows hammer-ons and finger placement. Other tuplet ratios, nested tuplets and cross-bar tuplets appear in the checked timeline. Select an expanded event to inspect its authored source. Choosing this language as the public default requires the release criteria below.
+
+### Reading a v2 result
+
+`ScoreV2` is a serializable snapshot of the source revision. `parts` contain named staves and voices. Each voice has one ordered array of events, measure slices into that array, and spans joining expanded event IDs. Hammer spans identify both chord heads. Tuplet spans retain their written ratio and endpoints even across a barline.
+
+Use `source.slice(...event.range)` to find an authored attack. Heads, marks, barlines and explicit duration tokens also have source ranges. Expanded copies have distinct IDs. Their `trace` lists enclosing invocations from the outside in. The same input and language produce the same IDs; keep the source revision with any selection.
+
+Catch `ScoreV2Error` for v2 syntax, time, alignment or resource errors. Its `range` contains half-open UTF-16 offsets ready for `setSelectionRange`. Its `line` and `column` start at one, and its `trace` points back to a failing pattern invocation. Public engraving and playback currently take the v1 `ParsedScore`. Their v2 adapters are the next milestone.
 
 ## What a musician has to remember today
 

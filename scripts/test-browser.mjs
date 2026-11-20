@@ -1,5 +1,6 @@
 // Run the built QUnit suite and check the interactive playground in the selected browser.
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import manifest from '../package.json' with { type: 'json' };
@@ -14,6 +15,7 @@ import { chromium, firefox, webkit } from 'playwright-core';
 const dist = resolve(process.argv[2] ?? 'dist');
 // The same packaged parser is usable by a command-line validator without a browser.
 const { parseScore, ScoreError } = createRequire(import.meta.url)(resolve(dist, 'score.cjs'));
+execFileSync(process.execPath, ['experiments/grammarv2/compiler.test.mjs', resolve(dist, 'score.cjs')], { stdio: 'inherit' });
 const sample = 'stave time=1/4\r\nnotes C/4';
 assert.throws(() => parseScore(sample + ' ?'), error =>
   error instanceof ScoreError && error.range.start === sample.length + 1);

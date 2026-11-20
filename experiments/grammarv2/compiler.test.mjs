@@ -2,15 +2,21 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { compile } from './compiler.mjs';
+import { createRequire } from 'node:module';
+
+// CI passes the actual development or unpacked release bundle; standalone design checks use source.
+const api = process.argv[2] ? createRequire(import.meta.url)(process.argv[2]) : await import('./compiler.mjs');
+const compile = api.parseScore ? source => api.parseScore(source, { language: 2 }) : api.compile;
 
 const events = (score, part = 0, staff = 0, voice = 0) => score.parts[part].staves[staff].voices[voice].events;
-const errorCode = (source, code) => assert.throws(() => compile(source), error => error.code === code);
+const errorCode = (source, code) => assert.throws(() => compile(source), error => error instanceof api.ScoreV2Error && error.code === code);
 
-/** Keep the published examples directly executable. Their prose names describe these musical results. */
+/** Exercise the score text a reader can copy directly from the proposal. */
+const proposal = readFileSync(new URL('../../docs/grammarv2.md', import.meta.url), 'utf8');
+const sources = [...proposal.matchAll(/^```vextab2\n(.*?)^```$/gms)].map(match => match[1]);
+
 test('the examples printed in the proposal compile with the expected music', () => {
-  const proposal = readFileSync(new URL('../../docs/grammarv2.md', import.meta.url), 'utf8');
-  const examples = [...proposal.matchAll(/^```vextab2\n(.*?)^```$/gms)].map(match => compile(match[1]));
+  const examples = sources.map(compile);
   assert.equal(examples.length, 5);
   const [frets, fingering, duet, keyboard, band] = examples;
   assert.deepEqual(events(frets).map(e => e.heads[0].fret), [0, 2, 3, 2]);
@@ -88,4 +94,65 @@ test('bounds bytes, tokens, written depth, call depth, work, output and rational
   errorCode('staff { times 32 { times 32 { times 32 {} } } }', 'work-limit');
   errorCode('staff { times 32 { times 32 { :16 A4 B4 C4 D4 E4 F4 G4 A4 B4 C4 D4 E4 F4 G4 A4 B4 | } } }', 'event-limit');
   errorCode('staff { ' + 'tuplet 16:1 { '.repeat(9) + 'A4' + ' }'.repeat(10), 'fraction-limit');
+});
+
+/** Bar slices and spans survive serialization, including across written boundaries. */
+test('indexes measures and cross-bar spans in the same ordered event stream', () => {
+  const source = 'meter 1/4\r\npattern six { :8 tuplet 3:2 { C4 D4 E4 | F4 G4 A4 | } }\r\nstaff { times 2 { use six } }';
+  const score = JSON.parse(JSON.stringify(compile(source)));
+  assert.equal(score.source, source);
+  assert.equal(score.language, 2);
+  assert.equal(source.slice(...score.meterRange), '1/4');
+  assert.equal(score.measureCount, 4);
+  const voice = score.parts[0].staves[0].voices[0];
+  assert.deepEqual(voice.measures.map(m => [m.number, m.start, m.end]), [[1,0,3],[2,3,6],[3,6,9],[4,9,12]]);
+  for (const m of voice.measures) {
+    assert.equal(source.slice(...m.barlineRange), '|');
+    assert.ok(voice.events.slice(m.start, m.end).every(event => event.bar === m.number));
+  }
+  assert.deepEqual(voice.spans.map(span => [span.kind, span.ratio, span.first, span.last]), [
+    ['tuplet', '3:2', voice.events[0].id, voice.events[5].id],
+    ['tuplet', '3:2', voice.events[6].id, voice.events[11].id],
+  ]);
+  assert.equal(source.slice(...voice.events[9].rhythmRange), ':8');
+  assert.deepEqual(voice.events[9].trace.map(frame => frame.iteration ?? frame.pattern ?? frame.tuplet), [2,'six','3:2']);
+});
+
+/** Each repeated hammer connects the two expanded events from its own performance of the phrase. */
+test('retains authored spelling and exact head endpoints for repeated hammers', () => {
+  const source = 'pattern lick { :8 (0/1 3/2) (5/2[hammer] 0/1) } guitar { times 4 { use lick } | }';
+  const voice = compile(source).parts[0].staves[0].voices[0];
+  assert.equal(voice.spans.length, 4);
+  voice.spans.forEach((span, i) => {
+    assert.equal(span.kind, 'hammer');
+    assert.deepEqual(span.from, { event: voice.events[2*i].id, head: 1 });
+    assert.deepEqual(span.to, { event: voice.events[2*i+1].id, head: 0 });
+    assert.equal(source.slice(...span.range), 'hammer');
+  });
+  const spelling = events(compile('staff { C#4 Db4 Cn4 C4 | }')).map(e => e.heads[0].pitch);
+  assert.deepEqual(spelling, ['C#4','Db4','Cn4','C4']);
+});
+
+/** Errors expose editor offsets in the unnormalized revision and the failed invocation. */
+test('reports one-based diagnostic positions and the call site of the short measure', () => {
+  const source = '// 🎵\r\npattern short { C4 | }\rguitar { use short }';
+  assert.throws(() => compile(source), error => {
+    assert.ok(error instanceof api.ScoreV2Error);
+    assert.equal(error.code, 'bar-length');
+    assert.deepEqual([error.line, error.column], [2,20]);
+    assert.equal(source.slice(...error.range), '|');
+    assert.equal(source.slice(...error.trace[0].range), 'use short');
+    return true;
+  });
+});
+
+test('incomplete edits produce a located diagnostic or a valid score at every prefix', () => {
+  for (const source of sources) for (let end = 0; end <= source.length; end++) {
+    try { compile(source.slice(0, end)); }
+    catch (error) {
+      assert.ok(error instanceof api.ScoreV2Error);
+      const [start, stop] = error.range;
+      assert.ok(0 <= start && start <= stop && stop <= end);
+    }
+  }
 });

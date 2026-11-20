@@ -83,7 +83,7 @@ module.exports = (env = {}) => {
       { resourceQuery: /guide-content/, type: 'asset/source' },
       { test: /\.(otf|sf2)$/, type: 'asset/bytes' },
       { test: /\.vextab$/, type: 'asset/source' },
-      { test: /\.ts$/, loader: 'esbuild-loader', options: { target: 'es2019' } },
+      { test: /\.m?ts$/, loader: 'esbuild-loader', options: { loader: 'ts', target: 'es2019' } },
       { test: /\.jison$/, loader: path.resolve(__dirname, 'scripts/jison-loader.cjs') },
       // One stylesheet serves the guide and its three standalone lessons.
       { test: /\.css$/, oneOf: [

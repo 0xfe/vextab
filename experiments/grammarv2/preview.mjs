@@ -1,5 +1,4 @@
 // Draw bounded, checked experimental scores through VexTab's public browser API.
-import { compile } from './compiler.mjs';
 
 const examples = {
   'Guitar phrase': 'pattern riff { :8 0/1 2/1 3/1 2/1 }\nguitar {\n  use riff use riff |\n}',
@@ -47,23 +46,32 @@ function engraveSource(part, meter) {
       if (staff.voices.length > 1) declaration += index === 0 ? ' voice=top' : ' voice=bottom';
       lines.push(declaration);
       const tokens = ['notes'];
-      let tupletNotes = 0;
+      // Consume score spans by event ID so the same preview works after JSON serialization.
+      const starts = new Map();
+      for (const span of voice.spans.filter(span => span.kind === 'tuplet')) {
+        if (starts.has(span.first)) throw new Error('Nested tuplets are available in the timeline only.');
+        starts.set(span.first, span);
+      }
+      let tuplet, tupletNotes = 0;
       for (const [i, event] of voice.events.entries()) {
-        const tuplets = event.trace.filter(frame => frame.tuplet);
-        const group = tuplets[0];
-        if (tuplets.length > 1 || (group && !['3:2', '5:4'].includes(group.tuplet)))
-          throw new Error('Nested tuplets and additional ratios are available in the timeline only.');
+        const start = starts.get(event.id);
+        if (start) {
+          if (tuplet || !['3:2', '5:4'].includes(start.ratio))
+            throw new Error('Nested tuplets and additional ratios are available in the timeline only.');
+          tuplet = start;
+        }
         if (event.heads.some(head => head.hammerFrom)) fixed = true;
         const heads = event.heads.map((head, h) => spellHead(head, !h && event.marks.length > 0));
         const attack = heads.length > 1 ? '(' + heads.join('.') + ')' : heads[0] ?? '##';
         tokens.push(writtenTime(event.writtenDuration), attack);
         if (event.kind === 'skip') tokens.push('!silent!');
-        if (group) {
+        if (tuplet) {
           tupletNotes++;
           const next = voice.events[i + 1];
-          if (!next?.trace.includes(group)) {
-            tokens.push('^' + group.tuplet.split(':')[0] + ',' + tupletNotes + '^');
+          if (tuplet.last === event.id) {
+            tokens.push('^' + tuplet.ratio.split(':')[0] + ',' + tupletNotes + '^');
             tupletNotes = 0;
+            tuplet = undefined;
           } else if (next.bar !== event.bar) throw new Error('Cross-bar tuplets are available in the timeline only.');
         }
         if (voice.events[i + 1]?.bar !== event.bar) tokens.push('|');
@@ -92,7 +100,7 @@ function render() {
   timeline.replaceChildren();
   status.textContent = '';
   try {
-    const score = compile(input.value);
+    const score = window.vextab.parseScore(input.value, { language: 2 });
     const events = score.parts.flatMap(part => part.staves.flatMap(staff => staff.voices.flatMap(voice => voice.events)));
     if (events.length > 128) throw new Error('Score compiled. Use the CLI for timelines longer than 128 events.');
     for (const event of events) {

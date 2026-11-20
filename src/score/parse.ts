@@ -1,4 +1,6 @@
-// Compile located Jison events to aligned measures without creating rendering objects.
+// Select the requested score language and validate it without creating rendering objects.
+import { compile as compileGrammar2 } from './grammar2/compiler.mts';
+import type { ScoreV2 } from './grammar2/model';
 import { Fraction, KeyManager, Music, Tuning, VexFlow } from 'vexflow';
 import { drumError, drumKit } from './drums';
 import { isScoreColor } from './color';
@@ -7,6 +9,8 @@ import { VoiceCommands, resolveMarks } from './commands';
 import { midiPitch, soundingGuitarPitch, spellFret, tupletOccupancy } from './music';
 import type { Attack, Head, Measure, MeasureVoice, ParsedScore, PianoHand, StaffState, Tie, ScoreSpan } from './model';
 
+export { ScoreV2Error } from './grammar2/compiler.mts';
+export type { ScoreV2 } from './grammar2/model';
 export { ScoreError, type SourceRange } from './source';
 export type { ParsedScore } from './model';
 
@@ -401,7 +405,12 @@ function pianoHand(node: Token): PianoHand {
 }
 
 /** Pure parse/validation entry. All mutable compiler state is local to this source revision. */
-export function parseScore(source: string): ParsedScore {
+export function parseScore(source: string, options?: { language?: 1 }): ParsedScore;
+export function parseScore(source: string, options: { language: 2 }): ScoreV2;
+export function parseScore(source: string, options: { language?: 1 | 2 }): ParsedScore | ScoreV2;
+export function parseScore(source: string, options: { language?: 1 | 2 } = {}): ParsedScore | ScoreV2 {
+  if (options.language === 2) return compileGrammar2(source);
+  if (options.language !== undefined && options.language !== 1) throw new RangeError('Expected VexTab language 1 or 2');
   const nodes: Token[] = readSyntax(source, true);
   const measures: Measure[] = [], ties: Tie[] = [], spans: ScoreSpan[] = [];
   const cursor = { rhythm: { base: 'q', dots: 0, slash: false } };
