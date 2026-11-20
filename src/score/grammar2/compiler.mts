@@ -51,9 +51,10 @@ function hammerSource(head: Head, previous: ScoreEvent | undefined): HeadRef | u
 /** Every invocation has fresh budgets and IDs. No parsing or expansion state survives an edit. */
 export function compile(source: string): ScoreV2 {
   const fail: Fail = (code, reason, range, trace = []) => { throw new ScoreV2Error(code, reason, source, range, trace); };
-  const { patterns, parts, meter, meterRange } = readScore(source, fail);
+  const { patterns, parts, meter, meterRange, pickup } = readScore(source, fail);
   const meterText = fractionText(meter);
   const measureLength = fractionText(rational(...meter, fail, [0, 0], []));
+  const firstLength = pickup ? fractionText(rational(...pickup, fail, [0, 0], [])) : measureLength;
   const quarter: Fraction = [BigInt(1), BigInt(4)];
   const zero: Fraction = [BigInt(0), BigInt(1)];
   let steps = 0, eventCount = 0, measureCount: number | undefined;
@@ -76,6 +77,10 @@ export function compile(source: string): ScoreV2 {
       const heads = node.kind === 'attack' ? node.heads.map((head, index) => {
         if ((part.kind === 'drums') !== ('drum' in head) || ('string' in head && part.kind !== 'guitar'))
           fail('instrument', 'This head does not belong to ' + part.kind, head.range, trace);
+        for (const mark of head.marks) {
+          if (['bend', 'prebend', 'slideIn', 'slideOut'].includes(mark.kind) && (!('fret' in head) || typeof head.fret !== 'number'))
+            fail('instrument', 'This technique needs a pitched fret', mark.range, trace);
+        }
         const hammer = head.marks.find(mark => mark.kind === 'hammer');
         if (!hammer) return head;
         const from = hammerSource(head, events[events.length - 1]);
@@ -86,7 +91,8 @@ export function compile(source: string): ScoreV2 {
       events.push({ id, bar, at: fractionText(beat), duration: fractionText(length), writtenDuration: fractionText(duration),
         kind: node.kind, heads, marks: node.kind === 'attack' ? node.marks : [], range: node.range, rhythmRange, trace });
       beat = rational(beat[0] * length[1] + length[0] * beat[1], beat[1] * length[1], fail, node.range, trace);
-      if (beat[0] * meter[1] > meter[0] * beat[1]) fail('bar-length', 'Attack crosses the end of bar ' + bar, node.range, trace);
+      const limit = bar === 1 && pickup ? pickup : meter;
+      if (beat[0] * limit[1] > limit[0] * beat[1]) fail('bar-length', 'Attack crosses the end of bar ' + bar, node.range, trace);
     }
 
     function walk(body: Node[], duration: Fraction, rhythmRange: TextRange | undefined, scale: Fraction, trace: ExpansionFrame[]) {
@@ -99,8 +105,8 @@ export function compile(source: string): ScoreV2 {
             rhythmRange = node.range;
             break;
           case '|':
-            if (fractionText(beat) !== measureLength)
-              fail('bar-length', 'Bar ' + bar + ' contains ' + fractionText(beat) + ' of a whole note, expected ' + meterText, node.range, trace);
+            if (fractionText(beat) !== (bar === 1 ? firstLength : measureLength))
+              fail('bar-length', 'Bar ' + bar + ' contains ' + fractionText(beat) + ' of a whole note, expected ' + (bar === 1 && pickup ? firstLength : meterText), node.range, trace);
             measures.push({ number: bar++, start: firstEvent, end: events.length, barlineRange: node.range, trace });
             firstEvent = events.length;
             beat = zero;
@@ -115,6 +121,21 @@ export function compile(source: string): ScoreV2 {
               walk(node.body, duration, rhythmRange, scale, [...trace, { iteration: i, range: node.range }]);
             }
             break;
+          case 'volta': {
+            if (beat[0]) fail('bar-length', 'Start a repeat at a shared barline', node.range, trace);
+            const first = bar;
+            walk(node.body, duration, rhythmRange, scale, trace);
+            const bodyEnd = bar - 1;
+            if (beat[0] || bodyEnd < first) fail('bar-length', 'End the repeat body with a full bar', node.range, trace);
+            const endings = node.endings.map(body => {
+              const start = bar;
+              walk(body, duration, rhythmRange, scale, trace);
+              if (beat[0] || bar === start) fail('bar-length', 'Each ending needs at least one complete bar', node.range, trace);
+              return { first: start, last: bar - 1 };
+            });
+            (result.repeats ??= []).push({ first, bodyEnd, endings, range: node.range });
+            break;
+          }
           case 'tuplet': {
             const start = events.length;
             const ratio = node.scale[1] + ':' + node.scale[0];
@@ -140,9 +161,9 @@ export function compile(source: string): ScoreV2 {
     return result;
   }
   const compiled = parts.map((part, index) => ({
-    kind: part.kind, range: part.range, staves: part.staves.map(staff => ({
+    ...part, staves: part.staves.map(staff => ({
       name: staff.name, range: staff.range, voices: staff.voices.map(voice => lower(part, staff, voice, index)),
     })),
   }));
-  return { language: 2, source, meter: meterText, meterRange, measureCount: compiled[0].staves[0].voices[0].measures.length, parts: compiled };
+  return { language: 2, source, meter: meterText, meterRange, ...(pickup && { pickup: firstLength }), measureCount: compiled[0].staves[0].voices[0].measures.length, parts: compiled };
 }

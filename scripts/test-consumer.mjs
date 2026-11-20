@@ -19,11 +19,14 @@ const check = 'if (parseScore("stave time=1/4\\nnotes C/4").measures.length !== 
 const previewCheck = "if (parseScore('staff { :w C4 | }', { language: 2 }).measureCount !== 1) process.exit(1)";
 execFileSync(process.execPath, ['--input-type=module','-e',"import {parseScore} from 'vextab/parse';" + check + "; " + previewCheck], { cwd });
 execFileSync(process.execPath, ['-e',"const {parseScore}=require('vextab/parse');" + check + "; " + previewCheck], { cwd });
-await writeFile(join(cwd,'consumer.ts'), `import { Div, parseScore, renderScore, type ParsedScore, type ScoreV2, type PlaybackPlugin, createSpessaSynthPlayback } from 'vextab/browser';
+await writeFile(join(cwd,'consumer.ts'), `import { Div, parseScore, renderScore, renderScorePart, type ParsedScore, type ScoreV2, type PlaybackPlugin, createSpessaSynthPlayback } from 'vextab/browser';
 const host = document.getElementById('manual')!;
 const score: ParsedScore = parseScore('stave time=1/4\\nnotes C/4');
 const preview: ScoreV2 = parseScore('staff { :w C4 | }', { language: 2 });
 if (preview.parts[0].staves[0].voices[0].events[0].duration !== '1/1') throw new Error('bad preview timing');
+renderScore(document.getElementById('preview')!, preview, { renderer: 'canvas' });
+renderScorePart(document.getElementById('paper')!, preview, 'notation');
+new Div(document.getElementById('editor')!, { language: 2 });
 const screen = renderScore(host, score);
 host.dataset.event = screen.navigation.events[0].label;
 const example: PlaybackPlugin = { open: () => ({ playNote() {}, stop() {} }) };
@@ -38,9 +41,12 @@ try {
 const browser = await chromium.launch(process.env.CHROME_BIN ? {executablePath:process.env.CHROME_BIN} : {channel:'chrome'});
 try {
   const page = await browser.newPage();
-  await page.setContent('<div id="manual"></div><div id="embed" data-editor="true" data-editor-height="72">stave\nnotes C/4</div><div class="vextab-auto">stave\nnotes G/4</div>');
+  await page.setContent('<div id="preview"></div><div id="paper"></div><div id="editor" data-editor="true">staff { :w F4 | }</div><div id="manual"></div><div id="embed" data-editor="true" data-editor-height="72">stave\nnotes C/4</div><div class="vextab-auto">stave\nnotes G/4</div>');
   await page.addScriptTag({path:join(cwd,'bundle.js')});
   await page.locator('#embed svg').waitFor();
+  await page.locator('#preview canvas').waitFor();
+  await page.locator('#paper svg').first().waitFor();
+  await page.locator('#editor svg').waitFor();
   assert.equal(await page.locator('#embed textarea').evaluate(el => el.style.height), '72px');
   assert.match(await page.locator('#manual').getAttribute('data-event'), /C 4/);
   assert.equal(await page.locator('.vextab-auto svg').count(), 0);

@@ -1,5 +1,7 @@
 // Public playback controller for parsed scores and fixed-layout Artist embeds.
 import Artist from './artist';
+import { projectScoreV2 } from './score/grammar2/project';
+import type { ScoreV2 } from './score/grammar2/model';
 import type { ParsedScore } from './score/model';
 import { PlaybackAnimation, anticipation } from './playback/animation';
 import { artistGeometry, scoreSurfaces, type Geometry } from './playback/geometry';
@@ -23,6 +25,8 @@ function programNumber(instrument: string | number) {
 
 /** One plugin instance may open independent sessions for multiple players. */
 export interface PlayerOptions {
+  /** Zero-based v2 instrument to play. Omit to play all instruments together. */
+  partIndex?: number;
   playback?: PlaybackPlugin;
   /** Place transport buttons here while keeping the cursor on the score. */
   controls?: HTMLElement;
@@ -40,6 +44,7 @@ export default class Player {
   private overlay?: PlayerOverlay;
   private artist?: Artist;
   private score?: ParsedScore;
+  private ensemble?: ParsedScore[];
   private generation = 0;
   private geometry?: () => Geometry;
   private animation?: PlaybackAnimation;
@@ -47,9 +52,16 @@ export default class Player {
   private readonly options: PlayerOptions;
 
   /** A parsed score can play headlessly. An Artist supplies its most recently drawn rows. */
-  constructor(source: Artist | ParsedScore, options: PlayerOptions = {}) {
+  constructor(source: Artist | ParsedScore | ScoreV2, options: PlayerOptions = {}) {
     this.options = { instrument: 'acoustic_grand_piano', tempo: 120, show_controls: true,
       soundfont_url: '/soundfont/', overlay_class: 'vextab-player', ...options };
+    if ('parts' in source) {
+      const model = source;
+      if (options.partIndex === undefined && model.parts.length > 1) {
+        this.ensemble = model.parts.map((_, i) => projectScoreV2(model, i));
+      }
+      source = projectScoreV2(model, options.partIndex);
+    }
     if ('measures' in source) {
       this.score = source;
       this.options.tempo = options.tempo ?? source.playback?.tempo ?? 120;
@@ -65,6 +77,7 @@ export default class Player {
   setArtist(artist: Artist): void {
     this.dispose();
     this.score = undefined;
+    this.ensemble = undefined;
     this.artist = artist;
     this.reset();
   }
@@ -98,7 +111,7 @@ export default class Player {
   render(surface?: HTMLCanvasElement | SVGSVGElement, mark?: (id: string) => void): void {
     this.removeControls();
     this.mark = mark;
-    const layout = surface instanceof SVGSVGElement && scoreSurfaces.get(surface);
+    const layout = surface && scoreSurfaces.get(surface);
     this.geometry = layout && layout.score === this.score ? layout.read : undefined;
     const ctx = this.artist?.getPlayerData().context;
     const element = surface ?? ctx?.canvas ?? ctx?.svg;
@@ -117,6 +130,10 @@ export default class Player {
     const { tempo, instrument, playback, soundfont_url } = this.options;
     const music = this.score ? scorePerformance(this.score, tempo, this.mark)
       : artistPerformance(this.artist, tempo);
+    if (this.ensemble) {
+      const parts = this.ensemble.slice(1).map(part => scorePerformance(part, tempo, this.mark));
+      music.events = music.events.concat(...parts.map(p => p.events)).sort((a, b) => a.time - b.time);
+    }
     const plugin = playback ?? (!this.artist || typeof MIDI === 'undefined' ? createWebAudioPlayback()
       : legacyMidiPlayback(String(instrument), soundfont_url, Player.INSTRUMENTS_LOADED));
     if (this.options.controls && !music.events.some(event => event.notes.length)) {

@@ -21,6 +21,7 @@ export function leadMarks(measure: Measure, staff: 'notation' | 'tab', noteId: (
       // The part names its string and release alongside any chord symbol at the same onset.
       const labels = event.chord ? [event.chord.text] : [];
       if (labelTechniques) for (const head of event.heads) {
+        if (head.hammer && staff === 'tab') labels.push('H');
         if (head.openSlide && staff === 'notation') labels.push(describeOpenSlide(head.openSlide, head.position.str));
         if (head.prebend) labels.push(describePrebend(head.prebend, head.position.str));
       }

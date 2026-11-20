@@ -16,6 +16,7 @@ import './open-slides';
 import './colors';
 import './shared-score';
 import './grammar2';
+import './grammar2-views';
 import './piano';
 import './transpose';
 import './studies';

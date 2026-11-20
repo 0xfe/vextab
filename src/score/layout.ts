@@ -1,5 +1,7 @@
 // Project the shared score into fresh VexFlow objects for each screen or publication view.
 import { position, staveRow, printedGeometry, scoreSurfaces, type Geometry } from '../playback/geometry';
+import { projectScoreV2 } from './grammar2/project';
+import type { ScoreV2 } from './grammar2/model';
 import { attachHeadMarks, PrintedHeadMarks } from './head-marks';
 import { drumKit } from './drums';
 import { attachOpenSlide, describeOpenSlide, drawPrintedOpenSlides } from './open-slide';
@@ -7,7 +9,7 @@ import { inkStyle } from './color';
 import { colorPublication } from './publication-color';
 import { scoreFont } from './engraving';
 import {
-  Accidental, Annotation, Barline, StaveNote, TabNote, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext,
+  Accidental, Annotation, Barline, StaveNote, TabNote, TabTie, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, CanvasContext,
   type Beam, type StemmableNote, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
   type EasyScoreVoiceSpec, type NotationIdentity, type PublicationOptions, type RenderContext, type ScoreHitRegion,
 } from 'vexflow';
@@ -180,6 +182,16 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
     }
   }
   for (const mark of parsed.spans ?? []) {
+    if (mark.kind === 'hammer') {
+      for (const staff of staves) {
+        if (staff === 'tab') continue; // Native tab ties require equal frets. Draw the guitar gesture after layout.
+        const from = eventId(staff, mark.from);
+        if (!sources.ids[from]) continue;
+        spans.push({ kind: 'tie', id: sources.project(staff, mark.id, mark.range), from, to: eventId(staff, mark.to),
+          fromHead: mark.fromHead, toHead: mark.toHead });
+      }
+      continue;
+    }
     if (mark.kind === 'palmMute' && !staves.includes('tab')) {
       throw new ScoreError('fixed-layout', 'A string-specific palm mute needs a tab staff', mark.range);
     }
@@ -307,20 +319,46 @@ function drawTabEndings(view: Projection, composition: EasyScoreComposition, ctx
 }
 
 /** Recompose off-screen, then replace the host after all layout, drawing and indexing succeeds. */
-export function renderScore(host: HTMLElement, parsed: ParsedScore, options: { width?: number; part?: Part } = {}) {
+export function renderScore(host: HTMLElement, source: ParsedScore | ScoreV2,
+  options: { width?: number; part?: Part; partIndex?: number; renderer?: 'svg' | 'canvas' } = {}) {
+  let parsed = 'parts' in source ? projectScoreV2(source, options.partIndex) : source;
   const width = options.width ?? (host.clientWidth || 640);
   if (!Number.isFinite(width) || width <= 20) throw new RangeError('Score width must exceed 20 pixels');
   const part = options.part ?? 'score';
   parsed = selectVoices(parsed, part);
   const view = project(parsed, part, width - 20);
   const surface = document.createElement('div');
-  const ctx = new SVGContext(surface);
+  const canvas = options.renderer === 'canvas' ? surface.appendChild(document.createElement('canvas')) : undefined;
+  const ctx = canvas ? new CanvasContext(canvas.getContext('2d')) : new SVGContext(surface);
   const frames = drawFrames(parsed, width, ctx, (id, range) => view.sources.project(view.staves[0], id, range));
   view.spec.sheet.y += frames.height + (view.mixedEndings.length ? 20 : 0);
   const factory = new Factory({ renderer: { elementId: null, width, height: 1 } }).setContext(ctx);
   const composition = factory.EasyScore().compose(view.spec);
   prepareScreen(parsed, view, composition, factory);
+  // Resizing a canvas clears its pixels. Measure first and paint at the final size.
+  function resize() {
+    const rows = composition.sheet.getRows();
+    const extent = Math.max(width, frames.width, ...rows.map(r => r.x + r.width + 10));
+    ctx.resize(extent, Math.ceil(composition.sheet.getHeight() + 20));
+  }
+  if (canvas) {
+    composition.sheet.format();
+    resize();
+    if (frames.height) drawFrames(parsed, width, ctx, (id, range) => view.sources.project(view.staves[0], id, range));
+  }
   factory.draw();
+  if (view.staves.includes('tab')) for (const span of parsed.spans) {
+    if (span.kind !== 'hammer') continue;
+    const from = composition.getNote(view.eventId('tab', span.from));
+    const to = composition.getNote(view.eventId('tab', span.to));
+    const indexes = { firstIndexes: [span.fromHead], lastIndexes: [span.toHead] };
+    if (from.getStave().getY() === to.getStave().getY()) {
+      TabTie.createHammeron({ firstNote: from, lastNote: to, ...indexes }).setContext(ctx).draw();
+    } else {
+      TabTie.createHammeron({ firstNote: from, ...indexes }).setContext(ctx).draw();
+      new TabTie({ lastNote: to, ...indexes }).setContext(ctx).draw();
+    }
+  }
   const extraRegions = [...frames.regions, ...drawTabEndings(view, composition, ctx)];
   const navigation = new ScoreNavigation(composition, view.spec.staves, view.sources.ids);
   // Expose the fragments of each written tie together, in source order.
@@ -338,9 +376,11 @@ export function renderScore(host: HTMLElement, parsed: ParsedScore, options: { w
     if (hit && !hidden.has(hit.id)) return hit;
     return extraRegions.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
   }
-  const rows = composition.sheet.getRows();
-  const extent = Math.max(width, frames.width, ...rows.map(r => r.x + r.width + 10));
-  ctx.resize(extent, Math.ceil(composition.sheet.getHeight() + 20));
+  if (!canvas) resize();
+  else {
+    canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', navigation.events.map(event => event.label).join('. '));
+  }
   host.replaceChildren(surface);
   const diagnostics: { code: string; measures: number[]; range: SourceRange; source?: string }[] =
     composition.sheet.getContinuousLayout().diagnostics.map(d => ({
@@ -369,7 +409,7 @@ export function renderScore(host: HTMLElement, parsed: ParsedScore, options: { w
     }
     return geometry;
   }
-  scoreSurfaces.set(ctx.svg, { score: parsed, read: playbackGeometry });
+  scoreSurfaces.set(canvas ?? (ctx as SVGContext).svg, { score: parsed, read: playbackGeometry });
   return { score: parsed, composition, navigation, hitTest, tabRegions, extraRegions, diagnostics,
     rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };
 }
@@ -403,9 +443,10 @@ function selectVoices(score: ParsedScore, part: Part, number?: number): ParsedSc
 }
 
 /** Publication recomposes from descriptors. Reject any selected mark that needs the screen pass. */
-export function renderScorePart(host: HTMLElement, parsed: ParsedScore, part: Staff,
-  options: Omit<PublicationOptions, 'staves'> & { voice?: number } = {}) {
-  const { voice, ...paper } = options;
+export function renderScorePart(host: HTMLElement, source: ParsedScore | ScoreV2, part: Staff,
+  options: Omit<PublicationOptions, 'staves'> & { voice?: number; partIndex?: number } = {}) {
+  const { voice, partIndex, ...paper } = options;
+  let parsed = 'parts' in source ? projectScoreV2(source, partIndex) : source;
   parsed = selectVoices(parsed, part, voice);
   const view = project(parsed, part, 600, true);
   const unsupported = (feature: string, range: SourceRange): never => {

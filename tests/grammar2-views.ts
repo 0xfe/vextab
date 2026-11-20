@@ -1,0 +1,142 @@
+// Compare musical and engraved results from both score languages at the public entry points.
+import { Div, parseScore, Player, renderScore, renderScorePart } from '../src/browser';
+import { scorePerformance } from '../src/playback/performance';
+import { scoreSurfaces } from '../src/playback/geometry';
+
+function host() {
+  return document.querySelector('#qunit-fixture').appendChild(document.createElement('div'));
+}
+
+/** Ignore language-specific event IDs and compare what the instrument actually plays. */
+function performance(score: ReturnType<typeof renderScore>['score']) {
+  return scorePerformance(score, 60).events.map(e => [e.time, e.duration, e.notes] as const);
+}
+
+QUnit.module('Grammar v2 score views', () => {
+  QUnit.test('fret, pitch, slide and per-string bend agree with v1 on both drawing backends', assert => {
+    const old = parseScore('tabstave notation=true time=3/4 tuning=dropd capo=2\nnotes :q <0/6 (0/6.7z9z7/3) (0/6.7/3) !bend 3 +2 rise=1/2 release=1/1! |');
+    const source = 'meter 3/4 guitar { tuning dropD capo 2 0/6[slideIn below] (0/6 7/3[prebend +2 release]) (0/6 7/3[bend +2 rise=1/2 release=1]) | }';
+    const score = parseScore(source, { language: 2 });
+    for (const renderer of ['svg','canvas'] as const) {
+      const root = host();
+      const view = renderScore(root, score, { renderer, width: 510 });
+      assert.deepEqual(performance(view.score), performance(old));
+      assert.deepEqual(view.score.measures[0].voices[0].events.map(e => e.heads.map(h => h.position)),
+        old.measures[0].voices[0].events.map(e => e.heads.map(h => h.position)));
+      const first = view.navigation.events[0];
+      const range = view.rangeFor(first.id, source);
+      assert.equal(source.slice(range.start, range.end), '0/6[slideIn below]');
+      if (renderer === 'svg') assert.equal(root.querySelectorAll('.vf-open-slide').length, 1);
+      else {
+        const canvas = root.querySelector('canvas');
+        const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+        assert.ok(pixels.some((n, i) => i % 4 === 3 && n > 0), 'Canvas contains engraved ink');
+      }
+    }
+    assert.equal(renderScorePart(host(), score, 'tab').publication.diagnostics.length, 0);
+  });
+
+  QUnit.test('piano aligns hands, sustains a tied bass, and prints the correct fingering and sign', assert => {
+    const input = 'meter 2/4 piano { upper { times 2 { (Fn4[finger 2] A4[finger 4 right]) G4[accent] | } } lower { :h C3 | C3[tie] | } }';
+    const score = parseScore(input, { language: 2 });
+    const old = parseScore('piano time=2/4\nnotes (Fn/4[f2].A/4[f4:r]) G/4[>] | (Fn/4[f2].A/4[f4:r]) G/4[>] |\nvoice hand=left\nnotes :h C/3 | TC/3 |');
+    for (const width of [655, 240]) {
+      const a = renderScore(host(), old, { width }), b = renderScore(host(), score, { width });
+      assert.deepEqual(performance(b.score), performance(old));
+      assert.deepEqual(b.composition.sheet.getRows().length, a.composition.sheet.getRows().length);
+      const xs = view => view.navigation.events.map(e => Math.round(view.composition.getNote(e.id).getAbsoluteX()));
+      assert.deepEqual(xs(a), xs(b), 'matching beat positions through reflow');
+      const events = b.navigation.events.filter(e => e.staff === 'right' && e.onset === '0/1');
+      assert.notEqual(events[0].source, events[1].source);
+      assert.deepEqual(b.rangeFor(events[0].id,input), b.rangeFor(events[1].id,input));
+    }
+    for (const part of ['notation','right','left'] as const) {
+      const page = renderScorePart(host(), score, part).publication.pages[0].svg;
+      const heads = [...page.querySelectorAll('.vf-notehead')].map(e => e.textContent);
+      assert.equal(heads.filter(t => t.includes('\uE261')).length, part === 'left' ? 0 : 2);
+      assert.equal([...page.querySelectorAll('.vf-stavenote text')].filter(e => e.textContent === '4').length, part === 'left' ? 0 : 2);
+      assert.equal(scoreSurfaces.get(page).read().size, part === 'left' ? 2 : part === 'right' ? 4 : 6);
+    }
+  });
+
+  QUnit.test('a four-string instrument and its player share the short opening measure', assert => {
+    const legacy = parseScore('tabstave time=2/4 pickup=1/8 strings=4 tuning=G/5,D/5,A/4,E/4\nnotes :8 0/4 | :q 2/3 0/2 |');
+    const input = 'meter 2/4 pickup 1/8 guitar { tuning (G5 D5 A4 E4) view tab :8 0/4 | :q 2/3 0/2 | }';
+    const score = parseScore(input, { language: 2 });
+    const screen = renderScore(host(), score);
+    assert.deepEqual(screen.score.measures.map(m => m.span), ['1/8','1/2']);
+    assert.deepEqual(performance(screen.score), performance(legacy));
+    assert.equal(screen.score.measures[0].state.strings, 4);
+    assert.ok(screen.navigation.events.every(e => e.staff === 'tab'));
+    assert.equal(renderScorePart(host(), score, 'tab').publication.diagnostics.length, 0);
+    assert.throws(() => parseScore(input.replace('pickup 1/8', 'pickup 2/4'), { language: 2 }), /shorter/);
+    assert.throws(() => parseScore(input.replace('0/4 |', '0/4 0/4 |'), { language: 2 }), /crosses/);
+  });
+
+  QUnit.test('two guitar voices keep their clocks and tie reordered chord heads by string', assert => {
+    const before = parseScore('tabstave notation=true time=2/4\nnotes :h (1/2.2/3) | T(2/3.1/2) |\nvoice\nnotes :q 3-1/5 | 0-2/5 |');
+    const source = 'meter 2/4 guitar { voice top { :h (1/2 2/3) | (2/3[tie] 1/2[tie]) | } voice bass { 3/5 1/5 | 0/5 2/5 | } }';
+    const after = parseScore(source, { language: 2 });
+    for (const width of [620, 230]) {
+      const screen = renderScore(host(), after, { width });
+      assert.deepEqual(performance(screen.score), performance(before));
+      assert.deepEqual(screen.score.ties.map(t => [t.fromHead, t.toHead]), [[1,0],[0,1]]);
+      assert.equal(screen.score.measures[0].voices[0].span, '1/2');
+      const region = screen.navigation.events.find(e => e.staff === 'tab');
+      assert.equal(source.slice(screen.rangeFor(region.id, source).start, screen.rangeFor(region.id, source).end), '(1/2 2/3)');
+    }
+    const bass = renderScorePart(host(), after, 'tab', { voice: 2 });
+    assert.equal(bass.publication.diagnostics.length, 0);
+    assert.equal(scoreSurfaces.get(bass.publication.pages[0].svg).read().size, 4);
+  });
+
+  QUnit.test('tuplets, lyrics, repeat endings and kit identities survive independent composition', assert => {
+    const source = 'meter 2/4 staff { volta 2 { :8 tuplet 3:2 { C4[lyric "riv" hyphen] D4[lyric "er"] E4 } :q F4 | } ending 1 { :h G4 | } ending 2 { :h C4 | } } drums { times 3 { (kick hat) snare | } }';
+    const score = parseScore(source, { language: 2 });
+    const root = host(), melody = renderScore(root, score);
+    const notes = melody.score.measures[0].voices[0].events;
+    assert.deepEqual(notes.map(e => e.onset), ['0/1','1/12','1/6','1/4']);
+    assert.ok(root.textContent.includes('riv'));
+    assert.deepEqual(melody.score.spans.map(s => s.kind === 'volta' && [s.label,s.firstBar,s.lastBar]), [['1.',2,2],['2.',3,3]]);
+    assert.equal(renderScorePart(host(), score, 'notation').publication.diagnostics.length, 0);
+    const kit = renderScore(host(), score, { partIndex: 1 });
+    assert.deepEqual(kit.score.measures[0].voices[0].events[0].heads.map(h => h.drum), ['kick','hat']);
+    assert.ok(performance(kit.score).every(e => e[2].length === 0), 'kit hits retain unpitched playback');
+  });
+
+  QUnit.test('editable embeds preserve source revisions and select invalid v2 text', assert => {
+    const root = host();
+    root.setAttribute('data-language','2');
+    root.setAttribute('data-editor','true');
+    root.textContent = 'pattern riff { :h 0/1 } guitar { times 2 { use riff } | }';
+    const embed = new Div(root);
+    try {
+      const revision = embed.getScore();
+      const sourceID = embed.getReadingEvents()[0].id;
+      const input = root.querySelector('textarea');
+      assert.ok(embed.selectSource(sourceID, revision));
+      assert.equal(input.value.slice(input.selectionStart, input.selectionEnd), '0/1');
+      input.value = 'guitar { use missing }';
+      embed.run();
+      assert.ok(embed.selectError());
+      assert.equal(input.value.slice(input.selectionStart, input.selectionEnd), 'missing');
+      assert.notOk(embed.selectSource(sourceID, revision));
+      input.value = 'guitar { :w 3/1 | }';
+      embed.run();
+      assert.ok(embed.getScore());
+      assert.notOk(embed.selectSource(sourceID, revision));
+    } finally { embed.dispose(); }
+  });
+
+  QUnit.test('the public player sends all simultaneous instruments to an injected plugin', async assert => {
+    const input = 'meter 1/4 staff { C4 | } piano { upper { E4 | } lower { C3 | } }';
+    const score = parseScore(input, { language: 2 });
+    const pitches: number[] = [];
+    const player = new Player(score, { controls:host(), playback:{ open:() => ({
+      playNote(note) { pitches.push(note.pitch); }, stop() {},
+    }) } });
+    try { await player.play(); }
+    finally { player.dispose(); }
+    assert.deepEqual(pitches.sort((a,b) => a-b), [48,60,64]);
+  });
+});
