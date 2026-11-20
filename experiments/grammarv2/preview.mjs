@@ -4,83 +4,10 @@ const examples = {
   'Guitar phrase': 'pattern riff { :8 0/1 2/1 3/1 2/1 }\nguitar {\n  use riff use riff |\n}',
   'Guitar fingerings': 'meter 2/4\nguitar {\n  :8 6/4[finger 2] 7/4[hammer, finger 3]\n  :q 0/2[finger 3 right, accent] |\n}',
   'Independent piano hands': 'piano {\n  upper { C4 D4 (E4 G4) G4 | }\n  lower { :h C3 G2 | }\n}',
+  'Drop D with capo and bends': 'meter 3/4\nguitar { tuning dropD capo 2\n  0/6[slideIn below] (0/6 7/3[prebend +2 release])\n  (0/6 7/3[bend +2 rise=1/2 release=1]) |\n}',
+  'Lyrics and alternate endings': 'meter 2/4\nstaff {\n  volta 2 { :8 tuplet 3:2 { C4[lyric "riv" hyphen] D4[lyric "er"] E4 } :q F4 | }\n  ending 1 { :h G4 | } ending 2 { :h C4 | }\n}',
   'Drum groove': 'drums {\n  :8 times 2 { (kick hat) hat (snare hat) hat } |\n}',
 };
-
-/** Spell an ordinary or dotted written duration in the engraving grammar. */
-function writtenTime(fraction) {
-  const [numerator, denominator] = fraction.split('/').map(Number);
-  const dots = [1, 3, 7].indexOf(numerator);
-  const unit = denominator / 2 ** dots;
-  const names = {1:'w', 2:'h', 4:'q', 8:'8', 16:'16', 32:'32', 64:'64'};
-  if (dots < 0 || !names[unit]) throw new Error('The preview cannot engrave duration ' + fraction);
-  return ':' + names[unit] + 'd'.repeat(dots);
-}
-
-/** The preview sends only known musical tokens to the existing notation renderer. */
-function spellHead(head, accent) {
-  let token;
-  if (head.drum) token = head.drum;
-  else if (head.pitch) token = head.pitch.slice(0, -1).replaceAll('b', '@') + '/' + head.pitch.at(-1);
-  else token = (head.fret === 'x' ? 'X' : head.fret) + '/' + head.string;
-  const marks = [];
-  for (const mark of head.marks) {
-    if (mark.kind === 'hammer') token = 'h' + token;
-    else if (mark.kind === 'finger') marks.push('f' + mark.value + ':' + mark.side);
-    else throw new Error('This head mark is available in the timeline only.');
-  }
-  if (accent) marks.push('>');
-  if (head.drum && marks.length) throw new Error('Percussion annotations are available in the timeline only.');
-  return token + (marks.length ? '[' + marks.join(', ') + ']' : '');
-}
-
-/** Lower one checked part. Each staff keeps its own voices on the same bar timeline. */
-function engraveSource(part, meter) {
-  const declarations = { guitar:'tabstave notation=true', piano:'piano', staff:'stave', drums:'stave clef=percussion' };
-  const lines = [];
-  let fixed = false;
-  for (const staff of part.staves) {
-    for (const [index, voice] of staff.voices.entries()) {
-      let declaration = lines.length ? 'voice' : declarations[part.kind] + ' time=' + meter;
-      if (part.kind === 'piano' && lines.length) declaration += staff.name === 'upper' ? ' hand=right' : ' hand=left';
-      if (staff.voices.length > 1) declaration += index === 0 ? ' voice=top' : ' voice=bottom';
-      lines.push(declaration);
-      const tokens = ['notes'];
-      // Consume score spans by event ID so the same preview works after JSON serialization.
-      const starts = new Map();
-      for (const span of voice.spans.filter(span => span.kind === 'tuplet')) {
-        if (starts.has(span.first)) throw new Error('Nested tuplets are available in the timeline only.');
-        starts.set(span.first, span);
-      }
-      let tuplet, tupletNotes = 0;
-      for (const [i, event] of voice.events.entries()) {
-        const start = starts.get(event.id);
-        if (start) {
-          if (tuplet || !['3:2', '5:4'].includes(start.ratio))
-            throw new Error('Nested tuplets and additional ratios are available in the timeline only.');
-          tuplet = start;
-        }
-        if (event.heads.some(head => head.hammerFrom)) fixed = true;
-        const heads = event.heads.map((head, h) => spellHead(head, !h && event.marks.length > 0));
-        const attack = heads.length > 1 ? '(' + heads.join('.') + ')' : heads[0] ?? '##';
-        tokens.push(writtenTime(event.writtenDuration), attack);
-        if (event.kind === 'skip') tokens.push('!silent!');
-        if (tuplet) {
-          tupletNotes++;
-          const next = voice.events[i + 1];
-          if (tuplet.last === event.id) {
-            tokens.push('^' + tuplet.ratio.split(':')[0] + ',' + tupletNotes + '^');
-            tupletNotes = 0;
-            tuplet = undefined;
-          } else if (next.bar !== event.bar) throw new Error('Cross-bar tuplets are available in the timeline only.');
-        }
-        if (voice.events[i + 1]?.bar !== event.bar) tokens.push('|');
-      }
-      lines.push(tokens.join(' '));
-    }
-  }
-  return { source: lines.join('\n'), fixed };
-}
 
 const input = document.querySelector('#input');
 const scores = document.querySelector('#scores');
@@ -116,31 +43,27 @@ function render() {
     }
     if (!window.vextab) throw new Error('Build the preview renderer with npm run build-dev, then reload.');
     const result = document.createDocumentFragment();
-    for (const part of score.parts) {
+    for (const [partIndex, part] of score.parts.entries()) {
       const section = document.createElement('section');
       const title = document.createElement('h2');
       title.textContent = { guitar:'Guitar', piano:'Piano', staff:'Staff', drums:'Drums' }[part.kind];
       const surface = document.createElement('div');
       section.append(title, surface);
       result.append(section);
-      const { source, fixed } = engraveSource(part, score.meter);
-      const width = Math.max(290, scores.clientWidth - 16);
-      const { Artist, Vex, VexTab, parseScore, renderScore } = window.vextab;
-      try {
-        if (fixed) {
-          // Hammer-ons are native to the fixed guitar engraver.
-          const artist = new Artist(10, 10, width);
-          new VexTab(artist).parse(source);
-          artist.render(new Vex.Flow.Renderer(surface, Vex.Flow.Renderer.Backends.SVG));
-        } else renderScore(surface, parseScore(source), { width });
-      } catch (error) {
-        throw new Error('The timeline compiled. The engraving adapter reported: ' + error.message);
-      }
+      const view = window.vextab.renderScore(surface, score, { width: Math.max(290, scores.clientWidth - 16), partIndex });
+      surface.addEventListener('click', event => {
+        const matrix = surface.querySelector('svg').getScreenCTM();
+        if (!matrix) return;
+        const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
+        const hit = view.hitTest(point.x, point.y);
+        const range = hit && view.rangeFor(hit.id, input.value);
+        if (range) selectSource([range.start, range.end]);
+      });
     }
     scores.replaceChildren(result);
   } catch (error) {
     status.textContent = error.message;
-    if (Array.isArray(error.range)) selectSource(error.range);
+    if (error.range) selectSource(Array.isArray(error.range) ? error.range : [error.range.start, error.range.end]);
   }
 }
 

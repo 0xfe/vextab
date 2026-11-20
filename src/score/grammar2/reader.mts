@@ -1,5 +1,5 @@
 // Parse written v2 notation into a bounded syntax tree before expanding any pattern.
-import type { Accent, Head, HeadMark, PartKind, StaffName, TextRange, ExpansionFrame } from './model.js';
+import type { EventMark, Head, HeadMark, PartKind, PartSettings, StaffName, TextRange, ExpansionFrame } from './model.js';
 
 /** One compilation shares these budgets across all parts, voices and pattern calls. */
 export const limits = Object.freeze({
@@ -13,22 +13,22 @@ export type Fail = (code: DiagnosticCode, reason: string, range: TextRange, trac
 interface Token { text: string; range: TextRange }
 export type Fraction = [bigint, bigint];
 export type TimedNode = { range: TextRange } & (
-  { kind: 'rest' | 'skip' } | { kind: 'attack'; heads: Head[]; marks: Accent[] }
+  { kind: 'rest' | 'skip' } | { kind: 'attack'; heads: Head[]; marks: EventMark[] }
 );
 export type Node = TimedNode | { range: TextRange } & (
   { kind: 'duration'; value: Fraction } | { kind: 'use'; name: string } |
   { kind: 'times'; count: number; body: Node[] } | { kind: 'tuplet'; scale: Fraction; body: Node[] } |
-  { kind: '|' }
+  { kind: 'volta'; body: Node[]; endings: Node[][] } | { kind: '|' }
 );
 export interface VoiceSyntax { name: string; range: TextRange; body: Node[] }
 export interface StaffSyntax { name: StaffName; range: TextRange; voices: VoiceSyntax[] }
-export interface PartSyntax { kind: PartKind; range: TextRange; staves: StaffSyntax[] }
+export interface PartSyntax extends PartSettings { kind: PartKind; range: TextRange; staves: StaffSyntax[] }
 
 /** Comments consume the rest of the line. Punctuation has the same meaning across line breaks. */
 function tokenize(source: string, fail: Fail): Token[] {
   if (source.length > limits.bytes || new TextEncoder().encode(source).length > limits.bytes) fail('source-limit', 'Score exceeds 64 KiB', [0, 0]);
   const tokens: Token[] = [];
-  const words = /\/\/[^\r\n]*|[{}()[\],|]|(?:\/(?!\/)|[^/\s{}()[\],|])+/gu;
+  const words = /\/\/[^\r\n]*|"(?:\\.|[^"\\\r\n])*"|"|[{}()[\],|]|(?:\/(?!\/)|[^/"\s{}()[\],|])+/gu;
   let match: RegExpExecArray | null;
   while ((match = words.exec(source))) {
     if (match[0].startsWith('//')) continue;
@@ -75,11 +75,66 @@ export function readScore(source: string, fail: Fail) {
   const parts: PartSyntax[] = [];
   let meter: Fraction = [BigInt(4), BigInt(4)], meterRange: TextRange | undefined;
 
+  let pickup: Fraction | undefined, pickupToken: Token | undefined;
+
+  function isEventMark(mark: HeadMark | EventMark): mark is EventMark {
+    return mark.kind === 'accent' || mark.kind === 'symbol' || mark.kind === 'lyric';
+  }
+
+  /** JSON quoting handles embedded punctuation and escaped quotes in musical text. */
+  function literal(): string {
+    const token = take();
+    if (!token.text.startsWith('"')) return error('Expected quoted text', token);
+    try { return JSON.parse(token.text); }
+    catch { return error('Invalid quoted text', token); }
+  }
+
   /** Each mark keeps the written token range even after pattern expansion. */
-  function readMark(): HeadMark | Accent {
+  function readMark(): HeadMark | EventMark {
     const mark = take();
-    if (mark.text === 'accent' || mark.text === 'hammer') return { kind: mark.text, range: mark.range };
-    if (mark.text !== 'finger') return error('Expected finger, hammer, or accent', mark);
+    if (mark.text === 'accent' || mark.text === 'hammer' || mark.text === 'tie') return { kind: mark.text, range: mark.range };
+    const range = (): TextRange => [mark.range[0], tokens[cursor - 1].range[1]];
+    if (mark.text === 'symbol') return { kind: 'symbol', text: literal(), range: range() };
+    if (mark.text === 'lyric') {
+      const text = literal();
+      const hyphen = peek() === 'hyphen';
+      if (hyphen) take();
+      const extension = /^extend=([1-9]\d?)$/.exec(peek());
+      if (extension) take();
+      return { kind: 'lyric', text, hyphen, extend: extension ? Number(extension[1]) : 0, range: range() };
+    }
+    if (mark.text === 'slideIn' || mark.text === 'slideOut') {
+      const side = take();
+      if (side.text !== 'above' && side.text !== 'below') return error('Expected above or below', side);
+      return { kind: mark.text, side: side.text, range: range() };
+    }
+    if (mark.text === 'bend') {
+      const amount = take();
+      if (!/^\+(?:[1-9]\d?(?:\.5)?|0\.5)$/.test(amount.text)) error('Expected a positive bend in semitones', amount);
+      function phase(name: string): [number, number] {
+        const token = take();
+        const match = /^(\w+)=(\d{1,4})(?:\/(\d{1,4}))?$/.exec(token.text);
+        if (!match || match[1] !== name) return error('Expected ' + name + '=N/D', token);
+        const n = Number(match[2]), d = Number(match[3] ?? 1);
+        if (d < 1 || n < 1 || n > d) return error('Bend phase must lie within the note', token);
+        return [n, d];
+      }
+      const rise = phase('rise');
+      const hold = peek().startsWith('hold=') ? phase('hold') : undefined;
+      const release = peek().startsWith('release=') ? phase('release') : undefined;
+      const end = hold ?? rise;
+      if ((hold && hold[0] * rise[1] < rise[0] * hold[1]) || (release && release[0] * end[1] <= end[0] * release[1]))
+        error('Bend phases must follow musical time', mark);
+      return { kind: 'bend', semitones: Number(amount.text), rise, hold, release, range: range() };
+    }
+    if (mark.text === 'prebend') {
+      const amount = take();
+      if (!/^\+[1-9]\d?$/.test(amount.text)) return error('Expected a positive bend in semitones', amount);
+      const release = peek() === 'release';
+      if (release) take();
+      return { kind: 'prebend', semitones: Number(amount.text), release, range: range() };
+    }
+    if (mark.text !== 'finger') return error('Unknown note mark ' + mark.text, mark);
     if (!/^[0-5]$/.test(peek())) return error('Expected a finger from 0 to 5');
     const digit = take();
     const placement = peek();
@@ -89,7 +144,7 @@ export function readScore(source: string, fail: Fail) {
   }
 
   /** Brackets belong to the head or whole attack immediately preceding them. */
-  function marks(): (HeadMark | Accent)[] {
+  function marks(): (HeadMark | EventMark)[] {
     if (peek() !== '[') return [];
     take();
     const list = [readMark()];
@@ -120,7 +175,7 @@ export function readScore(source: string, fail: Fail) {
         if (heads.length === limits.heads) error('Too many heads in a chord');
         const item = head();
         for (const mark of marks()) {
-          if (mark.kind === 'accent') return error('Place the accent after the closing parenthesis', first);
+          if (isEventMark(mark)) return error('Place the attack mark after the closing parenthesis', first);
           item.marks.push(mark);
         }
         heads.push(item);
@@ -135,10 +190,10 @@ export function readScore(source: string, fail: Fail) {
       if ('drum' in item) kit.add(item.drum);
     }
     const annotations = marks();
-    const headMarks = annotations.filter(mark => mark.kind !== 'accent');
+    const headMarks = annotations.filter((mark): mark is HeadMark => !isEventMark(mark));
     if (chord && headMarks.length) error('Place a head mark inside the chord', first);
     if (!chord) heads[0].marks = headMarks;
-    return { kind: 'attack', heads, marks: annotations.filter(mark => mark.kind === 'accent'), range: [first.range[0], tokens[cursor - 1].range[1]] };
+    return { kind: 'attack', heads, marks: annotations.filter(isEventMark), range: [first.range[0], tokens[cursor - 1].range[1]] };
   }
 
   function sequence(): Node[] {
@@ -159,6 +214,17 @@ export function readScore(source: string, fail: Fail) {
         const name = identifier();
         if (!patterns.has(name)) error('Declare pattern ' + name + ' before using it (including inside patterns)', target);
         node = { range: token.range, kind: 'use', name };
+      } else if (token.text === 'volta') {
+        take();
+        const count = take();
+        if (!/^(?:[2-9]|[12]\d|3[0-2])$/.test(count.text)) error('Expected 2 through 32 repeat passes', count);
+        const body = block(sequence), endings: Node[][] = [];
+        for (let i = 1; i <= Number(count.text); i++) {
+          expect('ending');
+          expect(String(i));
+          endings.push(block(sequence));
+        }
+        node = { kind: 'volta', body, endings, range: token.range };
       } else if (token.text === 'times' || token.text === 'tuplet') {
         take();
         const parameter = take();
@@ -200,6 +266,47 @@ export function readScore(source: string, fail: Fail) {
     return result;
   }
 
+  /** Read settings before the part's first voice so every voice shares the same instrument. */
+  function settings(kind: PartKind): PartSettings {
+    const result: PartSettings = {};
+    while (['key', 'clef', 'view', 'capo', 'tuning'].includes(peek())) {
+      const option = take(), value = take();
+      if (option.text === 'key') {
+        if (!/^(?:Cb|Gb|Db|Ab|Eb|Bb|F|C|G|D|A|E|B|F#|C#|Abm|Ebm|Bbm|Fm|Cm|Gm|Dm|Am|Em|Bm|F#m|C#m|G#m|D#m|A#m)$/.test(value.text))
+          error('Expected a key signature', value);
+        result.key = value.text;
+      } else if (option.text === 'clef') {
+        if (kind === 'piano' || kind === 'drums') error('This part supplies its own clefs', option);
+        if (value.text !== 'treble' && value.text !== 'bass' && value.text !== 'alto' && value.text !== 'tenor') error('Expected a pitched clef', value);
+        result.clef = value.text;
+      } else if (kind !== 'guitar') error('This setting needs a guitar part', option);
+      else if (option.text === 'view') {
+        if (value.text !== 'tab' && value.text !== 'both' && value.text !== 'notation') error('Expected tab, notation or both', value);
+        result.view = value.text;
+      }
+      else if (option.text === 'capo') {
+        if (!/^(?:0|[1-9]|1\d|2[0-4])$/.test(value.text)) error('Expected capo fret 0 through 24', value);
+        result.capo = Number(value.text);
+      } else if (value.text === '(') {
+        const pitches: string[] = [];
+        while (peek() !== ')') {
+          const pitch = take();
+          if (!/^[A-G](?:#|b)?[0-8]$/.test(pitch.text)) error('Expected an open string pitch such as E4', pitch);
+          if (pitches.length === 8) error('A tuning supports up to eight strings', pitch);
+          pitches.push(pitch.text.slice(0, -1) + '/' + pitch.text.slice(-1));
+        }
+        if (pitches.length < 4) error('A tuning needs at least four strings', value);
+        take();
+        result.tuning = pitches.join(',');
+      } else {
+        const names: Record<string, string> = { standard: 'standard', dropD: 'dropd', dagdad: 'dagdad', eb: 'eb', standardBanjo: 'standardBanjo' };
+        if (!Object.prototype.hasOwnProperty.call(names, value.text)) error('Unknown guitar tuning', value);
+        result.tuning = names[value.text];
+      }
+    }
+    return result;
+  }
+
   while (peek()) {
     const token = take();
     if (token.text === 'meter') {
@@ -209,6 +316,12 @@ export function readScore(source: string, fail: Fail) {
       if (!match) error('Expected a meter such as 4/4', value);
       meter = [BigInt(match[1]), BigInt(match[2])];
       meterRange = value.range;
+    } else if (token.text === 'pickup') {
+      if (pickup || parts.length) error('Declare one pickup before the first part', token);
+      pickupToken = take();
+      const match = /^([1-9]\d{0,2})\/(1|2|4|8|16|32|64)$/.exec(pickupToken.text);
+      if (!match) error('Expected a pickup duration such as 1/8', pickupToken);
+      pickup = [BigInt(match[1]), BigInt(match[2])];
     } else if (token.text === 'pattern') {
       const nameToken = tokens[cursor];
       const name = identifier();
@@ -216,17 +329,20 @@ export function readScore(source: string, fail: Fail) {
       patterns.set(name, block(sequence));
     } else if (isPartKind(token.text)) {
       const staves: StaffSyntax[] = [];
+      let options: PartSettings = {};
       if (token.text === 'piano') {
         block(() => {
+          options = settings('piano');
           for (const hand of ['upper', 'lower'] as const) {
             const handToken = expect(hand);
             staves.push({ name: hand, range: handToken.range, voices: block(voices) });
           }
         });
-      } else staves.push({ name: 'main', range: token.range, voices: block(voices) });
-      parts.push({ kind: token.text, range: token.range, staves });
+      } else staves.push({ name: 'main', range: token.range, voices: block(() => { options = settings(token.text as PartKind); return voices(); }) });
+      parts.push({ ...options, kind: token.text, range: token.range, staves });
     } else error('Expected meter, pattern, guitar, staff, drums, or piano', token);
   }
   if (!parts.length) error('Expected a part');
-  return { patterns, parts, meter, meterRange };
+  if (pickup && pickup[0] * meter[1] >= meter[0] * pickup[1]) error('Pickup must be shorter than the meter', pickupToken);
+  return { patterns, parts, meter, meterRange, pickup };
 }

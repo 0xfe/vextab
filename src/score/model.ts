@@ -24,6 +24,7 @@ export interface Head {
   position?: { str: number; fret: number | 'X' };
   accidental?: string;
   cautionary?: boolean;
+  hammer?: boolean; // Hammered destination of a fretted span.
   prebend?: Prebend;
   openSlide?: OpenSlide;
   // A bare letter inherits the sign in force on the staff.
@@ -117,7 +118,7 @@ export interface Tie {
 /** Endings cover whole bars. A palm mute follows the selected physical strings in one voice. */
 export type ScoreSpan = { id: string; from: string; to: string; range: SourceRange } & (
   { kind: 'volta'; label: string; firstBar: number; lastBar: number } |
-  { kind: 'palmMute'; strings: number[] }
+  { kind: 'palmMute'; strings: number[] } | { kind: 'hammer'; fromHead: number; toHead: number }
 );
 
 export interface ParsedScore {
