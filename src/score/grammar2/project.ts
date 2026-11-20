@@ -2,6 +2,9 @@
 import { Fraction, FrettedInstrument, KeyManager, Music, Tuning } from 'vexflow';
 import type { Attack, Head, Measure, MeasureVoice, ParsedScore, StaffState } from '../model';
 import { midiPitch, soundingGuitarPitch, spellFret } from '../music';
+import { Interval, transposeChord } from '../transpose';
+import { frame, resolveMarks } from '../commands';
+import { isScoreColor } from '../color';
 import { drumKit } from '../drums';
 import { ScoreError, type SourceRange } from '../source';
 import type { ScoreV2, Head as WrittenHead, ScoreVoice, ScoreEvent, TextRange } from './model';
@@ -42,26 +45,40 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   if (prior) return prior;
   const part = score.parts[index], locate = locations(score.source);
   const declaration = locate(part.range);
-  const tuning = new Tuning(part.tuning ?? 'standard'), manager = new KeyManager(part.key ?? 'C'), music = new Music();
+  const tuning = new Tuning(part.tuning ?? 'standard'), music = new Music();
+  let writtenKey = part.key ?? 'C';
+  let manager = new KeyManager(writtenKey);
+  const fretKeys = new Map<string, KeyManager>();
   const capo = part.capo ?? 0;
   const hasUnassignedPitch = part.staves.some(staff => staff.voices.some(voice =>
     voice.events.some(event => event.heads.some(head => 'pitch' in head))));
   if (hasUnassignedPitch && (part.view === 'tab' || part.view === 'both')) {
     throw new ScoreError('measure', 'A tab view needs a string and fret for every pitch', declaration);
   }
+  function ink(value: string, range: SourceRange) {
+    if (!isScoreColor(value)) throw new ScoreError('measure', 'Expected a CSS color name or hex code', range);
+    return value;
+  }
   const tuningName = part.tuning ?? 'standard';
   const state: StaffState = {
-    declaration, timeRange: locate(score.meterRange ?? part.range), meter: score.meter, showTime: !!score.meterRange,
+    declaration, color: part.ink && ink(part.ink, declaration), timeRange: locate(score.meterRange ?? part.range), meter: score.meter, showTime: !!score.meterRange,
     tab: part.kind === 'guitar' && part.view !== 'notation' && !hasUnassignedPitch, notation: part.view !== 'tab', piano: part.kind === 'piano',
     tuning: tuningName, strings: (Tuning.names[tuningName] ?? tuningName).split(',').length, capo, key: part.key ?? 'C',
-    clef: part.kind === 'drums' ? 'percussion' : part.clef ?? 'treble', pickup: score.pickup, fragment: false,
+    hideClef: part.clef === 'none', clef: part.kind === 'drums' ? 'percussion' : part.clef === 'none' ? 'treble' : part.clef ?? 'treble', pickup: score.pickup, fragment: false,
   };
   const measures: Measure[] = [];
-  const projected: ParsedScore = { source: score.source, measures, ties: [], spans: [], measureNumbers: false };
+  const projected: ParsedScore = { source: score.source, measures, ties: [], spans: [], playback: score.playback, layout: score.layout, measureNumbers: score.measureNumbers ?? false };
   const fullBar = new Fraction().parse(score.meter).simplify().toString();
+  const intervals = new Map<string, Interval>();
+  function intervalFor(amount: number): Interval | undefined {
+    if (!amount || part.kind === 'drums') return;
+    const id = writtenKey + '/' + amount;
+    if (!intervals.has(id)) intervals.set(id, new Interval(amount, writtenKey));
+    return intervals.get(id);
+  }
 
   /** Keep the displayed spelling, sounding pitch and physical position distinct. */
-  function projectHead(head: WrittenHead): Head {
+  function projectHead(head: WrittenHead, interval?: Interval): Head {
     const range = locate(head.range);
     const marks: Head['marks'] = [];
     let result: Head;
@@ -70,21 +87,41 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       const letter = head.pitch[0].toLowerCase(), sign = head.pitch.slice(1, -1);
       manager.reset();
       const spelling = sign ? letter + (sign === 'n' ? '' : sign) : manager.getAccidental(letter).note;
-      const written = spelling + '/' + head.pitch.slice(-1);
-      result = { written, sounding: written, accidental: sign || undefined, range };
+      const written = interval ? interval.pitch(spelling, Number(head.pitch.slice(-1))) : spelling + '/' + head.pitch.slice(-1);
+      result = { written, sounding: written, accidental: sign ? written.split('/')[0].slice(1) || 'n' : undefined, range };
     } else {
       if (head.string > state.strings) throw new ScoreError('measure', 'String outside the tuning', range);
-      const position = { str: head.string, fret: head.fret === 'x' ? 'X' as const : head.fret };
+      const position = { str: head.string, fret: head.fret === 'x' ? 'X' as const : head.fret + (interval?.semitones ?? 0) };
+      if (typeof position.fret === 'number' && position.fret < 0) throw new ScoreError('measure', 'Transposition puts fret outside the original string', range);
       const bend = head.marks.find(m => m.kind === 'prebend');
-      const fret = (bend?.semitones ?? 0) + (typeof head.fret === 'number' ? head.fret : 0) + capo;
-      const [name, octave] = spellFret(tuning, manager, music, String(fret), head.string);
+      const fret = (bend?.semitones ?? 0) + (typeof position.fret === 'number' ? position.fret : 0) + capo;
+      const displayKey = interval?.target ?? writtenKey;
+      if (!fretKeys.has(displayKey)) fretKeys.set(displayKey, new KeyManager(displayKey));
+      const [name, octave] = spellFret(tuning, fretKeys.get(displayKey), music, String(fret), head.string);
       result = { position, written: name + '/' + octave, sounding: head.fret === 'x' ? null : soundingGuitarPitch(tuning, fret, head.string), range };
+    }
+    if (part.cautionary && result.position && result.written.split('/')[0].length > 1) {
+      result.accidental = result.written.split('/')[0].slice(1);
+      result.cautionary = true;
     }
     for (const mark of head.marks) {
       if (mark.kind === 'prebend') result.prebend = { semitones: mark.semitones, release: mark.release };
       if (mark.kind === 'slideIn' || mark.kind === 'slideOut') result.openSlide = { edge: mark.kind === 'slideIn' ? 'in' : 'out', side: mark.side };
-      if (mark.kind === 'finger') marks.push({ finger: String(mark.value), position: mark.side });
+      if (mark.kind === 'write') {
+        if (!result.position) throw new ScoreError('measure', 'A written-pitch override needs a fretted head', locate(mark.range));
+        const letter = mark.pitch[0].toLowerCase(), sign = mark.pitch.slice(1, -1);
+        const name = sign ? letter + (sign === 'n' ? '' : sign) : manager.getAccidental(letter).note;
+        result.written = interval ? interval.pitch(name, Number(mark.pitch.slice(-1))) : name + '/' + mark.pitch.slice(-1);
+        if (sign) result.accidental = result.written.split('/')[0].slice(1) || 'n';
+      }
+      if (mark.kind === 'sign') marks.push({ articulation: mark.code, position: mark.position });
+      if (mark.kind === 'courtesy' || mark.kind === 'showSign') {
+        result.accidental = result.written.split('/')[0].slice(1) || 'n';
+        result.cautionary = mark.kind === 'courtesy';
+      }
+      if (mark.kind === 'finger' || mark.kind === 'stringNumber') marks.push({ finger: String(mark.value), stringNumber: mark.kind === 'stringNumber', position: mark.side });
     }
+    for (const mark of head.marks) if (mark.kind === 'hammer' || mark.kind === 'pull' || mark.kind === 'slide') result.connection = mark.kind;
     if ('hammerFrom' in head && head.hammerFrom) result.hammer = true;
     if (marks.length) result.marks = marks;
     if (result.sounding && midiPitch(result.sounding) === undefined) throw new ScoreError('measure', 'Pitch outside MIDI range', range);
@@ -93,38 +130,102 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
 
   /** Place one expanded event on the measure clock and resolve its annotations. */
   function attack(event: ScoreEvent): Attack {
-    const heads = event.heads.map(projectHead);
-    const result: Attack = { id: event.id, range: locate(event.range), heads, slash: false,
+    const interval = intervalFor((score.transpose ?? 0) + (event.transpose ?? 0));
+    const heads = event.heads.map(head => projectHead(head, interval));
+    if (event.soundingOctaves) for (const head of heads) {
+      if (!head.sounding) continue;
+      const [pitch, octave] = head.sounding.split('/');
+      head.sounding = pitch + '/' + (Number(octave) + event.soundingOctaves);
+      if (midiPitch(head.sounding) === undefined) throw new ScoreError('measure', 'Octave shift exceeds the MIDI range', head.range);
+    }
+    if (event.kind === 'slash') {
+      if (state.tab) throw new ScoreError('measure', 'Give a slash a notation-only staff', locate(event.range));
+      heads.push({ written: 'b/4', sounding: null, range: locate(event.range) });
+    }
+    const result: Attack = {
+      id: event.id, range: locate(event.range), heads, slash: event.kind === 'slash',
       onset: event.at, duration: event.duration, ...writtenRhythm(event.writtenDuration) };
     if (event.rhythmRange) result.rhythmRange = locate(event.rhythmRange);
     if (event.kind === 'skip') result.silent = result.range;
     event.heads.forEach((h, i) => {
       for (const mark of h.marks) if (mark.kind === 'bend' && 'string' in h) {
         const range = locate(mark.range), positions = heads.map(head => head.position);
-        if (result.bend || heads[i].prebend || positions.some(p => !p || typeof p.fret !== 'number'))
-          throw new ScoreError('measure', 'A bend needs a pitched chord and one contour', range);
+        if (heads[i].bend || heads[i].prebend || positions.some(p => !p || typeof p.fret !== 'number'))
+          throw new ScoreError('measure', 'A bend needs pitched frets and one contour per string', range);
         const spec = { string: h.string, semitones: mark.semitones, rise: mark.rise, release: mark.release, hold: mark.hold };
         try { new FrettedInstrument(state.tuning, capo).bentAttack(positions as { str: number; fret: number }[], result.base, spec); }
         catch (e) { throw new ScoreError('measure', e.message, range); }
-        result.bend = { spec, range };
+        heads[i].bend = spec;
+        result.bend ??= { spec, range };
       }
     });
     for (const mark of event.marks) {
+      if (mark.kind === 'slash') {
+        if (!heads.length) throw new ScoreError('measure', 'A slash needs a written head', locate(mark.range));
+        result.slash = true;
+      }
       if (mark.kind === 'lyric') result.lyric = { text: mark.text, extend: mark.extend, hyphen: mark.hyphen, range: locate(mark.range) };
-      if (mark.kind === 'symbol') result.chord = { text: mark.text, range: locate(mark.range) };
-      if (mark.kind === 'accent') (heads[0].marks ??= []).push({ position: 'above' });
+      if (mark.kind === 'symbol') result.chord = { text: interval ? transposeChord(mark.text, interval) : mark.text, color: mark.ink && ink(mark.ink, locate(mark.range)), range: locate(mark.range) };
+      if (mark.kind === 'line') {
+        if (event.kind !== 'rest') throw new ScoreError('measure', 'Only a rest takes a staff line', locate(mark.range));
+        result.restLine = mark.value;
+      }
+      if (mark.kind === 'ink') result.color = ink(mark.value, locate(mark.range));
+      if (mark.kind === 'label') {
+        const style = mark.style;
+        (result.labels ??= []).push({ text: mark.text, ...style, range: locate(mark.range), ink: style.ink && ink(style.ink, locate(mark.range)) });
+      }
+      if (mark.kind === 'tap' || mark.kind === 'vibrato' || 'direction' in mark) (result.gestures ??= []).push(mark);
+      if (mark.kind === 'accent') {
+        if (!heads.length) throw new ScoreError('measure', 'Accent needs a head', locate(mark.range));
+        (heads[0].marks ??= []).push({ position: 'above' });
+      }
+    }
+    const diagram = event.marks.find(m => m.kind === 'frame');
+    if (diagram?.kind === 'frame') {
+      const delta = interval?.semitones ?? 0;
+      const frets = diagram.frets.map(fret => fret === 'x' ? fret : fret + delta);
+      const barre = diagram.barre;
+      const detail = barre && barre[0] + delta !== 0 ? ' barre=' + (barre[0] + delta) + ':' + barre[1] + '-' + barre[2] : '';
+      const range = locate(diagram.range);
+      result.frame = { range, spec: frame(frets.join(',') + detail, result, state, range) };
     }
     return result;
+  }
+
+  type Endpoint = { event: Attack; index: number; bar: number; hand?: string; range: SourceRange };
+  const starts = new Map<string, Endpoint>(), ends = new Map<string, Endpoint>();
+
+  /** Labels connect nonadjacent heads by name even when the destination voice is written first. */
+  function connectNamedTies() {
+    for (const name of new Set([...starts.keys(), ...ends.keys()])) {
+      const start = starts.get(name), end = ends.get(name);
+      if (!start || !end) throw new ScoreError('measure', 'Unpaired tie ' + name, (start ?? end).range);
+      const first = start.event.heads[start.index], last = end.event.heads[end.index];
+      const later = start.bar < end.bar || (start.bar === end.bar &&
+        new Fraction().parse(start.event.onset).lessThan(new Fraction().parse(end.event.onset)));
+      if (!later || first.sounding === null || first.written !== last.written || first.sounding !== last.sounding ||
+        first.position?.str !== last.position?.str || start.hand !== end.hand)
+        throw new ScoreError('measure', 'Named tie needs a later matching head on the same staff', end.range);
+      projected.ties.push({ id: 'named-tie-' + name, from: start.event.id, fromHead: start.index, to: end.event.id, toHead: end.index, range: end.range });
+    }
   }
 
   /** Build one measure voice at a time. Ties follow the preceding attack of this voice. */
   function addVoice(voice: ScoreVoice, hand?: 'right' | 'left') {
     const voices: MeasureVoice[] = [];
+    const engraving = { ...part, ...voice.settings };
     let previous: Attack | undefined;
     function voiceAttack(event: ScoreEvent) {
       const next = attack(event);
       const used = new Set<number>();
       event.heads.forEach((head, i) => {
+        for (const mark of head.marks) {
+          if (mark.kind !== 'tieStart' && mark.kind !== 'tieEnd') continue;
+          const points = mark.kind === 'tieStart' ? starts : ends;
+          if (points.has(mark.name)) throw new ScoreError('measure', 'Duplicate tie endpoint ' + mark.name, locate(mark.range));
+          points.set(mark.name, { event: next, index: i, bar: event.bar, hand, range: locate(mark.range) });
+        }
         const tie = head.marks.find(m => m.kind === 'tie');
         if (!tie) return;
         const range = locate(tie.range), target = next.heads[i];
@@ -137,19 +238,42 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       previous = next;
       return next;
     }
+    writtenKey = part.key ?? 'C';
+    manager = new KeyManager(writtenKey);
+    state.key = intervalFor(score.transpose)?.target ?? writtenKey;
     for (const bar of voice.measures) {
+      if (part.keys?.[bar.number]) {
+        writtenKey = part.keys[bar.number];
+        manager = new KeyManager(writtenKey);
+        state.key = intervalFor(score.transpose)?.target ?? writtenKey;
+      }
       const range = locate(bar.barlineRange);
-      const span = bar.number === 1 && score.pickup ? score.pickup : fullBar;
+      const span = bar.span ?? (bar.number === 1 && score.pickup ? score.pickup : fullBar);
+      const meter = bar.meter ?? score.meter;
       const value: MeasureVoice = { declaration: locate(voice.range), hand, span, events: voice.events.slice(bar.start, bar.end).map(voiceAttack),
-        tuplets: [], beams: true, beamRests: true, stemlets: false, middleRests: false, tabStems: true, tabDirection: 1 };
-      const m = measures[bar.number - 1] ??= { number: bar.number, range, state: { ...state, showTime: state.showTime && bar.number === 1 },
-        span, newRow: false, voices: [] };
+        tuplets: [], stem: engraving.stem, beams: engraving.beam ?? true, beamRests: engraving.beamRests ?? true, beatGroups: engraving.beatGroups, stemlets: engraving.stemlets ?? false, middleRests: engraving.middleRests ?? false, tabStems: engraving.tabStems ?? true,
+        rehearsal: bar.rehearsal, opening: bar.opening ? { type: bar.opening, range } : undefined, closing: bar.closing ? { type: bar.closing, range } : undefined, tabDirection: engraving.tabDirection === 'down' ? -1 : 1
+      };
+      const prior = measures[bar.number - 2]?.state;
+      const changedMeter = prior?.meter !== meter || prior?.meterSign !== bar.meterSign;
+      const m = measures[bar.number - 1] ??= {
+        number: bar.number, range, state: { ...state, fragment: !!bar.fragment, meter, meterSign: bar.meterSign, showTime: part.displayMeter !== false && (bar.number === 1 ? part.displayMeter || state.showTime : changedMeter) },
+        span, newRow: !!bar.newRow, voices: []
+      };
+      m.newRow ||= !!bar.newRow;
+      const first = m.voices[0];
+      if (first) {
+        if ((value.rehearsal && first.rehearsal && value.rehearsal !== first.rehearsal) ||
+          (value.opening && first.opening && value.opening.type !== first.opening.type) ||
+          (value.closing && first.closing && value.closing.type !== first.closing.type))
+          throw new ScoreError('measure', 'Voices disagree about a shared bar boundary', range);
+        first.rehearsal ??= value.rehearsal;
+        first.opening ??= value.opening;
+        first.closing ??= value.closing;
+      }
       m.voices.push(value);
       voices.push(value);
     }
-    for (const v of voices) v.events.forEach((e, i) => {
-      if (e.lyric && i + e.lyric.extend >= v.events.length) throw new ScoreError('measure', 'Lyric extender exceeds its bar', e.lyric.range);
-    });
     addEndings(voice);
     addSpans(voice, voices);
   }
@@ -158,6 +282,8 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   function addEndings(voice: ScoreVoice) {
     for (const repeat of voice.repeats ?? []) {
       const range = locate(repeat.range);
+      if (measures.slice(repeat.first - 1, repeat.endings[repeat.endings.length - 1].last).some(m => !m.voices[0].events.length))
+        throw new ScoreError('measure', 'An ending needs sounding or resting measures', range);
       const first = measures[repeat.first - 1].voices[0];
       first.opening = { type: 'repeat-begin', range };
       repeat.endings.forEach((ending, i) => {
@@ -180,10 +306,19 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     const indices = new Map(voice.events.map((event, i) => [event.id, i]));
     for (const mark of voice.spans) {
       const range = locate(mark.range);
-      if (mark.kind === 'hammer') {
-        projected.spans.push({ kind: 'hammer', id: 'hammer-' + mark.to.event + '-' + mark.to.head, range,
+      if (mark.kind === 'slur' || mark.kind === 'palmMute') {
+        if (mark.kind === 'palmMute' && mark.strings.some(n => n > state.strings))
+          throw new ScoreError('measure', 'Mute outside the instrument tuning', range);
+        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, strings: mark.strings, range, id: mark.kind + '-' + mark.first });
+      } else if (mark.kind === 'beam') {
+        const first = indices.get(mark.first), last = indices.get(mark.last);
+        const bar = voice.measures[voice.events[first].bar - 1];
+        (voices[bar.number - 1].beamGroups ??= []).push({ start: first - bar.start, end: last - bar.start, range });
+      } else if ('to' in mark) {
+        projected.spans.push({
+          kind: mark.kind, id: mark.kind + '-' + mark.to.event + '-' + mark.to.head, range,
           from: mark.from.event, to: mark.to.event, fromHead: mark.from.head, toHead: mark.to.head });
-      } else {
+      } else if (mark.kind === 'tuplet') {
         const first = indices.get(mark.first), last = indices.get(mark.last);
         const [numNotes, notesOccupied] = mark.ratio.split(':').map(Number);
         for (let i = first; i <= last;) {
@@ -197,6 +332,27 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   }
   for (const staff of part.staves) for (const voice of staff.voices) {
     addVoice(voice, staff.name === 'upper' ? 'right' : staff.name === 'lower' ? 'left' : undefined);
+  }
+  connectNamedTies();
+  resolveMarks(measures, projected.spans);
+  for (const [i, lane] of (part.text ?? []).entries()) {
+    const style = { line: -i * 2, ...lane.style };
+    if (style.ink) ink(style.ink, locate(lane.voice.range));
+    for (const bar of lane.voice.measures) {
+      const measure = measures[bar.number - 1];
+      const cells: import('../model').MeasuredText[] = lane.voice.events.slice(bar.start, bar.end).map(e => {
+        const mark = e.marks.find(m => m.kind === 'text');
+        return { id: e.id, range: locate(e.range), ...writtenRhythm(e.writtenDuration), text: mark?.text ?? '', glyph: mark?.glyph, style: { ...style, ...mark?.style } };
+      });
+      for (const boundary of lane.voice.boundaries ?? []) {
+        if (boundary.bar !== bar.number) continue;
+        const cell = boundary.edge === 'start' ? cells[0] : cells[cells.length - 1];
+        if (!cell) throw new ScoreError('measure', 'A text boundary needs a timed anchor', locate(boundary.range));
+        (cell.boundaries ??= []).push({ ...boundary, range: locate(boundary.range) });
+      }
+      for (const cell of cells) if (cell.style.ink) ink(cell.style.ink, cell.range);
+      (measure.text ??= []).push(cells);
+    }
   }
   parts.set(index, projected);
   return projected;

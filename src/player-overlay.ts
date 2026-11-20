@@ -1,74 +1,133 @@
-// Keyboard controls and a transparent cursor for SVG and Canvas playback.
+// Mount the transport on the sheet and keep playback ink aligned with SVG or Canvas.
 
-/** Mount a score cursor and keyboard controls, optionally in a host-provided toolbar. */
+/** Namespace for the Canvas cursor layer and SVG position markers. */
+const svgNamespace = 'http://www.w3.org/2000/svg';
+
+/** Native buttons support touch, keyboard and assistive technology without a custom input model. */
+function button(label: string, className: string, action: () => void): HTMLButtonElement {
+  const element = document.createElement('button');
+  element.type = 'button';
+  element.className = className;
+  element.setAttribute('aria-label', label);
+  element.title = label;
+  element.onclick = action;
+  return element;
+}
+
+/** Own one score's controls, cursor and event listeners for the lifetime of this render. */
 export class PlayerOverlay {
   private readonly root = document.createElement('div');
   surface?: SVGElement;
   private readonly status = document.createElement('span');
   private readonly controls: HTMLElement;
+  private readonly listeners = new AbortController();
+  private sheet?: HTMLElement;
+  private revealTimer?: number;
   private toggle?: HTMLButtonElement;
   private marker?: SVGCircleElement;
+  private metronome?: HTMLButtonElement;
+  private readout?: HTMLElement;
+  private decrease?: HTMLButtonElement;
+  private tempo: number;
 
   constructor(score: HTMLCanvasElement | SVGSVGElement | undefined, className: string, showControls: boolean,
-    play: () => void, stop: () => void, toolbar?: HTMLElement) {
-    this.controls = toolbar ? document.createElement('span') : this.root;
+    play: () => void, stop: () => void, tempo: number, changeTempo: (bpm: number) => void, toolbar?: HTMLElement) {
     this.root.className = `vextab-transport ${className}`;
+    this.controls = document.createElement(toolbar ? 'span' : 'div');
+    this.controls.className = toolbar ? 'vextab-playback-controls' : 'vextab-sheet-controls';
     this.status.setAttribute('role', 'status');
-    if (toolbar) {
-      this.controls.className = 'vextab-playback-controls';
-      toolbar.append(this.controls);
-      if (showControls) this.addToggle(play, stop);
-    } else if (showControls) {
-      this.addButton('Stop', stop);
-      this.addButton('Play', play);
+    if (showControls) {
+      this.toggle = button('Play', 'vextab-play', () => this.toggle.classList.contains('vextab-stop') ? stop() : play());
+      this.controls.append(this.toggle);
+      this.setButton(false);
+      if (!toolbar) this.addTempo(changeTempo);
     }
+    this.setTempo(tempo);
     this.controls.append(this.status);
+    (toolbar ?? this.root).append(this.controls);
     if (score instanceof SVGSVGElement) this.surface = score;
-    if (score && (!toolbar || score instanceof HTMLCanvasElement)) this.placeOverlay(score);
+    if (score && (!toolbar || score instanceof HTMLCanvasElement)) this.mountSheet(score);
   }
 
-  /** Keep a single focusable button available while loading and playing. */
-  private addToggle(play: () => void, stop: () => void): void {
-    this.toggle = document.createElement('button');
-    this.toggle.type = 'button';
-    this.toggle.onclick = () => this.toggle.classList.contains('vextab-stop') ? stop() : play();
-    this.controls.append(this.toggle);
-    this.setButton(false);
-  }
-
-  /** Align controls and an independent SVG ink layer to a Canvas backing store. */
-  private placeOverlay(score: HTMLCanvasElement | SVGSVGElement): void {
-    const bounds = score.getBoundingClientRect();
-    score.after(this.root);
-    // Compare the score with the overlay's own origin in the same containing block.
-    this.root.style.left = this.root.style.top = '0px';
-    const origin = this.root.getBoundingClientRect();
-    this.root.style.left = `${bounds.left - origin.left}px`;
-    this.root.style.top = `${bounds.top - origin.top}px`;
-    this.root.style.width = `${bounds.width}px`;
-    this.root.style.height = `${bounds.height}px`;
+  /** The wrapper follows the engraved surface through layout, zoom and responsive resizing. */
+  private mountSheet(score: HTMLCanvasElement | SVGSVGElement): void {
+    const sheet = this.sheet = document.createElement('div');
+    sheet.className = 'vextab-sheet';
+    score.before(sheet);
+    sheet.append(score, this.root);
     if (score instanceof HTMLCanvasElement) {
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      const svg = document.createElementNS(svgNamespace, 'svg');
       svg.setAttribute('viewBox', `0 0 ${score.width} ${score.height}`);
       svg.setAttribute('preserveAspectRatio', 'none');
       svg.setAttribute('aria-hidden', 'true');
       svg.classList.add('vextab-canvas-ink');
-      this.surface = document.createElementNS(svg.namespaceURI, 'g') as SVGGElement;
+      this.surface = document.createElementNS(svgNamespace, 'g');
       this.surface.setAttribute('transform', score.getContext('2d').getTransform().toString());
       svg.append(this.surface);
       this.root.prepend(svg);
     }
+    // Let touch users reveal the controls by tapping the sheet after they fade.
+    sheet.addEventListener('pointerdown', () => this.reveal(), { signal: this.listeners.signal });
+    this.controls.addEventListener('click', event => event.stopPropagation());
+    this.reveal();
   }
 
-  /** Use ordinary buttons for pointer, keyboard, and assistive-technology activation. */
-  private addButton(label: 'Play' | 'Stop', action: () => void): void {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `vextab-${label.toLowerCase()}`;
-    button.setAttribute('aria-label', label);
-    button.title = label;
-    button.onclick = action;
-    this.root.append(button);
+  /** Keep the initial and touch previews visible for three seconds. Hover and focus use CSS. */
+  private reveal(): void {
+    this.controls.setAttribute('data-visible', '');
+    window.clearTimeout(this.revealTimer);
+    this.revealTimer = window.setTimeout(() => this.controls.removeAttribute('data-visible'), 3000);
+  }
+
+  /** Open the tempo stepper on hover or activation and keep it open as focus moves inside. */
+  private addTempo(change: (bpm: number) => void): void {
+    const group = document.createElement('div');
+    group.className = 'vextab-tempo';
+    const panel = document.createElement('div');
+    panel.className = 'vextab-tempo-stepper';
+    // Listen outside the sheet only while the stepper is open.
+    const dismissOutside = (event: PointerEvent) => {
+      if (!group.contains(event.target as Node)) expand(false);
+    };
+    const expand = (open: boolean) => {
+      if (open) document.addEventListener('pointerdown', dismissOutside, { signal: this.listeners.signal });
+      else document.removeEventListener('pointerdown', dismissOutside);
+      panel.hidden = !open;
+      this.metronome.setAttribute('aria-expanded', String(open));
+    };
+    this.metronome = button('Adjust tempo', 'vextab-metronome', () => expand(!!panel.hidden));
+    this.decrease = button('Decrease tempo', 'vextab-step', () => change(Math.max(1, this.tempo - 5)));
+    this.decrease.textContent = '−';
+    const increase = button('Increase tempo', 'vextab-step', () => change(this.tempo + 5));
+    increase.textContent = '+';
+    this.readout = document.createElement('span');
+    this.readout.className = 'vextab-bpm';
+    this.readout.setAttribute('aria-live', 'polite');
+    panel.append(this.decrease, this.readout, increase);
+    group.append(this.metronome, panel);
+    this.controls.append(group);
+    expand(false);
+
+    group.onpointerenter = event => { if (event.pointerType === 'mouse') expand(true); };
+    group.onpointerleave = event => {
+      if (event.pointerType === 'mouse' && !group.querySelector(':focus-visible')) expand(false);
+    };
+    group.addEventListener('focusout', event => { if (!group.contains(event.relatedTarget as Node)) expand(false); });
+    group.onkeydown = event => {
+      if (event.key === 'Escape') {
+        this.metronome.focus();
+        expand(false);
+      }
+    };
+  }
+
+  /** Reflect source tempo and subsequent changes from either the API or the sheet. */
+  setTempo(tempo: number): void {
+    this.tempo = tempo;
+    if (!this.readout) return;
+    this.readout.textContent = tempo + ' BPM';
+    this.metronome.setAttribute('aria-description', this.readout.textContent);
+    this.decrease.disabled = tempo <= 1;
   }
 
   /** Keep the soundfont loading message available to screen readers. */
@@ -86,8 +145,10 @@ export class PlayerOverlay {
   /** Keep keyboard focus on the same button during loading, playback and cancellation. */
   private setButton(playing: boolean): void {
     if (!this.toggle) return;
-    this.toggle.textContent = playing ? 'Stop' : 'Play';
-    this.toggle.setAttribute('aria-label', this.toggle.textContent);
+    const label = playing ? 'Stop' : 'Play';
+    if (this.controls.classList.contains('vextab-playback-controls')) this.toggle.textContent = label;
+    this.toggle.title = label;
+    this.toggle.setAttribute('aria-label', label);
     this.toggle.className = playing ? 'vextab-stop' : 'vextab-play';
   }
 
@@ -109,8 +170,12 @@ export class PlayerOverlay {
 
   /** Drop the cursor, controls, and their event handlers when the score is replaced. */
   remove(): void {
+    this.listeners.abort();
+    window.clearTimeout(this.revealTimer);
     this.marker?.remove();
     this.controls.remove();
-    if (this.controls !== this.root) this.root.remove();
+    this.root.remove();
+    // Restore the original score node, including any listeners owned by its renderer.
+    if (this.sheet) this.sheet.replaceWith(...this.sheet.childNodes);
   }
 }

@@ -40,7 +40,7 @@ function bend(text: string, event: Attack, state: StaffState, range: SourceRange
 }
 
 /** Frames use low-to-high frets. Check the diagram against the actual, capo-relative voicing. */
-function frame(text: string, event: Attack, state: StaffState, range: SourceRange): FretDiagramSpec {
+export function frame(text: string, event: Attack, state: StaffState, range: SourceRange): FretDiagramSpec {
   const match = /^([x\d,]+)(?:\s+barre=(\d+):(\d+)-(\d+))?$/.exec(text);
   if (!match || !event.chord) fail(range, 'A frame follows a chord label and needs low-to-high frets');
   const cells = match[1].split(',');

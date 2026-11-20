@@ -33,6 +33,14 @@ export class PlaybackTransport {
   private request?: AbortController;
   private session?: PlaybackSession;
   private timer?: number;
+  private rate = 1;
+  private retime?: (rate: number) => void;
+
+  /** Pending loads remember the new rate. A running session reschedules its next onset. */
+  setRate(rate: number): void {
+    if (this.retime) this.retime(rate);
+    else this.rate = rate;
+  }
 
   get active(): boolean { return !!this.request; }
 
@@ -51,19 +59,20 @@ export class PlaybackTransport {
         if (request.signal.aborted) { session.stop(); return; }
         this.session = session;
         const now = () => session.currentTime ?? performance.now() / 1000;
-        const origin = now() + leadIn;
-        started(() => now() - origin);
+        let wallOrigin = now();
+        let scoreOrigin = -leadIn;
+        const position = () => scoreOrigin + (now() - wallOrigin) * this.rate;
         let index = 0;
         const advance = () => {
           if (request.signal.aborted) return;
           try {
-            const elapsed = now() - origin;
+            const elapsed = position();
             while (index < music.events.length && music.events[index].time <= elapsed) {
               const event = music.events[index++];
               event.mark?.();
               for (const note of event.notes) {
                 // A throttled background tab may wake after this note has already ended.
-                if (event.time + note.duration > elapsed) session.playNote(note);
+                if (event.time + note.duration > elapsed) session.playNote(atPlaybackRate(note, this.rate));
               }
             }
             if (index === music.events.length && elapsed >= music.duration) {
@@ -71,9 +80,18 @@ export class PlaybackTransport {
               return;
             }
             const next = music.events[index]?.time ?? music.duration;
-            this.timer = window.setTimeout(advance, Math.max(1, (origin + next - now()) * 1000));
+            this.timer = window.setTimeout(advance, Math.max(1, (next - position()) / this.rate * 1000));
           } catch (error) { fail(error); }
         };
+        this.retime = rate => {
+          // Anchor the new slope at the current beat so the audio and cursor stay together.
+          scoreOrigin = position();
+          wallOrigin = now();
+          this.rate = rate;
+          window.clearTimeout(this.timer);
+          advance();
+        };
+        started(position);
         advance();
       };
       try {
@@ -86,6 +104,8 @@ export class PlaybackTransport {
 
   /** Invalidate late readiness callbacks before releasing the current instrument. */
   stop(): void {
+    this.retime = undefined;
+    this.rate = 1;
     this.request?.abort();
     this.request = undefined;
     window.clearTimeout(this.timer);
@@ -94,4 +114,11 @@ export class PlaybackTransport {
     this.session = undefined;
     session?.stop();
   }
+}
+
+/** Instruments schedule the release and pitch envelope in wall-clock seconds at each attack. */
+function atPlaybackRate(note: PlaybackNote, rate: number): PlaybackNote {
+  if (rate === 1) return note;
+  return { ...note, duration: note.duration / rate,
+    bend: note.bend?.map(point => ({ ...point, time: point.time / rate })) };
 }

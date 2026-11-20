@@ -14,11 +14,22 @@ Milestone 3 follows one score from parsing to the screen, the printed page, the 
 
 [Browser assertions](../../tests/grammar2-views.ts) · [Clean package consumer](../../scripts/test-consumer.mjs)
 
-## Remaining comparisons
+## Historical scores
 
-Use the [feature inventory and its source scores](inventory.md#what-to-verify-in-the-migrated-scores) for the rest of milestone 3. In particular:
+| Feature | Evidence |
+| --- | --- |
+| Blank staves, fragments, pickups and meter changes | An empty four-string staff engraves in both backends and prints without introducing a rest or a playback event. A fragment of three eighths plays for 1½ beats. Measured voices reject mismatched lengths. |
+| Slash heads, rest placement, beams and system breaks | The lead sheet alternates a pitched chord with unpitched slash heads. The guitar fixture groups six eighths in two beats. A forced break and a new meter share the same bar boundary. |
+| Transposition, keys and fret diagrams | The Am/E example moves its chord root, bass, diagram, barre and sounding frets together. A negative fret identifies the source error. A scoped playback octave keeps the printed fret. |
+| Hammer-ons, pull-offs, taps, slides, strokes, vibrato, bends and palm mute | A guitar fragment compares the fixed legacy renderer with the v2 renderer. The mute retains its endpoints through reflow. Independent bend envelopes can raise two strings while a third holds its pitch. |
+| Harmony and lyrics | The opening bar from *Slow River* matches the v1 pitches, onsets, durations and chord names in two voices. It preserves the frame, lyric punctuation and syllable connector. |
+| Timed text and navigation signs | Four text events fit over one held note. Coda and segno markers occupy no musical time. A line or font change applies from its authored position. Screen and print use the same text cells. |
+| Ink, fingerings and editing | Stave, attack, chord and text ink are distinct. Clicking a timed label selects its token. A named tie can sustain a matching pitch into another voice. |
 
-- Cover changing meter, fragments, empty staves, rhythmic slashes and beam controls.
-- Cover transposition, chord diagrams and the remaining historical guitar gestures.
-- Cover independently timed text, stave and label colors, typography and navigation symbols.
-- Review any proposed replacement for a historical feature before treating it as covered. The current printer reports a diagnostic for fingerings or accents on fretted heads in an independent tab part.
+The [historical browser fixtures](../../tests/grammar2-parity.ts) exercise these cases through the public APIs. The [sketchbook examples](../../experiments/grammarv2/preview.mjs) include the guitar fragment, a meter change, a transposed diagram and an independent text lane. The full teaching corpus is scheduled for milestone 4.
+
+## Reading and printing the examples
+
+- Fixed v1 scores use the Artist engraver. V2 uses measured layout for fixed widths and reflow. Staff spacing, automatic stems and curve placement can differ. Use a written pitch such as `x/3[write B3]` to place a silent dead head independently of its string.
+- Screen engraving supports explicit beam groups and chord frames. Asking the independent part printer for one reports the source of the feature. The existing restrictions for silent positions and special fretted head marks also apply. [Independent part coverage](../../guide/reference.html#publication-scope)
+- A printed tab part identifies connected guitar attacks and vibrato with playing instructions. Repeats continue to play in written order. Performed repeat traversal is a separate capability.

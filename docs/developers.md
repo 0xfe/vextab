@@ -29,6 +29,10 @@ The development server watches the source. Open the [project index](http://127.0
 | `npm run watch` | Development bundles rebuilt on source changes |
 | `npm run clean` | Removes the generated `dist/` directory |
 
+## Engineering reports
+
+Generate the quality archive from VexTab 4.0.0 onward and the illustrated AI2026 change report. Both open locally in a browser. [Build and publication commands](reports.md)
+
 ## Upload the user guide
 
 Run these commands from the VexTab checkout. The dry run builds the production guide and prints the Cloud Storage operations. The live command uses your authenticated Google Cloud CLI.
@@ -40,7 +44,7 @@ npm run guide:upload
 
 The destination is `gs://vexflow.com/vextab/guide/`, served at **https://vexflow.com/vextab/guide/**. Each upload builds in a fresh staging directory, uploads hashed bundles, the on-demand SoundFont instrument and print chunks first, then publishes the standalone lessons and the guide index. It verifies the uploaded HTML against the build. For a staging bucket, pass `-- --destination=gs://your-bucket/vextab/guide/`.
 
-To preview the standalone site locally, run `npm run guide:build` and open `build/guide/index.html`.
+The web guide loads Tangerine Bold from Google Fonts. To preview the standalone site offline, run `npm run guide:build` and open `build/guide/index.html`. The offline guide uses the included font and license.
 
 ## Test locally
 

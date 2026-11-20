@@ -18,8 +18,8 @@ $(() => {
   // Initialize VexTab artist and parser.
   const artist = new Artist(10, 10, 700, { scale: 0.8 });
   const tab = new VexTab(artist);
-  const { playback, playbackControls } = scoreOptions(host);
-  const player = new vextab.Player(artist, { playback, controls: playbackControls });
+  const { playback } = scoreOptions(host);
+  const player = new vextab.Player(artist, { playback });
 
   /**
    * Parse the textarea contents and render into the SVG renderer.

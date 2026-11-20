@@ -50,7 +50,36 @@ renderScorePart(paper, score, 'left');
 const player = new Player(score, { controls, playback });
 ```
 
-For an editable embed, set `data-language="2"` and `data-editor="true"` on the source element. See [milestone 3 verification](../issues/182/parity.md) for the exercised examples and remaining coverage.
+For an editable embed, set `data-language="2"` and `data-editor="true"` on the source element. See [milestone 3 verification](../issues/182/parity.md) for the comparison scores and output-specific limits.
+
+### Working with historical scores
+
+```js
+const pickup = parseScore('meter 2/4 pickup 1/8 staff { :8 G4 | :q A4 G4 | }', { language: 2 });
+```
+
+| Intent | V2 spelling |
+| --- | --- |
+| Change key for every voice of a part | Declare `key D key G at 4` at the beginning of the part. |
+| Change the key, chord names, frets and diagrams together | Declare `transpose +2` before the first part. Inside a voice, `transpose +2 { … }` moves a phrase and keeps the surrounding signature. Use `octave +1 { … }` for a playback-only shift. |
+| Play a shaped guitar chord | Put `[symbol "Am", frame (x 0 2 2 1 0) barre=2/4..3]` after the chord. Diagram strings run from low to high. |
+| Mark a guitar technique | Attach `[hammer]`, `[pull]` or `[slide]` to the destination head. Use `[tap]`, `[vibrato wide]`, `[stroke down]` or `[brush up]` on the attack. `palmMute strings(5 6) { … }` covers a phrase. |
+| Sustain or connect notes | Use `[tie]` on a destination head. Across an intervening rest or another voice, use the same lowercase name in `[tieStart name]` and `[tieEnd name]`. Use `slur { … }` for a visual connection. |
+| Set rhythm, grouping and boundaries | `slash` is an unpitched rhythm. `B4[slash]` has a pitch. `rest[line -1]` places a rest. Use `beam { … }`, `groupBeats (3 3)`, `break system`, `repeatStart`, `bar repeatEnd`, `bar double` and `bar final` as needed. |
+| Control ink and labels | Use part-level `ink navy`, attack-level `[ink crimson]`, or `[label "P.H." below font "Georgia" size 14 style italic ink teal]`. |
+| Set engraving or playback defaults | `voice bass stem down { … }` sets a voice’s stem direction. `layout { width 640 rowGap 36 }`, `measureNumbers on`, and `play { tempo 84 instrument 24 }` go before the first part. |
+
+A text lane belongs inside its instrument after the music. Its durations are independent of the notes. Change its font, ink, alignment or staff line where the change should begin. A `start` or `end` marker sits on the bar boundary.
+
+```text
+meter 2/4
+staff {
+  :h C4 |
+  text counts font "Georgia" size 14 line 10 {
+    start sign coda :8 "One," "and" ink crimson "three" "four" |
+  }
+}
+```
 
 ## What a musician has to remember today
 
@@ -118,7 +147,7 @@ mark     = "finger" digit [side] | "accent" | "hammer" ;
 - **Head.** `C4`, `Bb3` and `F#5` name pitches. `7/3` names fret 7 on string 3, counted from the highest string. `x/6` is a dead strike. `kick`, `snare` and `hat` name kit instruments. A slash between two numbers in a head always means fret/string. A meter requires the preceding keyword. A `rest` prints a rest and advances time. A `skip` advances time invisibly.
 - **Rhythm.** Each voice starts with quarters. `:h`, `:q`, `:8` and `:16` change the written duration for following events. One or two dots augment it. `:8.` lasts 3/16 of a whole. A chord advances the clock once. A barline checks exact elapsed time and resets the local onset. Its voice keeps the previous duration.
 - **Scope.** A `times` or `tuplet` block inherits the entry duration. Every iteration starts with that same value. The caller resumes its own duration after the block. A pattern starts in quarters on every use. Rewriting a bass rhythm cannot change the register or duration in the melody.
-- **Meter.** The prototype accepts one document-wide meter, default 4/4, and an explicit final barline in every voice. All voices must fill the same measures. Use `pickup 1/8` before the first part for a shared initial short bar. The full design adds `fragment { … }` for an intentionally unmetered excerpt, and meter changes on a shared measure boundary. An incomplete bar should select its written range and report actual and expected lengths.
+- **Meter.** The default is 4/4. Before the first part, declare `meter 2/4`, `pickup 1/8`, or a later change such as `meter 3/8 at 4`. Use `meter common`, `meter cut`, or `meter 3+2/8` for a displayed sign. Measured voices fill the same bars. Use `fragment { :8 C4 D4 E4 }` for an incomplete phrase and `fragment {}` for a blank staff.
 - **Pitch in the full design.** Bare `F4` means the fourth-octave F degree in the current key. `Fn4`, `Fb4` and `F#4` choose an exact alteration. A written key change affects every voice on that staff. A change to a preceding attack in another voice cannot respell or retune the input. The engraver manages bar accidental memory and simultaneous conflicts and supplies necessary printed cancellations. `[showSign]` and `[courtesy]` preserve deliberately explicit and cautionary signs. Migration resolves pitches that v1 inherited from earlier notes before generating v2 text.
 - **Attachment.** In `(5/2[finger 2] 7/3[finger 3])[accent]` the fingers belong to physical heads, and the accent belongs to the attack. Attachment kinds are validated after parsing. A source selection on a finger can lead to the specific head. A label on a chord survives pitch-order sorting.
 
@@ -154,7 +183,7 @@ staff { tuplet 3:2 { :8 G4 A4 B4 } C5 | }
 
 ## Expressive notation and VexFlow
 
-The following is a **design coverage map**. Only syntax in the executable subset above has prototype support. This table assigns the remaining current capabilities a spelling and a place in the score model. Acceptance for a production compiler comes from translating and comparing real scores.
+The following is a **design coverage map**. The examples above and the parity ledger describe the implemented subset. This table assigns the remaining current capabilities a spelling and a place in the score model. Acceptance for a production compiler comes from translating and comparing real scores.
 
 | Existing musical intent | Proposed authoring form or rule | Required score data |
 | --- | --- | --- |
@@ -236,7 +265,7 @@ A parser with no general loop can still expand exponentially. The compiler spend
 
 1. **Agree on the five writing decisions.** Fret/string order, explicit register, named scoped durations/voices, typed attachments and finite pattern use determine most examples. Ask a tab author and a pianist to enter the first-fret phrase, add a head fingering, edit an inner voice and move a repeated phrase. Record mistakes and correction steps. The comparisons above come from reading the existing scores and running the prototype. User testing is still needed.
 2. **Prove musical equivalence.** Translate all guide scores, tutorial snippets, current features and regression fixtures to paired versions. Compare meter, written heads, physical strings, tie endpoint identity, exact durations, simultaneous starts, key changes and playback pitches. Include #121 fingering/placement, two grand-staff hands, the open slide's single attack, transposition around a capo, unpitched kit hits, mixed tuplets, and lyric spans. Preserve the tests for stale selections, responsive breaks, SVG/Canvas and independent parts.
-3. **Use one typed score representation and multiple adapters.** Retain authored tokens and trivia in a revision-indexed syntax tree. Lower to parts → staves → voices → measures → attacks/heads/spans. Give every variant source ranges. Resolve keys, ties and physical playing instructions once. Feed that model to a fixed engraver, a flow/publication adapter, a performance scheduler and reading navigation. During transition, emit a feature/backend capability diagnostic for every missing projection. The public parser and score renderer implement the first part of this design. The parity ledger tracks outstanding constructs.
+3. **Use one typed score representation and multiple adapters.** Retain authored tokens and trivia in a revision-indexed syntax tree. Lower to parts → staves → voices → measures → attacks/heads/spans. Give every variant source ranges. Resolve keys, ties and physical playing instructions once. Feed that model to a fixed engraver, a flow/publication adapter, a performance scheduler and reading navigation. During transition, emit a feature/backend capability diagnostic for every missing projection. The public parser and score renderer implement the first part of this design. The parity ledger records the qualified score families and publication diagnostics.
 4. **Select the major version explicitly.** Offer a versioned parser entry or `parseScore(source, { language: 2 })` during previews. A new major may choose v2 as its default. Versioning belongs to the host or document header. Guessing from the first symbol makes a broken v2 edit accidentally parse as another language.
 5. **Migrate authored scores with an explicit tool.** Parse v1 using its own semantics, then emit canonical v2 and a change report with source ranges. Preserve literal signs, derive the real attack order of grouped legacy frets, name the target of each backward annotation, and resolve timed text positions. Flag malformed-but-accepted fragments, unsupported output effects and ambiguous defaults for review. Provide a per-score diff before replacing user text. A v1-to-v2 migration of this library's source format is separate from importing music files.
 6. **Set the release gate.** Publish a capability table for fixed SVG/Canvas, responsive SVG, printed parts, navigation and playback. Every currently documented feature needs a translated fixture and either matching observable behavior or an explicit, reviewed major-version change. Grow the syntax for new VexFlow features only after their real scores work. Keep the prototype available for comparison while qualifying the replacement compiler.

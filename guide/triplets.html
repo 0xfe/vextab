@@ -25,7 +25,7 @@
       VexTabSyntax.highlightCode(document.querySelector('main'), 'vextab');
       const host = document.querySelector('#score');
       const original = host.textContent;
-      new vextab.Div(host, VexTabAudio.scoreOptions(host, document.querySelector('.controls')));
+      new vextab.Div(host, VexTabAudio.scoreOptions(host));
       const editor = host.querySelector('textarea');
       VexTabSyntax.highlightEditor(editor);
       const toggle = document.querySelector('#notation');

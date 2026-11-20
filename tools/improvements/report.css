@@ -1,0 +1,515 @@
+/* Layout for the illustrated change report and score comparisons. */
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-padding-top: 20px;
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+a {
+  color: var(--green);
+  text-underline-offset: 3px;
+}
+a:hover {
+  color: var(--accent);
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.skip {
+  position: absolute;
+  left: -999em;
+}
+.skip:focus {
+  left: 10px;
+  background: white;
+  z-index: 5;
+}
+.mast {
+  height: 74px;
+  padding: 0 clamp(20px, 4vw, 80px);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border-bottom: var(--mast-rule);
+  color: var(--muted);
+}
+.mast a {
+  text-decoration: none;
+}
+.wordmark {
+  font: var(--brand);
+  letter-spacing: -1.5px;
+}
+.mast > span {
+  border-left: 1px solid var(--line);
+  padding-left: 18px;
+  font-size: 0.85rem;
+}
+.download {
+  margin-left: auto;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.shell {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1000px);
+  gap: clamp(24px, 5vw, 90px);
+  max-width: 1480px;
+  padding: 0 clamp(20px, 4vw, 80px) 80px;
+  margin: auto;
+}
+aside nav {
+  position: sticky;
+  top: 20px;
+  margin-top: 55px;
+}
+aside summary,
+.dateline,
+dialog small {
+  font: 650 0.69rem/1.5 var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+aside summary {
+  margin-bottom: 16px;
+}
+aside a {
+  display: block;
+  text-decoration: none;
+  padding: 6px 0;
+  font-size: 0.86rem;
+}
+aside a.active {
+  color: var(--accent);
+  font-weight: bold;
+}
+main {
+  min-width: 0;
+  position: relative;
+}
+.hero {
+  padding: 54px 0 18px;
+}
+.dateline span {
+  color: #a8aba0;
+  margin: 0 8px;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--book);
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+}
+h1 {
+  font: var(--title);
+  letter-spacing: -1.2px;
+  margin: 19px 0 14px;
+}
+h1 br {
+  display: none;
+}
+h1 i {
+  color: var(--accent);
+  font-style: normal;
+}
+h1 i:before {
+  content: ' ';
+}
+.hero p {
+  max-width: 660px;
+  color: var(--muted);
+  font: 18px/1.65 var(--book);
+  margin: 16px 0;
+}
+.range {
+  font:
+    12px ui-monospace,
+    monospace;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+}
+.range a {
+  text-decoration: none;
+}
+.cover,
+.sample {
+  display: block;
+  border: 1px solid var(--line);
+  text-decoration: none;
+  background: #fff;
+  overflow: hidden;
+}
+.cover img {
+  width: 100%;
+  /* Show the entire paired staff and tablature, including markings below the strings. */
+  height: auto;
+  max-height: 360px;
+  object-fit: contain;
+  display: block;
+}
+.cover span,
+.sample span {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--soft);
+  border-top: 1px solid var(--line);
+  font-size: 0.77rem;
+}
+.cover b,
+.sample b {
+  color: var(--accent);
+  font-weight: 600;
+}
+.cover b {
+  white-space: nowrap;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 20px 0 10px;
+}
+.stats > div {
+  border-left: 1px solid var(--line);
+  padding-left: 18px;
+}
+.stats > div:first-child {
+  border: 0;
+  padding: 0;
+}
+.stats strong {
+  display: block;
+  font: 33px var(--sans);
+}
+.stats span {
+  font-size: 0.77rem;
+  color: var(--muted);
+}
+section {
+  border-top: 1px solid var(--line);
+  margin-top: 37px;
+  padding-top: 29px;
+}
+section > p {
+  max-width: 76ch;
+}
+h2 {
+  font-size: 26px;
+  letter-spacing: -0.035em;
+}
+h3 {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+p {
+  margin: 0.65em 0 1em;
+}
+.tags,
+.refs,
+.filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.tags a {
+  padding: 9px 15px 8px;
+  border: 1px solid var(--line);
+  text-decoration: none;
+}
+.tags small,
+.tiles small {
+  display: block;
+  font-size: 0.69rem;
+  color: var(--muted);
+}
+label {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.search {
+  display: block;
+  margin: 25px 0 12px;
+}
+input,
+select,
+button {
+  font: inherit;
+  color: var(--ink);
+}
+input,
+select {
+  display: block;
+  background: white;
+  border: 1px solid #93a59b;
+  padding: 9px 12px;
+  border-radius: 3px;
+  margin-top: 4px;
+  width: 100%;
+}
+.search input {
+  max-width: 530px;
+}
+.chapter {
+  padding: 24px 0;
+  display: flow-root;
+  border-bottom: 1px solid var(--line);
+}
+.chapter:last-child {
+  border: 0;
+}
+.sample {
+  float: right;
+  width: 34%;
+  margin: 8px 0 18px 20px;
+}
+.sample img {
+  width: 100%;
+  height: 145px;
+  object-fit: contain;
+  display: block;
+}
+.change {
+  margin: 17px 0 20px;
+}
+.change h4 {
+  font-size: 1rem;
+  margin: 0;
+}
+.change p {
+  font-size: 0.92rem;
+  margin: 4px 0 6px;
+  line-height: 1.48;
+}
+.refs a {
+  font-size: 0.76rem;
+  color: var(--accent);
+}
+.open-score {
+  cursor: zoom-in;
+}
+.filters {
+  margin: 16px 0;
+  align-items: end;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.tile {
+  border: 1px solid var(--line);
+  background: white;
+  text-decoration: none;
+  display: block;
+}
+.tile img {
+  width: 100%;
+  height: 125px;
+  object-fit: contain;
+  display: block;
+}
+.tile div {
+  border-top: 1px solid var(--line);
+  padding: 10px;
+}
+.tile strong {
+  font: 18px var(--book);
+}
+.more,
+button {
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 8px 15px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.more {
+  margin: 16px 0;
+}
+.row {
+  border-bottom: 1px solid var(--line);
+  padding: 9px 0;
+}
+.row summary,
+summary {
+  cursor: pointer;
+}
+.row summary span,
+.list-meta {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.row summary strong {
+  overflow-wrap: anywhere;
+}
+.doclist,
+.paths {
+  overflow-wrap: anywhere;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--soft);
+  padding: 11px 14px;
+  font-size: 0.78rem;
+}
+.doclist li {
+  margin: 5px 0;
+}
+.doclist code {
+  margin-right: 12px;
+}
+.paths {
+  max-height: 250px;
+  overflow: auto;
+}
+.paths a {
+  display: block;
+  font:
+    12px/1.65 ui-monospace,
+    monospace;
+}
+dialog {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  width: min(1230px, 95vw);
+  max-height: 90dvh;
+  padding: 22px;
+  overflow: auto;
+}
+dialog::backdrop {
+  background: #10251fe0;
+}
+dialog header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 20px;
+}
+dialog h2 {
+  font-size: 30px;
+}
+dialog figure {
+  margin: 0;
+  background: white;
+  border: 1px solid var(--line);
+  min-width: 0;
+}
+dialog figure a {
+  display: block;
+}
+dialog figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: auto;
+}
+dialog figcaption {
+  padding: 8px 12px;
+  background: var(--soft);
+  font-size: 0.82rem;
+}
+#plates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(345px, 100%), 1fr));
+  gap: 10px;
+}
+#plate-source {
+  font-size: 0.8rem;
+  margin-top: 12px;
+}
+[hidden] {
+  display: none !important;
+}
+@media (max-width: 800px) {
+  .shell {
+    display: block;
+  }
+  .mast {
+    height: 58px;
+  }
+  .mast > span {
+    font-size: 0.75rem;
+  }
+  aside nav {
+    position: static;
+    margin: 14px 0;
+  }
+  aside summary {
+    margin: 0;
+  }
+  aside a {
+    display: inline-block;
+    margin-right: 14px;
+  }
+  .hero {
+    padding-top: 22px;
+  }
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stats strong {
+    font-size: 27px;
+  }
+}
+@media (max-width: 520px) {
+  .mast {
+    gap: 8px;
+  }
+  .mast > span {
+    display: none;
+  }
+  .shell {
+    padding: 0 16px 42px;
+  }
+  .sample {
+    float: none;
+    width: 100%;
+    margin: 12px 0;
+  }
+  .sample img {
+    height: 110px;
+  }
+  .stats {
+    gap: 8px;
+  }
+  .stats > div {
+    padding-left: 8px;
+  }
+  .stats span {
+    font-size: 0.69rem;
+  }
+  .cover span {
+    padding: 7px;
+    font-size: 0.7rem;
+  }
+  .tiles {
+    gap: 7px;
+  }
+  .tile img {
+    height: 83px;
+  }
+  .tags {
+    gap: 6px;
+  }
+  .tags a {
+    padding: 5px 8px;
+  }
+  dialog {
+    padding: 12px;
+  }
+}

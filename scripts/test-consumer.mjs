@@ -22,7 +22,7 @@ execFileSync(process.execPath, ['-e',"const {parseScore}=require('vextab/parse')
 await writeFile(join(cwd,'consumer.ts'), `import { Div, parseScore, renderScore, renderScorePart, type ParsedScore, type ScoreV2, type PlaybackPlugin, createSpessaSynthPlayback } from 'vextab/browser';
 const host = document.getElementById('manual')!;
 const score: ParsedScore = parseScore('stave time=1/4\\nnotes C/4');
-const preview: ScoreV2 = parseScore('staff { :w C4 | }', { language: 2 });
+const preview: ScoreV2 = parseScore('meter common staff { :w C4 | text words { :h "One" "two" | } }', { language: 2 });
 if (preview.parts[0].staves[0].voices[0].events[0].duration !== '1/1') throw new Error('bad preview timing');
 renderScore(document.getElementById('preview')!, preview, { renderer: 'canvas' });
 renderScorePart(document.getElementById('paper')!, preview, 'notation');
@@ -46,6 +46,8 @@ try {
   await page.locator('#embed svg').waitFor();
   await page.locator('#preview canvas').waitFor();
   await page.locator('#paper svg').first().waitFor();
+  assert.match(await page.locator('#paper').textContent(), /One/);
+  assert.equal(await page.locator('#paper .vf-timed-text').count(), 2);
   await page.locator('#editor svg').waitFor();
   assert.equal(await page.locator('#embed textarea').evaluate(el => el.style.height), '72px');
   assert.match(await page.locator('#manual').getAttribute('data-event'), /C 4/);

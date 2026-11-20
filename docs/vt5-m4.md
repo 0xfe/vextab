@@ -19,7 +19,7 @@ The detailed references cover [rhythm and fixed-layout syntax](vt5-m1.md), [stav
 
 ## Listen, edit and read
 
-- Press **Play** above a score to hear the current notes. **Stop**, editing, or starting another example ends playback. The first play loads SpessaSynth and the bundled SoundFont. In the duet, the edition toolbar plays the selected guitarist or the full score.
+- Press **Play** at the bottom center of a score to hear the current notes. **Stop**, editing, or starting another example ends playback. The first play loads SpessaSynth and the bundled SoundFont. In the duet, the sheet player plays the selected guitarist or the full score.
 - Try [pre-bends](http://127.0.0.1:9005/guide/#features/pre-bends), [score colours](http://127.0.0.1:9005/guide/#features/score-colours), and [tempo and instruments](http://127.0.0.1:9005/guide/#features/playback). These features are in the current checkout, after the 5.0.0 npm release.
 
 - Edits render after a short pause. **Run** or **Ctrl/Command+Enter** engraves immediately. An input method can finish composing a character before rendering. **Find error** selects the located token. A dimmed score is the last valid drawing.

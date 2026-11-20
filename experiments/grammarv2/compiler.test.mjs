@@ -156,3 +156,17 @@ test('incomplete edits produce a located diagnostic or a valid score at every pr
     }
   }
 });
+
+test('editable parity commands retain bounded, located failures at every cut', () => {
+  const source = 'meter 2/4 meter 3+2/8 at 2 play { tempo 96 } layout { width 500 } staff { key D key F at 2 :h F4[courtesy] | :8 times 5 { C4 } bar final text words { :h "Hello" | start sign coda :8 "one" "two" "three" "four" "five" end sign segno | } }';
+  assert.equal(compile(source).measureCount, 2);
+  for (let n = 0; n < source.length; n++) {
+    try { compile(source.slice(0,n)); }
+    catch (error) {
+      assert.ok(error instanceof api.ScoreV2Error, 'Located failure at offset ' + n);
+      assert.ok(error.range[0] >= 0 && error.range[1] <= n);
+    }
+  }
+  errorCode('meter 5/8 at 6 staff { :w C4 | }','alignment');
+  errorCode('meter 1/4 staff { C4 | text words { end sign coda :q "hi" | } }','alignment');
+});

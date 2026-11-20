@@ -2,7 +2,7 @@
 import type { SourceRange } from './source';
 
 export type MarkPosition = 'left' | 'right' | 'above' | 'below';
-export interface HeadMark { finger?: string; position: MarkPosition }
+export interface HeadMark { finger?: string; stringNumber?: boolean; articulation?: string; position: MarkPosition }
 type Fail = (message: string, range: SourceRange) => never;
 
 /** Normalize both terse inline overrides and readable stave options. */

@@ -22,7 +22,7 @@ The [migration inventory](../issues/182/inventory.md) identifies the existing so
 
 ## 3. Reach feature parity across rendering, playback and editing
 
-The [parity ledger](../issues/182/parity.md) lists verified examples and remaining coverage.
+The [parity ledger](../issues/182/parity.md) records the comparison scores and the limits of each output surface.
 
 - Connect the shared model to fixed SVG/Canvas, responsive scores, printed scores and individual parts, the playback plugins, and reading navigation. Carry source identity across reflow, part extraction and repeated passages.
 - Exercise a two-hand piano passage, a polyphonic guitar score, tuned/capoed tab, per-head fingerings and accidentals, bends and open slides, a drum groove, lyrics, tuplets and repeat endings. Cover the rest of the inventory with smaller fixtures.

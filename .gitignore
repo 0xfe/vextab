@@ -28,3 +28,6 @@ npm-debug.log
 #eclipse
 .project
 .settings/
+
+# Isolated dependencies used only to build engineering reports.
+/tools/node_modules/
