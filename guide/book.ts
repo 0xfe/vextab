@@ -72,7 +72,7 @@ function examples(host: HTMLElement, chapter: Chapter, section: string, draft: D
   return Array.from(host.querySelectorAll<HTMLElement>('.vex-tabdiv, pre[data-score]'), (original, index) => {
     const source = original.textContent.trim();
     const fixed = original.classList.contains('vex-tabdiv');
-    const key = section + '/' + chapter.id + '/' + index;
+    const key = original.dataset.draftKey ?? section + '/' + chapter.id + '/' + index;
     const frame = document.createElement('div');
     frame.className = 'chapter-example' + (fixed ? ' fixed' : '');
     const embed = document.createElement('div');
@@ -110,8 +110,8 @@ export function showCover(host: HTMLElement): Div {
   cover.className = 'book-cover';
   const introduction = document.createElement('div');
   heading(introduction, '', 'The VexTab Tutorial',
-    'Write standard notation and guitar tablature, one stave at a time. Play and edit the music as you work through the original fifteen steps.');
-  const start = link('Start with the stave →', '#tutorial/' + tutorial[0].id);
+    'Write standard notation and guitar tablature, one stave at a time. Start with four notes, then add rhythm, chords and guitar techniques as you play.');
+  const start = link('Play your first notes →', '#tutorial/' + tutorial[0].id);
   start.className = 'start-reading';
   const paths = node('nav', '');
   paths.className = 'cover-links';
@@ -125,7 +125,7 @@ export function showCover(host: HTMLElement): Div {
   sample.setAttribute('width', original.getAttribute('width'));
   sample.textContent = original.textContent;
   const caption = node('figcaption', '');
-  caption.append(link('Fret and string · from step 2', '#tutorial/notes'));
+  caption.append(link('Fret and string · from step 1', '#tutorial/notes'));
   figure.append(sample, caption);
   cover.append(introduction, figure);
   host.append(cover);

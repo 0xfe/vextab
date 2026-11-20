@@ -1,5 +1,5 @@
 // Parse written v2 notation into a bounded syntax tree before expanding any pattern.
-import type { EventMark, Head, HeadMark, PartKind, PartSettings, StaffName, TextStyle, LaneStyle, TextBoundary, TextRange, ExpansionFrame } from './model.js';
+import type { EventMark, Head, HeadMark, PartKind, PartSettings, WrittenMeter, StaffName, TextStyle, LaneStyle, TextBoundary, TextRange, ExpansionFrame } from './model.js';
 
 /** One compilation shares these budgets across all parts, voices and pattern calls. */
 export const limits = Object.freeze({
@@ -16,7 +16,7 @@ export type TimedNode = { range: TextRange } & (
   { kind: 'rest' | 'skip' | 'slash'; marks?: EventMark[] } | { kind: 'attack'; heads: Head[]; marks: EventMark[] }
 );
 export type Node = TimedNode | { range: TextRange } & (
-  { kind: 'duration'; value: Fraction } | { kind: 'use'; name: string } |
+  { kind: 'meter'; signature: WrittenMeter } | { kind: 'duration'; value: Fraction } | { kind: 'use'; name: string } |
   { kind: 'times'; count: number; body: Node[] } | { kind: 'tuplet'; scale: Fraction; body: Node[] } |
   { kind: 'volta'; body: Node[]; endings: Node[][] } | { kind: '|'; closing?: string } |
   { kind: 'textBoundary'; boundary: Omit<TextBoundary, 'bar'> } | { kind: 'break' | 'repeatStart' } | { kind: 'mark'; text: string } |
@@ -30,21 +30,59 @@ export interface PartSyntax extends PartSettings { lanes?: { voice: VoiceSyntax;
 function tokenize(source: string, fail: Fail): Token[] {
   if (source.length > limits.bytes || new TextEncoder().encode(source).length > limits.bytes) fail('source-limit', 'Score exceeds 64 KiB', [0, 0]);
   const tokens: Token[] = [];
+  function emit(text: string, range: TextRange) {
+    if (tokens.length === limits.tokens) fail('token-limit', 'Too many input tokens', range);
+    tokens.push({ text, range });
+  }
+  const commentTail = /[^\r\n]*/y;
   const words = /\/\/[^\r\n]*|"(?:\\.|[^"\\\r\n])*"|"|[{}()[\],|]|(?:\/(?!\/)|[^/"\s{}()[\],|])+/gu;
   let match: RegExpExecArray | null;
   while ((match = words.exec(source))) {
     if (match[0].startsWith('//')) continue;
-    const range: TextRange = [match.index, match.index + match[0].length];
-    if (tokens.length === limits.tokens) fail('token-limit', 'Too many input tokens', range);
-    tokens.push({ text: match[0], range });
+    const word = match[0];
+    // Keep the complete ink argument, including invalid colours, for its usual diagnostic.
+    if (word.startsWith('#') && tokens[tokens.length - 1]?.text !== 'ink') {
+      commentTail.lastIndex = match.index;
+      commentTail.exec(source);
+      words.lastIndex = commentTail.lastIndex;
+      continue;
+    }
+    // Each fret owns its written digits. The final attack also owns the shared string suffix.
+    if (/^(?:(?:x|0|[1-9]\d?)-)+(?:x|0|[1-9]\d?)\/[1-8]$/.test(word)) {
+      const [frets, string] = word.split('/');
+      let start = match.index;
+      for (const fret of frets.split('-')) {
+        const end = start + fret.length;
+        emit(fret + '/' + string, [start, end === match.index + frets.length ? words.lastIndex : end]);
+        start = end + 1;
+      }
+    } else emit(word, [match.index, words.lastIndex]);
   }
   tokens.push({ text: '', range: [source.length, source.length] });
   return tokens;
 }
 
+/** Map decoded JSON-string offsets back to written UTF-16 positions, including escapes. */
+function aliasTokens(value: string, definition: Token, fail: Fail): Token[] {
+  const offsets = [definition.range[0] + 1];
+  for (let i = 1; i < definition.text.length - 1;) {
+    if (definition.text[i] !== '\\') i++;
+    else i += definition.text[i + 1] === 'u' ? 6 : 2;
+    offsets.push(definition.range[0] + i);
+  }
+  const written = ([start, end]: TextRange): TextRange => [offsets[start], offsets[end]];
+  return tokenize(value, (code, reason, range) => fail(code, reason, written(range)))
+    .map(token => ({ text: token.text, range: written(token.range) }));
+}
+
 const durationPattern = /^:(w|h|q|1|2|4|8|16|32|64|128|256)(\.{0,2})$/;
 const notePattern = /^[A-G](?:bb|##|b|#|n)?[0-9]$/;
 const positionPattern = /^(x|0|[1-9]\d?)\/([1-8])$/;
+const builtInMarks = new Set([
+  'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'line', 'ink', 'label',
+  'tap', 'vibrato', 'brush', 'roll', 'stroke', 'rasgueado', 'symbol', 'write', 'staccato', 'fermata',
+  'articulation', 'lyric', 'bend', 'prebend', 'finger',
+]);
 const drums = new Set(['kick', 'snare', 'hat']);
 function isPartKind(name: string): name is PartKind {
   return name === 'guitar' || name === 'piano' || name === 'drums' || name === 'staff';
@@ -52,10 +90,15 @@ function isPartKind(name: string): name is PartKind {
 
 /** Parse a bounded syntax tree. A pattern may refer only to already completed definitions. */
 export function readScore(source: string, fail: Fail) {
-  const tokens = tokenize(source, fail);
+  let tokens = tokenize(source, fail);
   let cursor = 0, depth = 0;
   const peek = (): string => tokens[Math.min(cursor, tokens.length - 1)].text;
-  const take = () => tokens[Math.min(cursor++, tokens.length - 1)];
+  const take = (): Token => {
+    const token = tokens[cursor];
+    if (!token.text) error('Unexpected end of score', token);
+    cursor++;
+    return token;
+  };
   const error: (message: string, token?: Token) => never = (message, token = tokens[Math.min(cursor, tokens.length - 1)]) => fail('syntax', message, token.range);
   function expect(text: string) {
     if (peek() !== text) error('Expected ' + text);
@@ -75,15 +118,39 @@ export function readScore(source: string, fail: Fail) {
   }
   const patterns = new Map<string, Node[]>();
   const parts: PartSyntax[] = [];
-  let meter: Fraction = [BigInt(4), BigInt(4)], meterRange: TextRange | undefined;
+  const scoreMeters: Record<number, WrittenMeter> = {};
 
   let playback: import('./model.js').ScoreV2['playback'];
   let transpose: number | undefined;
   let measureNumbers: boolean | undefined;
   let layout: import('./model.js').ScoreLayout | undefined;
-  let initialSign: string | undefined;
-  const meterChanges = new Map<number, { value: Fraction; range: TextRange; sign?: string }>();
   let pickup: Fraction | undefined, pickupToken: Token | undefined;
+
+  /** Preserve written grouping and signatures such as cut time alongside their rational length. */
+  function readMeter(token: Token): WrittenMeter {
+    const range = token.range;
+    if (token.text === 'common') return { value: '4/4', sign: 'C', range };
+    if (token.text === 'cut') return { value: '2/2', sign: 'C|', range };
+    const match = /^(\d{1,2}(?:\+\d{1,2})*)\/(1|2|4|8|16|32|64)$/.exec(token.text);
+    if (!match) error('Expected a meter such as 4/4', token);
+    const groups = match[1].split('+').map(Number);
+    const beats = groups.reduce((total, n) => total + n, 0);
+    if (beats > 32 || groups.includes(0)) error('Expected one through 32 beats', token);
+    return { value: beats + '/' + match[2], ...(groups.length > 1 && { sign: token.text }), range };
+  }
+
+  /** A declaration's bar number belongs to the surrounding score or part. */
+  function declareMeter(meters: Record<number, WrittenMeter>, value: Token) {
+    const signature = readMeter(value);
+    let bar = 1;
+    if (peek() === 'at') {
+      take(); const at = take();
+      if (!/^[1-9]\d{0,3}$/.test(at.text) || Number(at.text) < 2) error('Expected a bar number starting at 2', at);
+      bar = Number(at.text);
+    }
+    if (meters[bar]) error('Meter already declared for bar ' + bar, value);
+    meters[bar] = signature;
+  }
 
   function isEventMark(mark: HeadMark | EventMark): mark is EventMark {
     return ['slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
@@ -235,14 +302,47 @@ export function readScore(source: string, fail: Fail) {
     return { kind: mark.text, value: /^\d$/.test(digit.text) ? Number(digit.text) : digit.text, side: side ?? 'left', range: [mark.range[0], tokens[cursor - 1].range[1]] };
   }
 
+  const aliases = new Map<string, HeadMark | EventMark>();
+
+  /** Resolve each definition once. Quoted values contain exactly one built-in mark. */
+  function defineAliases() {
+    do {
+      const name = take();
+      const assignment = /^([a-z][a-z0-9_]*)(=?)$/.exec(name.text);
+      if (!assignment) error('Expected an alias name', name);
+      if (!assignment[2]) expect('=');
+      const key = assignment[1];
+      if (aliases.has(key)) error('Duplicate alias ' + key, name);
+      if (builtInMarks.has(key)) error('Alias would hide the built-in mark ' + key, name);
+      const definition = tokens[cursor];
+      const value = literal();
+      const outer = tokens, next = cursor;
+      tokens = aliasTokens(value, definition, fail);
+      cursor = 0;
+      try {
+        const mark = readMark();
+        if (peek()) error('Expected one complete note mark');
+        aliases.set(key, mark);
+      } finally {
+        tokens = outer;
+        cursor = next;
+      }
+    } while (/^[a-z][a-z0-9_]*=$/.test(peek()) || tokens[cursor + 1]?.text === '=');
+  }
+
+  function namedMark(): HeadMark | EventMark {
+    const mark = aliases.get(peek());
+    return mark ? { ...mark, range: take().range } : readMark();
+  }
+
   /** Brackets belong to the head or whole attack immediately preceding them. */
   function marks(): (HeadMark | EventMark)[] {
     if (peek() !== '[') return [];
     take();
-    const list = [readMark()];
+    const list = [namedMark()];
     while (peek() === ',') {
       take();
-      list.push(readMark());
+      list.push(namedMark());
     }
     expect(']');
     return list;
@@ -305,6 +405,10 @@ export function readScore(source: string, fail: Fail) {
       if (duration) {
         take();
         node = durationNode(duration, token.range);
+      } else if (token.text === 'meter') {
+        take();
+        const signature = readMeter(take());
+        node = { kind: 'meter', signature, range: [token.range[0], signature.range[1]] };
       } else if (token.text === 'use') {
         take();
         const target = tokens[cursor];
@@ -383,8 +487,17 @@ export function readScore(source: string, fail: Fail) {
   }
 
   /** Explicit voices receive independent clocks. An unnamed sequence becomes the main voice. */
-  function voices(): VoiceSyntax[] {
-    if (peek() !== 'voice') return [{ name: 'main', range: tokens[cursor].range, body: sequence(true) }];
+  function voices(allowSketch = false): VoiceSyntax[] {
+    if (peek() !== 'voice') {
+      const range = tokens[cursor].range;
+      const body = sequence(true);
+      // An unmetered guitar sketch may consist solely of attacks and durations.
+      if (allowSketch && body.some(node => node.kind === 'attack') &&
+          body.every(node => ['attack', 'duration', 'rest', 'skip', 'slash'].includes(node.kind))) {
+        return [{ name: 'main', range, body: [{ kind: 'fragment', range: [range[0], body[body.length - 1].range[1]], body }] }];
+      }
+      return [{ name: 'main', range, body }];
+    }
     const result = [];
     const names = new Set();
     while (peek() === 'voice') {
@@ -470,10 +583,12 @@ export function readScore(source: string, fail: Fail) {
       const changes = result.changes ??= {};
       changes[at] = { ...changes[at], ...values };
     }
-    const names = voiceOnly ? ['stem', 'beams', 'beamRests', 'stemlets', 'middleRests', 'tabStems', 'tabDirection'] : ['key', 'clef', 'view', 'capo', 'tuning', 'ink', 'stem', 'beams', 'beamRests', 'tabStems', 'stemlets', 'middleRests', 'tabDirection', 'accidentals', 'display', 'groupBeats'];
+    const names = voiceOnly ? ['stem', 'beams', 'beamRests', 'stemlets', 'middleRests', 'tabStems', 'tabDirection'] : ['meter', 'key', 'clef', 'view', 'capo', 'tuning', 'ink', 'stem', 'beams', 'beamRests', 'tabStems', 'stemlets', 'middleRests', 'tabDirection', 'accidentals', 'display', 'groupBeats'];
     while (names.includes(peek())) {
       const option = take(), value = take();
-      if (option.text === 'accidentals') {
+      if (option.text === 'meter') {
+        declareMeter(result.meters ??= {}, value);
+      } else if (option.text === 'accidentals') {
         if (value.text !== 'standard' && value.text !== 'cautionary') error('Expected standard or cautionary', value);
         result.cautionary = value.text === 'cautionary';
       } else if (option.text === 'display') {
@@ -541,31 +656,7 @@ export function readScore(source: string, fail: Fail) {
     const token = take();
     if (token.text === 'meter') {
       if (parts.length) error('Declare the shared meters before the first part', token);
-      const value = take();
-      let sign: string | undefined;
-      let valuePair: Fraction;
-      if (value.text === 'common' || value.text === 'cut') {
-        sign = value.text === 'common' ? 'C' : 'C|';
-        valuePair = value.text === 'common' ? [BigInt(4), BigInt(4)] : [BigInt(2), BigInt(2)];
-      } else {
-        const match = /^(\d{1,2}(?:\+\d{1,2})*)\/(1|2|4|8|16|32|64)$/.exec(value.text);
-        if (!match) error('Expected a meter such as 4/4', value);
-        const groups = match[1].split('+').map(Number);
-        const beats = groups.reduce((total, n) => total + n, 0);
-        if (beats > 32 || groups.includes(0)) error('Expected one through 32 beats', value);
-        valuePair = [BigInt(beats), BigInt(match[2])];
-        if (groups.length > 1) sign = value.text;
-      }
-      if (peek() === 'at') {
-        take(); const n = take();
-        if (!/^[1-9]\d{0,3}$/.test(n.text) || Number(n.text) < 2 || meterChanges.has(Number(n.text))) error('Expected a unique bar number starting at 2', n);
-        meterChanges.set(Number(n.text), { value: valuePair, range: value.range, sign });
-      } else {
-        if (meterRange) error('Declare one initial meter', token);
-        meter = valuePair;
-        initialSign = sign;
-        meterRange = value.range;
-      }
+      declareMeter(scoreMeters, take());
     } else if (token.text === 'pickup') {
       if (pickup || parts.length) error('Declare one pickup before the first part', token);
       pickupToken = take();
@@ -617,6 +708,9 @@ export function readScore(source: string, fail: Fail) {
       const value = take();
       if (value.text !== 'off' && value.text !== 'on') error('Expected on or off', value);
       measureNumbers = value.text === 'on';
+    } else if (token.text === 'alias') {
+      if (parts.length) error('Declare aliases before the first part', token);
+      defineAliases();
     } else if (token.text === 'pattern') {
       const nameToken = tokens[cursor];
       const name = identifier();
@@ -635,11 +729,19 @@ export function readScore(source: string, fail: Fail) {
           }
           lanes = readLanes();
         });
-      } else staves.push({ name: 'main', range: token.range, voices: block(() => { options = settings(token.text as PartKind); const music = voices(); lanes = readLanes(); return music; }) });
+      } else {
+        const music = block(() => {
+          options = settings(token.text as PartKind);
+          const unmeteredGuitar = token.text === 'guitar' && !options.meters && !Object.keys(scoreMeters).length && !pickup;
+          const partsVoices = voices(unmeteredGuitar);
+          lanes = readLanes();
+          return partsVoices;
+        });
+        staves.push({ name: 'main', range: token.range, voices: music });
+      }
       parts.push({ ...options, ...(lanes?.length && { lanes }), kind: token.text, range: token.range, staves });
-    } else error('Expected meter, pattern, guitar, staff, drums, or piano', token);
+    } else error('Expected a score setting, alias, pattern or part', token);
   }
   if (!parts.length) error('Expected a part');
-  if (pickup && pickup[0] * meter[1] >= meter[0] * pickup[1]) error('Pickup must be shorter than the meter', pickupToken);
-  return { patterns, parts, meter, meterRange, initialSign, pickup, meterChanges, playback, measureNumbers, layout, transpose };
+  return { patterns, parts, scoreMeters, pickup, pickupRange: pickupToken?.range, playback, measureNumbers, layout, transpose };
 }

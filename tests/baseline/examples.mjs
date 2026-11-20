@@ -80,9 +80,11 @@ export async function runExamples(browser, dist, verifyInk) {
     for (const [path, selector, original] of pages) {
       const expectations = original.map((text, i) => ({ text, number: String(i + 1) }));
       // The old chord editor combined notation and bent tablature. Each example now has its own view.
-      if (verifyInk && path === 'doc/tutorial.html') expectations.splice(9, 0, {
-        text: 'Hold the chord while two strings bend independently.', number: '9b',
-      });
+      if (verifyInk && path === 'doc/tutorial.html') {
+        expectations.splice(9, 0, { text: 'Hold the chord while two strings bend independently.', number: '9b' });
+        const empty = expectations.shift();
+        expectations.splice(2, 0, { text: 'Read the same four attacks in tab view.', number: '3b' }, empty);
+      }
       const count = expectations.length;
       await page.goto('https://examples.test/' + path);
       await page.locator(selector).nth(count - 1).waitFor({ state: 'attached' });
@@ -96,7 +98,7 @@ export async function runExamples(browser, dist, verifyInk) {
           }).map(text => text.textContent) };
         });
         assert.equal(labels.width, 650);
-        assert.deepEqual(labels.clipped, [], 'Step 11 articulation labels must fit the printed staff');
+        assert.deepEqual(labels.clipped, [], 'Articulation labels must fit the printed staff');
       }
       const scores = await page.locator(selector).evaluateAll(surfaces => surfaces.map(surface => {
         const host = surface.closest('.vex-tabdiv, .vextab-auto');

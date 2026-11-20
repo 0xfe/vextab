@@ -1,3 +1,5 @@
+# Bend one whole tone, hold it, then release.
+alias fullbend="bend +2 rise=1/2 hold=3/4 release=1"
 measureNumbers on
 meter 4/4
 guitar {
@@ -7,7 +9,7 @@ guitar {
       mark "A" :q 3/2 2/3 :h (3/2 2/3) |
       :q 5/2 7/3 :h (5/2 7/3) |
       :h (7/3[tie] 5/2[tie]) :q 3/2 2/3 |
-      :h (5/2 7/3[bend +2 rise=1/2 hold=3/4 release=1/1]) :q 3/2 2/3 |
+      :h (5/2 7/3[fullbend]) :q 3/2 2/3 |
       mark "B" :q 1/2 x/3 :h 2/3 |
       :q 3/2 1/2 :h 2/3 |
     } ending 1 {

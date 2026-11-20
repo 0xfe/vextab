@@ -61,15 +61,18 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     return value;
   }
   const tuningName = part.tuning ?? 'standard';
+  const opening = part.staves[0].voices[0].measures[0];
+  const initialMeter = opening.meter ?? score.meter;
+  const initialMeterRange = opening.meterRange ?? score.meterRange;
   const state: StaffState = {
-    declaration, color: part.ink && part.ink !== 'default' ? ink(part.ink, declaration) : undefined, timeRange: locate(score.meterRange ?? part.range), meter: score.meter, showTime: !!score.meterRange,
+    declaration, color: part.ink && part.ink !== 'default' ? ink(part.ink, declaration) : undefined, timeRange: locate(initialMeterRange ?? part.range), meter: initialMeter, showTime: !!initialMeterRange,
     tab: part.kind === 'guitar' && part.view !== 'notation' && !hasUnassignedPitch, notation: part.view !== 'tab', piano: part.kind === 'piano',
     tuning: tuningName, strings: (Tuning.names[tuningName] ?? tuningName).split(',').length, capo, key: part.key ?? 'C',
     hideClef: part.clef === 'none', clef: part.kind === 'drums' ? 'percussion' : part.clef === 'none' ? 'treble' : part.clef ?? 'treble', pickup: score.pickup, fragment: false,
   };
   const measures: Measure[] = [];
   const projected: ParsedScore = { source: score.source, measures, ties: [], spans: [], playback: score.playback, layout: score.layout, measureNumbers: score.measureNumbers ?? false };
-  const fullBar = new Fraction().parse(score.meter).simplify().toString();
+  const fullBar = new Fraction().parse(initialMeter).simplify().toString();
   const intervals = new Map<string, Interval>();
   function intervalFor(amount: number): Interval | undefined {
     if (!amount || part.kind === 'drums') return;
@@ -264,7 +267,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       if (change?.ink) state.color = change.ink === 'default' ? undefined : ink(change.ink, range);
       if (change?.displayMeter !== undefined) displayMeter = change.displayMeter;
       const span = bar.span ?? (bar.number === 1 && score.pickup ? score.pickup : fullBar);
-      const meter = bar.meter ?? score.meter;
+      const meter = bar.meter ?? initialMeter;
       const value: MeasureVoice = { declaration: locate(voice.range), hand, span, events: voice.events.slice(bar.start, bar.end).map(voiceAttack),
         tuplets: [], stem: engraving.stem, beams: engraving.beam ?? true, beamRests: engraving.beamRests ?? true, beatGroups: engraving.beatGroups, stemlets: engraving.stemlets ?? false, middleRests: engraving.middleRests ?? false, tabStems: engraving.tabStems ?? true,
         rehearsal: bar.rehearsal, opening: bar.opening ? { type: bar.opening, range } : undefined, closing: bar.closing ? { type: bar.closing, range } : undefined, tabDirection: engraving.tabDirection === 'down' ? -1 : 1
@@ -272,7 +275,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       const prior = measures[bar.number - 2]?.state;
       const changedMeter = prior?.meter !== meter || prior?.meterSign !== bar.meterSign;
       const m = measures[bar.number - 1] ??= {
-        number: bar.number, range, state: { ...state, fragment: !!bar.fragment, meter, meterSign: bar.meterSign, showTime: displayMeter !== false && (bar.number === 1 ? displayMeter || state.showTime : changedMeter || change?.displayMeter === true) },
+        number: bar.number, range, state: { ...state, fragment: !!bar.fragment, meter, meterSign: bar.meterSign, timeRange: bar.meterRange ? locate(bar.meterRange) : state.timeRange, showTime: displayMeter !== false && (bar.number === 1 ? displayMeter || state.showTime : changedMeter || change?.displayMeter === true) },
         span, newRow: !!bar.newRow, voices: []
       };
       m.newRow ||= !!bar.newRow;

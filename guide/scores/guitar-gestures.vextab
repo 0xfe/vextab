@@ -1,4 +1,5 @@
+alias h="hammer" p="pull" v="vibrato wide"
 guitar { tabStems off fragment {
-  :8 5/3 7/3[hammer] 5/3[pull] 7/4 5/4[slide]
-  :q 3/5[vibrato wide] x/3[write B3]
+  :8 5/3 7/3[h] 5/3[p] 7/4 5/4[slide]
+  :q 3/5[v] x/3[write B3]
 } }

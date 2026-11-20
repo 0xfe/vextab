@@ -7,7 +7,7 @@ import { PlaybackAnimation, anticipation } from './playback/animation';
 import { artistGeometry, scoreSurfaces, type Geometry } from './playback/geometry';
 import { PlayerOverlay } from './player-overlay';
 import { artistPerformance, scorePerformance } from './playback/performance';
-import { PlaybackTransport, type PlaybackPlugin } from './playback/transport';
+import { PlaybackTransport, type PlaybackPlugin, type Performance } from './playback/transport';
 import { createWebAudioPlayback } from './playback/web-audio';
 import { legacyMidiPlayback } from './playback/legacy-midi';
 import Vex from './vexflow';
@@ -48,7 +48,8 @@ export default class Player {
   private generation = 0;
   private performanceTempo = 120;
   private geometry?: () => Geometry;
-  private animation?: PlaybackAnimation;
+  private companions: { overlay: PlayerOverlay; read: () => Geometry; score: ParsedScore }[] = [];
+  private animations: PlaybackAnimation[] = [];
   private mark?: (id: string) => void;
   private readonly options: PlayerOptions;
 
@@ -101,7 +102,13 @@ export default class Player {
   reset(): void { this.artist?.attachPlayer(this); this.stop(); }
 
   /** Remove the whole overlay on redraw or when the source disables playback. */
-  removeControls(): void { this.stop(); this.overlay?.remove(); this.overlay = undefined; }
+  removeControls(): void {
+    this.stop();
+    this.overlay?.remove();
+    this.overlay = undefined;
+    for (const view of this.companions) view.overlay.remove();
+    this.companions = [];
+  }
 
   dispose(): void {
     this.removeControls();
@@ -110,8 +117,9 @@ export default class Player {
     if (this.artist?.player === this) this.artist.attachPlayer(null);
   }
 
-  /** An embed may provide its SVG layout and a source-aware cursor callback. */
-  render(surface?: HTMLCanvasElement | SVGSVGElement, mark?: (id: string) => void): void {
+  /** One transport drives all registered part surfaces. The first hosts the controls. */
+  render(surface?: HTMLCanvasElement | SVGSVGElement, mark?: (id: string) => void,
+    additional: readonly (HTMLCanvasElement | SVGSVGElement)[] = []): void {
     this.removeControls();
     this.mark = mark;
     const layout = surface && scoreSurfaces.get(surface);
@@ -119,9 +127,16 @@ export default class Player {
     const ctx = this.artist?.getPlayerData().context;
     const element = surface ?? ctx?.canvas ?? ctx?.svg;
     if (!element && !this.options.controls) throw new Error('Render the score before mounting playback controls');
-    this.overlay = new PlayerOverlay(element, this.options.overlay_class, this.options.show_controls,
-      () => { void this.play().catch(() => { /* play displays the error on this overlay. */ }); }, () => this.stop(),
-      this.options.tempo, bpm => this.setTempo(bpm), this.options.controls);
+    const overlay = (target: HTMLCanvasElement | SVGSVGElement, controls: boolean, toolbar?: HTMLElement) =>
+      new PlayerOverlay(target, this.options.overlay_class, controls,
+        () => { void this.play().catch(() => { /* play displays the error on the main overlay. */ }); }, () => this.stop(),
+        this.options.tempo, bpm => this.setTempo(bpm), toolbar);
+    this.overlay = overlay(element, this.options.show_controls, this.options.controls);
+    const parts = new Set(this.ensemble);
+    for (const target of additional) {
+      const layout = scoreSurfaces.get(target);
+      if (layout && parts.has(layout.score)) this.companions.push({ ...layout, overlay: overlay(target, false) });
+    }
   }
 
   /** Move the cursor using score coordinates, including reflowed SVG note positions. */
@@ -133,12 +148,15 @@ export default class Player {
     const generation = ++this.generation;
     const { tempo, instrument, playback, soundfont_url } = this.options;
     this.performanceTempo = tempo;
-    const music = this.score ? scorePerformance(this.score, tempo, this.mark)
+    const first = this.score ? scorePerformance(this.score, tempo, this.mark)
       : artistPerformance(this.artist, tempo);
-    if (this.ensemble) {
-      const parts = this.ensemble.slice(1).map(part => scorePerformance(part, tempo, this.mark));
-      music.events = music.events.concat(...parts.map(p => p.events)).sort((a, b) => a.time - b.time);
-    }
+    const performances = new Map<ParsedScore, Performance>();
+    for (const score of this.ensemble?.slice(1) ?? []) performances.set(score, scorePerformance(score, tempo, this.mark));
+    const parts = [first, ...performances.values()];
+    const music = parts.length === 1 ? first : {
+      events: parts.flatMap(p => p.events).sort((a,b) => a.time - b.time),
+      duration: Math.max(...parts.map(p => p.duration)),
+    };
     const plugin = playback ?? (!this.artist || typeof MIDI === 'undefined' ? createWebAudioPlayback()
       : legacyMidiPlayback(String(instrument), soundfont_url, Player.INSTRUMENTS_LOADED));
     if (this.overlay && !music.events.some(event => event.notes.length)) {
@@ -149,12 +167,16 @@ export default class Player {
     this.overlay?.setStatus('Loading instruments...');
     try {
       const geometry = this.geometry?.() ?? (this.artist && this.overlay ? artistGeometry(this.artist) : undefined);
-      if (geometry?.size) this.animation = new PlaybackAnimation(this.overlay?.surface, music, geometry);
+      if (geometry?.size) this.animations.push(new PlaybackAnimation(this.overlay?.surface, first, geometry));
+      for (const view of this.companions) {
+        const part = performances.get(view.score);
+        if (part) this.animations.push(new PlaybackAnimation(view.overlay.surface, part, view.read()));
+      }
       await this.transport.play(plugin, programNumber(instrument), music, elapsed => {
-        this.animation?.start(elapsed);
+        for (const animation of this.animations) animation.start(elapsed);
         this.overlay?.setStatus('');
         this.overlay?.setPlaying(true);
-      }, this.animation ? anticipation : 0);
+      }, this.animations.length ? anticipation : 0);
     } catch (error) {
       if (generation === this.generation) {
         this.overlay?.setPlaying(false);
@@ -163,19 +185,22 @@ export default class Player {
       throw error;
     } finally {
       if (generation === this.generation) {
-        this.animation?.stop();
-        this.animation = undefined;
+        this.stopAnimations();
         this.overlay?.setPlaying(false);
       }
     }
+  }
+
+  private stopAnimations(): void {
+    for (const animation of this.animations) animation.stop();
+    this.animations = [];
   }
 
   /** Stop pending loads, sounding notes, and cursor updates for this player. */
   stop(): void {
     this.generation++;
     this.transport.stop();
-    this.animation?.stop();
-    this.animation = undefined;
+    this.stopAnimations();
     this.overlay?.setStatus('');
     this.overlay?.setPlaying(false);
   }

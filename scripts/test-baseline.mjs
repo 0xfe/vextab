@@ -79,7 +79,12 @@ try {
   const release = await examine(browser, releaseDist, 'release', '5.3.0');
   const candidate = await examine(browser, candidateDist, 'candidate', manifest.dependencies.vexflow);
   const observable = ({ id, expectation, backend, hasInk, error }) => ({ id, expectation, backend, hasInk, error });
-  assert.deepEqual(candidate.examples.filter(e => e.id !== 'doc/tutorial.html example 9b').map(observable), release.examples.map(observable), 'Example surfaces or smoke results changed');
+  // The current tutorial introduces the four notes before the empty staff. Match by stable example ID.
+  for (const original of release.examples) {
+    const migrated = candidate.examples.find(example => example.id === original.id);
+    assert.ok(migrated, original.id);
+    assert.deepEqual(observable(migrated), observable(original), original.id);
+  }
   const environment = { platform: platform(), arch: arch(), node: process.version, chrome: browser.version() };
   const report = { environment, releaseURL, digest, release, candidate };
   await writeFile(join(output, 'results.json'), JSON.stringify(report, null, 2) + '\n');

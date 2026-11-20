@@ -16,6 +16,16 @@ const score = parseScore('meter 1/4 staff { C4 | }', { language: 2 });</pre></ar
 <section id="parsing">
   <h2>Parsing and the score model</h2>
   <article id="parse-score"><h3>parseScore(source, { language: 2 })</h3><p>Parse a score once, then pass it to the renderer, printer or player. The returned ScoreV2 retains the original source and the expanded music. Use <code>fragment { … }</code> for an incomplete phrase.</p></article>
+  <article id="note-aliases"><h3>Note-mark aliases and comments</h3>
+    <p>Put <code>alias v="vibrato" sd="stroke down"</code> above a part. Now <code>5/3[sd]</code> has a downstroke and <code>2/2[v]</code> has vibrato. A name expands to one complete built-in mark. Use it in any voice or part in the score.</p>
+    <p>Use <code>#</code> for a line of commentary or after the music. A sharp in <code>F#4</code>, a hex colour such as <code>ink #abc</code>, and text inside quotes keep their musical meaning. <a href="#tutorial/strokes-and-vibrato">Play the example →</a></p>
+  </article>
+  <article id="string-runs"><h3>Same-string fret runs</h3>
+    <p><code>4-5-6/3</code> plays frets four, five and six on string three. Each attack uses the current duration. In <code>4-5-6/3[vibrato]</code> the vibrato belongs to fret six.</p>
+  </article>
+  <article id="part-meters"><h3>Meter by part</h3>
+    <p>Declare <code>meter 3/4</code> inside a staff or guitar part. Change it immediately after a barline, or declare <code>meter 6/8 at 2</code> in the part header. A meter before all parts supplies their default. <a href="#features/measured-music">Compare two parts with different meters →</a></p>
+  </article>
   <article id="transpose"><h3>transpose</h3>
     <p>Write a signed semitone offset before the first stave. Both the printed signature and the sounding notes move. Guitar notes stay on their original strings. Change the source fingering if a downward shift would require a negative fret.</p>
     <pre>transpose +2

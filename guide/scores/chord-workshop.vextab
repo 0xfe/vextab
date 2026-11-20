@@ -1,4 +1,5 @@
+alias f="finger 2 right"
 meter 2/4
 guitar { key A tabStems off
-  :q (2/2[finger 2 right] 0/3 2/4 0/5) (0/5 2/4 0/3 2/2[finger 2 right]) |
+  :q (2/2[f] 0/3 2/4 0/5) (0/5 2/4 0/3 2/2[f]) |
 }

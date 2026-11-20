@@ -1,8 +1,8 @@
-// Compile named parts and finite patterns into independent voice timelines on a shared measure grid.
+// Compile finite phrases on a separate measure grid for each instrument.
 /// <reference lib="es2020.bigint" />
 import { limits, readScore, type DiagnosticCode, type Fail, type Fraction, type Node, type TimedNode,
   type PartSyntax, type StaffSyntax, type VoiceSyntax } from './reader.mts';
-import type { ExpansionFrame, Head, HeadRef, ScoreEvent, ScoreV2, ScoreVoice, TextRange } from './model.js';
+import type { ExpansionFrame, Head, HeadRef, ScoreEvent, ScoreV2, ScoreVoice, TextRange, WrittenMeter } from './model.js';
 export { limits };
 
 /** V2 diagnostics keep selection offsets and the invocation stack that led to a bad event. */
@@ -39,6 +39,18 @@ function rational(n: bigint, d: bigint, fail: Fail, range: TextRange, trace: Exp
 
 const fractionText = ([n, d]: Fraction) => n + '/' + d;
 
+/** Each instrument owns its meter track. Voices and text inside that instrument share its barlines. */
+interface PartClock {
+  bars: string[];
+  voiceLength?: number;
+  meters: Record<number, WrittenMeter & { trace?: ExpansionFrame[] }>;
+}
+
+function asFraction(value: string): Fraction {
+  const [n, d] = value.split('/');
+  return [BigInt(n), BigInt(d)];
+}
+
 /** Resolve a hammer to the head on the same physical string, even in a reordered chord. */
 function hammerSource(head: Head, previous: ScoreEvent | undefined, kind: 'hammer' | 'pull' | 'slide'): HeadRef | undefined {
   if (!previous || !('fret' in head) || typeof head.fret !== 'number') return;
@@ -51,58 +63,40 @@ function hammerSource(head: Head, previous: ScoreEvent | undefined, kind: 'hamme
 /** Every invocation has fresh budgets and IDs. No parsing or expansion state survives an edit. */
 export function compile(source: string): ScoreV2 {
   const fail: Fail = (code, reason, range, trace = []) => { throw new ScoreV2Error(code, reason, source, range, trace); };
-  const { patterns, parts, meter, meterRange, initialSign, pickup, meterChanges, playback, measureNumbers, layout, transpose: scoreTranspose } = readScore(source, fail);
-  const meterText = fractionText(meter);
-  const firstLength = pickup && fractionText(rational(...pickup, fail, [0, 0], []));
-  const grid: string[] = [];
+  const { patterns, parts, scoreMeters, pickup, pickupRange, playback, measureNumbers, layout, transpose: scoreTranspose } = readScore(source, fail);
+  const meterText = scoreMeters[1]?.value ?? '4/4';
+  const firstLength = pickup && fractionText(rational(...pickup, fail, pickupRange, []));
   const quarter: Fraction = [BigInt(1), BigInt(4)];
   const zero: Fraction = [BigInt(0), BigInt(1)];
-  let steps = 0, eventCount = 0, measureCount: number | undefined;
+  let steps = 0, eventCount = 0;
 
   function spend(range: TextRange, trace: ExpansionFrame[]) {
     if (++steps > limits.steps) fail('work-limit', 'Phrase expansion exceeded its work budget', range, trace);
   }
 
   /** One voice owns one clock. Patterns and tuplets temporarily change its rhythmic environment. */
-  function lower(part: PartSyntax, staff: StaffSyntax, voice: VoiceSyntax, partIndex: number, textLane = false): ScoreVoice {
+  function lower(part: PartSyntax, staff: StaffSyntax, voice: VoiceSyntax, partIndex: number, clock: PartClock): ScoreVoice {
     const result: ScoreVoice = { name: voice.name, ...(voice.settings && { settings: voice.settings }), range: voice.range, events: [], measures: [], spans: [] };
     const { events, measures, spans } = result;
     let bar = 1, firstEvent = 0, beat = zero;
 
-    let currentMeter = meter, fragment = false, transpose = 0, soundingOctaves = 0, newRow = false;
-    let meterSign = initialSign;
+    let fragment = false, transpose = 0, soundingOctaves = 0, newRow = false;
     let rehearsal: string | undefined, opening: string | undefined;
 
-    /** Text follows the established musical grid, including partial bars with no meter sign. */
-    function expectedLength(): Fraction {
-      if (textLane && grid[bar - 1]) {
-        const [n, d] = grid[bar - 1].split('/');
-        return [BigInt(n), BigInt(d)];
-      }
-      return bar === 1 && pickup ? pickup : currentMeter;
-    }
-
-    /** A single grid governs every instrument, including pickups and deliberately short excerpts. */
+    /** A bar's written duration stays exact until every voice has supplied its meter changes. */
     function finishBar(range: TextRange, trace: ExpansionFrame[], closing?: string) {
       const span = fractionText(beat);
-      const expected = expectedLength();
-      if (!fragment && beat[0] * expected[1] !== expected[0] * beat[1])
-        fail('bar-length', 'Bar ' + bar + ' contains ' + span + ' of a whole note, expected ' + fractionText(expected), range, trace);
-      if (grid[bar - 1] !== undefined && grid[bar - 1] !== span)
+      if (clock.bars[bar - 1] !== undefined && clock.bars[bar - 1] !== span)
         fail('alignment', 'Voices disagree on the length of bar ' + bar, range, trace);
-      grid[bar - 1] = span;
-      measures.push({
-        number: bar, start: firstEvent, end: events.length, barlineRange: range, trace,
-        span, meter: fractionText(currentMeter), meterSign, fragment, newRow, rehearsal, closing, opening
-      });
+      clock.bars[bar - 1] = span;
+      measures.push({ number: bar, start: firstEvent, end: events.length, barlineRange: range, trace,
+        span, fragment, newRow, rehearsal, closing, opening });
       opening = closing === 'repeat-both' ? 'repeat-begin' : undefined;
       firstEvent = events.length;
       bar++;
       beat = zero;
       rehearsal = undefined;
       newRow = false;
-      const change = meterChanges.get(bar);
-      if (change) { currentMeter = change.value; meterSign = change.sign; }
     }
 
     /** Advance this voice by one timed event and resolve references to earlier heads. */
@@ -128,8 +122,6 @@ export function compile(source: string): ScoreV2 {
         kind: node.kind, ...(transpose && { transpose }), ...(soundingOctaves && { soundingOctaves }), heads, marks: node.marks ?? [], range: node.range, rhythmRange, trace
       });
       beat = rational(beat[0] * length[1] + length[0] * beat[1], beat[1] * length[1], fail, node.range, trace);
-      const limit = expectedLength();
-      if (!fragment && beat[0] * limit[1] > limit[0] * beat[1]) fail('bar-length', 'Attack crosses the end of bar ' + bar, node.range, trace);
     }
 
     function walk(body: Node[], duration: Fraction, rhythmRange: TextRange | undefined, scale: Fraction, trace: ExpansionFrame[]) {
@@ -137,6 +129,14 @@ export function compile(source: string): ScoreV2 {
       for (const node of body) {
         spend(node.range, trace);
         switch (node.kind) {
+          case 'meter': {
+            if (beat[0]) fail('alignment', 'Change meter at the beginning of a bar', node.range, trace);
+            const prior = clock.meters[bar], next = node.signature;
+            if (prior && (prior.value !== next.value || prior.sign !== next.sign))
+              fail('alignment', 'Conflicting meters for bar ' + bar, next.range, trace);
+            clock.meters[bar] ??= { ...next, ...(trace.length && { trace }) };
+            break;
+          }
           case 'duration':
             duration = node.value;
             rhythmRange = node.range;
@@ -145,8 +145,8 @@ export function compile(source: string): ScoreV2 {
             finishBar(node.range, trace, node.closing);
             break;
           case 'textBoundary': {
-            const unit = expectedLength();
-            if (node.boundary.edge === 'start' ? beat[0] !== zero[0] : beat[0] * unit[1] !== unit[0] * beat[1])
+            const target = node.boundary.edge === 'start' ? '0/1' : clock.bars[bar - 1];
+            if (fractionText(beat) !== target)
               fail('alignment', 'Put a text boundary at the indicated bar edge', node.range, trace);
             (result.boundaries ??= []).push({ ...node.boundary, bar });
             break;
@@ -239,27 +239,75 @@ export function compile(source: string): ScoreV2 {
       fail('bar-length', 'End the final measure with |', last.range, last.trace);
     }
     if (!measures.length) fail('bar-length', 'Expected at least one measure', voice.range);
-    if (measureCount !== undefined && measureCount !== measures.length) fail('alignment', 'Every voice must cover the same number of bars', voice.range);
-    measureCount = measures.length;
+    if (clock.voiceLength !== undefined && clock.voiceLength !== measures.length) fail('alignment', 'Every voice in a part must cover the same number of bars', voice.range);
+    clock.voiceLength = measures.length;
     return result;
   }
+
+  /** Resolve changes after collecting every voice, so a lower voice can author the shared signature. */
+  function applyMeters(clock: PartClock, voices: ScoreVoice[], text: ScoreVoice[]) {
+    let current: WrittenMeter | undefined, local = false;
+    const allVoices = [...voices, ...text];
+    for (let i = 0; i < clock.bars.length; i++) {
+      const bar = i + 1;
+      if (clock.meters[bar]) { current = clock.meters[bar]; local = true; }
+      else if (!local && scoreMeters[bar]) current = scoreMeters[bar];
+      const value = current?.value ?? '4/4';
+      const meter = asFraction(value);
+      if (bar === 1 && pickup && pickup[0] * meter[1] >= meter[0] * pickup[1])
+        fail('syntax', 'Pickup must be shorter than the opening meter ' + value, pickupRange);
+      const expected = bar === 1 && pickup ? pickup : meter;
+      const [n, d] = asFraction(clock.bars[i]);
+      if (n * expected[1] !== expected[0] * d) {
+        const measured = voices.find(voice => !voice.measures[i].fragment);
+        if (measured) {
+          const m = measured.measures[i];
+          if (n * expected[1] > expected[0] * d) {
+            // Recover the first overflowing attack, including its original expansion trail.
+            for (let index = m.start; index < m.end; index++) {
+              const e = measured.events[index], [an, ad] = asFraction(e.at), [dn, dd] = asFraction(e.duration);
+              if ((an * dd + dn * ad) * expected[1] > expected[0] * ad * dd)
+                fail('bar-length', 'Attack crosses the end of bar ' + bar, e.range, e.trace);
+            }
+          }
+          fail('bar-length', 'Bar ' + bar + ' contains ' + m.span + ' of a whole note, expected ' + fractionText(expected), m.barlineRange, m.trace);
+        }
+      }
+      for (const voice of allVoices) {
+        const m = voice.measures[i];
+        m.meter = value;
+        m.meterSign = current?.sign;
+        m.meterRange = current?.range;
+      }
+    }
+  }
+
   const compiled = parts.map((part, index) => {
     const { lanes, ...instrument } = part;
+    const clock: PartClock = { bars: [], meters: { ...part.meters } };
     const staves = part.staves.map(staff => ({
-      name: staff.name, range: staff.range, voices: staff.voices.map(voice => lower(part, staff, voice, index)),
+      name: staff.name, range: staff.range, voices: staff.voices.map(voice => lower(part, staff, voice, index, clock)),
     }));
     const text = lanes?.map(lane => ({
       name: lane.voice.name, style: lane.style,
-      voice: lower(part, { name: 'main', range: part.range, voices: [] }, { ...lane.voice, name: 'text-' + lane.voice.name }, index, true)
+      voice: lower(part, { name: 'main', range: part.range, voices: [] }, { ...lane.voice, name: 'text-' + lane.voice.name }, index, clock)
     }));
-    return { ...instrument, staves, ...(text && { text }) };
+    const measureCount = clock.bars.length;
+    for (const [n, change] of Object.entries(clock.meters)) {
+      if (Number(n) > measureCount) fail('alignment', 'Meter change lies beyond this part', change.range, change.trace);
+    }
+    for (const n of Object.keys(part.changes ?? {})) {
+      if (Number(n) > measureCount) fail('alignment', 'Part setting change lies beyond the score', part.range);
+    }
+    for (const n of Object.keys(part.keys ?? {})) {
+      if (Number(n) > measureCount) fail('alignment', 'Key change lies beyond the score', part.range);
+    }
+    applyMeters(clock, staves.flatMap(staff => staff.voices), text?.map(lane => lane.voice) ?? []);
+    return { ...instrument, ...(Object.keys(clock.meters).length && { meters: clock.meters }), measureCount, staves, ...(text && { text }) };
   });
-  for (const [number, change] of meterChanges) if (number > grid.length) fail('alignment', 'Meter change lies beyond the score', change.range);
-  for (const part of parts) for (const n of Object.keys(part.changes ?? {})) {
-    if (Number(n) > grid.length) fail('alignment', 'Part setting change lies beyond the score', part.range);
+  const measureCount = Math.max(...compiled.map(part => part.measureCount));
+  for (const [n, change] of Object.entries(scoreMeters)) {
+    if (Number(n) > measureCount) fail('alignment', 'Meter change lies beyond the score', change.range);
   }
-  for (const part of parts) for (const n of Object.keys(part.keys ?? {})) {
-    if (Number(n) > grid.length) fail('alignment', 'Key change lies beyond the score', part.range);
-  }
-  return { language: 2, ...(scoreTranspose && { transpose: scoreTranspose }), ...(layout && { layout }), ...(playback && { playback }), ...(measureNumbers !== undefined && { measureNumbers }), source, meter: meterText, meterRange, ...(pickup && { pickup: firstLength }), measureCount: compiled[0].staves[0].voices[0].measures.length, parts: compiled };
+  return { language: 2, ...(scoreTranspose && { transpose: scoreTranspose }), ...(layout && { layout }), ...(playback && { playback }), ...(measureNumbers !== undefined && { measureNumbers }), source, meter: meterText, meterRange: scoreMeters[1]?.range, ...(pickup && { pickup: firstLength }), measureCount, parts: compiled };
 }

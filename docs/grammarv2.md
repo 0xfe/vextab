@@ -8,7 +8,7 @@ A first guitar score fits on one line. Play four quarter notes on the high E str
 guitar { 0/1 2/1 3/1 2/1 | }
 ```
 
-This is executable prototype syntax. The comparable current example starts with `tabstave notation=true`, then `notes :q 0-2-3-2/1 |`. Writing the string on each note costs a few characters inside the phrase. It makes moving a single note to another string a local edit. The braces give the outer score and reusable phrases the same shape. [Existing first-fret lesson](../guide/scores/first-fret.vextab)
+This is executable prototype syntax. The comparable current example starts with `tabstave notation=true`, then `notes :q 0-2-3-2/1 |`. In v2, the compact spelling is `guitar { 0-2-3-2/1 | }`. Spell out a fret/string pair to move one note to a different string. The braces give the outer score and reusable phrases the same shape. [Existing first-fret lesson](../guide/scores/first-fret.vextab)
 
 ## What to try
 
@@ -41,7 +41,7 @@ Fences labelled `vextab2` in this document are executable and exercised by the t
 
 Use `source.slice(...event.range)` to find an authored attack. Heads, marks, barlines and explicit duration tokens also have source ranges. Expanded copies have distinct IDs. Their `trace` lists enclosing invocations from the outside in. The same input and language produce the same IDs; keep the source revision with any selection.
 
-Catch `ScoreV2Error` for v2 syntax, time, alignment or resource errors. Its `range` contains half-open UTF-16 offsets ready for `setSelectionRange`. Its `line` and `column` start at one, and its `trace` points back to a failing pattern invocation. Pass the same parsed score to the screen, printer and player. Rendering selects the first instrument by default. Set `partIndex` to display a different instrument. The player schedules all instruments together unless you select one.
+Catch `ScoreV2Error` for v2 syntax, time, alignment or resource errors. Its `range` contains half-open UTF-16 offsets ready for `setSelectionRange`. Its `line` and `column` start at one, and its `trace` points back to a failing pattern invocation. Pass the same parsed score to the screen, printer and player. An editable `Div` displays each instrument in source order. A direct `renderScore` call draws one instrument and accepts `partIndex` to select it. The player schedules all instruments together unless you select one.
 
 ```js
 const score = parseScore('piano { upper { :w G4 | } lower { :w C3 | } }', { language: 2 });
@@ -127,12 +127,17 @@ guitar {
 
 ## Reading and writing the core
 
-Whitespace and newlines separate words. Braces delimit structure, parentheses group simultaneous heads, and square brackets attach marks. `//` starts a comment through the end of the line. Use signed integers for semitones, positive integer ratios for musical time, and quoted strings for lyrics, labels and font names in the full language. Strings represent literal text.
+Whitespace and newlines separate words. Braces delimit structure, parentheses group simultaneous heads, and square brackets attach marks. `#` or `//` starts a comment through the end of the line. Sharps such as `F#4`, quoted labels and hex ink such as `ink #1565c0` keep their usual spelling. Use signed integers for semitones, positive integer ratios for musical time, and quoted strings for lyrics, labels and font names in the full language. Strings represent literal text.
+
+Declare a short name for one note mark before the parts that use it. For example, `alias v="vibrato" sd="stroke down"` lets you write `5/3[sd]` or `2/2[bend +1 rise=1, v]`. The quoted value is a complete built-in mark. It takes the same attachment position as its long form. Alias names are lowercase and each name has one definition per score.
+
+Write `4-5-6/3` for three successive attacks on string three. Each fret takes the current duration. A suffix such as `4-5-6/3[v]` marks the last attack. Write the notes separately to mark an earlier attack. An unmetered single-voice guitar sketch can contain just the notes, as in `guitar { 4-5-6/3 }`. An explicit meter or barline asks the reader to check the bar length.
 
 The following sketch describes the executable subset. In the grammar, `head` means a named pitch, physical position, or drum instrument, `duration` is a colon-prefixed rhythmic value, and `ratio` is actual:normal. A lowercase name begins with a letter and can contain digits or underscores. A part with one unnamed voice can contain the music directly. A piano declares both hands. Each hand can contain one or several voices. A document may contain multiple parts.
 
 ```ebnf
-document = { meter | pattern | part } ;
+document = { alias | meter | pattern | part } ;
+alias    = "alias" name "=" quotedMark { name "=" quotedMark } ;
 meter    = "meter" fraction ;
 pattern  = "pattern" name "{" sequence "}" ;
 part     = ("guitar" | "staff" | "drums") "{" voices "}"
@@ -142,14 +147,14 @@ voice    = "voice" name "{" sequence "}" ;
 sequence = { duration | attack | "rest" | "skip" | "|" | "use" name
            | "times" count "{" sequence "}" | "tuplet" ratio "{" sequence "}" } ;
 attack   = head [marks] | "(" head [marks] { head [marks] } ")" [marks] ;
-marks    = "[" mark { "," mark } "]" ;
+marks    = "[" (mark | name) { "," (mark | name) } "]" ;
 mark     = "finger" digit [side] | "accent" | "hammer" ;
 ```
 
 - **Head.** `C4`, `Bb3` and `F#5` name pitches. `7/3` names fret 7 on string 3, counted from the highest string. `x/6` is a dead strike. `kick`, `snare` and `hat` name kit instruments. A slash between two numbers in a head always means fret/string. A meter requires the preceding keyword. A `rest` prints a rest and advances time. A `skip` advances time invisibly.
 - **Rhythm.** Each voice starts with quarters. `:h`, `:q`, `:8` and `:16` change the written duration for following events. One or two dots augment it. `:8.` lasts 3/16 of a whole. A chord advances the clock once. A barline checks exact elapsed time and resets the local onset. Its voice keeps the previous duration.
 - **Scope.** A `times` or `tuplet` block inherits the entry duration. Every iteration starts with that same value. The caller resumes its own duration after the block. A pattern starts in quarters on every use. Rewriting a bass rhythm cannot change the register or duration in the melody.
-- **Meter.** The default is 4/4. Before the first part, declare `meter 2/4`, `pickup 1/8`, or a later change such as `meter 3/8 at 4`. Use `meter common`, `meter cut`, or `meter 3+2/8` for a displayed sign. Measured voices fill the same bars. Use `fragment { :8 C4 D4 E4 }` for an incomplete phrase and `fragment {}` for a blank staff.
+- **Meter.** The score defaults to 4/4. A document-level `meter 2/4` applies to instruments that inherit it. Inside a part, write `meter 3/4` before the first note or immediately after a barline. A local signature stays in effect until that part changes it. `meter 3/8 at 4` in the part header schedules the change at its fourth written bar. Use `common`, `cut` or `3+2/8` to preserve a displayed sign. `pickup 1/8` sets a shared opening duration, which must fit each instrument's initial meter. `fragment { :8 C4 D4 E4 }` writes an intentionally short measure.
 - **Pitch in the full design.** Bare `F4` means the fourth-octave F degree in the current key. `Fn4`, `Fb4` and `F#4` choose an exact alteration. A written key change affects every voice on that staff. A change to a preceding attack in another voice cannot respell or retune the input. The engraver manages bar accidental memory and simultaneous conflicts and supplies necessary printed cancellations. `[showSign]` and `[courtesy]` preserve deliberately explicit and cautionary signs. Migration resolves pitches that v1 inherited from earlier notes before generating v2 text.
 - **Attachment.** In `(5/2[finger 2] 7/3[finger 3])[accent]` the fingers belong to physical heads, and the accent belongs to the attack. Attachment kinds are validated after parsing. A source selection on a finger can lead to the specific head. A label on a chord survives pitch-order sorting.
 
@@ -182,6 +187,25 @@ meter 2/4
 drums { :8 (kick hat) hat (snare hat) hat | }
 staff { tuplet 3:2 { :8 G4 A4 B4 } C5 | }
 ```
+
+### Different meters in the same score
+
+Two bars of 3/4 take as long as three bars of 2/4. Both instruments below start together. The second guitar attack arrives with the fourth quarter note in the melody.
+
+```vextab2
+staff {
+  meter 2/4
+  C4 D4 | E4 F4 | G4 A4 |
+}
+guitar {
+  meter 3/4
+  :h. 0/6 | 3/6 |
+}
+```
+
+To change a signature where you hear it, write `staff { meter 2/4 C4 D4 | meter 3/8 :8 E4 F4 G4 | }`. A change in one voice governs every voice, text lane and piano hand in that instrument. Conflicting declarations on a shared barline select the offending signature. Other instruments keep their own barlines. A shorter part falls silent while the longer one finishes.
+
+`Div` displays the instruments in source order and plays them together from one set of sheet controls. `partIndex` selects one instrument for a view or player. In the parsed score, `parts[i].measureCount` counts the selected instrument's written bars and the score's `measureCount` is the largest count. Each voice measure retains its effective meter, actual duration and the authored signature’s `meterRange`.
 
 ## Expressive notation and VexFlow
 
