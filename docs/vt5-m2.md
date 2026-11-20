@@ -76,6 +76,7 @@ try {
 | Ties across a bar or an automatic row break | Supported on notation and tab, including reordered chord members. | Notation ties recompose. A tab tie has a source diagnostic. |
 | Tuplets, automatic beams and disabled beams | Supported. Hidden tab stems retain exact tuplet time. | Supported on notation and rhythmic tab. An unstemmed tab tuplet has a diagnostic. |
 | Dots, explicit accidentals, hidden signatures, double and final bars | Supported. Opening and closing repeats follow their measure boundaries. | Marks that need the screen engraving pass have a diagnostic. |
-| Bends, slides, fingerings, labels, timed text, explicit beam groups and changes of staff configuration | Use fixed layout. The diagnostic identifies the source construct. | The same check runs before publication. |
+| Compact fingerings and accents, e.g. <code>C/4[f2:r, &gt;]</code> | Supported on individual notes and chord heads. | Named pitches and chords support both marks in notation. Fretted and special heads have a diagnostic when a mark would be visible. |
+| Legacy bends, slides, long-form fingerings, labels, timed text, explicit beam groups and changes of staff configuration | Use fixed layout. The diagnostic identifies the source construct. | The same check runs before publication. |
 
 The editor uses SVG at scale 1 for flow. The existing Artist and Canvas embeds cover fixed layout. The browser regressions compare actual fixed and flow notes, inspect each wrapped tie and map independent page metadata back to the CRLF source. [Shared-score tests](../tests/shared-score.ts) · [Guide and packaged-consumer checks](../scripts/test-browser.mjs)

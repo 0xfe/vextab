@@ -100,6 +100,7 @@ function staffState(node: Token): StaffState {
         if (!['treble', 'bass', 'tenor', 'alto', 'percussion'].includes(opt.value)) invalid(opt, 'Invalid clef');
         state.clef = opt.value;
         break;
+      case 'fingering': case 'accents': break; // Resolved on the heads by readSyntax.
       case 'voice': break; // Applied when the voice is opened.
       default: fixed(opt, `stave option '${opt.key}'`);
     }
@@ -267,7 +268,11 @@ function compileVoice(voiceNode: Token, state: StaffState, settings: Settings, d
     const members: Token[] = node.command === 'rest' ? [] : node.chord ?? [node];
     if (node.chord && members.some(n => n.time)) fixed(node, 'duration changes inside a chord');
     const heads = node.drums ? kitHeads(node, state, cursor.rhythm.slash)
-      : members.map(n => chordHead(n, state, tuning, manager, music, cursor.rhythm.slash));
+      : members.map(n => {
+        const head = chordHead(n, state, tuning, manager, music, cursor.rhythm.slash);
+        if (n.marks) head.marks = n.marks;
+        return head;
+      });
     const strings = heads.flatMap(h => h.position ? [h.position.str] : []);
     if (new Set(strings).size !== strings.length) fixed(node, 'a multi-stop chord on one string');
     const { base, dots, slash } = cursor.rhythm;
@@ -416,7 +421,7 @@ export function parseScore(source: string): ParsedScore {
       row = { node, state: staffState(node), voices: [] };
     } else {
       for (const opt of node.options ?? []) {
-        if (opt.key !== 'voice' && !(row.state.piano && opt.key === 'hand')) fixed(opt, `voice option '${opt.key}'`);
+        if (!['voice', 'fingering', 'accents'].includes(opt.key) && !(row.state.piano && opt.key === 'hand')) fixed(opt, `voice option '${opt.key}'`);
       }
     }
     if (node.text?.length) fixed({ range: node.text[0].declaration }, 'timed text');

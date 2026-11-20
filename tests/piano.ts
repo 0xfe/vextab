@@ -70,6 +70,21 @@ QUnit.module('Piano grand staff', () => {
     assert.deepEqual(events.map(e => [e.staff, e.keys]), [['left',['c/3']]]);
   });
 
+  QUnit.test('Chord fingerings and explicit accidentals stay with their piano hand', assert => {
+    const score = parseScore('piano time=2/4 fingering=left accents=top\nnotes :q (Fn/4[f2].A/4[f4:r]) G/4[>] |\n' +
+      'voice hand=left\nnotes :h C/3[f1] |');
+    for (const part of ['score', 'notation', 'right', 'left'] as const) {
+      const root = host();
+      if (part === 'score') renderScore(root, score);
+      else renderScorePart(root, score, part);
+      const fingers = [...root.querySelectorAll('.vf-stavenote text')].map(el => el.textContent)
+        .filter(text => ['1', '2', '4'].includes(text)).sort();
+      const naturals = [...root.querySelectorAll('.vf-notehead text')].filter(el => el.textContent.includes('\uE261'));
+      assert.deepEqual(fingers, part === 'left' ? ['1'] : part === 'right' ? ['2', '4'] : ['1', '2', '4'], part);
+      assert.equal(naturals.length, part === 'left' ? 0 : 1, part + ' written natural');
+    }
+  });
+
   QUnit.test('Printed pages and practice hands preserve their source identities', assert => {
     const score = parseScore(duet);
     for (const part of ['notation','right','left'] as const) {

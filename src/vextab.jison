@@ -47,6 +47,8 @@
 "="                       return '='
 "("                       return '('
 ")"                       return ')'
+/* A slash inside a bracketed run belongs to an ordinary explicit beam. */
+<notes>\[([f]|[>])[^\]/\r\n]*\]  return 'HEAD_MARKS'
 "["                       return '['
 "]"                       return ']'
 "^"                       return '^'
@@ -326,13 +328,20 @@ bar
   ;
 
 line
-  : frets maybe_decorator '/' string
+  : frets maybe_decorator '/' string maybe_head_marks
     {
       _.extend(_.last($1), {decorator: $2})
       _.each($1, function(fret) { fret['string'] = $4 })
-      if (yy.locate) _.last($1).range.end = yy.locate(@4).end
+      if ($5) _.last($1).suffix = $5
+      if (yy.locate) _.last($1).range.end = yy.locate($5 ? @5 : @4).end
       $$ = $1
     }
+  ;
+
+/* A note suffix also works on an individual head inside a parenthesized chord. */
+maybe_head_marks
+  : HEAD_MARKS { $$ = { text: $1, range: yy.markRange(@1) } }
+  |            { $$ = null }
   ;
 
 chord_line
