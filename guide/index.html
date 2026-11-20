@@ -4,6 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="<%= require('./style.css') %>">
+  <script>
+    // Downloaded guides can open directly from disk without a network connection.
+    if (location.protocol === 'file:') {
+      document.fonts.add(new FontFace('Tangerine',
+        'url("<%= htmlWebpackPlugin.files.publicPath %>fonts/tangerine/Tangerine-Bold.ttf")',
+        { weight: '700', display: 'swap' }));
+    } else {
+      const font = document.createElement('link');
+      font.rel = 'stylesheet';
+      font.href = 'https://fonts.googleapis.com/css2?family=Tangerine:wght@700&display=swap';
+      document.head.append(font);
+    }
+  </script>
   <title>VexTab · User guide</title>
 </head>
 <body>

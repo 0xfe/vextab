@@ -40,7 +40,7 @@ npm run guide:upload
 
 The destination is `gs://vexflow.com/vextab/guide/`, served at **https://vexflow.com/vextab/guide/**. Each upload builds in a fresh staging directory, uploads hashed bundles, the on-demand SoundFont instrument and print chunks first, then publishes the standalone lessons and the guide index. It verifies the uploaded HTML against the build. For a staging bucket, pass `-- --destination=gs://your-bucket/vextab/guide/`.
 
-To preview the standalone site locally, run `npm run guide:build` and open `build/guide/index.html`.
+The web guide loads Tangerine Bold from Google Fonts. To preview the standalone site offline, run `npm run guide:build` and open `build/guide/index.html`. The offline guide uses the included font and license.
 
 ## Test locally
 

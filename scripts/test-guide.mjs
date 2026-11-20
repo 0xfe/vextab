@@ -17,6 +17,8 @@ export async function testGuide(page, dist) {
     await page.waitForFunction(hash => document.querySelector('#main').dataset.route === hash, hash);
   };
   await page.evaluate(() => document.fonts.ready);
+  assert.ok(await page.evaluate(async () => (await document.fonts.load('700 48px Tangerine')).length > 0),
+    'the offline guide loads its bundled title font');
   assert.equal(await page.locator('#index h1').textContent(), 'The VexTab Tutorial');
   const chapters = await page.locator('.book-cover + h2 + .chapter-list a').evaluateAll(links => links.map(a => a.hash));
   assert.equal(chapters.length, 15);

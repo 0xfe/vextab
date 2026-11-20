@@ -125,12 +125,6 @@ textarea.editor {
 }
 
 /* The tutorial's hand-lettered title, book typography and green source boxes. */
-@font-face {
-  font-family: Tangerine;
-  src: url('../fonts/tangerine/Tangerine-Bold.ttf') format('truetype');
-  font-weight: 700;
-  font-display: swap;
-}
 .brand { font: 700 50px/.9 Tangerine, Georgia, serif; letter-spacing: -.025em; }
 header { border-bottom: 3px double #c4cec0; }
 .book { grid-template-columns: 220px minmax(0, 1fr); gap: clamp(28px, 4vw, 58px); }
