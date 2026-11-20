@@ -39,6 +39,8 @@ The [parity ledger](../issues/182/parity.md) records the comparison scores and t
 
 **Done when** the inventory is accounted for and every maintained teaching example and ordinary regression test uses v2. A reader following the guide encounters one language from the first lesson to the reference.
 
+The [corpus migration record](../issues/182/corpus.md) lists the converted material, the compatibility fixtures and the visual review.
+
 ## 5. Qualify the migrated release candidate
 
 - Run lint, type checking, browser tests, musical baselines and production builds. Run the guide and display checks on their supported browsers. Exercise actual guide edits, invalid input, playback highlighting, responsive resizing, source selection, printing and hand/voice extraction.

@@ -18,6 +18,8 @@ import { parseScore, ScoreV2Error } from './score/parse';
 import { renderScore, type Part } from './score/layout';
 import type { ParsedScore } from './score/model';
 
+import { setFretPaper } from './score/color';
+
 // Webpack embeds the stylesheet here. Consumers of the declarations need no CSS loader.
 declare const require: (asset: './vextab.css') => void;
 require('./vextab.css');
@@ -320,14 +322,7 @@ class Div {
       else {
         const backend = canvas ? Vex.Flow.Renderer.Backends.CANVAS : Vex.Flow.Renderer.Backends.SVG;
         const renderer = new Vex.Flow.Renderer(next, backend);
-        if (!canvas) {
-          // SVG clears strings by painting over them. Keep VexFlow's white default
-          // when the computed paper color has alpha (rgba or modern CSS slash syntax).
-          const paper = getComputedStyle(next).backgroundColor;
-          if (paper && !paper.startsWith('rgba(') && !paper.includes('/')) {
-            renderer.getContext().setBackgroundFillStyle(paper);
-          }
-        }
+        if (!canvas) setFretPaper(renderer.getContext(), next);
         if (this.enablePlayer) this.artist.customizations.player = 'true';
         if (!this.player && this.artist.customizations.player === 'true') {
           this.player = new Player(this.artist, { playback: this.playback, controls: this.playbackControls });

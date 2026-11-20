@@ -67,6 +67,9 @@ module.exports = (env = {}) => {
         { from: 'guide/fonts', to: 'fonts' },
         ...(!guideSite ? [
           { from: 'static/index.html', to: 'index.html' },
+          { from: 'experiments/grammarv2/preview.mjs', to: 'experiments/grammarv2/preview.mjs' },
+          { from: 'experiments/grammarv2/preview.html', to: 'experiments/grammarv2/preview.html', transform: content =>
+            content.toString().replace('../../dist/main.dev.js', '../../main.' + tag + '.js') },
           { from: 'demos/*.html', transform: examplePage },
           { from: 'doc/*.html', transform: examplePage },
           { from: 'doc/*.css' },

@@ -1,5 +1,5 @@
 // Recreate timed text in each screen or print composition using its own formatted voice.
-import { TextNote, TickContext, type ScoreHitRegion, type PublicationOptions } from 'vexflow';
+import { TextNote, type ScoreHitRegion, type PublicationOptions } from 'vexflow';
 import { inkStyle } from './color';
 import type { MeasuredText, MeasureVoice } from './model';
 
@@ -35,44 +35,64 @@ export class TextLanes {
     if (!this.cells.has(options.id)) return;
     const cell = this.cells.get(options.id);
     if (!cell || (!cell.text && !cell.boundaries?.length)) { note.renderOptions.draw = false; return; }
+    const gap = 5;
     const entries = [
       ...(cell.text ? [{ ...cell, edge: undefined }] : []),
       ...(cell.boundaries ?? []),
     ].map(item => {
       const { style, text, glyph } = item;
-      const label = new TextNote({ duration: cell.base, ...(glyph ? { glyph: text } : { text }), smooth: style.smooth })
-        .setLine(style.line ?? 0).setJustification(TextNote.Justification[(style.align ?? 'center').toUpperCase()]);
-      if (style.family || style.size || style.style) label.setFont(style.family ?? label.fontInfo.family, style.size ?? 12,
-        style.style === 'bold' ? 'bold' : undefined, style.style === 'italic' ? 'italic' : undefined);
+      const label = new TextNote({ duration: cell.base, ...(glyph ? { glyph: text } : { text }) }).setLine(style.line ?? 0);
+      if (glyph) {
+        // SMuFL codepoints must keep the music face even in an italic or bold lyric lane.
+        if (style.size) label.setFontSize(style.size);
+      } else if (style.family || style.size || style.style) {
+        label.setFont(style.family ?? label.fontInfo.family, style.size ?? 12,
+          style.style === 'bold' ? 'bold' : undefined, style.style === 'italic' ? 'italic' : undefined);
+      }
       if (style.ink) label.setStyle(inkStyle(style.ink));
-      return { item, label };
+      const ink = label.getTextInk(0, 0);
+      const advance = label.getTextMetrics().width;
+      const offset = style.align === 'right' ? -advance : style.align === 'left' ? 0 : -advance / 2;
+      return { item, label, ink, offset };
     });
-    if (cell.style.smooth === false && cell.text) {
-      const original = note.getMetrics.bind(note);
-      note.getMetrics = () => {
-        const metrics = original();
-        const width = entries[0].label.measureText().width;
-        return { ...metrics, width: Math.max(metrics.width, width), notePx: Math.max(metrics.notePx, width) };
-      };
+
+    // Reserve the real ink on each side of the tick. Edge marks stay inside the measure.
+    const edges = { start: 0, end: 0 };
+    let left = 0, right = 0;
+    for (const { item, ink, offset } of entries) {
+      if (item.edge) edges[item.edge] += ink.w + gap;
+      else if (!cell.style.smooth || cell.boundaries?.length) {
+        left = Math.max(0, -offset - ink.x);
+        right = Math.max(0, offset + ink.x + ink.w);
+      }
     }
+    const original = note.getMetrics.bind(note);
+    note.getMetrics = () => {
+      const metrics = original();
+      return { ...metrics, leftDisplacedHeadPx: Math.max(metrics.leftDisplacedHeadPx, left + edges.start),
+        rightDisplacedHeadPx: Math.max(metrics.rightDisplacedHeadPx, right + edges.end) };
+    };
+
     note.draw = () => {
       const ctx = note.checkContext(), stave = note.checkStave(), tick = note.checkTickContext();
-      for (const { item, label } of entries) {
+      let start = stave.getNoteStartX(), end = stave.getNoteEndX();
+      for (const { item, label, ink, offset } of entries) {
         const id = item.edge ? options.id + '-at-' + item.range.start : options.id;
         label.setStave(stave).setTickContext(tick).setContext(ctx);
         label.preFormat();
-        const x = label.getAbsoluteX() + tick.getMetrics().glyphPx / 2;
-        const anchor = item.edge === 'start' ? stave.getNoteStartX() : item.edge === 'end' ? stave.getNoteEndX() : x;
-        ctx.save();
-        if (item.edge) label.setTickContext(new TickContext().setX(tick.getX() + anchor - label.getAbsoluteX()));
-        if (item.edge) label.preFormat();
+        const anchor = label.getAbsoluteX() + tick.getMetrics().glyphPx / 2;
+        let x = anchor + offset;
+        if (item.edge === 'start') { x = start - ink.x; start += ink.w + gap; }
+        if (item.edge === 'end') { x = end - ink.x - ink.w; end -= ink.w + gap; }
+        const line = label.getLine() - 3, baseline = stave.getYForLine(line);
+        // A below-staff lane clears the first ledger line. Give every word in one font a common baseline.
+        const ascent = item.glyph ? -ink.y : (label.getTextMetrics().fontBoundingBoxAscent ?? -ink.y);
+        const y = line >= stave.getNumLines() ? baseline + stave.getSpacingBetweenLines() + ascent : baseline;
+        label.setXShift(x - anchor).setYShift(y - baseline);
         ctx.openGroup('timed-text', id);
         label.drawWithStyle();
         ctx.closeGroup();
-        ctx.restore();
-        const width = label.measureText().width, height = label.getHeight();
-        const left = item.style.align === 'right' ? anchor - width : item.style.align === 'left' ? anchor : anchor - width / 2;
-        this.regions.set(id, { id, source: cell.id, kind: 'event', x: left, y: stave.getYForLine((item.style.line ?? 0) - 3) - height, w: width, h: height });
+        this.regions.set(id, { id, source: cell.id, kind: 'event', x: x + ink.x, y: y + ink.y, w: ink.w, h: ink.h });
       }
       note.setRendered();
     };

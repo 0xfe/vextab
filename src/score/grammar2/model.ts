@@ -79,6 +79,7 @@ export interface ScoreStaff { name: StaffName; range: TextRange; voices: ScoreVo
 export interface ScoreLayout { width?: number; scale?: number; rowGap?: number; staffDistance?: number; top?: number }
 export interface PartSettings {
   cautionary?: boolean; displayMeter?: boolean; beatGroups?: number[]; stemlets?: boolean; middleRests?: boolean; tabDirection?: 'up' | 'down';
+  changes?: Record<number, { tuning?: string; ink?: string; displayMeter?: boolean }>;
   keys?: Record<number, string>; ink?: string; beam?: boolean; beamRests?: boolean; tabStems?: boolean; stem?: 'up' | 'down';
   tuning?: string; capo?: number; key?: string; clef?: 'treble' | 'bass' | 'alto' | 'tenor' | 'none' | 'soprano' | 'mezzo-soprano' | 'baritone-c' | 'baritone-f' | 'subbass' | 'french' | 'percussion';
   view?: 'tab' | 'notation' | 'both';

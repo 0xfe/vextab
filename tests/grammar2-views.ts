@@ -37,7 +37,7 @@ QUnit.module('Grammar v2 score views', () => {
   });
 
   QUnit.test('piano aligns hands, sustains a tied bass, and prints the correct fingering and sign', assert => {
-    const input = 'meter 2/4 piano { upper { times 2 { (Fn4[finger 2] A4[finger 4 right]) G4[accent] | } } lower { :h C3 | C3[tie] | } }';
+    const input = 'meter 2/4 piano { upper { times 2 { (Fn4[finger 2, showSign] A4[finger 4 right]) G4[accent] | } } lower { :h C3 | C3[tie] | } }';
     const score = parseScore(input, { language: 2 });
     const old = parseScore('piano time=2/4\nnotes (Fn/4[f2].A/4[f4:r]) G/4[>] | (Fn/4[f2].A/4[f4:r]) G/4[>] |\nvoice hand=left\nnotes :h C/3 | TC/3 |');
     for (const width of [655, 240]) {

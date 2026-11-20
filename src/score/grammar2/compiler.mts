@@ -255,6 +255,9 @@ export function compile(source: string): ScoreV2 {
     return { ...instrument, staves, ...(text && { text }) };
   });
   for (const [number, change] of meterChanges) if (number > grid.length) fail('alignment', 'Meter change lies beyond the score', change.range);
+  for (const part of parts) for (const n of Object.keys(part.changes ?? {})) {
+    if (Number(n) > grid.length) fail('alignment', 'Part setting change lies beyond the score', part.range);
+  }
   for (const part of parts) for (const n of Object.keys(part.keys ?? {})) {
     if (Number(n) > grid.length) fail('alignment', 'Key change lies beyond the score', part.range);
   }

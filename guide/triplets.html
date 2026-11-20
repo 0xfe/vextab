@@ -11,12 +11,11 @@
     <p>VexTab user guide</p>
     <h1>Triplets in tab and notation</h1>
     <p>Play the first three frets evenly on beat one. The fourth fret lands on beat two.
-      <code>:8</code> selects eighth notes. <code>^3^</code> fits the preceding three into the time of two.</p>
+      <code>:8</code> selects eighth notes. <code>tuplet 3:2 { … }</code> fits the enclosed three into the time of two.</p>
     <div class="controls"><label><input id="notation" type="checkbox" checked> Show standard notation</label>
     <button id="reset" type="button">Reset example</button></div>
     <div id="score" width="540" editor="true" editor-height="110"><pre><%- require('./scores/triplets.vextab').trimEnd() %></pre></div>
-    <p>Hide the standard staff and find the triplet on the tab. Delete <code>^3^</code>
-      and count three straight eighths. The fourth fret now starts halfway through beat two.</p>
+    <p>Hide the standard staff and find the triplet on the tab. Remove the tuplet wrapper to see the bar-length diagnostic. Restore it to put the fourth fret back on beat two.</p>
     <p><a href="shared-score.html">Next lesson · Follow a tied chord</a></p>
   </main>
   <script>
@@ -29,18 +28,18 @@
       const editor = host.querySelector('textarea');
       VexTabSyntax.highlightEditor(editor);
       const toggle = document.querySelector('#notation');
-      const visibility = /^(\s*tabstave\b[^\n]*?\bnotation=)(true|false)\b/m;
+      const visibility = /\b(view\s+)(both|tab)\b/;
       function syncToggle() {
         const match = visibility.exec(editor.value);
         toggle.disabled = !match;
-        toggle.checked = match?.[2] === 'true';
+        toggle.checked = match?.[2] === 'both';
       }
       function edit(source) {
         editor.value = source;
         editor.dispatchEvent(new Event('input', { bubbles: true }));
       }
       toggle.addEventListener('change', () => {
-        edit(editor.value.replace(visibility, (_, prefix) => prefix + toggle.checked));
+        edit(editor.value.replace(visibility, (_, prefix) => prefix + (toggle.checked ? 'both' : 'tab')));
       });
       editor.addEventListener('input', syncToggle);
       document.querySelector('#reset').addEventListener('click', () => edit(original));

@@ -40,7 +40,7 @@ The detailed references cover [rhythm and fixed-layout syntax](vt5-m1.md), [stav
 ```ts
 import { parseScore, renderScorePart } from 'vextab/browser';
 
-const duet = parseScore(source.value);
+const duet = parseScore(source.value, { language: 2 });
 const { publication } = renderScorePart(preview, duet, 'notation', {
   voice: 2, paper: 'Letter', title: 'Guitar 2',
 });
@@ -57,4 +57,4 @@ Start migration with a complete measure. Flow validates rhythm and wraps at barl
 
 ## Historical tutorial
 
-The [original tutorial](../doc/tutorial.html) and the earlier [tied-chord](../guide/shared-score.html) and [studies](../guide/studies.html) pages retain their paths. The guide uses the same chapter prose, tables and 24 musical examples as the original page. Each step has its own URL and each example has a local draft and reset button. [Start the original walkthrough in the guide](http://127.0.0.1:9005/guide/#tutorial/the-stave)
+The [original tutorial](../doc/tutorial.html) and the earlier [tied-chord](../guide/shared-score.html) and [studies](../guide/studies.html) pages retain their paths. The guide uses the same chapter prose, tables and 25 musical examples as the original page. Each step has its own URL and each example has a local draft and reset button. [Start the original walkthrough in the guide](http://127.0.0.1:9005/guide/#tutorial/the-stave)

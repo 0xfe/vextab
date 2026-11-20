@@ -1,5 +1,6 @@
 // Read the guide's bundled chapters and mount only the examples on the open page.
 import Div from '../src/div';
+import { previousDraft } from './drafts';
 import { scoreOptions } from './audio';
 import { highlightCode, highlightEditor } from './highlight';
 import historical from '../doc/tutorial.html?guide-content';
@@ -86,6 +87,8 @@ function examples(host: HTMLElement, chapter: Chapter, section: string, draft: D
     controls.className = 'example-controls';
     const reset = node('button', 'Reset example');
     controls.append(node('span', 'VexTab source'), reset);
+    const oldDraft = previousDraft(key);
+    if (oldDraft) controls.append(oldDraft);
     frame.append(embed, controls);
     original.replaceWith(frame);
     const editor = new Div(embed, scoreOptions(embed));

@@ -1,16 +1,17 @@
 // Musical regressions for the fixed-row renderer and public editor.
+import { readScore } from './read-score';
 import Artist from '../src/artist';
 import { renderScore, renderScorePart } from '../src/score/layout';
 import { parseScore, ScoreError } from '../src/score/parse';
-import { FretHandFinger, StaveNote } from 'vexflow';
+import { Annotation, FretHandFinger, StaveNote, TabNote } from 'vexflow';
 import Div from '../src/div';
 import Vex from '../src/vexflow';
 import VexTab from '../src/vextab';
 
-const { Renderer, Barline, Annotation, Accidental } = Vex.Flow;
+const { Renderer, Barline, Accidental } = Vex.Flow;
 
 /** Render through the same public entry points used by browser embeds. */
-function score(source: string) {
+function legacy(source: string) {
   const host = document.createElement('div');
   document.querySelector('#qunit-fixture').append(host);
   const renderer = new Renderer(host, Renderer.Backends.SVG);
@@ -21,6 +22,13 @@ function score(source: string) {
   return { artist, parser, host, renderer, group: artist.staves[0] };
 }
 
+/** Render the tested instrument through the v2 path used by current browser examples. */
+function notation(source: string) {
+  const host = document.querySelector('#qunit-fixture').appendChild(document.createElement('div'));
+  const view = renderScore(host, readScore(source), { width: 640 });
+  return { host, ...view };
+}
+
 /** Compare visible SVG shapes and text without counting generated element IDs. */
 function ink(host: HTMLElement) {
   return Array.from(host.querySelectorAll('text,path,rect')).map(el =>
@@ -29,44 +37,44 @@ function ink(host: HTMLElement) {
 
 QUnit.module('Engraving', () => {
   QUnit.test('Compact fingering and accent spellings engrave the original hammer-on identically', assert => {
-    const long = score('tabstave notation=true\nnotes :8 6/4 $.fingering/1:l:f:2.$ h7/4 $.fingering/1:l:f:3.$ :q 0/2 $.fingering/1:r:f:3.$ $.a>/top.$');
-    const compact = score('tabstave notation=true fingering=left accents=top\nnotes :8 6/4[f2] h7/4[f3] :q 0/2[f3:r, >]');
+    const long = legacy('tabstave notation=true\nnotes :8 6/4 $.fingering/1:l:f:2.$ h7/4 $.fingering/1:l:f:3.$ :q 0/2 $.fingering/1:r:f:3.$ $.a>/top.$');
+    const compact = legacy('tabstave notation=true fingering=left accents=top\nnotes :8 6/4[f2] h7/4[f3] :q 0/2[f3:r, >]');
     assert.deepEqual(ink(compact.host), ink(long.host), 'same glyph positions, shapes and sizes');
 
-    const chord = score('stave\nnotes :q (G/4[f4:r].C/4[f1])');
-    const fingerings = chord.group.note_notes[0].getModifiers().filter(m => m instanceof Vex.Flow.FretHandFinger);
+    const chord = notation('meter 1/4 staff { (G4[finger 4 right] C4[finger 1]) | }');
+    const fingerings = chord.composition.notes[0][0][0][0].getModifiers().filter(m => m instanceof FretHandFinger);
     assert.deepEqual(fingerings.map(m => [m.getIndex(), m.getFretHandFinger()]), [[0, '4'], [1, '1']]);
-    const beamed = score('options beams=explicit\nstave\nnotes :8 [ C/4[f1] D/4[f2] ]');
-    assert.ok(beamed.group.note_notes[0].getBeam(), 'beam brackets can enclose marked notes');
+    const beamed = notation('meter 1/4 staff { beam { :8 C4[finger 1] D4[finger 2] } | }');
+    assert.ok((beamed.composition.notes[0][0][0][0] as StaveNote).getBeam(), 'beam brackets can enclose marked notes');
   });
 
   QUnit.test('Responsive marks respect stave, voice and per-head placement and preserve source selection', assert => {
-    const source = 'stave time=1/4 fingering=right accents=bottom\nnotes :q (C/4[f1].G/4[f5:l, >]) |\nvoice voice=bottom\nnotes :q C/3[f2, >:above] |';
-    const parsed = parseScore(source);
+    const source = 'meter 1/4 staff { voice melody { (C4[finger 1 right] G4[finger 5, accent below]) | } '
+      + 'voice bass stem down { C3[finger 2 right, accent] | } }';
+    const parsed = readScore(source);
     const voices = parsed.measures[0].voices;
     const chord = voices[0].events[0];
-    assert.deepEqual(chord.heads.map(h => h.marks), [[{finger:'1',position:'right'}], [{finger:'5',position:'left'}, {position:'below'}]]);
-    assert.equal(source.slice(chord.heads[1].range.start, chord.heads[1].range.end), 'G/4[f5:l, >]');
-    assert.deepEqual(voices[1].events[0].heads[0].marks, [{finger:'2',position:'right'}, {position:'above'}]);
+    assert.deepEqual(chord.heads.map(h => h.marks), [[{finger:'1',stringNumber:false,position:'right'}],
+      [{finger:'5',stringNumber:false,position:'left'}, {articulation:'a>',position:'below'}]]);
+    assert.equal(source.slice(chord.heads[1].range.start, chord.heads[1].range.end), 'G4');
+    assert.deepEqual(voices[1].events[0].heads[0].marks, [{finger:'2',stringNumber:false,position:'right'}, {position:'above'}]);
     const host = document.createElement('div');
     document.querySelector('#qunit-fixture').append(host);
     const view = renderScore(host, parsed, { width: 440 });
     assert.ok(host.querySelector('svg path'));
     const note = view.composition.getNote(view.navigation.events[0].id);
-    assert.equal(note.getModifiers().filter(m => m instanceof Vex.Flow.FretHandFinger).length, 2);
+    assert.equal(note.getModifiers().filter(m => m instanceof FretHandFinger).length, 2);
     assert.equal(note.getModifiers().filter(m => m instanceof Vex.Flow.Articulation).length, 1);
-    for (const invalid of ['[f7]', '[f1:near]', '[>:left]', '[f2,]']) {
-      assert.throws(() => parseScore('stave time=1/4\r\nnotes C/4' + invalid), e =>
-        e instanceof ScoreError && e.range.column === 9 && e.range.line === 2);
+    for (const invalid of ['[finger 7]', '[finger 1 near]', '[accent left]', '[finger 2,]']) {
+      assert.throws(() => readScore('meter 1/4 staff {\r\n C4' + invalid + ' | }'), e => e.line === 2 && e.column > 3);
     }
-    const overridden = parseScore(source.replace('voice voice=bottom', 'voice voice=bottom fingering=above'));
+    const overridden = readScore(source.replace('finger 2 right', 'finger 2 above'));
     assert.equal(overridden.measures[0].voices[1].events[0].heads[0].marks[0].position, 'above');
-    assert.throws(() => parseScore('stave fingering=unknown\nnotes C/4'), /Place a fingering/);
   });
 
   QUnit.test('Printed piano fingerings keep chord heads, dotted rhythm, ties and source IDs', assert => {
-    const source = 'stave time=3/4\nnotes :qd (G/4[f5:r].C/4[f1]) :8 D/4[f2, >] :q G/4 | T G/4[f4] :h A/4 |';
-    const parsed = parseScore(source);
+    const source = 'meter 3/4 staff { :q. (G4[finger 5 right] C4[finger 1]) :8 D4[finger 2, accent] :q G4 | G4[tie, finger 4] :h A4 | }';
+    const parsed = readScore(source);
     const host = document.createElement('div');
     document.querySelector('#qunit-fixture').append(host);
     const seen: StaveNote[] = [];
@@ -80,13 +88,13 @@ QUnit.module('Engraving', () => {
     const svg = publication.pages[0].svg;
     assert.ok([...svg.querySelectorAll('text')].some(text => text.textContent === '5'), 'the exported SVG contains the fingering');
     assert.ok(JSON.parse(svg.querySelector('metadata').textContent).spans.some(s => s.kind === 'tie'), 'tie survives re-composition');
-    const tab = parseScore('tabstave time=1/4\nnotes :q 3/4[>] |');
+    const tab = readScore('meter 1/4 guitar { view tab 3/4[accent] | }');
     assert.throws(() => renderScorePart(host, tab, 'tab'), /fretted or special head/);
   });
 
   QUnit.test('A pre-bent fret sounds at the raised pitch for one written attack', assert => {
     const source = 'tabstave notation=true time=2/4\nnotes :q (5/2.7z8z7/3) 7z9/3';
-    const { group, host, parser } = score(source);
+    const { group, host, parser } = legacy(source);
     const tab = group.tab_voices[0];
     assert.equal(tab.length, 2);
     assert.deepEqual(tab[0].getPositions().map(p => p.fret), ['5', '7']);
@@ -96,11 +104,16 @@ QUnit.module('Engraving', () => {
     assert.ok([...host.querySelectorAll('text')].some(t => t.textContent === '½'));
     assert.throws(() => parser.parse(source.replace('7z8z7', '7z7')), /above the fretted pitch/);
     assert.throws(() => parser.parse(source.replace('7z8z7', '7z8z6')), /original fret/);
-    const onlyStaff = score('stave\nnotes :q 7z8z7/3');
-    assert.ok(onlyStaff.host.textContent.includes('Pre-bend ½ on string 3, release'));
+    const fretted = notation('meter 2/4 guitar { (5/2 7/3[prebend +1 release]) 7/3[prebend +2] | }');
+    const chord = fretted.score.measures[0].voices[0].events[0];
+    assert.deepEqual(chord.heads.map(h => h.position.fret), [5, 7]);
+    assert.deepEqual(chord.heads.map(h => h.sounding), ['e/4', 'd#/4']);
+    assert.equal(chord.heads[1].prebend.release, true);
+    const onlyStaff = notation('meter 1/4 guitar { view notation 7/3[prebend +1 release] | }');
+    assert.ok(onlyStaff.navigation.events[0].label.includes('Pre-bend ½ on string 3, release'));
   });
 
-  QUnit.test('Fixed SVG embeds clear every fret with opaque paper', assert => {
+  QUnit.test('SVG embeds clear every fret with opaque paper', assert => {
     const fixture = document.querySelector('#qunit-fixture');
     const style = document.createElement('style');
     style.textContent = '.fret-paper .vex-canvas { background-color: var(--paper); }';
@@ -117,7 +130,8 @@ QUnit.module('Engraving', () => {
         host.className = 'fret-paper';
         host.style.setProperty('--paper', paper);
       }
-      host.textContent = 'tabstave\nnotes :q 0/1 12/1 (10/2.12/3) 4/1 |';
+      host.setAttribute('language', '2');
+      host.textContent = 'guitar { view tab 0/1 12/1 (10/2 12/3) 4/1 | }';
       fixture.append(host);
       const editor = new Div(host);
       const frets = host.querySelectorAll('.vf-tabnote text');
@@ -129,8 +143,8 @@ QUnit.module('Engraving', () => {
 
   QUnit.test('Fixed, flow and print keep the native fret size and clear the strings', assert => {
     const source = 'tabstave time=4/4\nnotes :q 0/1 3/2 (12/2.10/3) 15/4 |';
-    const { host } = score(source);
-    const parsed = parseScore(source);
+    const { host } = legacy(source);
+    const parsed = readScore('meter 4/4 guitar { view tab 0/1 3/2 (12/2 10/3) 15/4 | }');
     // Use the installed VexFlow face and size, including when its defaults change upstream.
     function checkFrets(layout: string) {
       const frets = [...host.querySelectorAll<SVGTextElement>('.vf-tabnote text')];
@@ -159,9 +173,9 @@ QUnit.module('Engraving', () => {
   QUnit.test('Both renderers join filled and hollow rhythm slashes at their Bravura anchors', assert => {
     for (const direction of ['top', 'bottom']) {
       const source = 'stave time=4/4 voice=' + direction + '\nnotes :qSd B/4 :8S B/4 :hS B/4';
-      const legacy = score(source);
-      const flow = renderScore(legacy.host, parseScore(source));
-      for (const notes of [legacy.group.note_notes, flow.composition.notes[0][0][0]]) {
+      const fixed = legacy(source);
+      const flow = renderScore(fixed.host, readScore('meter 4/4 staff { stem ' + (direction === 'top' ? 'up' : 'down') + ' :q. B4[slash] :8 B4[slash] :h B4[slash] | }'));
+      for (const notes of [fixed.group.note_notes, flow.composition.notes[0][0][0]]) {
         for (const [i, note] of (notes as StaveNote[]).entries()) {
           const up = direction === 'top';
           const space = note.noteHeads[0].fontSizeInPixels / 4;
@@ -175,15 +189,15 @@ QUnit.module('Engraving', () => {
     }
   });
 
-  QUnit.test('Fixed annotations default to Academico and respect an authored face', assert => {
-    const { group } = score('stave\nnotes :q C/4 $Am$ D/4 $.italic.hold$ E/4 $.Times-12-bold.F$');
-    const fonts = group.note_notes.map(note => note.getModifiers().find(m => m instanceof Annotation).fontInfo.family);
+  QUnit.test('Annotations default to Academico and respect an authored face', assert => {
+    const view = notation('meter 3/4 staff { C4[label "Am"] D4[label "hold" style italic] E4[label "F" font "Times" style bold] | }');
+    const fonts = view.composition.notes[0][0][0].map(note => (note.getModifiers().find(m => m instanceof Annotation) as Annotation).fontInfo.family);
     assert.deepEqual(fonts, ['Academico','Academico','Times']);
   });
 
   QUnit.test('A quoted option sets a multi-word font on the rendered label', assert => {
     const options = 'options font-face="Times New Roman" font-style=bold';
-    const { host, parser } = score(options + '\nstave\nnotes :q C/4 $Am$');
+    const { host, parser } = legacy(options + '\nstave\nnotes :q C/4 $Am$');
     const label = [...host.querySelectorAll('svg text')].find(el => el.textContent === 'Am');
     assert.equal(label.getAttribute('font-family'), 'Times New Roman');
     assert.equal(label.getAttribute('font-weight'), 'bold');
@@ -195,80 +209,91 @@ QUnit.module('Engraving', () => {
   });
 
   QUnit.test('A tuplet keeps exact time in every projection, including a silent rest', assert => {
-    for (const stave of ['stave', 'tabstave', 'tabstave notation=true']) {
-      for (const stems of ['true', 'false']) {
-        const { group } = score(`options tab-stems=${stems}\n${stave}\nnotes :8 1/2 ## 3/2 ^3^`);
-        for (const notes of [group.tab_notes, group.note_notes].filter(ns => ns.length)) {
+    for (const staff of ['notation', 'tab', 'both']) {
+      for (const stems of ['on', 'off']) {
+        const view = notation('meter 1/4 guitar { view ' + staff + ' tabStems ' + stems + ' tuplet 3:2 { :8 1/2 rest 3/2 } | }');
+        for (const [notes] of view.composition.notes[0])
           assert.deepEqual(notes.map(n => n.getTicks().clone().simplify().toString()), Array(3).fill('4096/3'));
-        }
       }
     }
-    const paired = score('options tab-stems=true\ntabstave notation=true\nnotes :8 1-2-3/1 ^3^');
+    // The fixed Artist draws separate native tuplet objects for the two projections.
+    const paired = legacy('options tab-stems=true\ntabstave notation=true\nnotes :8 1-2-3/1 ^3^');
     const upper = paired.artist.stave_articulations[0].getBoundingBox();
     const lower = paired.artist.tab_articulations[0].getBoundingBox();
     assert.true(upper.y + upper.h < lower.y - 2, 'Both triplet numbers clear each other');
-    const tabOnly = score('options tab-stems=true\ntabstave\nnotes :8 1-2-3/1 ^3^');
+    const tabOnly = legacy('options tab-stems=true\ntabstave\nnotes :8 1-2-3/1 ^3^');
     assert.true(tabOnly.artist.tab_articulations[0].getBoundingBox().y >= 10, 'The tab numeral clears the top edge');
-    const { group } = score('tabstave notation=true time=6/8\nnotes :8 1-2/1 ^2^ :qSdd 3/1');
-    for (const notes of [group.note_notes, group.tab_notes]) {
+    const dotted = notation('guitar { tabStems on fragment { tuplet 2:3 { :8 1/1 2/1 } :q.. 3/1[slash] } }');
+    for (const [notes] of dotted.composition.notes[0]) {
       assert.deepEqual(notes.map(n => n.getTicks().value()), [3072, 3072, 7168]);
       assert.equal(notes[2].getModifiers().filter(m => m.getCategory() === 'Dot').length, 2);
     }
   });
 
   QUnit.test('6/8 groups, explicit beams and independent voice stems', assert => {
-    const first = score('stave time=6/8 show-time=false\nnotes :8 C-D-E-F-G-A/4');
-    const ns = first.group.note_notes;
-    assert.equal(first.artist.player_voices[0][0].getTotalTicks().value(), 12288);
+    const first = notation('meter 6/8 staff { display meter hidden groupBeats (3 3) :8 C4 D4 E4 F4 G4 A4 | }');
+    const ns = first.composition.notes[0][0][0] as StaveNote[];
+    assert.equal(first.composition.voices[0][0][0].getTotalTicks().value(), 12288);
     assert.deepEqual(ns[0].getBeam().getNotes(), ns.slice(0, 3));
     assert.deepEqual(ns[3].getBeam().getNotes(), ns.slice(3));
-    assert.false(first.group.note.getModifiers().some(m => m.getCategory() === 'TimeSignature'));
-    const { group } = score('options beams=explicit\nstave voice=bottom\nnotes :8 [ C/4 :8d D/4 ] E/4 :q F/4\noptions beams=off\nvoice voice=top\nnotes :8 G-A/4 :q B/4');
-    const [lower, upper] = group.note_voices;
+    assert.false(first.composition.staves[0][0].getModifiers().some(m => m.getCategory() === 'TimeSignature'));
+    const duet = notation('meter 3/4 staff { voice low stem down { beam { :8 C4 :8. D4 } :8. E4 :q F4 | } '
+      + 'voice high stem up beams off { :8 G4 A4 :q B4 rest | } }');
+    const [lower, upper] = duet.composition.notes[0][0] as StaveNote[][];
     assert.deepEqual(lower[0].getBeam().getNotes(), lower.slice(0, 2));
-    assert.false(!!lower[2].getBeam());
+    assert.notOk(lower[2].getBeam());
     assert.equal(lower[3].getStemDirection(), -1);
     assert.equal(upper[2].getStemDirection(), 1);
-    assert.false(!!upper[0].getBeam());
-    for (const enabled of ['true', 'false']) {
-      const rest = score(`options beam-rests=${enabled}\nstave\nnotes :8 C/4 ## D-E/4`).group.note_notes[1];
-      assert.equal(!!rest.getBeam(), enabled === 'true');
+    assert.notOk(upper[0].getBeam());
+    for (const enabled of ['on', 'off']) {
+      const rests = notation('meter 2/4 staff { groupBeats (2) stemlets on beamRests ' + enabled + ' :8 C4 rest D4 E4 | }');
+      const rest = rests.composition.notes[0][0][0][1] as StaveNote;
+      assert.equal(!!rest.getBeam(), enabled === 'on');
       if (rest.getBeam()) assert.true(rest.getBeam().renderOptions.showStemlets);
     }
   });
 
   QUnit.test('Slash chord changes keep their beat across a bar and an explicit text bar', assert => {
     for (const spacer of ['', '|,']) {
-      const { group } = score('stave\ntext :qd,G/A,:h,C/A,:8, ,:w,' + spacer + 'Fmaj7\nnotes :qSd X/5 :8S X/5 :hS sX/5 | :w X/5');
+      const { group } = legacy('stave\ntext :qd,G/A,:h,C/A,:8, ,:w,' + spacer + 'Fmaj7\nnotes :qSd X/5 :8S X/5 :hS sX/5 | :w X/5');
       const notes = group.note_notes.filter(n => !n.shouldIgnoreTicks());
       const labels = group.text_voices[0].filter(n => !n.shouldIgnoreTicks());
       for (const i of [0, 1, 3]) assert.equal(labels[i].getAbsoluteX(), notes[i].getAbsoluteX());
       assert.equal(notes[0].getTicks().value(), 6144);
     }
+    const measured = notation('staff { :q. slash :8 slash :h slash | :w slash | '
+      + 'text harmony { :q. "G/A" :h "C/A" :8 skip | :w "Fmaj7" | } }');
+    const [[rhythm, labels]] = measured.composition.notes[0];
+    assert.equal(rhythm[0].getAbsoluteX(), labels[0].getAbsoluteX());
+    assert.equal(rhythm[1].getAbsoluteX(), labels[1].getAbsoluteX());
+    const [[nextRhythm, nextLabels]] = measured.composition.notes[1];
+    assert.equal(nextRhythm[0].getAbsoluteX(), nextLabels[0].getAbsoluteX());
   });
 
   QUnit.test('Upper tab annotations stay above the staff and preserve fret numbers', assert => {
-    const { group } = score('tabstave\nnotes 4-5-6/3 10/1 $.top.$ $A,B,C$ | 5d-4u-Xd/3 2/2 $.top.$ $A,B,C$');
-    const marks = group.tab_notes.flatMap(n => n.getModifiers()).filter(m => m instanceof Annotation);
+    const view = notation('guitar { view tab 4/3[label "A" above] 5/3[label "B" above] 6/3[label "C" above] 10/1 | '
+      + '5/3[stroke down, label "A" above] 4/3[stroke up, label "B" above] x/3[stroke down, label "C" above] 2/2 | }');
+    const notes = view.composition.notes.flatMap(measure => measure[0][0]) as TabNote[];
+    const marks = notes.flatMap(n => n.getModifiers()).filter(m => m instanceof Annotation);
     assert.deepEqual(marks.map(m => m.getText()), ['A', 'B', 'C', 'A', 'B', 'C']);
     assert.equal(new Set(marks.map(m => m.computeY().y)).size, 1);
-    assert.true(marks[0].computeY().y < group.tab.getYForLine(0));
-    assert.equal(group.tab_notes[1].fretElement[0].getText(), '5');
+    assert.true(marks[0].computeY().y < view.composition.staves[0][0].getYForLine(0));
+    assert.equal(notes[1].getPositions()[0].fret, 5);
   });
 
   QUnit.test('Rests use staff coordinates on four strings and ledger glyphs outside five lines', assert => {
-    const { group } = score('options tab-stems=true\ntabstave notation=true strings=4 tuning=G/5,D/5,A/4,E/4\nnotes :h #2# #0# :w #9#');
-    const [staff, tab] = [group.note_notes, group.tab_notes];
-    assert.equal(staff[0].getYs()[0], group.note.getYForLine(3.5));
-    assert.equal(tab[0].getYs()[0], group.tab.getYForLine(2.5));
+    const view = notation('guitar { tuning (G5 D5 A4 E4) tabStems on :h rest[line 1.5] rest[line 0] | :w rest[line 6] | }');
+    const [staff, tab] = view.composition.notes[0].map(([notes]) => notes as StaveNote[]);
+    assert.equal(staff[0].getYs()[0], view.composition.staves[0][0].getYForLine(3.5));
+    assert.equal(tab[0].getYs()[0], view.composition.staves[0][1].getYForLine(2.5));
     assert.equal(staff[1].noteHeads[0].getText(), '\uE4F5');
-    assert.equal(staff[2].noteHeads[0].getText(), '\uE4F4');
+    assert.equal((view.composition.notes[1][0][0][0] as StaveNote).noteHeads[0].getText(), '\uE4F4');
   });
 
   QUnit.test('Chord permutations retain accidental glyph and fingering ownership', assert => {
-    for (const [chord, member] of [['G/5.C/5.E@/4.B/4', 3], ['E@/4.B/4.C/5.G/5', 1]]) {
-      const { group, host } = score(`stave key=F\nnotes (${chord}) $.fingering/${member}:r:f:2.$`);
-      const note = group.note_notes[0];
+    for (const chord of ['G5 C5 Eb4[finger 2 right] B4', 'Eb4[finger 2 right] B4 C5 G5']) {
+      const { composition, host } = notation('meter 1/4 staff { key F (' + chord + ') | }');
+      const note = composition.notes[0][0][0][0] as StaveNote;
       const flat = note.getModifiers().find(m => m instanceof Accidental);
       assert.equal(note.getKeys()[flat.getIndex()].toLowerCase(), 'eb/4');
       const finger = note.getModifiers().find(m => m.getCategory() === 'FretHandFinger');
@@ -282,39 +307,55 @@ QUnit.module('Engraving', () => {
   QUnit.test('Accidentals follow written octave, bar and musical time across voices', assert => {
     const signs = n => n.getModifiers().filter(m => m instanceof Accidental).map(m => [m.type, m.isCautionary()]);
     // Both open G strings in this tuning cancel the signature, in separate octaves.
-    const { group } = score('tabstave notation=true key=A tuning=G/5,G/4,D/4,A/3,E/3,B/2\nnotes :q 0/1 0/2 0/1 | 0/1');
-    assert.deepEqual(group.note_notes.filter(n => !n.shouldIgnoreTicks()).map(signs),
+    const octave = notation('guitar { key A tuning (G5 G4 D4 A3 E3 B2) view notation fragment { 0/1 0/2 0/1 | 0/1 } }');
+    assert.deepEqual(octave.composition.notes.flatMap(measure => measure[0][0]).map(signs),
       [[['n', false]], [['n', false]], [], [['n', false]]]);
-    // The lower voice cancels G-sharp on beat one, regardless of declaration order.
-    for (const voices of [['## 0/3', '0/3 ##'], ['0/3 ##', '## 0/3']]) {
-      const { group } = score(`stave key=A\nnotes :q ${voices[0]}\nvoice\nnotes :q ${voices[1]}`);
-      const sorted = group.note_voices.flatMap(ns => ns.map((n,i) => ({ n, i })))
+    // A physical open G cancels the signature regardless of the order of the two voices.
+    for (const voices of [['rest 0/3', '0/3 rest'], ['0/3 rest', 'rest 0/3']]) {
+      const view = notation('meter 2/4 guitar { key A view notation voice a { ' + voices[0] + ' | } voice b { ' + voices[1] + ' | } }');
+      const sorted = (view.composition.notes[0][0] as StaveNote[][]).flatMap(ns => ns.map((n,i) => ({n, i})))
         .filter(e => !e.n.isRest()).sort((a,b) => a.i - b.i);
       assert.deepEqual(sorted.map(e => signs(e.n)), [[['n', false]], []]);
     }
-    assert.deepEqual(signs(score('stave key=F\nnotes B@~/4').group.note_notes[0]), [['b', true]]);
+    const courtesy = notation('meter 1/4 staff { key F Bb4[courtesy] | }');
+    assert.deepEqual(signs(courtesy.composition.notes[0][0][0][0]), [['b', true]]);
+  });
+
+  QUnit.test('Exact spellings and forced signs preserve pitches, glyphs and individual selections', assert => {
+    const source = 'meter 4/4 staff { key D Fn4[showSign] Fn4 F#4[showSign] F#4 | }';
+    const view = notation(source);
+    const events = view.score.measures[0].voices[0].events;
+    assert.deepEqual(events.map(e => e.heads[0].sounding), ['f/4', 'f/4', 'f#/4', 'f#/4']);
+    assert.deepEqual(events.map(e => source.slice(e.range.start, e.range.end)), ['Fn4[showSign]', 'Fn4', 'F#4[showSign]', 'F#4']);
+    const modifiers = notes => notes.map(n => n.getModifiers().filter(m => m instanceof Accidental).map(m => m.type));
+    assert.deepEqual(modifiers(view.composition.notes[0][0][0]), [['n'], [], ['#'], []]);
+    const automatic = notation('meter 4/4 staff { key D Fn4 Fn4 F#4 F#4 | }');
+    assert.deepEqual(modifiers(automatic.composition.notes[0][0][0]), [['n'], [], ['#'], []]);
+    const old = legacy('stave key=D time=4/4\nnotes Fn-F-F#-F/4 |');
+    assert.deepEqual(modifiers(old.group.note_notes.filter(n => !n.shouldIgnoreTicks())), [['n'], [], ['#'], []]);
   });
 
   QUnit.test('Reordered ties cross the bar after a triplet and stay on the written head', assert => {
-    for (const [phrase, chord, repeat] of [
-      ['1-2-3/2', '(1/2.0/3)', '(0/3.1/2)'],
-      ['C-D-E/4', '(C/4.E/4)', '(E/4.C/4)'],
+    for (const [instrument, phrase, a, b] of [
+      ['guitar', '1/2 2/2 3/2', '1/2', '0/3'], ['staff', 'C4 D4 E4', 'C4', 'E4'],
     ]) {
-      const { artist, group } = score(`tabstave notation=true\nnotes :8 ${phrase} ^3^ :q ${chord} T${chord} | T${repeat}`);
-      const ties = artist.stave_articulations.filter(m => m.getCategory() === 'StaveTie');
-      assert.equal(ties.length, 2);
-      const tie = ties[1].getNotes();
-      assert.strictEqual(tie.firstNote, group.note_notes[4]);
-      assert.strictEqual(tie.lastNote, group.note_notes[6]);
-      assert.deepEqual(tie.firstIndexes, [1, 0]);
-      assert.deepEqual(tie.lastIndexes, [0, 1]);
-      assert.true(ties[1].getRibbonBounds().w > 0);
+      const chord = '(' + a + ' ' + b + ')';
+      const source = instrument + ' { fragment { tuplet 3:2 { :8 ' + phrase + ' } :q ' + chord
+        + ' (' + a + '[tie] ' + b + '[tie]) | (' + b + '[tie] ' + a + '[tie]) } }';
+      const screen = notation(source);
+      const [before, after] = screen.score.measures;
+      const links = screen.score.ties.filter(t => t.to === after.voices[0].events[0].id);
+      assert.deepEqual(links.map(t => [t.from, t.fromHead, t.toHead]), [[before.voices[0].events[4].id, 1, 0], [before.voices[0].events[4].id, 0, 1]]);
+      for (const link of links) {
+        const region = screen.navigation.regions.find(r => r.source === link.id);
+        assert.ok(region && region.w > 0, 'tie has drawn width at its head');
+      }
     }
   });
 
   QUnit.test('Repeated draws, width, backend and a second Artist preserve the score', assert => {
-    const { artist, group, renderer, host } = score('options tab-stems=true\ntabstave notation=true\nnotes =|: :8 1-2-3/1 ^3^ =:: 4/1 =:|');
-    const other = score('stave\nnotes :q C/4');
+    const { artist, group, renderer, host } = legacy('options tab-stems=true\ntabstave notation=true\nnotes =|: :8 1-2-3/1 ^3^ =:: 4/1 =:|');
+    const other = legacy('stave\nnotes :q C/4');
     const previous = ink(host);
     const otherInk = ink(other.host);
     artist.draw(renderer);
@@ -355,7 +396,7 @@ QUnit.module('Engraving', () => {
   });
 
   QUnit.test('Invalid revisions use original locations and clear the public valid flag', assert => {
-    const { parser, artist } = score('stave\nnotes C/4');
+    const { parser, artist } = legacy('stave\nnotes C/4');
     for (const [source, error] of [
       ['stave\r\n    notes :8 1/2 ?', /line 2 column 17/],
       ['  options width=half', /line 1 column 10/],

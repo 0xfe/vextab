@@ -43,7 +43,7 @@ function tokenize(source: string, fail: Fail): Token[] {
 }
 
 const durationPattern = /^:(w|h|q|1|2|4|8|16|32|64|128|256)(\.{0,2})$/;
-const notePattern = /^[A-G](?:bb|##|b|#|n)?[0-8]$/;
+const notePattern = /^[A-G](?:bb|##|b|#|n)?[0-9]$/;
 const positionPattern = /^(x|0|[1-9]\d?)\/([1-8])$/;
 const drums = new Set(['kick', 'snare', 'hat']);
 function isPartKind(name: string): name is PartKind {
@@ -457,6 +457,19 @@ export function readScore(source: string, fail: Fail) {
   /** Read settings before the part's first voice so every voice shares the same instrument. */
   function settings(kind: PartKind, voiceOnly = false): PartSettings {
     const result: PartSettings = {};
+    /** Apply shared settings to the whole part or to an authored measure boundary. */
+    function atBar() {
+      expect('at');
+      const at = take();
+      if (!/^[1-9]\d{0,3}$/.test(at.text) || Number(at.text) < 2) error('Expected a bar number starting at 2', at);
+      return Number(at.text);
+    }
+    function change(values: NonNullable<PartSettings['changes']>[number]) {
+      if (peek() !== 'at') { Object.assign(result, values); return; }
+      const at = atBar();
+      const changes = result.changes ??= {};
+      changes[at] = { ...changes[at], ...values };
+    }
     const names = voiceOnly ? ['stem', 'beams', 'beamRests', 'stemlets', 'middleRests', 'tabStems', 'tabDirection'] : ['key', 'clef', 'view', 'capo', 'tuning', 'ink', 'stem', 'beams', 'beamRests', 'tabStems', 'stemlets', 'middleRests', 'tabDirection', 'accidentals', 'display', 'groupBeats'];
     while (names.includes(peek())) {
       const option = take(), value = take();
@@ -467,7 +480,7 @@ export function readScore(source: string, fail: Fail) {
         if (value.text !== 'meter') error('Expected display meter', value);
         const setting = take();
         if (setting.text !== 'hidden' && setting.text !== 'shown') error('Expected hidden or shown', setting);
-        result.displayMeter = setting.text === 'shown';
+        change({ displayMeter: setting.text === 'shown' });
       } else if (option.text === 'groupBeats') {
         if (value.text !== '(') error('Expected beat groups in parentheses', value);
         const groups: number[] = [];
@@ -478,7 +491,7 @@ export function readScore(source: string, fail: Fail) {
         }
         if (!groups.length) error('Expected at least one beat group');
         take(); result.beatGroups = groups;
-      } else if (option.text === 'ink') result.ink = value.text;
+      } else if (option.text === 'ink') change({ ink: value.text });
       else if (option.text === 'stem' || option.text === 'tabDirection') {
         if (value.text !== 'up' && value.text !== 'down') error('Expected up or down', value);
         result[option.text] = value.text;
@@ -489,9 +502,7 @@ export function readScore(source: string, fail: Fail) {
         if (!/^(?:Cb|Gb|Db|Ab|Eb|Bb|F|C|G|D|A|E|B|F#|C#|Abm|Ebm|Bbm|Fm|Cm|Gm|Dm|Am|Em|Bm|F#m|C#m|G#m|D#m|A#m)$/.test(value.text))
           error('Expected a key signature', value);
         if (peek() === 'at') {
-          take(); const at = take();
-          if (!/^[1-9]\d{0,3}$/.test(at.text) || Number(at.text) < 2) error('Expected a bar number starting at 2', at);
-          (result.keys ??= {})[Number(at.text)] = value.text;
+          (result.keys ??= {})[atBar()] = value.text;
         } else result.key = value.text;
       } else if (option.text === 'clef') {
         if (kind === 'piano' || kind === 'drums') error('This part supplies its own clefs', option);
@@ -516,11 +527,11 @@ export function readScore(source: string, fail: Fail) {
         }
         if (pitches.length < 4) error('A tuning needs at least four strings', value);
         take();
-        result.tuning = pitches.join(',');
+        change({ tuning: pitches.join(',') });
       } else {
         const names: Record<string, string> = { standard: 'standard', dropD: 'dropd', dagdad: 'dagdad', eb: 'eb', standardBanjo: 'standardBanjo' };
         if (!Object.prototype.hasOwnProperty.call(names, value.text)) error('Unknown guitar tuning', value);
-        result.tuning = names[value.text];
+        change({ tuning: names[value.text] });
       }
     }
     return result;
@@ -580,7 +591,11 @@ export function readScore(source: string, fail: Fail) {
       block(() => {
         while (peek() !== '}') {
           const field = take();
-          if (field.text === 'tempo') {
+          if (field.text === 'enabled') {
+            const value = take();
+            if (value.text !== 'on' && value.text !== 'off') error('Expected on or off', value);
+            playback!.enabled = value.text === 'on';
+          } else if (field.text === 'tempo') {
             const tempo = take();
             if (!/^[1-9]\d{0,2}$/.test(tempo.text)) error('Expected a positive tempo', tempo);
             playback!.tempo = Number(tempo.text);
@@ -589,13 +604,14 @@ export function readScore(source: string, fail: Fail) {
             if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(instrument.text) && !/^(?:0|[1-9]\d?|1[01]\d|12[0-7])$/.test(instrument.text)) error('Expected an instrument name or MIDI program', instrument);
             playback!.instrument = instrument.text;
           }
-          else error('Expected tempo or instrument', field);
+          else error('Expected enabled, tempo or instrument', field);
         }
       });
     } else if (token.text === 'transpose') {
       const amount = take();
-      if (parts.length || transpose !== undefined || !/^[+-]?\d{1,3}$/.test(amount.text) || Math.abs(Number(amount.text)) > 127)
-        error('Declare a single transposition before the first part', amount);
+      if (parts.length || transpose !== undefined) error('Declare a single transposition before the first part', amount);
+      if (!/^[+-]?\d{1,3}$/.test(amount.text) || Math.abs(Number(amount.text)) > 127)
+        error('Transposition needs an integer from -127 to 127', amount);
       transpose = Number(amount.text);
     } else if (token.text === 'measureNumbers') {
       const value = take();

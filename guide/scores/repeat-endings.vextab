@@ -1,5 +1,13 @@
-options measure-numbers=true tab-stems=true
-tabstave notation=true time=2/4
-notes =|: !mark "A"! :q 0-2/3 | 3-2/3 |
-notes !ending 1 bars=1! 0/3 2/4 =:|
-notes !ending 2 bars=1! :h 0/3 |
+measureNumbers on
+meter 2/4
+guitar {
+  tabStems on
+  volta 2 {
+    mark "A" :q 0/3 2/3 |
+    :q 3/3 2/3 |
+  } ending 1 {
+    :q 0/3 2/4 bar repeatEnd
+  } ending 2 {
+    :h 0/3 |
+  }
+}

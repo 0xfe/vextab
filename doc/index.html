@@ -42,36 +42,31 @@
       designed for readability, VexTab is designed for <i>writeability</i>.
       <p/>
       Take a look at the example below. The green code box below is editable -
-      try adding another stave by typing <code>tabstave</code> on a new line.
+      try changing the opening chord’s fret on string two, then play the phrase.
     </div>
 
     <div style="width:700; margin-left: auto; margin-right: auto;">
     <div class="vex-tabdiv"
       width=680 scale=1.0 editor="true"
-      editor_width=680 editor_height=330>options space=20
-
-tabstave
-  notation=true
-  key=A time=4/4
-
-  notes :q =|: (5/2.5/3.7/4) :8 7-5h6/3 ^3^ 5h6-7/5 ^3^ :q 7V/4 |
-  notes :8 t12p7/4 s5s3/4 :8 3s:16:5-7/5 :h p5/4
-  text :w, |#segno, ,|, :hd, , #tr
-
-
-options space=25
-
-tabstave
-  notation=true
-
-  notes :q (5/4.5/5) (7/4.7/5)s(5/4.5/5) ^3^
-  notes :8 7-5/4 $.a./b.$ (5/4.5/5)h(7/5) =:|
-  notes :8 (12/5.12/4)ds(5/5.5/4)u 3b4/5
-  notes :h (5V/6.5/4.6/3.7/2) $.italic.let ring$ =|=
-
-  text :h, ,.font=Times-12-italic, D.S. al coda, |#coda
-  text :h, ,.-1, .font=Arial-14-bold,A13
-  text ++, .23, #f</div>
+      editor_width=680 editor_height=330 data-language="2">meter 4/4
+meter 5/4 at 2
+meter 4/4 at 3
+meter 7/8 at 4
+guitar { key A key C at 3
+  tabStems off
+  repeatStart :q (5/2 5/3 7/4) :8 tuplet 3:2 { 7/3 5/3 6/3[hammer] }
+  tuplet 3:2 { 5/5 6/5[hammer] 7/5 } :q 7/4[vibrato wide] |
+  :8 12/4[tap] 7/4[pull] 5/4[slide] 3/4[slide] 3/5 :16 5/5[slide] 7/5 :h 5/4 |
+  break system :q tuplet 3:2 { (5/4 5/5) (7/4 7/5) (5/4[slide] 5/5[slide]) }
+  :8 7/4 5/4[staccato below] (5/4 5/5) 7/5[hammer] bar repeatEnd
+  :8 (12/5 12/4)[stroke down] (5/5[slide] 5/4[slide])[stroke up] 3/5[bend +1 rise=1]
+  :h (5/6 5/4 6/3 7/2)[vibrato wide, label "let ring" style italic] bar final
+  text roadmap line 10 {
+    start sign segno :w skip | :h. skip :h sign tr |
+    :h skip "D.S. al coda" end sign coda | :8 skip :h. "A13" |
+  }
+  text dynamics line 14 { :w skip | :w skip :q skip | :w sign f | :h. skip :8 skip | }
+}</div>
     </div>
 
     <h2>Learn VexTab</h2>

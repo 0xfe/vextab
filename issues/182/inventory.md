@@ -47,4 +47,4 @@ The [proposal’s coverage table](../../docs/grammarv2.md#expressive-notation-an
 - **Existing drafts.** The guide retrieves saved source by chapter and ordinal. Decide how to version or migrate those drafts when v2 becomes the default. Include one restored v1 draft in the release tests.
 - **Written copies and playback repeats.** Test whether authors can predict what `times` prints and which source token to edit. Retain the proposed separation from performed repeats and endings unless the musician review finds a clearer spelling.
 
-Milestone 1 was accepted. The editing tasks remain available for recording musician feedback. Milestone 4 will turn this source inventory into an automated corpus check for the converted material.
+Milestone 1 was accepted. The editing tasks remain available for recording musician feedback. The [milestone 4 migration record](corpus.md) maps this inventory to the converted content and its automated checks.
