@@ -2,6 +2,7 @@
 import { Accidental, Fraction, Music, StaveNote, WrittenAccidentalState } from 'vexflow';
 import Vex from '../vexflow';
 import { drumKit } from '../score/drums';
+import { attachOpenSlide, describeOpenSlide } from '../score/open-slide';
 import { fixedHeads } from '../playback/performance';
 import { describePrebend, makePrebend, spellFret } from '../score/music';
 import * as _ from '../utils';
@@ -172,7 +173,8 @@ export class NoteBuilder {
       new_tab_note.setPlayNote(play_note);
     }
 
-    spec.forEach(({ prebend }, index) => {
+    spec.forEach(({ prebend, openSlide }, index) => {
+      if (openSlide) attachOpenSlide(new_tab_note, index, openSlide);
       if (prebend) new_tab_note.addModifier(makePrebend(prebend), index);
     });
     tab_notes.push(new_tab_note);
@@ -325,7 +327,7 @@ export class NoteBuilder {
         cautionary: note.abc ? note.abc.accidental_type === 'c'
           : this.artist.customizations.accidentals === 'cautionary' && sign !== 'n',
       } : null);
-      tab_specs[current_position].push({ fret: note.fret, str: note.string, prebend: note.prebend });
+      tab_specs[current_position].push({ fret: note.fret, str: note.string, prebend: note.prebend, openSlide: note.openSlide });
       if (note.articulation) {
         articulations[current_position].push(note.articulation);
       } else {
@@ -349,6 +351,9 @@ export class NoteBuilder {
         this.addStaveNote({ spec, signs: signs[i], play_note: play_notes[i] });
         if (!stave.tab) {
           const instructions = tab_specs[i].filter(p => p.prebend).map(p => describePrebend(p.prebend, p.str));
+          for (const p of tab_specs[i]) {
+            if (p.openSlide) instructions.push(describeOpenSlide(p.openSlide, p.str));
+          }
           if (instructions.length) {
             const mark = new Vex.Flow.Annotation(instructions.join(' · '));
             mark.setVerticalJustification(Vex.Flow.Annotation.VerticalJustify.TOP);

@@ -8,6 +8,12 @@ export interface Prebend {
   release: boolean;
 }
 
+/** The free end lies above or below the played fret in pitch. */
+export interface OpenSlide {
+  edge: 'in' | 'out';
+  side: 'above' | 'below';
+}
+
 export interface Head {
   range: SourceRange;
   written: string;
@@ -17,6 +23,7 @@ export interface Head {
   accidental?: string;
   cautionary?: boolean;
   prebend?: Prebend;
+  openSlide?: OpenSlide;
   // A bare letter inherits the sign in force on the staff.
   inheritSign?: boolean;
 }

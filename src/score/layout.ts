@@ -1,10 +1,11 @@
 // Project the shared score into fresh VexFlow objects for each screen or publication view.
 import { drumKit } from './drums';
+import { attachOpenSlide, describeOpenSlide, drawPrintedOpenSlides } from './open-slide';
 import { inkStyle } from './color';
 import { colorPublication } from './publication-color';
 import { scoreFont } from './engraving';
 import {
-  Accidental, Annotation, Barline, StaveNote, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext,
+  Accidental, Annotation, Barline, StaveNote, TabNote, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext,
   type Beam, type StemmableNote, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
   type EasyScoreVoiceSpec, type NotationIdentity, type PublicationOptions, type RenderContext, type ScoreHitRegion,
 } from 'vexflow';
@@ -64,6 +65,7 @@ function guitarNotation(event: Attack, instrument: FrettedInstrument) {
     }
   }
   event.heads.forEach((h, index) => {
+    if (h.openSlide) labels.push({ kind: 'technique', id: 'open-slide', index, label: describeOpenSlide(h.openSlide, h.position.str) });
     if (h.prebend) labels.push({ kind: 'technique', id: 'pre-bend', index, label: describePrebend(h.prebend, h.position.str) });
     if (!h.position && h.sounding === null) labels.push({ kind: 'unpitched', id: 'slash', label: 'Rhythm slash', index });
   });
@@ -208,8 +210,9 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
           const beam = note.getBeam();
           if (beam) split.add(beam);
         }
-        if (staff === 'tab') {
+        if (note instanceof TabNote) {
           event.heads.forEach((head, index) => {
+            if (head.openSlide) attachOpenSlide(note, index, head.openSlide);
             if (head.prebend) note.addModifier(makePrebend(head.prebend), index);
           });
         }
@@ -363,6 +366,7 @@ export function renderScorePart(host: HTMLElement, parsed: ParsedScore, part: St
     }
   }
   const publication = new Publication(view.spec).render(host, paper);
+  if (part === 'tab') drawPrintedOpenSlides(publication, parsed, event => view.eventId(part, event.id));
   colorPublication(publication, parsed, event => view.eventId(part, event.id));
   return { publication, rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };
 }

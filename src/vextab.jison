@@ -76,6 +76,9 @@
 <notes>[u]                return 'u'
 <notes>[d]                return 'd'
 
+/* The marker points toward the free end's fret and binds to one numeric fret. */
+<notes>[<>]               return 'SLIDE_END'
+
 /* A pre-bend has one picked attack, its raised pitch, and an optional release. */
 <notes>[0-9]+z[0-9]+(z[0-9]+)?  return 'PREBEND'
 
@@ -347,6 +350,10 @@ chord
 fret
   : NUMBER
     { $$ = {fret: $1} }
+  | SLIDE_END NUMBER
+    { $$ = { fret: $2, openSlide: { edge: 'in', side: $1 === '>' ? 'above' : 'below' } } }
+  | NUMBER SLIDE_END
+    { $$ = { fret: $1, openSlide: { edge: 'out', side: $2 === '>' ? 'above' : 'below' } } }
   | PREBEND
     { $$ = yy.prebend($1, @$) }
   ;

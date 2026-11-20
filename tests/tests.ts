@@ -12,6 +12,7 @@ import Artist from '../src/artist';
 import Div from '../src/div';
 import './engraving';
 import './drums';
+import './open-slides';
 import './colors';
 import './shared-score';
 import './studies';
