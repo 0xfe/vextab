@@ -52,9 +52,12 @@ export interface ScoreEvent {
   marks: EventMark[];
 }
 
+/** A written time signature retains its display form and source token. */
+export interface WrittenMeter { value: string; sign?: string; range: TextRange }
+
 /** Slice the owning voice's events from start (inclusive) to end (exclusive). */
 export interface VoiceMeasure {
-  meter?: string; meterSign?: string; span?: string; fragment?: boolean; newRow?: boolean; rehearsal?: string; closing?: string; opening?: string;
+  meter?: string; meterSign?: string; meterRange?: TextRange; span?: string; fragment?: boolean; newRow?: boolean; rehearsal?: string; closing?: string; opening?: string;
   number: number; start: number; end: number; barlineRange: TextRange; trace: ExpansionFrame[];
 }
 
@@ -78,15 +81,16 @@ export interface ScoreStaff { name: StaffName; range: TextRange; voices: ScoreVo
 /** Instrument declarations apply to every voice of the part. */
 export interface ScoreLayout { width?: number; scale?: number; rowGap?: number; staffDistance?: number; top?: number }
 export interface PartSettings {
+  meters?: Record<number, WrittenMeter>;
   cautionary?: boolean; displayMeter?: boolean; beatGroups?: number[]; stemlets?: boolean; middleRests?: boolean; tabDirection?: 'up' | 'down';
   changes?: Record<number, { tuning?: string; ink?: string; displayMeter?: boolean }>;
   keys?: Record<number, string>; ink?: string; beam?: boolean; beamRests?: boolean; tabStems?: boolean; stem?: 'up' | 'down';
   tuning?: string; capo?: number; key?: string; clef?: 'treble' | 'bass' | 'alto' | 'tenor' | 'none' | 'soprano' | 'mezzo-soprano' | 'baritone-c' | 'baritone-f' | 'subbass' | 'french' | 'percussion';
   view?: 'tab' | 'notation' | 'both';
 }
-export interface ScorePart extends PartSettings { text?: TextLane[]; kind: PartKind; range: TextRange; staves: ScoreStaff[] }
+export interface ScorePart extends PartSettings { measureCount?: number; text?: TextLane[]; kind: PartKind; range: TextRange; staves: ScoreStaff[] }
 
-/** V2 keeps a single event list per voice. All parts share the meter and bar count. */
+/** V2 parts share a playback origin. measureCount is the largest local bar count. */
 export interface ScoreV2 {
   playback?: { enabled: boolean; tempo?: number; instrument?: string };
   transpose?: number; measureNumbers?: boolean; layout?: ScoreLayout;

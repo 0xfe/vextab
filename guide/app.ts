@@ -216,6 +216,7 @@ function navigate() {
   host.replaceChildren();
   let [section, id] = location.hash.slice(1).split('/');
   if (!section) section = 'tutorial';
+  if (section === 'tutorial' && id === 'the-stave') id = 'notes';
   if (section === 'demos') section = 'studies';
   const score = lessons.find(l => l.id === (id ?? section));
   const isLesson = ['lesson', 'original', 'playground'].includes(section) || (!id && !!score);

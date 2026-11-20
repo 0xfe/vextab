@@ -44,7 +44,7 @@ export class PlayerOverlay {
     }
     this.setTempo(tempo);
     this.controls.append(this.status);
-    (toolbar ?? this.root).append(this.controls);
+    (toolbar ?? this.root).append(showControls || toolbar ? this.controls : this.status);
     if (score instanceof SVGSVGElement) this.surface = score;
     if (score && (!toolbar || score instanceof HTMLCanvasElement)) this.mountSheet(score);
   }

@@ -11,7 +11,7 @@ npm ci
 npm start
 ```
 
-Open the [project index](http://127.0.0.1:9005/) for demos, tests, tools, and downloads. Start with the [15-step VexTab tutorial](http://127.0.0.1:9005/guide/) or open [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). Press **Play** at the bottom center of the score, change a fret, switch to tab and select the note from the keyboard. Explore [eight editable studies](http://127.0.0.1:9005/guide/#studies) or [search the API and notation reference](http://127.0.0.1:9005/guide/#reference).
+Open the [project index](http://127.0.0.1:9005/) for demos, tests, tools, and downloads. Start with the [14-step VexTab tutorial](http://127.0.0.1:9005/guide/) or open [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). Press **Play** at the bottom center of the score, change a fret, switch to tab and select the note from the keyboard. Explore [eight editable studies](http://127.0.0.1:9005/guide/#studies) or [search the API and notation reference](http://127.0.0.1:9005/guide/#reference).
 
 The current checkout adds per-string pre-bends, stave and note colours, and SoundFont playback to the 5.0.0 release. Try them in [Features](http://127.0.0.1:9005/guide/#features). For your own instrument or toolbar, see [Playback plugins](docs/playback.md).
 

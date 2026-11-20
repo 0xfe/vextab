@@ -17,6 +17,7 @@ import { projectScoreV2 } from './score/grammar2/project';
 import { parseScore, ScoreV2Error } from './score/parse';
 import { renderScore, type Part } from './score/layout';
 import type { ParsedScore } from './score/model';
+import type { ScoreV2 } from './score/grammar2/model';
 
 import { setFretPaper } from './score/color';
 
@@ -69,7 +70,8 @@ class Div {
   private composing = false;
   private diagnostic?: SourceRange;
   private candidate?: ParsedScore;
-  private current?: { score: ParsedScore; layout: ReturnType<typeof renderScore> };
+  private document?: ScoreV2;
+  private current?: { score: ParsedScore; layouts: ReturnType<typeof renderScore>[] };
   private surface: HTMLElement | null = null;
 
   // Optional editor UI state.
@@ -205,7 +207,7 @@ class Div {
 
   /** Reader IDs are valid only for the current, successfully drawn source revision. */
   getReadingEvents(): readonly ScoreReadingEvent[] {
-    return this.getScore() ? this.current.layout.navigation.events : [];
+    return this.getScore() ? this.current.layouts.flatMap(layout => layout.navigation.events) : [];
   }
 
   /** Return the current source diagnostic, including a located engraving warning. */
@@ -271,7 +273,7 @@ class Div {
   /** Accept either a musical ID or a projection ID from the current layout. */
   selectSource(id: string, revision: ParsedScore): boolean {
     const score = this.getScore();
-    const range = score && score === revision && this.current.layout.rangeFor(id, score.source);
+    const range = score && score === revision && this.current.layouts.map(layout => layout.rangeFor(id, score.source)).find(Boolean);
     if (!range || !this.text_area) return false;
     const editor = this.text_area[0] as HTMLTextAreaElement;
     editor.focus();
@@ -279,34 +281,51 @@ class Div {
     return true;
   }
 
-  /** Map clicks on either drawing surface back to the current source revision. */
+  /** Every instrument gets an independent engraving and hit-test coordinate system. */
+  private drawInstrument(host: HTMLElement, score: ParsedScore, revision: ParsedScore) {
+    const renderer = this.rendererBackend.toLowerCase() === 'canvas' ? 'canvas' : 'svg';
+    const layout = renderScore(host, score, { width: this.width, part: this.part, renderer });
+    const surface = host.querySelector<HTMLCanvasElement | SVGSVGElement>('svg, canvas');
+    if (this.text_area) surface.addEventListener('click', (event: MouseEvent) => {
+      let point: DOMPoint;
+      if (surface instanceof SVGSVGElement) {
+        const transform = surface.getScreenCTM();
+        if (!transform) return;
+        point = new DOMPoint(event.clientX, event.clientY).matrixTransform(transform.inverse());
+      } else {
+        const rect = surface.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        point = new DOMPoint((event.clientX - rect.left) * surface.clientWidth / rect.width,
+          (event.clientY - rect.top) * surface.clientHeight / rect.height);
+      }
+      const hit = layout.hitTest(point.x, point.y);
+      if (hit) this.selectSource(hit.id, revision);
+    });
+    return { layout, surface };
+  }
+
+  /** Mount all instruments in source order, or only the requested partIndex. */
   private drawFlow(next: HTMLElement): void {
     if (!this.grammar2 && (this.rendererBackend.toLowerCase() !== 'svg' || this.scale !== 1)) {
       throw new Error('Flow layout requires SVG at scale 1. Use width to reflow.');
     }
-    const score = this.candidate;
-    const canvas = this.rendererBackend.toLowerCase() === 'canvas';
-    const layout = renderScore(next, score, { width: this.width, part: this.part, renderer: canvas ? 'canvas' : 'svg' });
-    if (this.grammar2 && this.scale !== 1) next.style.zoom = String(this.scale);
-    if (this.text_area) next.addEventListener('click', event => {
-      const svg = next.querySelector('svg');
-      const transform = svg?.getScreenCTM();
-      const surface = next.querySelector('canvas');
-      const rect = surface?.getBoundingClientRect();
-      if (!transform && (!rect?.width || !rect.height)) return;
-      const point = transform ? new DOMPoint(event.clientX, event.clientY).matrixTransform(transform.inverse())
-        : new DOMPoint((event.clientX - rect.left) * surface.clientWidth / rect.width,
-          (event.clientY - rect.top) * surface.clientHeight / rect.height);
-      const hit = layout.hitTest(point.x, point.y);
-      if (hit) this.selectSource(hit.id, score);
+    const score = this.candidate, documentScore = this.document;
+    const ensemble = documentScore && this.part === 'score' && this.partIndex === undefined && documentScore.parts.length > 1;
+    const instruments = ensemble ? documentScore.parts.map((_,i) => projectScoreV2(documentScore, i)) : [score];
+    const drawings = instruments.map(instrument => {
+      const host = ensemble ? next.appendChild(document.createElement('div')) : next;
+      return this.drawInstrument(host, instrument, score);
     });
+    if (this.grammar2 && this.scale !== 1) next.style.zoom = String(this.scale);
     this.player?.dispose();
     this.player = undefined;
     if (this.enablePlayer || score.playback?.enabled) {
-      const player = this.player = new Player(layout.score, { playback: this.playback, controls: this.playbackControls });
-      player.render(next.querySelector('svg, canvas'));
+      const player = this.player = new Player(ensemble ? documentScore : drawings[0].layout.score, {
+        playback: this.playback, controls: this.playbackControls,
+      });
+      player.render(drawings[0].surface, undefined, drawings.slice(1).map(d => d.surface));
     }
-    this.current = { score, layout };
+    this.current = { score, layouts: drawings.map(d => d.layout) };
   }
 
   /** Commit a new surface only after engraving succeeds, including Canvas pixels. */
@@ -350,7 +369,7 @@ class Div {
       }
       this.surface?.remove();
       this.surface = next;
-      const warnings = this.flow ? this.current.layout.diagnostics : [];
+      const warnings = this.flow ? this.current.layouts.flatMap(layout => layout.diagnostics) : [];
       this.diagnostic = warnings[0]?.range;
       this.editor_error?.text(warnings.map(d => {
         const where = d.range ? ' (line ' + d.range.line + ', column ' + d.range.column + ')' : '';
@@ -369,7 +388,8 @@ class Div {
     try {
       if (this.flow) {
         this.candidate = undefined;
-        this.candidate = this.grammar2 ? projectScoreV2(parseScore(this.code, { language: 2 }), this.partIndex) : parseScore(this.code);
+        this.document = this.grammar2 ? parseScore(this.code, { language: 2 }) : undefined;
+        this.candidate = this.document ? projectScoreV2(this.document, this.partIndex) : parseScore(this.code);
       } else {
         this.artist.reset();
         this.parser.parse(this.code);

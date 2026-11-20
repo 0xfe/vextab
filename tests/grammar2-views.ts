@@ -1,4 +1,5 @@
 // Compare musical and engraved results from both score languages at the public entry points.
+import { TimeSignature } from 'vexflow';
 import { Div, parseScore, Player, renderScore, renderScorePart } from '../src/browser';
 import { scorePerformance } from '../src/playback/performance';
 import { scoreSurfaces } from '../src/playback/geometry';
@@ -126,6 +127,71 @@ QUnit.module('Grammar v2 score views', () => {
       assert.ok(embed.getScore());
       assert.notOk(embed.selectSource(sourceID, revision));
     } finally { embed.dispose(); }
+  });
+
+  QUnit.test('local meters engrave, print and play on independent instrument clocks', assert => {
+    const source = 'staff { meter 2/4 :h C4 | meter 3/8 :8 D4 E4 F4 | } '
+      + 'guitar { view tab meter 3/4 :h. 0/6 | 3/6 | }';
+    const parts = parseScore(source, { language: 2 });
+    for (const renderer of ['svg','canvas'] as const) {
+      const views = parts.parts.map((_,partIndex) => renderScore(host(), parts, { partIndex, renderer }));
+      const [melody, guitar] = views;
+      const signatures = views.map(view => view.composition.staves.map(([staff]) =>
+        (staff.getModifiers(undefined, TimeSignature.CATEGORY) as TimeSignature[]).map(mark => mark.getTimeSpec())));
+      assert.deepEqual(signatures, [[['2/4'],['3/8']], [['3/4'],[]]]);
+      const changed = melody.score.measures[1].state.timeRange;
+      assert.equal(source.slice(changed.start, changed.end), '3/8');
+      assert.deepEqual(scorePerformance(melody.score, 60).events.map(e => e.time), [0,2,2.5,3]);
+      assert.deepEqual(scorePerformance(guitar.score, 60).events.map(e => e.time), [0,3]);
+      assert.equal(scorePerformance(guitar.score, 60).duration, 6);
+    }
+    const print = renderScorePart(host(), parts, 'tab', { partIndex: 1 });
+    assert.equal(print.publication.pages[0].svg.querySelectorAll('.vf-timesignature').length, 1);
+    assert.equal(print.score.measures[0].state.meter, '3/4');
+    assert.deepEqual(print.publication.diagnostics, []);
+  });
+
+  QUnit.test('a multi-part editor engraves both parts, selects their sources and plays the last sustain', async assert => {
+    const root = host(), source = 'staff { meter 1/4 C4 | } staff { meter 4/4 :w G3 | }';
+    const notes: number[] = [];
+    let clock = 0, stoppedAt = 0, bothAnimated = false;
+    let done: () => void;
+    const stopped = new Promise<void>(resolve => { done = resolve; });
+    root.setAttribute('data-language', '2');
+    root.setAttribute('data-editor', 'true');
+    root.textContent = source;
+    const editor = new Div(root, { player: true, playback: { open: () => ({
+      get currentTime() { return clock; },
+      playNote(note) { notes.push(note.pitch); },
+      stop() { stoppedAt = clock; done(); },
+    }) } });
+    try {
+      const surfaces = [...root.querySelectorAll<SVGSVGElement>('svg')].filter(svg => scoreSurfaces.has(svg));
+      assert.equal(surfaces.length, 2);
+      assert.strictEqual(scoreSurfaces.get(surfaces[0]).score, editor.getScore());
+      assert.equal(scoreSurfaces.get(surfaces[1]).score.measures[0].state.meter, '4/4');
+      assert.equal(root.querySelectorAll('button[aria-label="Play"]').length, 1);
+      const reading = editor.getReadingEvents();
+      assert.equal(reading.length, 2);
+      assert.ok(editor.selectSource(reading[1].id, editor.getScore()));
+      const textarea = root.querySelector('textarea');
+      assert.equal(textarea.value.slice(textarea.selectionStart, textarea.selectionEnd), 'G3');
+      root.querySelector<HTMLButtonElement>('button[aria-label="Play"]').click();
+      // Advance the plugin clock by a fixed musical step and let both score overlays paint.
+      const tick = window.setInterval(() => {
+        clock += clock < 0.3 ? 0.025 : 0.125;
+        bothAnimated ||= surfaces.every(surface => !!surface.querySelector('.vextab-playback-ink'));
+      }, 10);
+      try { await stopped; } finally { window.clearInterval(tick); }
+      assert.deepEqual(notes.sort((a,b) => a-b), [55,60]);
+      assert.ok(bothAnimated, 'every displayed part animates on the same clock');
+      assert.ok(stoppedAt >= 2, 'the four-beat instrument sustains after the first part ends');
+    } finally { editor.dispose(); }
+    const selected = host();
+    selected.textContent = source;
+    const solo = new Div(selected, { language: 2, partIndex: 1 });
+    try { assert.equal(solo.getReadingEvents().length, 1); assert.equal(solo.getScore().measures[0].state.meter, '4/4'); }
+    finally { solo.dispose(); }
   });
 
   QUnit.test('the public player sends all simultaneous instruments to an injected plugin', async assert => {

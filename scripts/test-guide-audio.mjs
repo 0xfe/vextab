@@ -51,7 +51,7 @@ export async function testGuideAudio(browser, dist) {
     await page.evaluate(() => document.fonts.ready);
     const examples = page.locator('.chapter-example');
     const control = index => examples.nth(index).locator('.vextab-sheet-controls > button');
-    assert.equal(await examples.count(), 2);
+    assert.equal(await examples.count(), 4);
     assert.ok(!requests.some(url => url.includes('guide-instrument')));
     // Cancel while the async chunk is still loading. Its late completion must stay silent.
     await control(0).evaluate(button => { button.click(); button.click(); });

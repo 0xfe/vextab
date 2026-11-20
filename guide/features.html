@@ -10,6 +10,11 @@ staff {
   :q A5 B5 C5 |
   :h D5 :q B4 |
 }</pre>
+  <h3>Give each staff its own meter</h3>
+  <p>Both parts begin together. The guitar plays two bars of 3/4. The first staff plays a bar of 4/4 and changes to 2/4 at the barline. Both finish on the same beat.</p>
+  <pre data-score>staff { meter 4/4 C4 D4 E4 F4 |
+  meter 2/4 G4 A4 | }
+guitar { meter 3/4 0-2-3/1 | 3-2-0/1 | }</pre>
   <p><a href="#lesson/diagnostics">Practice locating a missing beat →</a></p>
 </section>
 <section id="beaming">
@@ -121,10 +126,11 @@ guitar {
 }</pre>
   <h3>Open-ended slides</h3>
   <p>Attach <code>slideIn below</code> or <code>slideIn above</code> to approach the picked note. Use <code>slideOut</code> to leave it. Follow the direction of all four slide marks.</p>
-  <pre data-score>meter 2/4
+  <pre data-score>alias approach="slideIn below" leave="slideOut below"
+meter 2/4
 guitar {
-  :q 9/3[slideIn below] 9/3[slideIn above] |
-  :q 9/3[slideOut below] (9/3[slideOut above] 7/2) |
+  :q 9/3[approach] 9/3[slideIn above] |
+  :q 9/3[leave] (9/3[slideOut above] 7/2) |
 }</pre>
   <p>Each slide has one picked attack. Playback uses its written fret. To slide between two specified frets in fixed layout, use <code>5/3 7/3[slide]</code>.</p>
   <p><a href="#lesson/drop-d-turnaround">Play the Drop D turnaround →</a></p>

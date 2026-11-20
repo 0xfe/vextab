@@ -1,6 +1,6 @@
-meter 3/4
-meter 6/8 at 2
 staff {
+  meter 3/4
   :8 C4 D4 E4 F4 G4 A4 |
+  meter 6/8
   break system :8 C4 D4 E4 F4 G4 A4 |
 }

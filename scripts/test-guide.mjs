@@ -21,7 +21,7 @@ export async function testGuide(page, dist) {
     'the offline guide loads its bundled title font');
   assert.equal(await page.locator('#index h1').textContent(), 'The VexTab Tutorial');
   const chapters = await page.locator('.book-cover + h2 + .chapter-list a').evaluateAll(links => links.map(a => a.hash));
-  assert.equal(chapters.length, 15);
+  assert.equal(chapters.length, 14);
   const coverLinks = page.getByRole('navigation', { name: 'More ways to use VexTab' });
   assert.deepEqual(await coverLinks.locator('a').evaluateAll(links => links.map(a => a.hash)),
     ['#quickstart', '#features', '#reference']);
@@ -64,8 +64,20 @@ export async function testGuide(page, dist) {
     assert.ok((await chapter.locator('.editor-error').allTextContents()).every(text => !text), hash);
     examples += count;
   }
-  assert.equal(examples, 25);
+  assert.equal(examples, 26);
   await go('#tutorial/notes');
+  assert.equal(await page.locator('#index h1').textContent(), 'Your first notes');
+  // Both the fixed-width engraved sheet and its controls should fit and center within the panel.
+  const viewport = page.viewportSize();
+  for (const width of [1200, 390]) {
+    await page.setViewportSize({ width, height: 850 });
+    const gaps = await page.locator('.chapter-example').evaluateAll(examples => examples.map(example => {
+      const frame = example.getBoundingClientRect(), sheet = example.querySelector('svg').getBoundingClientRect();
+      return [sheet.left - frame.left, frame.right - sheet.right];
+    }));
+    assert.ok(gaps.every(([left, right]) => left >= 0 && Math.abs(left - right) <= 2), 'Centered scores at ' + width);
+  }
+  await page.setViewportSize(viewport);
   const tutorialInput = page.locator('.chapter-example textarea').first();
   const written = await tutorialInput.inputValue();
   await tutorialInput.fill(written.replace('F#5', 'G5'));
@@ -83,7 +95,9 @@ export async function testGuide(page, dist) {
     const chapter = page.locator('.chapter-body');
     assert.ok(await chapter.locator('a').count(), hash);
     assert.ok((await chapter.locator('.editor-error').allTextContents()).every(text => !text), hash);
-    assert.equal(await chapter.locator('svg').count(), await chapter.locator('textarea').count(), hash);
+    const editors = await chapter.locator('textarea').count();
+    const extraStaff = hash === '#features/measured-music' ? 1 : 0;
+    assert.equal(await chapter.locator('svg').count(), editors + extraStaff, hash);
   }
   await go('#demos');
   assert.equal(await page.locator('#entries a').count(), 8);
