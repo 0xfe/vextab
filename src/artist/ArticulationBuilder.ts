@@ -1,6 +1,7 @@
 // Modifier pipeline for articulations, bends, tuplets, annotations, and special glyphs.
 import { inkStyle, isScoreColor } from '../score/color';
 import Vex from '../vexflow';
+import { recordFixedTie } from '../playback/performance';
 import { tupletOccupancy } from '../score/music';
 import * as _ from '../utils';
 import type Artist from './Artist';
@@ -521,6 +522,7 @@ export class ArticulationBuilder {
   ): void {
     this.artist.log('addTabArticulations: ', type, first_note, last_note, first_indices, last_indices);
 
+    if (type === 'T') recordFixedTie(first_note, last_note, first_indices, last_indices);
     if (type === 't') {
       last_note.addModifier(
         new Vex.Flow.Annotation('T')
@@ -579,6 +581,7 @@ export class ArticulationBuilder {
     this.artist.log('addStaveArticulations: ', type, first_note, last_note, first_indices, last_indices);
     // Stave ties/slides share a common VexFlow class.
     let articulation: any = null;
+    if (type === 'T') recordFixedTie(first_note, last_note, first_indices, last_indices);
     if (['b', 's', 'h', 'p', 't', 'T'].includes(type)) {
       articulation = new Vex.Flow.StaveTie({
         first_note,

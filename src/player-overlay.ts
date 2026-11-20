@@ -1,4 +1,4 @@
-// Native controls and a transparent Canvas cursor for the optional MIDI player.
+// Keyboard controls and a transparent cursor for SVG and Canvas playback.
 
 /** Stack interactive controls and a cursor above the host's fixed-layout Canvas score. */
 export class PlayerOverlay {
@@ -8,18 +8,28 @@ export class PlayerOverlay {
   private readonly context: CanvasRenderingContext2D;
 
   /** Copy the score's dimensions and transform, including its device-pixel ratio. */
-  constructor(score: HTMLCanvasElement, className: string, showControls: boolean, play: () => void, stop: () => void) {
+  constructor(score: HTMLCanvasElement | SVGSVGElement, className: string, showControls: boolean, play: () => void, stop: () => void) {
     this.root.className = `vextab-transport ${className}`;
-    this.root.style.left = `${score.offsetLeft}px`;
-    this.root.style.top = `${score.offsetTop}px`;
-    this.root.style.width = score.style.width || `${score.width}px`;
-    this.root.style.height = score.style.height || `${score.height}px`;
-
-    this.cursor.width = score.width;
-    this.cursor.height = score.height;
+    const canvas = score instanceof HTMLCanvasElement;
+    const bounds = score.getBoundingClientRect();
+    score.after(this.root);
+    // Compare the score with the overlay's own origin in the same containing block.
+    this.root.style.left = this.root.style.top = '0px';
+    const origin = this.root.getBoundingClientRect();
+    this.root.style.left = `${bounds.left - origin.left}px`;
+    this.root.style.top = `${bounds.top - origin.top}px`;
+    this.root.style.width = `${bounds.width}px`;
+    this.root.style.height = `${bounds.height}px`;
+    this.cursor.width = canvas ? score.width : Math.ceil(bounds.width);
+    this.cursor.height = canvas ? score.height : Math.ceil(bounds.height);
     this.cursor.setAttribute('aria-hidden', 'true');
     this.context = this.cursor.getContext('2d');
-    this.context.setTransform(score.getContext('2d').getTransform());
+    if (canvas) this.context.setTransform(score.getContext('2d').getTransform());
+    else {
+      const matrix = score.getScreenCTM();
+      if (matrix) this.context.setTransform(matrix.a, matrix.b, matrix.c, matrix.d,
+        matrix.e - bounds.left, matrix.f - bounds.top);
+    }
     this.root.append(this.cursor);
     if (showControls) {
       this.addButton('Stop', stop);
@@ -27,7 +37,6 @@ export class PlayerOverlay {
     }
     this.status.setAttribute('role', 'status');
     this.root.append(this.status);
-    score.after(this.root);
   }
 
   /** Use ordinary buttons for pointer, keyboard, and assistive-technology activation. */
@@ -42,8 +51,8 @@ export class PlayerOverlay {
   }
 
   /** Keep the soundfont loading message available to screen readers. */
-  setLoading(loading: boolean): void {
-    this.status.textContent = loading ? 'Loading instruments...' : '';
+  setStatus(message: string): void {
+    this.status.textContent = message;
   }
 
   /** Show the active transport state and clear the marker on stop. */

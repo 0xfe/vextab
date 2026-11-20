@@ -116,7 +116,11 @@ function startVoice(settings: Settings, direction: string | undefined, declarati
 function readSettings(settings: Settings, node: Token): void {
   for (const opt of node.params) {
     switch (opt.key) {
-      case 'measure-numbers': case 'tab-stems': case 'beam-rests': case 'beam-stemlets': case 'beam-middle-only': booleanOption(opt); break;
+      case 'tempo':
+        if (!Number.isFinite(Number(opt.value)) || Number(opt.value) <= 0) invalid(opt, 'Tempo must be positive');
+        break;
+      case 'instrument': break;
+      case 'player': case 'measure-numbers': case 'tab-stems': case 'beam-rests': case 'beam-stemlets': case 'beam-middle-only': booleanOption(opt); break;
       case 'tab-stem-direction':
         if (!['up','down'].includes(opt.value)) invalid(opt, 'Invalid tab stem direction');
         break;
@@ -361,6 +365,8 @@ export function parseScore(source: string): ParsedScore {
   let row: Row;
   for (const node of nodes) {
     if (node.element === 'options') {
+      const audio = node.params.find((p: Token) => ['tempo', 'instrument', 'player'].includes(p.key));
+      if (row && audio) invalid(audio, 'Set flow playback options before the first stave');
       const numbering = node.params.find((p: Token) => p.key === 'measure-numbers');
       if (row && numbering) invalid(numbering, 'Set measure numbering before the first stave');
       readSettings(settings, node);
@@ -383,5 +389,10 @@ export function parseScore(source: string): ParsedScore {
   finishRow(row, measures);
   resolvePitches(measures, ties);
   resolveMarks(measures, spans);
-  return { source, measures, ties, spans, measureNumbers: settings['measure-numbers'] === 'true' };
+  const parsed: ParsedScore = { source, measures, ties, spans, measureNumbers: settings['measure-numbers'] === 'true' };
+  if (settings.player || settings.tempo || settings.instrument) {
+    parsed.playback = { enabled: settings.player === 'true', tempo: settings.tempo ? Number(settings.tempo) : undefined,
+      instrument: settings.instrument };
+  }
+  return parsed;
 }

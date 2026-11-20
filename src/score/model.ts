@@ -106,6 +106,8 @@ export type ScoreSpan = { id: string; from: string; to: string; range: SourceRan
 );
 
 export interface ParsedScore {
+  /** Playback directives, when authored before the first flow stave. */
+  playback?: { enabled: boolean; tempo?: number; instrument?: string };
   source: string;
   measures: Measure[];
   ties: Tie[];

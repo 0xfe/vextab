@@ -31,3 +31,5 @@ See the [user guide and integration reference](docs/vt5-m4.md) for typed imports
 ## License
 
 VexTab is free for non-commercial use. Contact Mohit Muthanna Cheppudira about commercial use. [License](LICENSE)
+
+See [Playback plugins](docs/playback.md) for native audio, SpessaSynth and custom instruments.

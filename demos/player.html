@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VexTab playback</title>
+<style>
+  body { max-width: 40rem; margin: 2rem auto; padding: 0 1rem; color: #222; background: white; font: 16px/1.5 system-ui, sans-serif; }
+</style>
+<h1>VexTab playback</h1>
+<h2>Bass chords</h2>
+<div class="vex-tabdiv" width="440">
+options player=true tempo=140
+stave clef=bass time=4/4
+notes :q (C/2.G/2) (C/2.A/2) (C/2.G/2) (C/2.A/2) |
+</div>
+<h2>Pre-bend and release</h2>
+<div class="vex-tabdiv" width="440">
+options player=true tempo=80
+tabstave notation=true time=2/4
+notes :q (0/6.7z8z7/3) 7/3 |
+</div>
+<script src="../dist/vextab-div.js"></script>
+</html>
