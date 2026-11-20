@@ -11,7 +11,7 @@ npm ci
 npm start
 ```
 
-Open [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). Change a fret, switch to tab and select the note from the keyboard. Explore [eight playable demos](http://127.0.0.1:9005/guide/#demos) or [search the language reference](http://127.0.0.1:9005/guide/#reference).
+Open the [project index](http://127.0.0.1:9005/) for demos, tests, tools, and downloads. Start with [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). Change a fret, switch to tab and select the note from the keyboard. Explore [eight playable demos](http://127.0.0.1:9005/guide/#demos) or [search the language reference](http://127.0.0.1:9005/guide/#reference).
 
 ## Embed an editable score
 

@@ -7,6 +7,12 @@ const { version } = require('./package.json');
 
 module.exports = (env = {}) => {
   const tag = env.TAG_NAME || 'dev';
+  // Repository examples load ../dist or /dist when served from a checkout. Their
+  // packaged copies sit one level below the bundles and use the current build tag.
+  function examplePage(content) {
+    return content.toString().replace(/src="(?:\.\.)?\/dist\/([^"]+\.js)"/g, (_, bundle) =>
+      'src="../' + bundle.replace('.dev.js', '.' + tag + '.js') + '"');
+  }
   return {
     entry: {
       main: './src/main.ts',
@@ -36,7 +42,7 @@ module.exports = (env = {}) => {
       new HtmlWebpackPlugin({ template: './guide/triplets.html', filename: 'guide/triplets.html', chunks: ['div'] }),
       new HtmlWebpackPlugin({ template: './guide/shared-score.html', filename: 'guide/shared-score.html', chunks: ['main'] }),
       new HtmlWebpackPlugin({ template: './guide/studies.html', filename: 'guide/studies.html', chunks: ['studies'] }),
-      new HtmlWebpackPlugin({ template: './tests/tests.html', filename: 'index.html', chunks: ['tests'] }),
+      new HtmlWebpackPlugin({ template: './tests/tests.html', filename: 'tests.html', chunks: ['tests'] }),
       new HtmlWebpackPlugin({ template: './tests/playground.html', filename: 'playground.html', chunks: ['playground'] }),
       new HtmlWebpackPlugin({ template: './static/div.html', filename: 'static/div.html', chunks: ['div'] }),
       new CopyPlugin({ patterns: [
@@ -44,6 +50,10 @@ module.exports = (env = {}) => {
           from: require.resolve('@vexflow-fonts/' + face + '/LICENSE.txt'),
           to: 'guide/licenses/' + face + '.txt',
         })),
+        { from: 'static/index.html', to: 'index.html' },
+        { from: 'demos/*.html', transform: examplePage },
+        { from: 'doc/tutorial.html', to: 'doc/tutorial.html', transform: examplePage },
+        { from: 'doc/*.css' },
         { from: 'guide/scores', to: 'guide/scores' },
         { from: 'doc/vextab.css', to: 'vextab.css' },
         { from: require.resolve('qunit'), to: 'qunit.js' },

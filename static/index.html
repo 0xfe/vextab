@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- Local directory of runnable examples, documentation and build artifacts. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VexTab · Project index</title>
+  <style>
+    :root { color-scheme: light; color: #202721; background: #faf9f5; font: 1rem/1.5 system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { max-width: 64rem; margin: auto; padding: clamp(1rem, 5vw, 4rem); }
+    header { border-top: .38rem solid #20614f; padding: 1.5rem 0; }
+    h1, h2 { font-family: Georgia, serif; font-weight: normal; margin: 0; }
+    h1 { font-size: clamp(3rem, 8vw, 5.5rem); line-height: 1.1; letter-spacing: -.045em; }
+    h2 { font-size: 1.6rem; }
+    header p { margin: .5rem 0 0; color: #4d594e; }
+    section { display: grid; grid-template-columns: 12rem 1fr; padding: 1.5rem 0; border-top: 1px solid #b6c3b8; gap: 1rem; }
+    ul { padding: 0; margin: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.15rem 1.6rem; }
+    a { color: #165b47; font-weight: 650; text-underline-offset: .2em; }
+    a:hover { color: #091f18; }
+    a:focus-visible { outline: 2px solid #165b47; outline-offset: 4px; }
+    li small { display: block; margin-top: .2rem; font-size: .9rem; color: #4d594e; }
+    @media (max-width: 48rem) { section { grid-template-columns: 1fr; } }
+    @media (max-width: 30rem) { ul { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header><h1>VexTab</h1><p>Write, play, and test guitar tablature and standard notation.</p></header>
+  <main>
+    <section aria-labelledby="demos">
+      <h2 id="demos">Demos</h2>
+      <ul>
+        <li><a href="demos/player.html">Native Web Audio</a><small>Play bass chords and a guitar pre-bend.</small></li>
+        <li><a href="demos/spessasynth.html">SpessaSynth playback</a><small>Hear the same pre-bend with a SoundFont.</small></li>
+        <li><a href="guide/index.html#demos">Demo library</a><small>Edit eight studies, from compound time to a printable duet.</small></li>
+        <li><a href="guide/studies.html">Guitar and lead-sheet studies</a><small>Explore longer scores across different layouts.</small></li>
+        <li><a href="demos/div-plugin.html">Editable HTML embed</a></li>
+        <li><a href="demos/api.html">Artist API example</a></li>
+      </ul>
+    </section>
+    <section aria-labelledby="guide">
+      <h2 id="guide">Guide &amp; tools</h2>
+      <ul>
+        <li><a href="guide/index.html">User guide</a><small>Start with a fret and build a score one lesson at a time.</small></li>
+        <li><a href="guide/index.html#playground/first-fret">Score playground</a><small>Edit, render, and save VexTab source.</small></li>
+        <li><a href="guide/index.html#reference">Language reference</a></li>
+        <li><a href="doc/tutorial.html">Historical tutorial</a></li>
+        <li><a href="guide/triplets.html">Triplet lesson</a></li>
+        <li><a href="guide/shared-score.html">Tied chords and printed parts</a></li>
+      </ul>
+    </section>
+    <section aria-labelledby="artifacts">
+      <h2 id="artifacts">Tests &amp; artifacts</h2>
+      <ul>
+        <li><a href="tests.html">Browser test suite</a><small>Run QUnit and inspect the rendered test scores.</small></li>
+        <li><a href="playground.html">Fixed-layout playground</a><small>Check the legacy renderer and its diagnostics.</small></li>
+        <li><a href="static/div.html">DOM plugin test page</a></li>
+        <li><a href="guide/scores/guitar-duet.vextab" download>Download a duet source file</a></li>
+        <li><a href="vextab-div.js" download>Download the browser embed</a></li>
+        <li><a href="vextab.css" download>Download the embed stylesheet</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

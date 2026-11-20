@@ -20,7 +20,7 @@ The browser tests default to the installed Chrome. To use another Chrome or Chro
 npm start
 ```
 
-The development server watches the source. Open the [QUnit suite](http://127.0.0.1:9005/), the [editable user guide](http://127.0.0.1:9005/guide/), the [triplet guide](http://127.0.0.1:9005/guide/#triplets), the [tied-chord lesson](http://127.0.0.1:9005/guide/shared-score.html), the [guitar and lead-sheet studies](http://127.0.0.1:9005/guide/studies.html), or the [interactive playground](http://127.0.0.1:9005/playground.html).
+The development server watches the source. Open the [project index](http://127.0.0.1:9005/) to find the demos, guide, playgrounds, and downloads. The [browser test suite](http://127.0.0.1:9005/tests.html) runs QUnit.
 
 | Command | Output |
 | --- | --- |
@@ -28,8 +28,6 @@ The development server watches the source. Open the [QUnit suite](http://127.0.0
 | `npm run build` | Type declarations in `dist/types/`, minified bundles, source maps, and the legacy `vextab-div.js` entry point |
 | `npm run watch` | Development bundles rebuilt on source changes |
 | `npm run clean` | Removes the generated `dist/` directory |
-
-To browse the historical tutorial or the API demos, run `npm run build-dev` and `npm run serve`. Open the [tutorial](http://127.0.0.1:8052/doc/tutorial.html) or the [API demo](http://127.0.0.1:8052/demos/api.html).
 
 ## Test locally
 

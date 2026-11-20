@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- The example host loads the synthesizer and sound bank on the first user gesture. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpessaSynth playback · VexTab</title>
+  <style>
+    body { max-width: 40rem; margin: 2rem auto; padding: 0 1rem; font: 1rem/1.5 system-ui, sans-serif; }
+    button { font: inherit; }
+    #score { overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>SpessaSynth playback</h1>
+  <p>Enable audio to load SpessaSynth and the example SoundFont from jsDelivr. Press Play to hear the upper string bend down over a steady bass note.</p>
+  <button id="enable" type="button">Enable audio</button>
+  <p id="status" role="status"></p>
+  <div id="score" hidden width="440">options player=true tempo=80 instrument=0
+tabstave notation=true time=2/4
+notes :q (0/6.7z8z7/3) 7/3 |</div>
+  <script src="../dist/vextab-div.js"></script>
+  <script type="module">
+    const library = 'https://cdn.jsdelivr.net/npm/spessasynth_lib@4.4.9';
+    const soundFont = 'https://cdn.jsdelivr.net/gh/schellingb/TinySoundFont@a3621a19c6504885cd9583e6e26c35bc954fc8ec/examples/florestan-subset.sf2';
+    const enable = document.querySelector('#enable');
+    const score = document.querySelector('#score');
+    const status = document.querySelector('#status');
+
+    // The host owns the context and passes the configured instrument to VexTab.
+    enable.addEventListener('click', async () => {
+      enable.disabled = true;
+      status.textContent = 'Loading the synthesizer and SoundFont…';
+      let audio;
+      try {
+        audio = new AudioContext();
+        await audio.resume();
+        const [{ WorkletSynthesizer }, bank] = await Promise.all([
+          import(library + '/+esm'), fetch(soundFont), audio.audioWorklet.addModule(library + '/dist/spessasynth_processor.min.js'),
+        ]);
+        if (!bank.ok) throw new Error('Could not load the SoundFont.');
+        const synth = new WorkletSynthesizer(audio);
+        synth.connect(audio.destination);
+        await synth.soundBankManager.addSoundBank(await bank.arrayBuffer(), 'main');
+        score.hidden = false;
+        new VexTabDiv.Div(score, { playback: VexTabDiv.createSpessaSynthPlayback(synth) });
+        enable.hidden = true;
+        status.textContent = '';
+      } catch (error) {
+        if (audio) await audio.close();
+        enable.disabled = false;
+        status.textContent = 'Audio setup failed. ' + error.message;
+      }
+    });
+  </script>
+</body>
+</html>
