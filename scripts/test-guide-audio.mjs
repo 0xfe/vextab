@@ -62,6 +62,12 @@ export async function testGuideAudio(browser, dist) {
       const samples = new Float32Array(1024);
       window.guideMeter.getFloatTimeDomainData(samples);
       return samples.some(value => Math.abs(value) > 0.0001);
+    }).catch(async cause => {
+      const detail = await examples.first().evaluate(host => ({
+        audio: window.guideMeter?.context.state ?? 'output disconnected',
+        status: [...host.querySelectorAll('[role="status"]')].map(node => node.textContent),
+      }));
+      throw new Error('No SoundFont PCM at the guide output: ' + JSON.stringify(detail), { cause });
     });
     await control(1).click();
     assert.equal(await control(0).getAttribute('aria-label'), 'Play');
