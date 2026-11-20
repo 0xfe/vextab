@@ -16,6 +16,25 @@ stave time=3/4
 notes :8 [ C-D-E/4 ] F/4 [ A/4 B@~/4 ] |</div>
   <p><a href="#lesson/meter">Compare the automatic beams in 3/4 and 6/8 →</a></p>
 </section>
+<section id="piano">
+  <h2>Piano grand staff</h2>
+  <p>The right hand plays four quarter notes while the left plays two half notes. Play the phrase, then change the bass rhythm without changing the melody. Each hand fills the same bars.</p>
+  <pre data-score>options player=true tempo=96
+piano time=4/4
+notes :q E-G/4 C/5 G/4 | F-A/4 C/5 A/4 |
+voice hand=left
+notes :h (C/3.G/3) G/2 | (F/2.C/3) C/3 |</pre>
+  <p>The first line of notes belongs to the treble stave. Each added <code>voice</code> starts at beat one of the same row. Set <code>hand=right</code> or <code>hand=left</code> to pick its stave. Use <code>voice=top</code> and <code>voice=bottom</code> when two voices on one stave need opposite stems.</p>
+  <pre data-score>piano time=2/4 voice=top
+notes :q G-A/4 |
+voice hand=right voice=bottom
+notes :h E/4 |
+voice hand=left voice=top
+notes :h C/3 |
+voice hand=left voice=bottom
+notes :q F-G/2 |</pre>
+  <p><a href="#reference/piano">Piano rendering and hand parts →</a></p>
+</section>
 <section id="independent-voices">
   <h2>Independent voices and ties</h2>
   <p>Let a melody cross a barline while the bass keeps its own pulse.</p>

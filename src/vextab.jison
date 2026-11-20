@@ -15,6 +15,7 @@
 
 <INITIAL>"notes"              { this.begin('notes'); return 'NOTES'; }
 <INITIAL>"tabstave"           { this.begin('options'); return 'TABSTAVE'; }
+<INITIAL>"piano"              { this.begin('options'); return 'PIANO'; }
 <INITIAL>"stave"              { this.begin('options'); return 'STAVE'; }
 <INITIAL>"voice"              { this.begin('options'); return 'VOICE'; }
 <INITIAL>"options"            { this.begin('options'); return 'OPTIONS'; }
@@ -163,6 +164,7 @@ stave
 voice
   : TABSTAVE
   | STAVE
+  | PIANO
   | VOICE
   ;
 

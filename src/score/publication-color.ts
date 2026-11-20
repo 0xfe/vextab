@@ -1,6 +1,6 @@
 // Carry authored colours into the independent SVG pages produced by VexFlow Publication.
 import type { PublicationResult } from 'vexflow';
-import type { Attack, ParsedScore } from './model';
+import type { Attack, MeasureVoice, ParsedScore } from './model';
 
 /** Preserve unpainted strokes, hollow shapes, and the opaque paper behind a tab fret. */
 function colorInk(group: Element, color: string): void {
@@ -16,13 +16,13 @@ function colorInk(group: Element, color: string): void {
 
 /** Publication rebuilds native objects. Its system measure numbers and source IDs survive pagination.
  * Write presentation attributes so standalone SVG, outline conversion and PDF share the same ink. */
-export function colorPublication(publication: PublicationResult, parsed: ParsedScore, id: (event: Attack) => string): void {
+export function colorPublication(publication: PublicationResult, parsed: ParsedScore, id: (event: Attack, voice: MeasureVoice) => string): void {
   const overrides = new Map<string, Attack>();
   let coloredStaves = false;
   for (const measure of parsed.measures) {
     coloredStaves ||= !!measure.state.color;
     for (const voice of measure.voices) for (const event of voice.events) {
-      if (event.color || event.chord?.color) overrides.set('vf-' + id(event), event);
+      if (event.color || event.chord?.color) overrides.set('vf-' + id(event, voice), event);
     }
   }
   if (!coloredStaves && !overrides.size) return;

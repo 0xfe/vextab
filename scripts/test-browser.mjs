@@ -152,6 +152,7 @@ try {
   await page.goto('about:blank');
   await page.setContent(`
     <div id="legacy" class="vex-tabdiv" data-renderer="" editor="true" editor_width="520">tabstave\nnotes 5/2</div>
+    <div id="legacy-piano" class="vex-tabdiv">piano time=1/4\nnotes C/4\nvoice hand=left\nnotes C/3</div>
     <div id="fixed" class="vex-tabdiv" layout="flow" data-layout="fixed" data-renderer="svg"
       width="240" data-width="600" data-scale="0.5" data-editor="true"
       editor_height="100" data-editor_height="80" data-editor-height="60"
@@ -168,6 +169,10 @@ try {
   assert.equal(await page.locator('#legacy textarea').inputValue(), 'tabstave\nnotes 5/2');
   assert.equal(await page.locator('#legacy textarea').evaluate(el => el.style.width), '520px');
   assert.equal(await page.locator('#legacy .editor-error').innerText(), '');
+  const piano = page.locator('#legacy-piano svg');
+  assert.equal(await piano.count(), 1);
+  assert.match(await piano.textContent(), /R\.H\./);
+  assert.match(await piano.textContent(), /L\.H\./);
   assert.equal(await page.evaluate(() => window.VexTabDiv.Flow.BUILD.VERSION), manifest.dependencies.vexflow);
 
   // Namespaced settings work for both entry points, including older editor_height markup.

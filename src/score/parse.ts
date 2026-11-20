@@ -5,7 +5,7 @@ import { isScoreColor } from './color';
 import { readSyntax, ScoreError, type SourceRange } from './source';
 import { VoiceCommands, resolveMarks } from './commands';
 import { midiPitch, soundingGuitarPitch, spellFret, tupletOccupancy } from './music';
-import type { Attack, Head, Measure, MeasureVoice, ParsedScore, StaffState, Tie, ScoreSpan } from './model';
+import type { Attack, Head, Measure, MeasureVoice, ParsedScore, PianoHand, StaffState, Tie, ScoreSpan } from './model';
 
 export { ScoreError, type SourceRange } from './source';
 export type { ParsedScore } from './model';
@@ -52,9 +52,14 @@ function staffState(node: Token): StaffState {
   const state: StaffState = { tab: node.element === 'tabstave', notation: node.element !== 'tabstave',
     capo: 0, strings: 6, tuning: 'standard', key: 'C', clef: 'treble', meter: '4/4', showTime: false, fragment: false,
     declaration: declarationRange(node), timeRange: { ...node.range, end: node.range.start + node.element.length } };
+  if (node.element === 'piano') state.piano = true;
   let visible = true;
   let timeGiven = false;
   for (const opt of node.options ?? []) {
+    if (state.piano && ['clef', 'tuning', 'capo', 'strings', 'tablature', 'notation'].includes(opt.key)) {
+      invalid(opt, 'A piano uses treble and bass notation staves');
+    }
+    if (state.piano && opt.key === 'hand') continue;
     switch (opt.key) {
       case 'color':
         if (!isScoreColor(opt.value)) invalid(opt, 'Expected a CSS color name or hex value');
@@ -143,6 +148,9 @@ function readRhythm(node: Token): Rhythm {
 
 /** Resolve pitches and physical positions independently. A named pitch need not have a fret. */
 function chordHead(note: Token, state: StaffState, tuning: Tuning, manager: KeyManager, music: Music, slash: boolean): Head {
+  if (state.piano && (note.fret !== undefined || !note.abc || !/^[A-G]$/.test(note.abc.key))) {
+    invalid(note, 'Write named pitches such as C/4 on a piano stave');
+  }
   if (note.decorator) fixed(note, `decorator '${note.decorator}'`);
   if (note.articulation && !['T', '-'].includes(note.articulation)) fixed(note, `technique '${note.articulation}'`);
   const str = Number(note.string);
@@ -297,6 +305,9 @@ interface Row {
 function finishRow(row: Row, measures: Measure[]) {
   const first = row.voices[0]?.bars;
   if (!first?.length) throw new ScoreError('measure', 'Empty stave', row.node.range);
+  if (row.state.piano && !row.voices.some(v => v.bars[0]?.hand === 'left')) {
+    invalid(row.node, 'A piano needs a left hand. Add voice hand=left and write its notes or rests');
+  }
   for (const { bars, node } of row.voices) {
     if (bars.length !== first.length) throw new ScoreError('measure', 'Voices have different bar counts', node.range);
   }
@@ -336,24 +347,26 @@ function resolvePitches(measures: Measure[], ties: Tie[], transposed: boolean): 
   const arrivals = new Map(ties.map(t => [t.to + '/' + t.toHead, t]));
   for (const m of measures) {
     const signature = music.createScaleMap(m.state.key);
+    // Accidental memory is shared by voices on one stave, never between piano hands.
     const memory = new Map<string, string>();
-    const beats = new Map<string, Attack[]>();
+    const beats = new Map<string, { event: Attack; hand?: PianoHand }[]>();
     for (const voice of m.voices) for (const event of voice.events) {
       const group = beats.get(event.onset) ?? [];
-      group.push(event);
+      group.push({ event, hand: voice.hand });
       beats.set(event.onset, group);
     }
     for (const beat of [...beats.keys()].sort((a,b) => fraction(a).value() - fraction(b).value())) {
       const updates = new Map<string, string>();
-      for (const event of beats.get(beat)) {
+      for (const { event, hand } of beats.get(beat)) {
         heads.set(event.id, event.heads);
         event.heads.forEach((h, index) => {
           if (h.sounding === null) return; // A display head cannot change accidental memory.
           const pitch = staffPitch(h);
+          const position = (hand ?? '') + pitch;
           const tie = arrivals.get(event.id + '/' + index);
           const prior = tie && heads.get(tie.from)[tie.fromHead];
           if (h.inheritSign) {
-            const name = prior?.written.split('/')[0] ?? memory.get(pitch) ?? signature[pitch[0]].replace(/n$/, '');
+            const name = prior?.written.split('/')[0] ?? memory.get(position) ?? signature[pitch[0]].replace(/n$/, '');
             if (name === '?') throw new ScoreError('syntax', 'Write the accidental after a conflicting unison', h.range);
             h.written = name + pitch.slice(1);
             if (!h.position) h.sounding = h.written;
@@ -363,12 +376,23 @@ function resolvePitches(measures: Measure[], ties: Tie[], transposed: boolean): 
           }
           if (prior && prior.written !== h.written) throw new ScoreError('syntax', 'Tied pitches differ', h.range);
           const name = h.written.split('/')[0];
-          updates.set(pitch, updates.has(pitch) && updates.get(pitch) !== name ? '?' : name);
+          updates.set(position, updates.has(position) && updates.get(position) !== name ? '?' : name);
         });
       }
       for (const [pitch, name] of updates) memory.set(pitch, name);
     }
   }
+}
+
+/** The initial line is the treble voice. Each additional voice names its physical hand. */
+function pianoHand(node: Token): PianoHand {
+  const opt = node.options?.find((o: Token) => o.key === 'hand');
+  if (node.element === 'piano') {
+    if (opt && opt.value !== 'right') invalid(opt, 'Start a piano with the right hand, then add voice hand=left');
+    return 'right';
+  }
+  if (!opt || !['right', 'left'].includes(opt.value)) invalid(opt ?? node, 'A piano voice needs hand=right or hand=left');
+  return opt.value;
 }
 
 /** Pure parse/validation entry. All mutable compiler state is local to this source revision. */
@@ -391,14 +415,22 @@ export function parseScore(source: string): ParsedScore {
       if (row) finishRow(row, measures);
       row = { node, state: staffState(node), voices: [] };
     } else {
-      for (const opt of node.options ?? []) if (opt.key !== 'voice') fixed(opt, `voice option '${opt.key}'`);
+      for (const opt of node.options ?? []) {
+        if (opt.key !== 'voice' && !(row.state.piano && opt.key === 'hand')) fixed(opt, `voice option '${opt.key}'`);
+      }
     }
     if (node.text?.length) fixed({ range: node.text[0].declaration }, 'timed text');
     if (node.slurs?.length) fixed(node.slurs[0], 'slur');
     const direction = node.options?.find((o: Token) => o.key === 'voice')?.value;
     if (direction && !['top', 'bottom', 'new'].includes(direction)) invalid(node, 'Invalid voice direction');
-    if (node.notes?.length) row.voices.push({ bars: compileVoice(node, row.state, settings, direction, ties, cursor, spans, row.voices[0]?.bars), node });
-    else if (node.element === 'voice') invalid(node, 'Empty voice');
+    if (node.notes?.length) {
+      const hand = row.state.piano ? pianoHand(node) : undefined;
+      // Independent hands start with quarter notes even if the other hand ended on a half note.
+      const rhythm = hand ? { rhythm: { base: 'q', dots: 0, slash: false } } : cursor;
+      const bars = compileVoice(node, row.state, settings, direction, ties, rhythm, spans, row.voices[0]?.bars);
+      if (hand) for (const bar of bars) bar.hand = hand;
+      row.voices.push({ bars, node });
+    } else if (node.element === 'voice' || node.element === 'piano') invalid(node, 'Empty voice');
   }
   if (!row) invalid(nodes[0], 'Expected a stave');
   finishRow(row, measures);

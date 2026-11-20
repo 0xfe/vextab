@@ -51,7 +51,11 @@ export interface Bar {
   range: SourceRange;
 }
 
+export type PianoHand = 'right' | 'left';
+
 export interface MeasureVoice {
+  /** A hand identifies the physical stave, independently of this voice's stem direction. */
+  hand?: PianoHand;
   declaration: SourceRange;
   events: Attack[];
   tuplets: { start: number; count: number; numNotes: number; notesOccupied: number; range: SourceRange }[];
@@ -72,6 +76,7 @@ export interface MeasureVoice {
 }
 
 export interface StaffState {
+  piano?: boolean;
   color?: string; // Foreground for this stave declaration and its wrapped rows.
   declaration: SourceRange;
   notation: boolean;

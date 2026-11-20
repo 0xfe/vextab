@@ -313,6 +313,8 @@ export class VexTabParser {
   generate(elements: any[]): void {
     elements.forEach((stave) => {
       switch (stave.element) {
+        case 'piano':
+          throw this.newError(stave, 'Use layout="flow" or parseScore for a piano grand staff');
         case 'stave':
         case 'tabstave':
           this.artist.addStave(stave.element, this.parseStaveOptions(stave.options, stave.element));
