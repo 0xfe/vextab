@@ -11,6 +11,7 @@ export interface Prebend {
 export interface Head {
   range: SourceRange;
   written: string;
+  drum?: string; // VexFlow kit identity. The written key supplies staff placement only.
   sounding: string | null; // A dead strike has a display position and no pitch.
   position?: { str: number; fret: number | 'X' };
   accidental?: string;

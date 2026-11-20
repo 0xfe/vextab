@@ -36,6 +36,15 @@ notes :h (5/2.7/3) !bend 3 +2 rise=1/2 hold=3/4 release=1/1! |
 notes :q 0/6 !pm 6! 3/6 !end-pm! |</pre>
   <p><a href="#lesson/drop-d-turnaround">Play the Drop D turnaround →</a></p>
 </section>
+<section id="drum-kit">
+  <h2>Drum kit notation</h2>
+  <p>Write a groove with <code>stave clef=percussion</code>. In the first bar, read the kit from low to high. <code>kick</code> is a round head in the bottom space, <code>snare</code> is a round head in the third space, and <code>hat</code> is a cross above the top line for the closed hi-hat.</p>
+  <pre data-score>stave clef=percussion time=4/4
+notes :q kick snare hat ## |
+notes :8 (kick.hat) hat (snare.hat) hat (kick.hat) hat (snare.hat) hat |</pre>
+  <p>Parentheses put both instruments on the same stem. To give the feet and hands independent rhythms, put them in separate voices. Drum hits have no sounding pitch in VexTab playback.</p>
+  <p><a href="#features/independent-voices">Write independent voices →</a></p>
+</section>
 <section id="lead-sheets">
   <h2>Chord frames and lyric syllables</h2>
   <p>Give a chord its name, its guitar fingering and a place in a lyric.</p>

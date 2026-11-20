@@ -312,8 +312,11 @@ class Div {
             const lines = voices.map((notes, v) => 'Voice ' + (v + 1) + '. ' + notes
               .filter(note => !note.shouldIgnoreTicks()).map(note => {
                 const positions = note.getPositions?.();
-                const pitch = note.isRest() ? 'rest' : positions?.map(p => 'string ' + p.str + ' fret ' + p.fret).join(', ')
-                  ?? note.getKeys().join(', ');
+                // A drum's written key encodes its staff position. Read its instrument name aloud.
+                const drums = group.note?.getClef() === 'percussion'
+                  ? note.notation?.filter(mark => mark.kind === 'unpitched').map(mark => mark.label) : undefined;
+                const heads = drums?.length ? drums : positions?.map(p => 'string ' + p.str + ' fret ' + p.fret);
+                const pitch = note.isRest() ? 'rest' : (heads ?? note.getKeys()).join(', ');
                 return pitch + ' (' + note.getDuration() + ')';
               }).join('. '));
             return 'Stave ' + (i + 1) + ', meter ' + group.meter + '. ' + lines.join('. ');

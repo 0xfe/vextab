@@ -1,6 +1,7 @@
 // Note creation and expansion logic for tab/notation, including chords and rests.
 import { Accidental, Fraction, Music, StaveNote, WrittenAccidentalState } from 'vexflow';
 import Vex from '../vexflow';
+import { drumKit } from '../score/drums';
 import { fixedHeads } from '../playback/performance';
 import { describePrebend, makePrebend, spellFret } from '../score/music';
 import * as _ from '../utils';
@@ -196,6 +197,17 @@ export class NoteBuilder {
     this.artist.current_dots = dots;
     this.artist.current_head = match[2] ? 's' : 'n';
     this.artist.current_duration = match[1] + 'd'.repeat(dots);
+  }
+
+  /** Add one kit attack. A timing spacer keeps the fixed Artist's parallel voice arrays aligned. */
+  addDrums(ids: string[]): void {
+    const stave = _.last(this.artist.staves)!;
+    const duration = this.artist.current_duration;
+    const note = new StaveNote(drumKit.note(ids, duration));
+    this.attachDots(note);
+    stave.note_notes.push(note);
+    stave.tab_notes.push(new Vex.Flow.GhostNote(duration));
+    fixedHeads.set(note, []);
   }
 
   /** Position rests in staff coordinates. ## leaves the default line to VexFlow. */

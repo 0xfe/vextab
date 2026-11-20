@@ -1,4 +1,5 @@
 // Semantic compiler that turns the parsed VexTab AST into concrete Artist calls.
+import { drumError } from '../score/drums';
 import { isScoreColor } from '../score/color';
 import Vex from '../vexflow';
 import * as _ from '../utils';
@@ -207,6 +208,12 @@ export class VexTabParser {
         this.parseCommand(element);
       }
 
+      if (element.drums) {
+        const ids = element.drums.map(hit => hit.id);
+        const error = drumError(this.artist.current_clef, !!stave.tab, ids, this.artist.current_head === 's');
+        if (error) throw this.newError(element, error);
+        this.artist.notes.addDrums(ids);
+      }
       if (element.chord) {
         this.parseChord(element);
       }
