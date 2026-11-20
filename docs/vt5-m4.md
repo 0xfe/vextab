@@ -1,5 +1,7 @@
 # VexTab 5 user guide and integration
 
+VexTab 5 was an experimental release. This document records its design or results. See the [VexTab 6 guide](https://vexflow.com/vextab/guide/) for current notation.
+
 Run `npm ci` and `npm start`. Open the [VexTab tutorial](http://127.0.0.1:9005/guide/). Follow the 14 tutorial steps, explore [features beyond the tutorial](http://127.0.0.1:9005/guide/#features), play the [studies](http://127.0.0.1:9005/guide/#studies), or search the [API reference](http://127.0.0.1:9005/guide/#reference). The same guide works offline by opening `dist/guide/index.html` in the built distribution. From any lesson, **Open in playground** opens the same editable score. **Open original source** links to the repository version of that lesson. Drafts stay in your browser.
 
 ## Learn the language

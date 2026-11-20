@@ -1,4 +1,4 @@
-// Editorial chapters and reproducible exhibits for the VexTab 4 to 5 change report.
+// Editorial chapters and reproducible exhibits for the VexTab illustrated change report.
 export const comparisons = [
   [
     'paired-triplet',
@@ -153,9 +153,9 @@ export const topics = [
         'guitar-duet',
       ],
       [
-        'Grammar v2 prototype',
-        'The experimental grammar and migration plan describe a possible next syntax. The current guide teaches the released grammar.',
-        'docs/grammar2-plan.md',
+        'Grammar v2 in VexTab 6',
+        'Write guitar runs, voice blocks and reusable patterns in the new default grammar. VexTab 5 was an experimental release. Existing scores can use the v1 reader or the migration command.',
+        'docs/migrate-scores.md',
       ],
     ],
   ],

@@ -2,11 +2,7 @@
 <section id="install">
   <h2>Get VexTab on a page</h2>
   <p>Put an editable guitar part on a plain HTML page. The browser bundle includes VexFlow and the engraving fonts. You need one script and a score written as text.</p>
-  <figure class="code-sample"><figcaption>In your project directory</figcaption><pre data-language="bash"><code>git clone https://github.com/0xfe/vextab.git
-cd vextab
-npm ci
-npm run build
-cp dist/div.prod.js /path/to/your/site/</code></pre></figure>
+  <figure class="code-sample"><figcaption>In your project directory</figcaption><pre data-language="bash"><code>curl -fLO https://github.com/0xfe/vextab/releases/download/6.0.0/div.prod.js</code></pre></figure>
   <p>VexTab 6 reads this notation by default. Save this page as <code>index.html</code> beside the script and open it in your browser.</p>
   <figure class="code-sample"><figcaption>index.html</figcaption><pre data-language="html"><code>&lt;!doctype html&gt;
 &lt;html lang="en"&gt;
@@ -21,6 +17,7 @@ guitar { :q 0/1 2/1 3/1 2/1 | }
 &lt;script src="./div.prod.js"&gt;&lt;/script&gt;
 &lt;/html&gt;</code></pre></figure>
   <p>You should see four quarter notes above the matching frets. Change <code>3</code> to <code>5</code> and press Ctrl+Enter or Cmd+Enter to redraw. Resize the window to see how the layout follows its container.</p>
+  <p>VexTab 5 was an experimental release that used grammar v1. For a v1 score, add <code>data-language="1"</code> to its embed or pass <code>{ language: 1 }</code> to <code>parseScore</code>. To convert it, follow the <a href="https://github.com/0xfe/vextab/blob/6.0.0/docs/migrate-scores.md">migration guide</a>.</p>
   <p>In a bundled app, <code>import 'vextab/auto'</code> gives the same automatic mounting behavior. To create an editor when a component mounts, use the <a href="#quickstart/embed">JavaScript example</a>.</p>
 </section>
 
@@ -55,12 +52,8 @@ function updatePreview(input, preview) {
 
 <section id="playback">
   <h2>Enable and configure playback</h2>
-  <p>The player in this guide adds browser audio, a moving playhead and a choice of instruments. These examples use VexTab 6.0. To run them in your own app, build the package from the repository using its <code>.nvmrc</code> Node.js version.</p>
-  <figure class="code-sample"><figcaption>Build the package</figcaption><pre data-language="bash"><code>git clone https://github.com/0xfe/vextab.git
-cd vextab
-npm ci
-npm pack</code></pre></figure>
-  <p>In your app directory, run <code>npm install /path/to/vextab/vextab-6.0.0.tgz</code>, substituting the path to the tarball printed by <code>npm pack</code>. For a plain HTML page, copy the newly built <code>dist/div.prod.js</code> beside your HTML instead.</p>
+  <p>The player in this guide adds browser audio, a moving playhead and a choice of instruments. Install the 6.0.0 package in your app to use the browser playback adapters.</p>
+  <figure class="code-sample"><figcaption>In your app directory</figcaption><pre data-language="bash"><code>npm install https://github.com/0xfe/vextab/releases/download/6.0.0/vextab-6.0.0.tgz</code></pre></figure>
   <h3>Play a bar</h3>
   <p>Add a <code>play</code> block before the first part in your embed. Press <strong>Play</strong> to start audio and <strong>Stop</strong> to end it. Try changing <code>tempo 96</code> to <code>tempo 72</code> in the example below, then play again.</p>
   <pre data-score>play { tempo 96 instrument 24 }

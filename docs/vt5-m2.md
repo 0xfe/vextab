@@ -1,6 +1,6 @@
 # One score for the editor, layout and print
 
-Historical VexTab 5 report. Its examples use the version 1 grammar. See the [current tutorial](../doc/tutorial.html) for grammar v2.
+VexTab 5 was an experimental release. Its examples use the version 1 grammar. See the [current tutorial](../doc/tutorial.html) for grammar v2.
 
 
 The VexTab 5 development build can parse a score once and engrave it at different widths or as a separate part. Add `layout="flow"` to opt in on an SVG embed. Existing embeds continue to use the fixed-row Artist.

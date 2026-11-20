@@ -1,6 +1,6 @@
 # VexTab 5 gaps and priorities
 
-Historical VexTab 5 report. Its examples use the version 1 grammar. See the [current tutorial](../doc/tutorial.html) for grammar v2.
+VexTab 5 was an experimental release. Its examples use the version 1 grammar. See the [current tutorial](../doc/tutorial.html) for grammar v2.
 
 
 **Fix the music first.** A guitarist should be able to hide the standard staff without changing the rhythm, resize a lesson without duplicating voices, and read the same pitches in the tab and notation. Once those hold, the highest-value 5.4 feature is a guitar score that wraps at barlines and keeps its musical relationships across a line break. The [milestone plan](vt5-plan.md) builds toward that score.

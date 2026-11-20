@@ -1,6 +1,8 @@
 # A second grammar for VexTab
 
-**Proposal for the next major release.** Keep the compact fret/string pair. Give each voice a sequence, each chord one attack, and each technique a typed attachment. Use named musical phrases and bounded repetition for reuse. A shared score model should drive engraving, reading, parts, and playback.
+**VexTab 6 reads grammar v2 by default.** This document records the language design and distinguishes runnable examples from proposals. See the [guide](https://vexflow.com/vextab/guide/) for released syntax and the [migration guide](migrate-scores.md) for the v1 reader.
+
+**Design goals.** Keep the compact fret/string pair. Give each voice a sequence, each chord one attack, and each technique a typed attachment. Use named musical phrases and bounded repetition for reuse. A shared score model should drive engraving, reading, parts, and playback.
 
 A first guitar score fits on one line. Play four quarter notes on the high E string in standard tuning.
 
@@ -8,7 +10,7 @@ A first guitar score fits on one line. Play four quarter notes on the high E str
 guitar { 0/1 2/1 3/1 2/1 | }
 ```
 
-This is executable prototype syntax. The comparable current example starts with `tabstave notation=true`, then `notes :q 0-2-3-2/1 |`. In v2, the compact spelling is `guitar { 0-2-3-2/1 | }`. Spell out a fret/string pair to move one note to a different string. The braces give the outer score and reusable phrases the same shape. [Existing first-fret lesson](../guide/scores/first-fret.vextab)
+This example runs in VexTab 6. The comparable grammar v1 example starts with `tabstave notation=true`, then `notes :q 0-2-3-2/1 |`. In v2, the compact spelling is `guitar { 0-2-3-2/1 | }`. Spell out a fret/string pair to move one note to a different string. The braces give the outer score and reusable phrases the same shape. [Existing first-fret lesson](../guide/scores/first-fret.vextab)
 
 ## The public parser class
 
@@ -313,7 +315,7 @@ A parser with no general loop can still expand exponentially. The compiler spend
 
 **Example diagnostic.** Put `pattern short { C4 | }` before `staff { use short }` in the default 4/4 meter. The primary location is the premature barline. The message reports `1/4` against `4/4`. The trace points back to the invocation. A missing `}` points to end of input. Unknown features should offer the nearest registered name and its legal attachment sites in the editor.
 
-## From prototype to release
+## Original implementation plan
 
 1. **Agree on the five writing decisions.** Fret/string order, explicit register, named scoped durations/voices, typed attachments and finite pattern use determine most examples. Ask a tab author and a pianist to enter the first-fret phrase, add a head fingering, edit an inner voice and move a repeated phrase. Record mistakes and correction steps. The comparisons above come from reading the existing scores and running the prototype. User testing is still needed.
 2. **Prove musical equivalence.** Translate all guide scores, tutorial snippets, current features and regression fixtures to paired versions. Compare meter, written heads, physical strings, tie endpoint identity, exact durations, simultaneous starts, key changes and playback pitches. Include #121 fingering/placement, two grand-staff hands, the open slide's single attack, transposition around a capo, unpitched kit hits, mixed tuplets, and lyric spans. Preserve the tests for stale selections, responsive breaks, SVG/Canvas and independent parts.

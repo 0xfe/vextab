@@ -1,5 +1,7 @@
 # VexTab 5 musical baseline
 
+VexTab 5 was an experimental release. This document records its design or results. See the [VexTab 6 guide](https://vexflow.com/vextab/guide/) for current notation.
+
 M0 pins VexFlow 5.4.0. In the November 19 comparison, all 28 existing examples drew and the four known musical defects reproduced on both versions. The four pairs of reference PNGs matched byte for byte on the same machine. [Milestone plan](vt5-plan.md) · [Tracking issue and reference images](https://github.com/0xfe/vextab/issues/176)
 
 ## Musical results

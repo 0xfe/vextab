@@ -1,5 +1,7 @@
 # VexTab 5.0 release qualification
 
+VexTab 5 was an experimental release. This document records its design or results. See the [VexTab 6 guide](https://vexflow.com/vextab/guide/) for current notation.
+
 VexTab 5.0.0 pins VexFlow 5.6.0. The npm dependency has the same integrity hash as the verified upstream GitHub tarball. VexTab now uses native slash stem anchors, positioned rests, structured augmentation dots, string-specific tab ties and repeat endings. Independent parts preserve chord names, notation lyrics, authored final barlines and time-signature visibility. [VexFlow release](https://github.com/vexflow/vexflow/releases/tag/5.6.0) · [Independent part limitations](../src/score/layout.ts)
 
 ## What to try

@@ -1,6 +1,6 @@
 # Writing rhythm in VexTab 5
 
-Historical VexTab 5 report. Its examples use the version 1 grammar. See the [current tutorial](../doc/tutorial.html) for grammar v2.
+VexTab 5 was an experimental release. Its examples use the version 1 grammar. See the [current tutorial](../doc/tutorial.html) for grammar v2.
 
 
 Start the development server with `npm start`. In the first guide lesson, hide the staff, change a fret, then remove the triplet and count the phrase again. The same lesson ships in the package at `dist/guide/index.html`. [Open the local triplet lesson](http://127.0.0.1:9005/guide/#triplets)

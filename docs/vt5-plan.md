@@ -1,5 +1,7 @@
 # VexTab 5 implementation plan
 
+VexTab 5 was an experimental release. This document records its design or results. See the [VexTab 6 guide](https://vexflow.com/vextab/guide/) for current notation.
+
 **The release demonstration should be one piece of music in several settings.** Enter a fingerstyle study as VexTab, read the bass under the melody in paired staff/tab, switch to rhythmic tab, narrow the screen, navigate to a tied note by keyboard, and print the guitar part. The same authored rhythm, pitches, strings and relationships should survive each step.
 
 The [gap assessment](vt5-gaps.md) records the baseline, issue evidence and priority decisions. The milestones below are ordered by dependency. Start the guide with the first fixture and add a lesson when each feature becomes usable. Finalize the public syntax after trying it on complete pieces.

@@ -2,24 +2,31 @@
 
 VexTab is a text language for writing guitar tablature and standard notation. VexTab 6 includes an editable user guide, responsive scores and independent printed parts.
 
-## Play your first score
+## Write your first score
 
-From a checkout, use the Node.js version in `.nvmrc` and run:
+Open [Your first notes](https://vexflow.com/vextab/guide/#tutorial) or edit this phrase in the [playground](https://vexflow.com/vextab/guide/#playground/first-fret). The frets share the first string and each gets a quarter note.
 
-```sh
-npm ci
-npm start
+```vextab
+guitar { 0-2-3-2/1 | }
 ```
 
-Open the [project index](http://127.0.0.1:9005/) for demos, tests, tools, and downloads. Start with the [14-step VexTab tutorial](http://127.0.0.1:9005/guide/) or open [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). Press **Play** at the bottom center of the score, change a fret, switch to tab and select the note from the keyboard. Explore [eight editable studies](http://127.0.0.1:9005/guide/#studies) or [search the API and notation reference](http://127.0.0.1:9005/guide/#reference).
+VexTab 6 reads **grammar v2** by default. Guitar, staff, piano and drum parts use blocks. Each voice can have its own rhythm. Use aliases for repeated markings and named patterns for repeated phrases. [Language reference](https://vexflow.com/vextab/guide/#reference/grammar-v2) · [Interactive guide](https://vexflow.com/vextab/guide/) · [6.0 release notes](https://github.com/0xfe/vextab/releases/tag/6.0.0)
 
-**VexTab 6.0** reads grammar v2 by default. A guitar phrase can be as short as `guitar { 0-2-3-2/1 | }`. See the [6.0 release notes](docs/release-6.0.0.md), [migration guide](docs/migrate-scores.md) for existing scores and [playback plugins](docs/playback.md) for custom instruments.
+## Open an existing score
+
+VexTab 5 was an experimental release and used grammar v1 by default. VexTab 6 can still read that grammar. Set `data-language="1"` on an HTML embed, or call `parseScore(source, { language: 1 })` in JavaScript. For the original fixed-layout Artist, use `new VexTab(artist, { language: 1 })`.
+
+To convert a score with VexTab 6 installed, run `npx vextab-migrate old.vextab > new.vextab`. [Migration guide](docs/migrate-scores.md)
+
+## Run locally
+
+Use the Node.js version in `.nvmrc`, then run `npm ci` and `npm start`. Open the [local project index](http://127.0.0.1:9005/) for the guide, demos, tests, tools and downloads.
 
 ## Embed an editable score
 
-The [developer quickstart](http://127.0.0.1:9005/guide/#quickstart) covers installing VexTab, embedding it in an application and configuring playback.
+The [developer quickstart](https://vexflow.com/vextab/guide/#quickstart) covers installing VexTab, embedding it in an application and configuring playback.
 
-The examples use grammar v2. To convert an existing score, follow the [migration guide](docs/migrate-scores.md). Build the development bundles with `npm run build-dev`. Put this HTML beside `dist/div.dev.js` and open it in a browser. The script includes VexFlow and the engraving fonts.
+Download [div.prod.js](https://github.com/0xfe/vextab/releases/download/6.0.0/div.prod.js), save this HTML beside it and open it in a browser. The script includes VexFlow and the engraving fonts.
 
 ```html
 <!doctype html>
@@ -27,10 +34,10 @@ The examples use grammar v2. To convert an existing score, follow the [migration
 <div class="vextab-auto" editor="true">play { tempo 96 }
 meter 4/4
 guitar { :q 0/1 2/1 3/1 2/1 | }</div>
-<script src="./div.dev.js"></script>
+<script src="./div.prod.js"></script>
 ```
 
-See the [interactive guide](guide/) and [integration reference](guide/reference.html) for typed imports, keyboard controls, print, and migration from fixed layout. The [developer guide](docs/developers.md) covers testing and releases. [Engineering reports](docs/reports.md) track code quality and illustrate changes since VexTab 4.0.0. [GitHub Release downloads](https://github.com/0xfe/vextab/releases) · [Security and score limits](SECURITY.md) · [Historical tutorial](doc/tutorial.html)
+See the [interactive guide](https://vexflow.com/vextab/guide/) and [integration reference](https://vexflow.com/vextab/guide/#reference) for typed imports, keyboard controls, print, and migration from fixed layout. The [developer guide](docs/developers.md) covers testing and releases. [Engineering reports](https://vexflow.com/vextab/reports/) track code quality and illustrate changes since VexTab 4.0.0. [GitHub Release downloads](https://github.com/0xfe/vextab/releases) · [Security and score limits](SECURITY.md) · [Illustrated change report](https://vexflow.com/vextab/reports/ai2026/)
 
 ## License
 
