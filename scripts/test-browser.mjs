@@ -6,6 +6,7 @@ import manifest from '../package.json' with { type: 'json' };
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { testDisplay } from './test-display.mjs';
+import { testGuideAudio } from './test-guide-audio.mjs';
 import { testGuide } from './test-guide.mjs';
 import { chromium, firefox, webkit } from 'playwright-core';
 
@@ -146,6 +147,7 @@ try {
   assert.equal(await scoreHeight(), wideHeight);
 
   await testGuide(page, dist);
+  await testGuideAudio(browser, dist);
   await testDisplay(browser, dist, engine);
 
   // Older pages load the VexTabDiv global and use a different class and attributes.

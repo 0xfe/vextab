@@ -10,7 +10,7 @@ VexTab parses notation and draws SVG or Canvas in the host page. Webpack compile
 
 The guide stores edited source in local browser storage and falls back to memory when storage is disabled. Example links contain a score ID. Saved files and clipboard copies contain the current source. Flow requires complete measures unless the author declares a pickup or fragment. This validation does not bound resource use.
 
-The built-in player synthesizes its preview with Web Audio. Hosts using the SpessaSynth adapter supply the synth, worklet and sound bank. A legacy MIDI.js host supplies its own scripts and soundfonts.
+The built-in player synthesizes its preview with Web Audio. The guide bundles its pinned SpessaSynth worklet and a public-domain SoundFont and loads them on Play. Other hosts using the adapter supply their own synth, worklet and bank. A legacy MIDI.js host supplies its own scripts and soundfonts.
 
 ## Dependency and build checks
 

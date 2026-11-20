@@ -20,6 +20,7 @@ module.exports = (env = {}) => {
   return {
     entry: {
       ...guideEntries,
+      'example-audio': { import: './guide/example-audio.ts', library: { name: 'VexTabAudio', type: 'umd' } },
       ...(!guideSite && {
         score: { import: './src/score/parse.ts', layer: 'parser', filename: 'score.cjs', library: { type: 'commonjs-static' } },
         browser: { import: './src/browser.ts', filename: 'browser.cjs', library: { type: 'commonjs-static' } },
@@ -43,25 +44,29 @@ module.exports = (env = {}) => {
       new webpack.ProvidePlugin({ $: 'zepto-webpack' }),
       new webpack.DefinePlugin({ __VERSION: JSON.stringify(version) }),
       ...Object.entries(guidePages).map(([name, entry]) => new HtmlWebpackPlugin({
-        template: './guide/' + name + '.html', filename: guidePrefix + name + '.html', chunks: [entry],
+        template: './guide/' + name + '.html', filename: guidePrefix + name + '.html', chunks: ['triplets', 'shared-score'].includes(name) ? [entry, 'example-audio'] : [entry],
       })),
       ...(!guideSite ? [
         new HtmlWebpackPlugin({ template: './tests/tests.html', filename: 'tests.html', chunks: ['tests'] }),
         new HtmlWebpackPlugin({ template: './tests/playground.html', filename: 'playground.html', chunks: ['playground'] }),
-        new HtmlWebpackPlugin({ template: './static/div.html', filename: 'static/div.html', chunks: ['div'] }),
+        new HtmlWebpackPlugin({ template: './static/div.html', filename: 'static/div.html', chunks: ['div', 'example-audio'] }),
       ] : []),
       new CopyPlugin({ patterns: [
         ...['bravura', 'academico'].map(face => ({
           from: require.resolve('@vexflow-fonts/' + face + '/LICENSE.txt'),
           to: guidePrefix + 'licenses/' + face + '.txt',
         })),
+        ...['spessasynth_lib', 'spessasynth_core'].map(pkg => ({
+          from: require.resolve(pkg + '/LICENSE'), to: guidePrefix + 'licenses/' + pkg + '.txt',
+        })),
+        { from: 'guide/audio/README.md', to: guidePrefix + 'licenses/florestan.txt' },
         { from: 'guide/scores', to: guidePrefix + 'scores' },
         // The stylesheet lives under assets/ in both the package and the hosted build.
         { from: 'guide/fonts', to: 'fonts' },
         ...(!guideSite ? [
           { from: 'static/index.html', to: 'index.html' },
           { from: 'demos/*.html', transform: examplePage },
-          { from: 'doc/tutorial.html', to: 'doc/tutorial.html', transform: examplePage },
+          { from: 'doc/*.html', transform: examplePage },
           { from: 'doc/*.css' },
           { from: 'doc/vextab.css', to: 'vextab.css' },
           { from: require.resolve('qunit'), to: 'qunit.js' },
@@ -74,7 +79,7 @@ module.exports = (env = {}) => {
       // A standalone parser needs VexFlow's music tables but never loads engraving fonts.
       { issuerLayer: 'parser', resolve: { alias: { 'vexflow$': 'vexflow/core' } } },
       { resourceQuery: /guide-content/, type: 'asset/source' },
-      { test: /\.otf$/, type: 'asset/bytes' },
+      { test: /\.(otf|sf2)$/, type: 'asset/bytes' },
       { test: /\.vextab$/, type: 'asset/source' },
       { test: /\.ts$/, loader: 'esbuild-loader', options: { target: 'es2019' } },
       { test: /\.jison$/, loader: path.resolve(__dirname, 'scripts/jison-loader.cjs') },

@@ -17,7 +17,10 @@ Run `npm ci` and `npm start`. Open the [VexTab tutorial](http://127.0.0.1:9005/g
 
 The detailed references cover [rhythm and fixed-layout syntax](vt5-m1.md), [stave, note and label colours](colors.md), [measures, ties and source ranges](vt5-m2.md), and [lead sheets, string techniques and print coverage](vt5-m3.md).
 
-## Edit and read
+## Listen, edit and read
+
+- Press **Play** above a score to hear the current notes. **Stop**, editing, or starting another example ends playback. The first play loads SpessaSynth and the bundled SoundFont. In the duet, the edition toolbar plays the selected guitarist or the full score.
+- Try [pre-bends](http://127.0.0.1:9005/guide/#features/pre-bends), [score colours](http://127.0.0.1:9005/guide/#features/score-colours), and [tempo and instruments](http://127.0.0.1:9005/guide/#features/playback). These features are in the current checkout, after the 5.0.0 npm release.
 
 - Edits render after a short pause. **Run** or **Ctrl/Command+Enter** engraves immediately. An input method can finish composing a character before rendering. **Find error** selects the located token. A dimmed score is the last valid drawing.
 - **Reset example** or **Ctrl/Command+Alt+R** restores the current example. The guide keeps a draft per score in local storage, falling back to memory if storage is unavailable. **Copy source**, **Save source** and **Open source** work on the current text. Opening a file replaces the current lesson’s draft.

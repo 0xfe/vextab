@@ -1,4 +1,5 @@
 // Project the shared score into fresh VexFlow objects for each screen or publication view.
+import { position, staveRow, printedGeometry, scoreSurfaces, type Geometry } from '../playback/geometry';
 import { inkStyle } from './color';
 import { colorPublication } from './publication-color';
 import { scoreFont } from './engraving';
@@ -313,6 +314,22 @@ export function renderScore(host: HTMLElement, parsed: ParsedScore, options: { w
       diagnostics.push({ code: d.code, measures: [m.number], source, range: view.sources.rangeFor(source, parsed.source) ?? m.range });
     }
   }
+  // Row membership and head coordinates belong to this particular engraving width.
+  function playbackGeometry(): Geometry {
+    const geometry: Geometry = new Map();
+    for (const band of composition.sheet.getContinuousLayout().rows) {
+      const staves = band.measures.flatMap(n => composition.staves[n - 1]);
+      const row = staveRow(staves);
+      for (const number of band.measures) for (const voice of parsed.measures[number - 1].voices) {
+        for (const attack of voice.events) {
+          const glyphs = view.staves.map(staff => composition.getNote(view.eventId(staff, attack.id)));
+          geometry.set(attack.id, position(row, glyphs, attack.heads.map(h => !!h.sounding && !attack.silent)));
+        }
+      }
+    }
+    return geometry;
+  }
+  scoreSurfaces.set(ctx.svg, { score: parsed, read: playbackGeometry });
   return { composition, navigation, hitTest, tabRegions, extraRegions, diagnostics,
     rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };
 }
@@ -359,5 +376,13 @@ export function renderScorePart(host: HTMLElement, parsed: ParsedScore, part: St
   }
   const publication = new Publication(view.spec).render(host, paper);
   colorPublication(publication, parsed, event => view.eventId(part, event.id));
-  return { publication, rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };
+  function playbackGeometry(): Geometry {
+    const attacks = new Map<string, Attack>();
+    for (const m of parsed.measures) for (const voice of m.voices) for (const event of voice.events) {
+      attacks.set('vf-' + view.eventId(part, event.id), event);
+    }
+    return printedGeometry(publication, attacks);
+  }
+  for (const page of publication.pages) scoreSurfaces.set(page.svg, { score: parsed, read: playbackGeometry });
+  return { publication, score: parsed, rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };
 }

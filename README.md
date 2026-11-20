@@ -11,7 +11,9 @@ npm ci
 npm start
 ```
 
-Open the [project index](http://127.0.0.1:9005/) for demos, tests, tools, and downloads. Start with the [15-step VexTab tutorial](http://127.0.0.1:9005/guide/) or open [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). Change a fret, switch to tab and select the note from the keyboard. Explore [eight editable studies](http://127.0.0.1:9005/guide/#studies) or [search the API and notation reference](http://127.0.0.1:9005/guide/#reference).
+Open the [project index](http://127.0.0.1:9005/) for demos, tests, tools, and downloads. Start with the [15-step VexTab tutorial](http://127.0.0.1:9005/guide/) or open [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). Press **Play** above the score, change a fret, switch to tab and select the note from the keyboard. Explore [eight editable studies](http://127.0.0.1:9005/guide/#studies) or [search the API and notation reference](http://127.0.0.1:9005/guide/#reference).
+
+The current checkout adds per-string pre-bends, stave and note colours, and SoundFont playback to the 5.0.0 release. Try them in [Features](http://127.0.0.1:9005/guide/#features). For your own instrument or toolbar, see [Playback plugins](docs/playback.md).
 
 ## Embed an editable score
 
@@ -20,7 +22,7 @@ Build the development bundles with `npm run build-dev`. Put this HTML beside `di
 ```html
 <!doctype html>
 <meta charset="utf-8">
-<div class="vextab-auto" layout="flow" editor="true">options tab-stems=true
+<div class="vextab-auto" layout="flow" editor="true">options tab-stems=true player=true
 tabstave notation=true time=4/4
 notes :q 0-2-3-2/1 |</div>
 <script src="./div.dev.js"></script>
@@ -31,5 +33,3 @@ See the [user guide and integration reference](docs/vt5-m4.md) for typed imports
 ## License
 
 VexTab is free for non-commercial use. Contact Mohit Muthanna Cheppudira about commercial use. [License](LICENSE)
-
-See [Playback plugins](docs/playback.md) for native audio, SpessaSynth and custom instruments.

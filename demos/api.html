@@ -19,6 +19,7 @@
     <div id="boo"></div>
 
     <script src="/dist/main.dev.js"></script>
+    <script src="../dist/example-audio.dev.js"></script>
     <script>
       const { VexTab, Artist, Vex } = window.vextab;
       const Renderer = Vex.Flow.Renderer;
@@ -33,6 +34,10 @@
           'notes :q 5/2 7/2 8/2 7/2',
         ].join('\n'));
         artist.render(renderer);
+        if (window.VexTabAudio) {
+          const { playback, playbackControls } = VexTabAudio.scoreOptions(document.getElementById('boo'));
+          new vextab.Player(artist, { playback, controls: playbackControls }).render();
+        }
       } catch (e) {
         console.error(e);
       }

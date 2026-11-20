@@ -6,7 +6,7 @@
     <pre>import { parseScore } from 'vextab/parse';
 const score = parseScore('stave time=1/4\nnotes C/4 |');</pre></article>
   <article id="browser-module"><h3>vextab/browser</h3>
-    <p>Use this entry for explicit mounting in a browser application. It exports the parser, <code>Div</code>, <code>renderScore</code>, <code>renderScorePart</code>, the <code>Part</code> type and the legacy <code>Artist</code>, <code>VexTab</code>, <code>Player</code> and <code>Vex</code> objects.</p>
+    <p>Use this entry for explicit mounting in a browser application. It exports the parser, <code>Div</code>, <code>renderScore</code>, <code>renderScorePart</code>, the <code>Part</code> type, the playback adapters <code>createWebAudioPlayback</code> and <code>createSpessaSynthPlayback</code>, and <code>Artist</code>, <code>VexTab</code>, <code>Player</code> and <code>Vex</code> objects.</p>
     <pre>import { Div, parseScore, renderScore } from 'vextab/browser';</pre></article>
   <article id="auto-module"><h3>vextab/auto and script tags</h3>
     <p>The auto entry mounts each <code>div.vextab-auto</code> on DOM ready. Load <code>dist/div.prod.js</code> for a plain HTML page. The package root and <code>dist/main.prod.js</code> retain the legacy browser API. The old <code>dist/vextab-div.js</code> adapter supports <code>.vex-tabdiv</code>, underscore editor attributes and the original Canvas default.</p>
@@ -61,7 +61,7 @@ if (revision &amp;&amp; first) editor.selectSource(first.id, revision);</pre></a
 </section>
 <section id="publication">
   <h2>Publication and export</h2>
-  <article id="render-part"><h3>renderScorePart(host, score, staff, options?)</h3><p>Independently engrave <code>'notation'</code> or <code>'tab'</code> from the same parsed score. Omit <code>voice</code> to retain every voice on that staff, or pass a one-based voice number. Choose <code>paper: 'A4'</code> or <code>'Letter'</code> and set a title. The result includes <code>publication</code>, <code>sourceFor</code> and <code>rangeFor</code>.</p>
+  <article id="render-part"><h3>renderScorePart(host, score, staff, options?)</h3><p>Independently engrave <code>'notation'</code> or <code>'tab'</code> from the same parsed score. Omit <code>voice</code> to retain every voice on that staff, or pass a one-based voice number. Choose <code>paper: 'A4'</code> or <code>'Letter'</code> and set a title. The result includes the selected <code>score</code>, its <code>publication</code>, <code>sourceFor</code> and <code>rangeFor</code>.</p>
     <pre>const { publication } = renderScorePart(paperHost, score, 'notation', {
   voice: 2, title: 'Guitar 2', paper: 'Letter'
 });</pre></article>
@@ -69,7 +69,7 @@ if (revision &amp;&amp; first) editor.selectSource(first.id, revision);</pre></a
   <article id="publication-scope"><h3>Independent part coverage</h3><p>Parts preserve augmentation dots, tab ties, repeat boundaries, chord names and notation lyrics. Some marks still need the screen pass, including chord frames, silent positions and explicit written accidentals in notation parts. A located error identifies the unsupported mark. Selecting a voice missing from a bar also produces an error.</p></article>
 </section>
 <section id="fixed-api">
-  <h2>Fixed layout and playback</h2>
+  <h2>Fixed layout and engraving</h2>
   <article id="artist"><h3>Artist(x, y, width, options?)</h3><p>Use a fixed-layout Artist for the tutorial’s free-form examples. The first two arguments are the drawing origin. Constructor options include <code>scale</code>, <code>font_face</code>, <code>font_size</code> and <code>font_style</code>. The default score text face is Academico. Call <code>artist.reset()</code> before compiling a replacement score.</p></article>
   <article id="vextab-parser"><h3>new VexTab(artist) and parse(code)</h3><p>The fixed parser compiles into its Artist and returns the parsed elements. <code>isValid()</code> reports whether the most recent parse succeeded. <code>getArtist()</code> returns the bound Artist. Parsing does not paint the score.</p>
     <pre>import { Artist, VexTab, Vex } from 'vextab/browser';
@@ -78,5 +78,20 @@ new VexTab(artist).parse('tabstave\nnotes :q 0-2-3-2/1');
 const { Renderer } = Vex.Flow;
 artist.render(new Renderer(host, Renderer.Backends.SVG));</pre></article>
   <article id="artist-render"><h3>Artist.render(), draw() and setOptions()</h3><p>Pass a VexFlow renderer to <code>render</code> or <code>draw</code> to paint the compiled music. For Canvas, construct the renderer with a canvas element and <code>Renderer.Backends.CANVAS</code>. Use <code>artist.setOptions({ width: '500', scale: '0.8' })</code> and draw again to resize.</p></article>
-  <article id="player"><h3>Player and playback controls</h3><p>The optional legacy player attaches to an Artist. The host supplies MIDI.js and soundfonts. The player draws its position marker on a canvas and provides native playback buttons. <code>setTempo(bpm)</code> changes the playback speed. <code>setInstrument(name)</code> selects a MIDI instrument. <code>play()</code> loads the instrument and starts playback, and <code>stop()</code> clears its timer.</p></article>
+</section>
+<section id="audio-api">
+  <h2>Playback and instruments</h2>
+  <article id="player"><h3>Player, tempo and instrument</h3>
+    <p>Pass an Artist or a ParsedScore to <code>new Player(source, options)</code>. Call <code>play()</code> from a user gesture. Its promise resolves at the end or on Stop and rejects on audio errors. <code>stop()</code> cancels a pending load and releases sounding notes. <code>dispose()</code> also removes controls. <code>setTempo(bpm)</code> and <code>setInstrument(program)</code> stop the current performance.</p>
+    <p>In an embed, put <code>options player=true tempo=96 instrument=24</code> before the first stave. Tempo defaults to 120 quarter notes per minute. Instrument accepts a General MIDI program from 0 to 127 or a supported name such as <code>acoustic_guitar_nylon</code>. The guide supplies its own toolbar. <a href="#features/playback">Play a phrase →</a></p></article>
+  <article id="audio-plugins"><h3>createWebAudioPlayback() and createSpessaSynthPlayback(synth, channels?)</h3>
+    <p>Embeds default to a sample-free Web Audio instrument. For a SoundFont host, load the matching worklet and bank, connect the synth to your output, then pass the adapter to the editor. A reserved channel pool lets a bent string change pitch independently of its neighbours.</p>
+    <pre>const playback = createSpessaSynthPlayback(synth);
+const editor = new Div(scoreHost, { playback, playbackControls: toolbar });</pre>
+    <p><code>playbackControls</code> keeps the buttons outside the score and enables playback even for source without a player directive. Custom instruments implement <code>PlaybackPlugin.open(program, signal)</code> and return a session with <code>playNote(note)</code> and <code>stop()</code>.</p></article>
+  <article id="prebend"><h3>Pre-bent attacks · 7z8/3 · 7z8z7/3</h3><p>The physical fret comes first, followed by the raised fret. Optionally repeat the physical fret to release during the attack. Each chord member keeps its own string and pitch. Fixed and flow playback both sound the raised attack and its release. <a href="#features/pre-bends">Hear the release →</a></p></article>
+</section>
+<section id="appearance-api">
+  <h2>Score appearance</h2>
+  <article id="ink"><h3>color, !color and label colours</h3><p><code>color=SeaGreen</code> on a stave colours that row and any wrapped rows. <code>!color #1565c0!</code> colours the preceding attack. In flow, <code>!chord "Am" color=crimson!</code> colours a single label. Fixed annotation and text fonts accept an optional fourth field, as in <code>.font=Times-12-italic-darkorange</code>. Use CSS colour names or three-, four-, six- or eight-digit hex. <a href="#features/score-colours">Edit the colours →</a></p></article>
 </section>

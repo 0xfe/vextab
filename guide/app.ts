@@ -1,5 +1,7 @@
 // The guide, demo library and playground share one warmed renderer and one catalogue of scores.
 import Div from '../src/div';
+import Player from '../src/player';
+import { scoreOptions } from './audio';
 import { renderScorePart, type Part } from '../src/score/layout';
 import { lessons, type Lesson } from './catalog';
 import { tutorial, features, groups, link, node, showCover, showChapter, showFeatures, showReference } from './book';
@@ -17,6 +19,7 @@ let input: HTMLTextAreaElement;
 let readId: string;
 let routeRevision = 0;
 let printRevision = 0;
+let partPlayer: Player;
 let printEdition: { html: string; pages: string[]; filename: string };
 
 
@@ -46,6 +49,7 @@ function read(step = 0): void {
 /** Prepare a portable edition. A late font load cannot restore an obsolete preview. */
 async function printPart(): Promise<void> {
   const revision = ++printRevision;
+  partPlayer?.dispose();
   printEdition = undefined;
   for (const id of ['print', 'save-print', 'save-svg']) button(id).disabled = true;
   el('svg-page-label').hidden = true;
@@ -59,11 +63,14 @@ async function printPart(): Promise<void> {
   const paper = choice('paper').value as 'A4' | 'Letter';
   try {
     const title = voice ? 'Guitar duet · Guitar ' + voice : 'Guitar duet · Full score';
-    const { publication } = renderScorePart(part, score, 'notation', { voice, title, paper });
+    const { publication, score: music } = renderScorePart(part, score, 'notation', { voice, title, paper });
     if (publication.diagnostics.length) {
       el('print-status').textContent = publication.diagnostics.map(d => d.detail).join(' ');
       return;
     }
+    const options = scoreOptions(part, el('edition-controls'));
+    partPlayer = new Player(music, { playback: options.playback, controls: options.playbackControls });
+    partPlayer.render(publication.pages[0].svg);
     const { faces } = await import(/* webpackChunkName: "print-outlines" */ './outlines');
     if (revision !== printRevision) return;
     const html = publication.toPrintHTML(faces);
@@ -98,7 +105,7 @@ function mount(host: HTMLElement, source: string, fixed = false): Div {
     host.setAttribute('layout','flow');
     host.removeAttribute('width');
   }
-  return new Div(host);
+  return new Div(host, scoreOptions(host, host.id === 'score' ? el('view-controls') : undefined));
 }
 
 function setSource(text: string): void {
@@ -191,6 +198,7 @@ function navigate() {
   routeRevision++;
   printRevision++;
   printEdition = undefined;
+  partPlayer?.dispose();
   editor?.dispose();
   partner?.dispose();
   chapterEditors.forEach(instance => instance.dispose());

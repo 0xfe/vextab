@@ -28,6 +28,7 @@ export async function testGuide(page, dist) {
     const count = await editors.count();
     assert.ok(count > 0, hash);
     assert.equal(await chapter.locator('svg').count(), count, hash);
+    assert.equal(await chapter.locator('.guide-audio button').count(), count, hash);
     assert.ok((await chapter.locator('.editor-error').allTextContents()).every(text => !text), hash);
     examples += count;
   }
@@ -40,7 +41,7 @@ export async function testGuide(page, dist) {
   await go('#tutorial/chords');
   await go('#tutorial/notes');
   assert.match(await tutorialInput.inputValue(), /G\/5/);
-  await page.locator('.chapter-example button').first().click();
+  await page.getByRole('button', {name:'Reset example'}).first().click();
   assert.equal(await tutorialInput.inputValue(), written);
 
   await go('#features');

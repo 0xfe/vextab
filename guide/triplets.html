@@ -12,8 +12,8 @@
     <h1>Triplets in tab and notation</h1>
     <p>Play the first three frets evenly on beat one. The fourth fret lands on beat two.
       <code>:8</code> selects eighth notes. <code>^3^</code> fits the preceding three into the time of two.</p>
-    <label><input id="notation" type="checkbox" checked> Show standard notation</label>
-    <button id="reset" type="button">Reset example</button>
+    <div class="controls"><label><input id="notation" type="checkbox" checked> Show standard notation</label>
+    <button id="reset" type="button">Reset example</button></div>
     <div id="score" width="540" editor="true" editor-height="110"><pre><%- require('./scores/triplets.vextab').trimEnd() %></pre></div>
     <p>Hide the standard staff and find the triplet on the tab. Delete <code>^3^</code>
       and count three straight eighths. The fourth fret now starts halfway through beat two.</p>
@@ -24,7 +24,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       const host = document.querySelector('#score');
       const original = host.textContent;
-      new vextab.Div(host);
+      new vextab.Div(host, VexTabAudio.scoreOptions(host, document.querySelector('.controls')));
       const editor = host.querySelector('textarea');
       const toggle = document.querySelector('#notation');
       const visibility = /^(\s*tabstave\b[^\n]*?\bnotation=)(true|false)\b/m;

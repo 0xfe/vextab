@@ -27,7 +27,7 @@
       <label id="picker-label" hidden>Playground score <select id="picker"></select></label>
       <h1 id="title"></h1><p class="goal" id="goal"></p>
       <div class="bench">
-      <div class="toolbar"><label>View <select id="view"></select></label><label id="narrow-control"><input id="narrow" type="checkbox"> Narrow score</label></div>
+      <div class="toolbar" id="view-controls"><label>View <select id="view"></select></label><label id="narrow-control"><input id="narrow" type="checkbox"> Narrow score</label></div>
       <div id="score"></div>
       <div class="actions"><button id="run">Run</button><button id="reset">Reset example</button><button id="error" disabled>Find error</button><button id="copy">Copy source</button><button id="save">Save source</button><label class="open">Open source <input type="file" id="open" accept=".vextab,.txt,text/plain"></label></div>
       </div>
@@ -37,7 +37,7 @@
         <div class="actions"><button id="previous">Previous event</button><button id="next">Next event</button><button id="select">Select source</button></div>
       </section>
       <section id="workbench" hidden><h2>Second editor</h2><div id="second"></div></section>
-      <section id="printing" hidden><h2>Engrave the duet</h2><div class="toolbar">
+      <section id="printing" hidden><h2>Engrave the duet</h2><div class="toolbar" id="edition-controls">
         <label>Edition <select id="player"><option value="1">Guitar 1</option><option value="2">Guitar 2</option><option value="score">Full score</option></select></label>
         <label>Paper <select id="paper"><option>A4</option><option>Letter</option></select></label>
         <button id="print" disabled>Print</button><button id="save-print" disabled>Save print HTML</button>

@@ -13,4 +13,4 @@ Run `npm ci` and `npm start`, then open the [demo library](http://127.0.0.1:9005
 | Guitar duet for print | Switch player and paper size, then inspect the independent page. |
 | Two independent editors | Edit, break, recover and resize two embeds independently. |
 
-The [canonical VexTab files](../guide/scores/) feed the guide and its tests. The distribution includes plain-text copies in `dist/guide/scores/`. The [project index](http://127.0.0.1:9005/) also links to both playback demos, the DOM embed, and the Artist API example. SpessaSynth loads its worklet and SoundFont on demand over the network.
+The [canonical VexTab files](../guide/scores/) feed the guide and its tests. The distribution includes plain-text copies in `dist/guide/scores/`. The [project index](http://127.0.0.1:9005/) also links to both playback demos, the DOM embed, and the Artist API example. Press **Play** above any guide score. The first play loads the bundled SpessaSynth worklet and SoundFont. The separate native Web Audio demo demonstrates the sample-free embed default.

@@ -29,14 +29,17 @@
         }
     </style>
     <script>
-        window.VEXTAB_SEL_V3 = '.vextab-auto'
+        document.addEventListener('DOMContentLoaded', () => {
+            const host = document.getElementById('example');
+            new vextab.Div(host, VexTabAudio.scoreOptions(host));
+        });
     </script>
 </head>
 
 <body>
     <h1>TabDiv Playground</h1>
 
-    <div class="vextab-auto" width=800 scale=0.8 editor="true" editor-width=640 editor-height=330>
+    <div id="example" width=800 scale=0.8 editor="true" editor-width=640 editor-height=330>
         options space=20
         tabstave
         notation=true

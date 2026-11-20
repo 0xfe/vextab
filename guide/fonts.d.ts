@@ -3,3 +3,8 @@ declare module '*.otf' {
   const bytes: Uint8Array;
   export default bytes;
 }
+
+declare module '*.sf2' {
+  const samples: Uint8Array;
+  export default samples;
+}

@@ -13,9 +13,9 @@ Use a CSS colour name such as `crimson` or `SeaGreen`, or a hex value such as `#
 In this flow example the first fret is blue, the chord label is crimson, and the second fret keeps the stave colour. Both frets retain the paper behind their numbers. The next row uses the default ink.
 
 ```vextab
-tabstave notation=true time=2/4 color=SeaGreen
+tabstave time=2/4 color=SeaGreen
 notes 0/1 !color #1565c0! !chord "Am" color=crimson! 2/1 |
-tabstave notation=true time=2/4
+tabstave time=2/4
 notes 3/1 0/1 |
 ```
 

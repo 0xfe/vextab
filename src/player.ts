@@ -1,6 +1,8 @@
 // Public playback controller for parsed scores and fixed-layout Artist embeds.
 import Artist from './artist';
 import type { ParsedScore } from './score/model';
+import { PlaybackAnimation, anticipation } from './playback/animation';
+import { artistGeometry, scoreSurfaces, type Geometry } from './playback/geometry';
 import { PlayerOverlay } from './player-overlay';
 import { artistPerformance, scorePerformance } from './playback/performance';
 import { PlaybackTransport, type PlaybackPlugin } from './playback/transport';
@@ -22,6 +24,8 @@ function programNumber(instrument: string | number) {
 /** One plugin instance may open independent sessions for multiple players. */
 export interface PlayerOptions {
   playback?: PlaybackPlugin;
+  /** Place transport buttons here while keeping the cursor on the score. */
+  controls?: HTMLElement;
   tempo?: number;
   instrument?: string | number;
   show_controls?: boolean;
@@ -37,6 +41,8 @@ export default class Player {
   private artist?: Artist;
   private score?: ParsedScore;
   private generation = 0;
+  private geometry?: () => Geometry;
+  private animation?: PlaybackAnimation;
   private mark?: (id: string) => void;
   private readonly options: PlayerOptions;
 
@@ -84,6 +90,7 @@ export default class Player {
   dispose(): void {
     this.removeControls();
     this.mark = undefined;
+    this.geometry = undefined;
     if (this.artist?.player === this) this.artist.attachPlayer(null);
   }
 
@@ -91,11 +98,13 @@ export default class Player {
   render(surface?: HTMLCanvasElement | SVGSVGElement, mark?: (id: string) => void): void {
     this.removeControls();
     this.mark = mark;
+    const layout = surface instanceof SVGSVGElement && scoreSurfaces.get(surface);
+    this.geometry = layout && layout.score === this.score ? layout.read : undefined;
     const ctx = this.artist?.getPlayerData().context;
     const element = surface ?? ctx?.canvas ?? ctx?.svg;
-    if (!element) throw new Error('Render the score before mounting playback controls');
+    if (!element && !this.options.controls) throw new Error('Render the score before mounting playback controls');
     this.overlay = new PlayerOverlay(element, this.options.overlay_class, this.options.show_controls,
-      () => { void this.play().catch(() => { /* play displays the error on this overlay. */ }); }, () => this.stop());
+      () => { void this.play().catch(() => { /* play displays the error on this overlay. */ }); }, () => this.stop(), this.options.controls);
   }
 
   /** Move the cursor using score coordinates, including reflowed SVG note positions. */
@@ -107,22 +116,35 @@ export default class Player {
     const generation = ++this.generation;
     const { tempo, instrument, playback, soundfont_url } = this.options;
     const music = this.score ? scorePerformance(this.score, tempo, this.mark)
-      : artistPerformance(this.artist, tempo, glyph => this.moveCursor(glyph.getAbsoluteX() + 4, glyph.getStave().getYForLine(2)));
+      : artistPerformance(this.artist, tempo);
     const plugin = playback ?? (!this.artist || typeof MIDI === 'undefined' ? createWebAudioPlayback()
       : legacyMidiPlayback(String(instrument), soundfont_url, Player.INSTRUMENTS_LOADED));
+    if (this.options.controls && !music.events.some(event => event.notes.length)) {
+      this.overlay?.setStatus('This example has no pitched notes to play.');
+      return;
+    }
+    this.overlay?.setPlaying(true);
     this.overlay?.setStatus('Loading instruments...');
     try {
-      await this.transport.play(plugin, programNumber(instrument), music, () => {
+      const geometry = this.geometry?.() ?? (this.artist && this.overlay ? artistGeometry(this.artist) : undefined);
+      if (geometry?.size) this.animation = new PlaybackAnimation(this.overlay?.surface, music, geometry);
+      await this.transport.play(plugin, programNumber(instrument), music, elapsed => {
+        this.animation?.start(elapsed);
         this.overlay?.setStatus('');
         this.overlay?.setPlaying(true);
-      });
-      if (generation === this.generation) this.overlay?.setPlaying(false);
+      }, this.animation ? anticipation : 0);
     } catch (error) {
       if (generation === this.generation) {
         this.overlay?.setPlaying(false);
         this.overlay?.setStatus(error instanceof Error ? error.message : String(error));
       }
       throw error;
+    } finally {
+      if (generation === this.generation) {
+        this.animation?.stop();
+        this.animation = undefined;
+        this.overlay?.setPlaying(false);
+      }
     }
   }
 
@@ -130,6 +152,8 @@ export default class Player {
   stop(): void {
     this.generation++;
     this.transport.stop();
+    this.animation?.stop();
+    this.animation = undefined;
     this.overlay?.setStatus('');
     this.overlay?.setPlaying(false);
   }

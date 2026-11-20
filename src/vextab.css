@@ -41,7 +41,7 @@ div.vextab-auto .title {
   align-items: flex-start;
   pointer-events: none;
 }
-.vextab-transport > canvas {
+.vextab-transport > .vextab-canvas-ink {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -78,4 +78,22 @@ div.vextab-auto .title {
 .vextab-transport > [role='status'] {
   color: #287552;
   font: 14px/24px Academico, Georgia, serif;
+}
+
+/* Tint sounding notes and custom position markers. */
+.vextab-playback-ink, .vextab-playback-marker {
+  color: var(--vextab-playback-tint, #6baed6);
+}
+
+/* Stack preview ink in the same grid cell as the page, at its intrinsic or responsive size. */
+.vextab-playback-page { display: grid; grid-template-columns: minmax(0, 1fr); }
+.vextab-playback-page > svg { grid-area: 1 / 1; }
+
+/* Host-mounted controls stay above the music, including in legacy documentation. */
+.vextab-playback-controls { display: inline-flex; align-items: center; gap: .65em; }
+.vextab-playback-controls button { cursor: pointer; font: inherit; }
+.vextab-playback-controls button::before { content: '▶'; margin-right: .45em; font-size: .8em; }
+.vextab-playback-controls .vextab-stop::before { content: '■'; }
+@media print {
+  .vextab-playback-controls, .vextab-transport, .vextab-playback-ink, .vextab-playback-paper { display: none !important; }
 }

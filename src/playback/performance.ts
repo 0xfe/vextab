@@ -65,7 +65,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
           if (note) { notes.push(note); sounding.set(id, note); }
         }
       });
-      events.push({ time, notes, mark: () => mark?.(attack.id) });
+      events.push({ time, duration, source: attack.id, notes, mark: mark && (() => mark(attack.id)) });
     }
     bar += seconds(measure.span, whole);
   }
@@ -73,7 +73,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
 }
 
 /** Fixed scores may contain fragments and text voices outside the shared parser's grammar. */
-export function artistPerformance(artist: Artist, tempo: number, mark: (note: any) => void): Performance {
+export function artistPerformance(artist: Artist, tempo: number): Performance {
   const events: PlaybackEvent[] = [];
   const tickSeconds = 240 / (tempo * VexFlow.RESOLUTION);
   const sounding = new Map<object, Map<number, PlaybackNote>>();
@@ -105,7 +105,7 @@ export function artistPerformance(artist: Artist, tempo: number, mark: (note: an
           });
           sounding.set(glyph, byHead);
         }
-        events.push({ time: (row + tick) * tickSeconds, notes, mark: () => mark(glyph) });
+        events.push({ time: (row + tick) * tickSeconds, duration, source: glyph, notes });
         tick += length;
       }
       span = Math.max(span, tick);

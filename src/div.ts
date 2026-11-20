@@ -29,11 +29,16 @@ function embedAttribute(host: HTMLElement, name: string, legacyName?: string): s
 }
 
 /** Host integrations can supply an instrument without loading any synthesizer into VexTab. */
-export interface DivOptions { playback?: PlaybackPlugin }
+export interface DivOptions {
+  playback?: PlaybackPlugin;
+  /** Always offer playback for this embed and place its controls in this host. */
+  playbackControls?: HTMLElement;
+}
 
 class Div {
   private player?: Player;
   private readonly playback: PlaybackPlugin;
+  private readonly playbackControls?: HTMLElement;
   // Host element + renderer state.
   private sel: string | HTMLElement;
   private code: string;
@@ -69,6 +74,7 @@ class Div {
    * Design note: we read once from the DOM and then manage our own state.
    */
   constructor(sel: string | HTMLElement, options: DivOptions = {}) {
+    this.playbackControls = options.playbackControls;
     this.playback = options.playback ?? createWebAudioPlayback();
     this.sel = sel;
     if (!this.sel) {
@@ -270,13 +276,9 @@ class Div {
     });
     this.player?.dispose();
     this.player = undefined;
-    if (score.playback?.enabled) {
-      const player = this.player = new Player(score, { playback: this.playback });
-      const events = new Map(layout.navigation.events.map(event => [event.source, event.id]));
-      player.render(next.querySelector('svg'), id => {
-        const glyph = layout.composition.getNote(events.get(id));
-        if (glyph) player.moveCursor(glyph.getAbsoluteX() + 4, glyph.getStave().getYForLine(2));
-      });
+    if (this.playbackControls || score.playback?.enabled) {
+      const player = this.player = new Player(score, { playback: this.playback, controls: this.playbackControls });
+      player.render(next.querySelector('svg'));
     }
     this.current = { score, layout };
   }
@@ -302,8 +304,9 @@ class Div {
             renderer.getContext().setBackgroundFillStyle(paper);
           }
         }
+        if (this.playbackControls) this.artist.customizations.player = 'true';
         if (!this.player && this.artist.customizations.player === 'true') {
-          this.player = new Player(this.artist, { playback: this.playback });
+          this.player = new Player(this.artist, { playback: this.playback, controls: this.playbackControls });
         }
         this.artist.draw(renderer);
         if (canvas) {

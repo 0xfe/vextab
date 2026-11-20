@@ -2,6 +2,14 @@
 
 Add `options player=true tempo=100` before the first stave of an embed to mount Play and Stop. This works with the fixed SVG and Canvas renderers, responsive SVG and the legacy `.vex-tabdiv` class. The default embed uses native Web Audio and needs no samples. The first Play gesture opens audio. [Runnable bass chords and guitar pre-bend](../demos/player.html)
 
+## Listen in the guide
+
+Press **Play** above a tutorial example, study or playground score. The button becomes **Stop** and can cancel the first instrument load. Changing an edit or starting a different score ends playback. The duet edition has its own button for the selected voice. An empty stave or an example containing only rests has no pitches to play.
+
+A soft blue dot appears just before each sounding head or fret, reaches full strength on the beat and fades at the end of its written duration. The vertical playhead spans the system and continues through rests. It follows the spacing of the selected layout, including printed parts.
+
+The guide loads its bundled SpessaSynth worklet and Florestan SoundFont on demand. Program 24 is nylon guitar, 40 is violin and 12 is marimba. The bank supplies a piano for program 0 and a nylon guitar for unavailable programs. Use HTTPS, localhost or the offline guide in a browser with AudioWorklet support. [Editable example](../demos/spessasynth.html) · [SoundFont source](../guide/audio/README.md)
+
 ## Supply a SpessaSynth instance
 
 Install `spessasynth_lib` in **your application**. Serve its matching worklet from your own site. Choose and host a SoundFont you can distribute. The adapter accepts a configured synthesizer. The host owns its context, worklet, sound bank and output routing. VexTab's package and type declarations have no dependency on SpessaSynth.
@@ -29,6 +37,8 @@ async function mountScore() {
 ```
 
 Use a plain host element for manual mounting. The adapter resumes the context on Play and waits for the synth's readiness. Reserve the supplied MIDI channels for VexTab. Straight notes share channels. A bent string or an overlapping unison needs a separate channel. The default pool uses the 15 melodic channels of the first MIDI port. Stop releases only notes owned by the session. Dispose the returned embed when removing it and close the audio context when the host has finished using it.
+
+To put buttons in your own toolbar, pass <code>{ playback, playbackControls: toolbar }</code> as the second argument to <code>new Div</code>. This enables playback for the embed without changing its source text. A standalone <code>Player</code> accepts <code>{ playback, controls: toolbar }</code> and mounts the buttons when you call <code>render()</code>. To animate a score drawn with <code>renderScore</code>, pass its SVG to <code>player.render(svg)</code>. For an extracted part, construct the player with the score returned by <code>renderScorePart</code> and pass its first page SVG.
 
 ## Play a score without a renderer
 

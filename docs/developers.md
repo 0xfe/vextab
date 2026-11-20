@@ -38,7 +38,7 @@ npm run guide:upload -- --dry-run
 npm run guide:upload
 ```
 
-The destination is `gs://vexflow.com/vextab/guide/`, served at **https://vexflow.com/vextab/guide/**. Each upload builds in a fresh staging directory, uploads hashed bundles and print chunks first, then publishes the standalone lessons and the guide index. It verifies the uploaded HTML against the build. For a staging bucket, pass `-- --destination=gs://your-bucket/vextab/guide/`.
+The destination is `gs://vexflow.com/vextab/guide/`, served at **https://vexflow.com/vextab/guide/**. Each upload builds in a fresh staging directory, uploads hashed bundles, the on-demand SoundFont instrument and print chunks first, then publishes the standalone lessons and the guide index. It verifies the uploaded HTML against the build. For a staging bucket, pass `-- --destination=gs://your-bucket/vextab/guide/`.
 
 To preview the standalone site locally, run `npm run guide:build` and open `build/guide/index.html`.
 
@@ -61,6 +61,8 @@ npx --no-install playwright-core install firefox webkit
 VEXTAB_BROWSER=firefox node scripts/test-browser.mjs
 VEXTAB_BROWSER=webkit node scripts/test-browser.mjs
 ```
+
+The browser suite checks real SoundFont output from the offline guide. Keep the SpessaSynth library and worklet on the same pinned version. The guide bank and its provenance live in `guide/audio/`.
 
 Edit tutorial chapters and their fixed-layout examples in `doc/tutorial.html`. The historical page and the guide share this source. Edit feature chapters in `guide/features.html`, API entries in `guide/reference.html`, and study descriptions and the notation glossary in `guide/catalog.ts`. Preserve the chapter and entry IDs for incoming links. Use stable score IDs for guide, playground and original-source links. Edit the study music in `guide/scores/*.vextab`. The guide and engraving tests import the same files. The suite exercises both scores at 360 and 960 CSS pixels, including a return to the starting width after fonts load. [Guitar and lead-sheet coverage](vt5-m3.md)
 

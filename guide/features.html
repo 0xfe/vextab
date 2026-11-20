@@ -16,6 +16,24 @@ stave time=3/4
 notes :8 [ C-D-E/4 ] F/4 [ A/4 B@~/4 ] |</div>
   <p><a href="#lesson/meter">Compare the automatic beams in 3/4 and 6/8 →</a></p>
 </section>
+<section id="playback">
+  <h2>Play a phrase with a SoundFont</h2>
+  <p>Listen to four beats on a nylon-string guitar, then slow them down and try a different instrument.</p>
+  <pre data-score>options tempo=96 instrument=24
+tabstave notation=true time=4/4
+notes :q 0-2-3-2/1 |</pre>
+  <p>Press <strong>Play</strong> above the score. Change <code>tempo=96</code> to <code>tempo=72</code> and listen again. Try <code>instrument=40</code> for violin or <code>instrument=12</code> for marimba. The first Play loads the guide’s bundled SpessaSynth instrument. Stop, edit or open another score to end the performance.</p>
+  <p>Follow the light gray playhead through the bar. Each sounding note glows blue on the staff and tab. The line keeps moving through rests. Playback follows the written bars once. Ties sustain, rests take time and a chord label does not add an accompaniment. <a href="#reference/player">Player and instrument options →</a></p>
+</section>
+<section id="score-colours">
+  <h2>Colour a stave, an attack or a chord label</h2>
+  <p>Use colour to show a student which attack to listen for.</p>
+  <pre data-score>tabstave time=2/4 color=SeaGreen
+notes :q 0/1 !color #1565c0! !chord "Em" color=crimson! 2/1 |
+tabstave time=2/4
+notes :q 3/1 0/1 |</pre>
+  <p>The first stave is green, its first note is blue and the Em label is crimson. Move the attack colour after the second fret to shift the emphasis. The next stave starts with the default ink. Stave and attack colours work in fixed SVG, Canvas and flow layout, and carry through to printed parts. <a href="#reference/ink">Colour syntax →</a></p>
+</section>
 <section id="independent-voices">
   <h2>Independent voices and ties</h2>
   <p>Let a melody cross a barline while the bass keeps its own pulse.</p>
@@ -35,6 +53,14 @@ tabstave notation=true time=2/4 tuning=dropd
 notes :h (5/2.7/3) !bend 3 +2 rise=1/2 hold=3/4 release=1/1! |
 notes :q 0/6 !pm 6! 3/6 !end-pm! |</pre>
   <p><a href="#lesson/drop-d-turnaround">Play the Drop D turnaround →</a></p>
+</section>
+<section id="pre-bends">
+  <h2>Pick a pre-bent string and release it</h2>
+  <p>Hear a string that is already bent when the pick lands.</p>
+  <pre data-score>options tempo=80 instrument=24
+tabstave notation=true time=2/4
+notes :q (0/6.7z8z7/3) 7/3 |</pre>
+  <p>Fret 7 on string three, bend to the pitch at fret 8, then pick. The last <code>z7</code> brings the pitch back down during that same quarter note. The open bass keeps its pitch. Remove the last <code>z7</code> and listen for the held high pitch. Compare the vertical tab arrow with the raised note on the staff. <a href="#features/timed-techniques">Compare a bend that starts after the attack →</a></p>
 </section>
 <section id="lead-sheets">
   <h2>Chord frames and lyric syllables</h2>

@@ -32,13 +32,14 @@
     document.addEventListener('DOMContentLoaded', () => {
       const host = document.querySelector('#score');
       const original = host.textContent;
-      const editor = new vextab.Div(host);
+      const editor = new vextab.Div(host, VexTabAudio.scoreOptions(host, document.querySelector('.controls')));
       const input = host.querySelector('textarea');
       const narrow = document.querySelector('#narrow');
       const part = document.querySelector('#part');
       const find = document.querySelector('#find');
       const message = document.querySelector('#message');
       let printedChord;
+      let partPlayer;
       function resize() {
         editor.setWidth(Math.min(host.clientWidth, narrow.checked ? 220 : 640));
       }
@@ -52,6 +53,7 @@
         else message.textContent = 'The current score needs a valid tie.';
       });
       function clearPart() {
+        partPlayer?.dispose();
         printedChord = undefined;
         part.replaceChildren();
         find.disabled = true;
@@ -68,6 +70,9 @@
         if (!score) { message.textContent = 'Finish editing a valid score first.'; return; }
         try {
           const view = vextab.renderScorePart(part, score, 'notation');
+          const options = VexTabAudio.scoreOptions(part, document.querySelector('#engrave').parentElement);
+          partPlayer = new vextab.Player(score, { playback: options.playback, controls: options.playbackControls });
+          partPlayer.render(view.publication.pages[0].svg);
           const target = score.ties[0]?.to;
           for (const page of view.publication.pages) {
             const events = JSON.parse(page.svg.querySelector('metadata').textContent).events;

@@ -25,7 +25,7 @@ export interface PlaybackPlugin {
 }
 
 /** An onset can contain a rest or a chord. Mark is optional visual feedback. */
-export interface PlaybackEvent { time: number; notes: PlaybackNote[]; mark?: () => void }
+export interface PlaybackEvent { time: number; duration: number; source: string | object; notes: PlaybackNote[]; mark?: () => void }
 export interface Performance { events: PlaybackEvent[]; duration: number }
 
 /** Drive onsets from elapsed time. Timer delays do not accumulate in the tempo. */
@@ -37,7 +37,7 @@ export class PlaybackTransport {
   get active(): boolean { return !!this.request; }
 
   /** Resolve on completion or cancellation, reject on preparation or instrument errors. */
-  play(plugin: PlaybackPlugin, program: number, music: Performance, started: () => void): Promise<void> {
+  play(plugin: PlaybackPlugin, program: number, music: Performance, started: (elapsed: () => number) => void, leadIn = 0): Promise<void> {
     this.stop();
     const request = this.request = new AbortController();
     return new Promise((resolve, reject) => {
@@ -50,9 +50,9 @@ export class PlaybackTransport {
       const begin = (session: PlaybackSession) => {
         if (request.signal.aborted) { session.stop(); return; }
         this.session = session;
-        started();
         const now = () => session.currentTime ?? performance.now() / 1000;
-        const origin = now();
+        const origin = now() + leadIn;
+        started(() => now() - origin);
         let index = 0;
         const advance = () => {
           if (request.signal.aborted) return;

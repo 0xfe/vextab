@@ -61,20 +61,22 @@ QUnit.module('Canvas player', () => {
       assert.strictEqual(attacks[1] - attacks[0], 2, 'G to A spans two semitones');
       assert.deepEqual(releases, attacks.map(pitch => [0, pitch, 0.25]));
 
-      const overlay = host.querySelector<HTMLCanvasElement>('.my-player canvas');
-      const context = overlay.getContext('2d');
+      await new Promise(requestAnimationFrame);
+      const overlay = host.querySelector<SVGSVGElement>('.my-player .vextab-canvas-ink');
+      assert.equal(overlay.viewBox.baseVal.width, score.width);
+      assert.equal(overlay.viewBox.baseVal.height, score.height);
+      const matrix = overlay.querySelector('g').transform.baseVal.consolidate().matrix;
+      assert.equal(matrix.a, score.getContext('2d').getTransform().a, 'ink uses the backing pixel scale');
       const notes = artist.getPlayerData().voices[0][0].getTickables();
-      // Sample the cursor at each attack in backing pixels, including score scale and DPR.
-      const alpha = note => {
-        const point = new DOMPoint(note.getAbsoluteX() + 4, note.getStave().getYForLine(2));
-        const pixel = point.matrixTransform(score.getContext('2d').getTransform());
-        return context.getImageData(pixel.x, pixel.y, 1, 1).data[3];
-      };
-      assert.strictEqual(overlay.width, score.width);
-      assert.strictEqual(alpha(notes[0]), 0, 'the previous note is clear');
-      assert.ok(alpha(notes[1]) > 0, 'the cursor covers the current note');
+      const head = notes[1].getHeadInk()[0];
+      const dots = Array.from(overlay.querySelectorAll('ellipse')).filter(dot => +dot.getAttribute('opacity') > 0);
+      assert.ok(dots.some(dot => Math.abs(dot.cx.baseVal.value - (head.x + head.w / 2)) < 0.01 &&
+        dot.cy.baseVal.value === notes[1].getYs()[0]), 'the second attack lights the corresponding head');
+      const bar = overlay.querySelector('line');
+      assert.ok(bar.y1.baseVal.value < notes[1].getStave().getYForLine(0));
+      assert.ok(bar.y2.baseVal.value > notes[1].getStave().getYForLine(4));
       button('Stop').click();
-      assert.strictEqual(alpha(notes[1]), 0, 'stopping clears the cursor');
+      assert.strictEqual(overlay.querySelector('.vextab-playback-ink'), null, 'Stop clears all moving ink');
 
       player.setInstrument('flute');
       button('Play').click();

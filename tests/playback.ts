@@ -52,6 +52,54 @@ QUnit.module('Playback plugins', () => {
     }
   });
 
+  QUnit.test('The audio clock carries the playhead through chords, rests and a system break', async assert => {
+    assert.timeout(5000);
+    const host = document.createElement('div');
+    host.dataset.layout = 'flow';
+    host.dataset.width = '210';
+    host.textContent = 'options player=true tempo=120\ntabstave notation=true time=4/4\nnotes :q (0/1.2/3) 2/1 ## 3/1 | :w 5/1 |';
+    document.querySelector('#qunit-fixture').append(host);
+    let clock = 0;
+    const embed = new Div(host, { playback: { open: () => ({
+      get currentTime() { return clock; }, playNote() {}, stop() {},
+    }) } });
+    try {
+      await document.fonts.ready;
+      host.querySelector<HTMLButtonElement>('.vextab-play').click();
+      const bar = host.querySelector<SVGLineElement>('.vextab-playback-ink line');
+      const beat = async (time: number) => {
+        clock = 0.075 + time;
+        await new Promise(requestAnimationFrame);
+        return {
+          x: bar.transform.baseVal.consolidate().matrix.e, y: bar.y1.baseVal.value,
+          heads: Array.from(host.querySelectorAll('.vextab-playback-ink ellipse'),
+            dot => Number(dot.getAttribute('opacity'))).filter(alpha => alpha > 0),
+        };
+      };
+      const approaching = await beat(-0.04);
+      assert.equal(approaching.heads.length, 4, 'both chord members glow on the staff and tab');
+      assert.ok(approaching.heads.every(alpha => alpha < 1), 'the chord fades in before the audio attack');
+      const attack = await beat(0);
+      assert.deepEqual(attack.heads, [1, 1, 1, 1]);
+      assert.ok(bar.y2.baseVal.value - attack.y > 100, 'the bar spans both staves');
+      const between = await beat(0.25);
+      const release = await beat(0.46);
+      assert.equal(release.heads.length, 6, 'the release overlaps the next note’s anticipation');
+      assert.ok(release.heads.every(alpha => alpha < 1));
+      const second = await beat(0.501);
+      assert.ok(attack.x < between.x && between.x < second.x, 'the bar travels continuously between attacks');
+      assert.deepEqual(second.heads, [1, 1]);
+      const rest = await beat(1.1);
+      assert.equal(rest.heads.length, 0);
+      assert.ok((await beat(1.3)).x > rest.x, 'the bar crosses the rest in musical time');
+      const endOfRow = await beat(1.99);
+      const nextRow = await beat(2.01);
+      assert.ok(nextRow.y > endOfRow.y && nextRow.x < endOfRow.x, 'the bar wraps to the next system');
+      host.querySelector<HTMLButtonElement>('.vextab-stop').click();
+      assert.equal(host.querySelector('.vextab-playback-ink'), null);
+    } finally { embed.dispose(); }
+  });
+
   QUnit.test('Native Web Audio renders a pitched note and releases it on time', async assert => {
     const audio = new OfflineAudioContext(1, 24000, 24000);
     const output = await createWebAudioPlayback(audio).open(0, new AbortController().signal);

@@ -1,5 +1,6 @@
 // Read the guide's bundled chapters and mount only the examples on the open page.
 import Div from '../src/div';
+import { scoreOptions } from './audio';
 import historical from '../doc/tutorial.html?guide-content';
 import additions from './features.html?guide-content';
 import api from './reference.html?guide-content';
@@ -79,7 +80,7 @@ function examples(host: HTMLElement, chapter: Chapter, section: string, draft: D
     controls.append(node('span', 'VexTab source'), reset);
     frame.append(embed, controls);
     original.replaceWith(frame);
-    const editor = new Div(embed);
+    const editor = new Div(embed, scoreOptions(embed));
     const input = embed.querySelector('textarea');
     input.setAttribute('aria-label', chapter.title + ' · example ' + (index + 1));
     input.spellcheck = false;
@@ -98,7 +99,7 @@ export function showCover(host: HTMLElement): Div {
   cover.className = 'book-cover';
   const introduction = document.createElement('div');
   heading(introduction, 'By Mohit Muthanna Cheppudira', 'The VexTab Tutorial',
-    'Write standard notation and guitar tablature, one stave at a time. Edit the music as you work through the original fifteen steps.');
+    'Write standard notation and guitar tablature, one stave at a time. Play and edit the music as you work through the original fifteen steps.');
   const start = link('Start with the stave →', '#tutorial/' + tutorial[0].id);
   start.className = 'start-reading';
   introduction.append(start);
@@ -113,7 +114,7 @@ export function showCover(host: HTMLElement): Div {
   cover.append(introduction, figure);
   host.append(cover);
   directory(host, tutorial, 'tutorial', 'In this tutorial', true);
-  return new Div(sample);
+  return new Div(sample, scoreOptions(sample));
 }
 
 /** The same table of contents also supplies permanent URLs and chapter order. */
