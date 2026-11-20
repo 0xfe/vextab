@@ -59,6 +59,8 @@ export type StaveGroup = {
   color?: string;
   // Written key signature shared by all voices on this staff.
   key: string;
+  // Frets in the score are relative to this capo.
+  capo: number;
   // Shared clearance above tab stems and their tuplet numerals.
   tabRhythmSpace: number;
   // Each voice retains its own stem and beam settings and authored bracket ranges.

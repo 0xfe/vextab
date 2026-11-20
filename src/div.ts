@@ -28,6 +28,12 @@ function embedAttribute(host: HTMLElement, name: string, legacyName?: string): s
     || host.getAttribute(name);
 }
 
+/** A grand staff needs the shared measure formatter. An explicit embed layout wins. */
+export function usesFlowLayout(host: HTMLElement, source: string): boolean {
+  const layout = embedAttribute(host, 'layout');
+  return layout === 'flow' || (!layout && /^[ \t]*piano(?:\s|$)/m.test(source));
+}
+
 /** Host integrations can supply an instrument without loading any synthesizer into VexTab. */
 export interface DivOptions {
   playback?: PlaybackPlugin;
@@ -94,7 +100,7 @@ class Div {
     this.width = parseInt(width, 10) || 400;
     this.scale = parseFloat(embedAttribute(host, 'scale')) || 1.0;
     this.rendererBackend = embedAttribute(host, 'renderer') || 'svg';
-    this.flow = embedAttribute(host, 'layout') === 'flow';
+    this.flow = usesFlowLayout(host, this.code);
     host.classList.toggle('vextab-flow', this.flow);
 
     this.editor = embedAttribute(host, 'editor') || '';
@@ -277,7 +283,7 @@ class Div {
     this.player?.dispose();
     this.player = undefined;
     if (this.playbackControls || score.playback?.enabled) {
-      const player = this.player = new Player(score, { playback: this.playback, controls: this.playbackControls });
+      const player = this.player = new Player(layout.score, { playback: this.playback, controls: this.playbackControls });
       player.render(next.querySelector('svg'));
     }
     this.current = { score, layout };
@@ -315,8 +321,11 @@ class Div {
             const lines = voices.map((notes, v) => 'Voice ' + (v + 1) + '. ' + notes
               .filter(note => !note.shouldIgnoreTicks()).map(note => {
                 const positions = note.getPositions?.();
-                const pitch = note.isRest() ? 'rest' : positions?.map(p => 'string ' + p.str + ' fret ' + p.fret).join(', ')
-                  ?? note.getKeys().join(', ');
+                // A drum's written key encodes its staff position. Read its instrument name aloud.
+                const drums = group.note?.getClef() === 'percussion'
+                  ? note.notation?.filter(mark => mark.kind === 'unpitched').map(mark => mark.label) : undefined;
+                const heads = drums?.length ? drums : positions?.map(p => 'string ' + p.str + ' fret ' + p.fret);
+                const pitch = note.isRest() ? 'rest' : (heads ?? note.getKeys()).join(', ');
                 return pitch + ' (' + note.getDuration() + ')';
               }).join('. '));
             return 'Stave ' + (i + 1) + ', meter ' + group.meter + '. ' + lines.join('. ');

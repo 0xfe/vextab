@@ -1,4 +1,5 @@
 // Describe measured chord and lyric marks, and draw the score's low-to-high chord-frame key.
+import { describeOpenSlide } from './open-slide';
 import { describePrebend } from './music';
 import { scoreFont } from './engraving';
 import { FretDiagram, type EasyScoreMeasureSpec, type RenderContext, type ScoreHitRegion } from 'vexflow';
@@ -9,17 +10,18 @@ type Register = (id: string, range: SourceRange) => string;
 
 /** Use note IDs so Publication can recreate the same marks in a fresh composition. */
 export function leadMarks(measure: Measure, staff: 'notation' | 'tab', noteId: (id: string) => string,
-  labelPrebends: boolean): Pick<EasyScoreMeasureSpec, 'chords' | 'verses'> {
+  labelTechniques: boolean): Pick<EasyScoreMeasureSpec, 'chords' | 'verses'> {
   const chords: EasyScoreMeasureSpec['chords'][number][] = [];
   const verses: EasyScoreMeasureSpec['verses'][number][] = [];
   for (const voice of measure.voices) {
     const syllables: EasyScoreMeasureSpec['verses'][number][number][] = [];
     for (const [i, event] of voice.events.entries()) {
       const note = noteId(event.id);
-      // Publication accepts plain descriptors and cannot serialize a native pre-bend arrow.
+      // Publication accepts plain descriptors. String techniques travel as playing instructions.
       // The part names its string and release alongside any chord symbol at the same onset.
       const labels = event.chord ? [event.chord.text] : [];
-      if (labelPrebends) for (const head of event.heads) {
+      if (labelTechniques) for (const head of event.heads) {
+        if (head.openSlide && staff === 'notation') labels.push(describeOpenSlide(head.openSlide, head.position.str));
         if (head.prebend) labels.push(describePrebend(head.prebend, head.position.str));
       }
       if (labels.length) chords.push({ note, text: labels.join(' · ') });

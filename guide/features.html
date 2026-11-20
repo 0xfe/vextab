@@ -34,6 +34,36 @@ tabstave time=2/4
 notes :q 3/1 0/1 |</pre>
   <p>The first stave is green, its first note is blue and the Em label is crimson. Move the attack colour after the second fret to shift the emphasis. The next stave starts with the default ink. Stave and attack colours work in fixed SVG, Canvas and flow layout, and carry through to printed parts. <a href="#reference/ink">Colour syntax →</a></p>
 </section>
+<section id="piano">
+  <h2>Piano grand staff</h2>
+  <p>The right hand plays four quarter notes while the left plays two half notes. Play the phrase, then change the bass rhythm without changing the melody. Each hand fills the same bars.</p>
+  <pre data-score>options player=true tempo=96
+piano time=4/4
+notes :q E-G/4 C/5 G/4 | F-A/4 C/5 A/4 |
+voice hand=left
+notes :h (C/3.G/3) G/2 | (F/2.C/3) C/3 |</pre>
+  <p>The first line of notes belongs to the treble stave. Each added <code>voice</code> starts at beat one of the same row. Set <code>hand=right</code> or <code>hand=left</code> to pick its stave. Use <code>voice=top</code> and <code>voice=bottom</code> when two voices on one stave need opposite stems.</p>
+  <pre data-score>piano time=2/4 voice=top
+notes :q G-A/4 |
+voice hand=right voice=bottom
+notes :h E/4 |
+voice hand=left voice=top
+notes :h C/3 |
+voice hand=left voice=bottom
+notes :q F-G/2 |</pre>
+  <p><a href="#reference/piano">Piano rendering and hand parts →</a></p>
+</section>
+<section id="fingerings">
+  <h2>Fingerings and accents</h2>
+  <p>Attach a finger directly to the note, as in <code>6/4[f2]</code>. Add <code>&gt;</code> for an accent. Try moving the last finger from the right of the note to the left by changing <code>f3:r</code> to <code>f3:l</code>.</p>
+  <div class="vex-tabdiv" width="560" scale="1" editor_height="85">tabstave notation=true time=2/4 fingering=left accents=top
+notes :8 6/4[f2] h7/4[f3] :q 0/2[f3:r, &gt;] |</div>
+  <p>Finger numbers run from 0 to 5. Use <code>fT</code> for thumb. Fingers default to the left and accents above. Set <code>fingering=right</code> or <code>accents=bottom</code> on the stave to change the defaults. A <code>voice</code> inherits these settings and can override either one. A suffix such as <code>[f3:a, &gt;:below]</code> overrides them for one note. Finger positions accept <code>l</code>, <code>r</code>, <code>a</code> and <code>b</code>. Put a suffix inside a chord to mark that specific head.</p>
+  <pre data-score>stave time=2/4
+notes :q (C/4[f1].E/4[f3:r]) G/4[f5, &gt;] |</pre>
+  <p>Independent notation parts print marks on named pitches and chords. For marks on fretted notes, use the fixed or flow view. Finger numbers appear on standard notation. Accents also appear on tablature.</p>
+  <p><a href="#features/beaming">Group marked notes into beams →</a></p>
+</section>
 <section id="independent-voices">
   <h2>Independent voices and ties</h2>
   <p>Let a melody cross a barline while the bass keeps its own pulse.</p>
@@ -52,6 +82,11 @@ notes :h C/4 | D/4 |</pre>
 tabstave notation=true time=2/4 tuning=dropd
 notes :h (5/2.7/3) !bend 3 +2 rise=1/2 hold=3/4 release=1/1! |
 notes :q 0/6 !pm 6! 3/6 !end-pm! |</pre>
+  <h3>Open-ended slides</h3>
+  <p>Place <code>&lt;</code> on the lower-fret side or <code>&gt;</code> on the higher-fret side of a slide. A marker before the fret slides into the note. A marker after the fret slides out. In the first bar, approach fret nine from below and then from above. In the second bar, leave toward a lower fret and then a higher one.</p>
+  <pre data-score>tabstave notation=true time=2/4
+notes :q &lt;9/3 &gt;9/3 | 9&lt;/3 (9&gt;/3.7/2) |</pre>
+  <p>Each slide has one picked attack. Playback uses its written fret. To slide between two specified frets in fixed layout, use <code>5s7/3</code>.</p>
   <p><a href="#lesson/drop-d-turnaround">Play the Drop D turnaround →</a></p>
 </section>
 <section id="pre-bends">
@@ -61,6 +96,15 @@ notes :q 0/6 !pm 6! 3/6 !end-pm! |</pre>
 tabstave notation=true time=2/4
 notes :q (0/6.7z8z7/3) 7/3 |</pre>
   <p>Fret 7 on string three, bend to the pitch at fret 8, then pick. The last <code>z7</code> brings the pitch back down during that same quarter note. The open bass keeps its pitch. Remove the last <code>z7</code> and listen for the held high pitch. Compare the vertical tab arrow with the raised note on the staff. <a href="#features/timed-techniques">Compare a bend that starts after the attack →</a></p>
+</section>
+<section id="drum-kit">
+  <h2>Drum kit notation</h2>
+  <p>Write a groove with <code>stave clef=percussion</code>. In the first bar, read the kit from low to high. <code>kick</code> is a round head in the bottom space, <code>snare</code> is a round head in the third space, and <code>hat</code> is a cross above the top line for the closed hi-hat.</p>
+  <pre data-score>stave clef=percussion time=4/4
+notes :q kick snare hat ## |
+notes :8 (kick.hat) hat (snare.hat) hat (kick.hat) hat (snare.hat) hat |</pre>
+  <p>Parentheses put both instruments on the same stem. To give the feet and hands independent rhythms, put them in separate voices. Drum hits have no sounding pitch in VexTab playback.</p>
+  <p><a href="#features/independent-voices">Write independent voices →</a></p>
 </section>
 <section id="lead-sheets">
   <h2>Chord frames and lyric syllables</h2>

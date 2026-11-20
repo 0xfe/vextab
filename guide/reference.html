@@ -18,6 +18,12 @@ notes :q 0-2-3-2/1 |&lt;/div&gt;
   <h2>Parsing and the score model</h2>
   <article id="parse-score"><h3>parseScore(source): ParsedScore</h3>
     <p>Pass the original VexTab string. The flow compiler validates measures and resolves voices, pitches, tuplets, ties and spans. It returns a fresh score revision or throws a located <code>ScoreError</code>. Use fixed layout for free-form Artist fragments and legacy gestures.</p></article>
+  <article id="transpose"><h3>options transpose</h3>
+    <p>Write a signed semitone offset before the first stave. Both the printed signature and the sounding notes move. Guitar notes stay on their original strings. Change the source fingering if a downward shift would require a negative fret.</p>
+    <pre>options transpose=+2
+tabstave notation=true key=C time=4/4
+notes :q 3-5-7-8/5 |</pre>
+    <p>This shifts C major to D major and displays frets 5, 7, 9, and 10 on string five.</p></article>
   <article id="parsed-score"><h3>ParsedScore</h3><p><code>source</code> is the original string. <code>measures</code> holds numbered bars, staff state and ordered voices. A voice’s <code>events</code> have an ID, source range, onset, duration and heads. A chord is one event with several heads. Fretted heads carry their string and fret. <code>ties</code> identifies endpoints and chord members. <code>spans</code> includes voltas and palm mutes.</p>
     <pre>const event = score.measures[0].voices[0].events[0];
 const token = score.source.slice(event.range.start, event.range.end);</pre></article>
@@ -66,7 +72,12 @@ if (revision &amp;&amp; first) editor.selectSource(first.id, revision);</pre></a
   voice: 2, title: 'Guitar 2', paper: 'Letter'
 });</pre></article>
   <article id="publication-result"><h3>PublicationResult.pages, diagnostics and toPrintHTML()</h3><p>Each page has an SVG and its musical metadata. Inspect <code>publication.diagnostics</code> for overflow and engraving details. Supply matching outline fonts to <code>toPrintHTML(faces)</code> for an offline print document or <code>toSVG(pageNumber, faces)</code> for a single outlined page. Page numbers start at one. The guide supplies Bravura and Academico.</p></article>
-  <article id="publication-scope"><h3>Independent part coverage</h3><p>Parts preserve augmentation dots, tab ties, repeat boundaries, chord names and notation lyrics. Some marks still need the screen pass, including chord frames, silent positions and explicit written accidentals in notation parts. A located error identifies the unsupported mark. Selecting a voice missing from a bar also produces an error.</p></article>
+  <article id="piano"><h3>Piano grand staff and hand parts</h3>
+    <p><code>piano key=D time=4/4</code> starts a right-hand treble stave. Add <code>voice hand=left</code> for bass. Share the meter, key changes, bar boundaries and pickups between the hands. Additional voices can use <code>hand=right voice=bottom</code> or <code>hand=left voice=top</code>. Each piano voice starts with a quarter-note duration. A new <code>piano</code> line starts a new row.</p>
+    <p>Use <code>layout="flow"</code> for an SVG embed. Modern and legacy embeds initially containing a piano declaration also select flow automatically. For a programmatic score, pass <code>parseScore(source)</code> to <code>renderScore</code> or <code>Player</code>. Pass <code>part: 'left'</code> or <code>'right'</code> to show one hand. The reader and playback follow the visible hand in an embed.</p>
+    <p><code>renderScorePart(host, score, 'notation')</code> prints both staves. Use <code>'right'</code> or <code>'left'</code> for a practice part. The optional <code>voice</code> number selects one voice within that hand. Native part <a href="#reference/publication-scope">engraving limits</a> also apply to piano. <a href="#features/piano">Try two-hand and four-voice examples</a>.</p>
+  </article>
+  <article id="publication-scope"><h3>Independent part coverage</h3><p>Parts preserve augmentation dots, tab ties, repeat boundaries, chord names and notation lyrics. Some marks still need the screen pass, including chord frames, silent positions and explicit written accidentals in single-stave notation parts. Piano parts preserve explicit and cautionary accidentals on each hand. A located error identifies the unsupported mark. Selecting a voice missing from a bar also produces an error.</p></article>
 </section>
 <section id="fixed-api">
   <h2>Fixed layout and engraving</h2>

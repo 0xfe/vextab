@@ -1,5 +1,7 @@
 // Shared Jison entry with optional original-source ranges for the score compiler.
+import { resolveShorthand } from './shorthand';
 import parser from '../vextab.jison';
+import { transposeSyntax } from './transpose';
 
 /** Half-open UTF-16 offsets match textarea selectionStart / selectionEnd. */
 export interface SourceRange {
@@ -20,7 +22,7 @@ export class ScoreError extends Error {
 export function readSyntax(source: string, track = false) {
   let lines: number[];
   function range(loc: any): SourceRange {
-    // The fixed Artist needs this index only when a parse fails.
+    // Allocate the index only when a tracked token or diagnostic needs a location.
     if (!lines) {
       lines = [0];
       const breaks = /\r\n|\r|\n/g;
@@ -42,7 +44,7 @@ export function readSyntax(source: string, track = false) {
     return { fret: String(fret), prebend: { semitones: peak - fret, release: release !== undefined } };
   }
   const instance = Object.create(parser);
-  instance.yy = { ...instance.yy, locate: track ? range : undefined, prebend };
+  instance.yy = { ...instance.yy, locate: track ? range : undefined, markRange: range, prebend };
   // Jison's error hash describes the last shifted token. The lexer has the rejected lookahead.
   instance.lexer = Object.create(instance.lexer);
   let lexer: any;
@@ -54,5 +56,13 @@ export function readSyntax(source: string, track = false) {
   instance.parseError = (_message: string, hash: any) => {
     throw new ScoreError('syntax', `Unexpected text '${hash.text}'`, range(lexer.yylloc));
   };
-  return instance.parse(source.replace(/\r\n?/g, '\n'));
+  const nodes = instance.parse(source.replace(/\r\n?/g, '\n'));
+  if (nodes?.some(node => node.element === 'options' && node.params.some(p => p.key === 'transpose'))) {
+    // The fixed compiler normally requests unlocated tokens. Only this opt-in pass needs every head's range.
+    if (!track) return readSyntax(source, true);
+    transposeSyntax(nodes, (token, message) => { throw new ScoreError('syntax', message, token.range); });
+  }
+  if (nodes) resolveShorthand(nodes, (line, column) => range({ first_line: line, last_line: line,
+    first_column: column, last_column: column + 1 }), (message, at) => { throw new ScoreError('syntax', message, at); });
+  return nodes;
 }
