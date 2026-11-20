@@ -1,0 +1,36 @@
+# Build downloadable engineering reports from full Git history on release tags or on demand.
+name: Engineering reports
+on:
+  workflow_dispatch:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+jobs:
+  reports:
+    runs-on: ubuntu-24.04
+    env:
+      CHROME_BIN: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm run report:setup
+      - run: npm run report:history
+      - run: npm run improvements:build
+      - run: npm run improvements:verify
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: vextab-engineering-reports
+          path: |
+            build/reports/
+            build/improvements/
+          if-no-files-found: error

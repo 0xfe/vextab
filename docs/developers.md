@@ -29,6 +29,10 @@ The development server watches the source. Open the [project index](http://127.0
 | `npm run watch` | Development bundles rebuilt on source changes |
 | `npm run clean` | Removes the generated `dist/` directory |
 
+## Engineering reports
+
+Generate the quality archive from VexTab 4.0.0 onward and the illustrated AI2026 change report. Both open locally in a browser. [Build and publication commands](reports.md)
+
 ## Upload the user guide
 
 Run these commands from the VexTab checkout. The dry run builds the production guide and prints the Cloud Storage operations. The live command uses your authenticated Google Cloud CLI.
