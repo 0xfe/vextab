@@ -171,7 +171,8 @@ function chordHead(note: Token, state: StaffState, tuning: Tuning, manager: KeyM
       inheritSign: !sign && !note.abc.accidental_type, accidental: sign || (note.abc.accidental_type ? 'n' : undefined), cautionary: note.abc.accidental_type === 'c' };
   }
   const [name, octave] = spellFret(tuning, manager, music, String(attackFret), str);
-  return { range: note.range, written: name + '/' + octave, sounding, position, ...(note.prebend && { prebend: note.prebend }) };
+  return { range: note.range, written: name + '/' + octave, sounding, position, ...(note.prebend && { prebend: note.prebend }),
+    ...(note.openSlide && { openSlide: note.openSlide }) };
 }
 
 /** Match each tied head once. Reordering the destination chord preserves string identity. */
