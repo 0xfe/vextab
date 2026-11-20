@@ -16,7 +16,7 @@ function legacy(source: string) {
   document.querySelector('#qunit-fixture').append(host);
   const renderer = new Renderer(host, Renderer.Backends.SVG);
   const artist = new Artist(10, 10, 600);
-  const parser = new VexTab(artist);
+  const parser = new VexTab(artist, { language: 1 });
   parser.parse(source);
   artist.draw(renderer);
   return { artist, parser, host, renderer, group: artist.staves[0] };
@@ -204,8 +204,33 @@ QUnit.module('Engraving', () => {
     assert.throws(() => parser.parse('options font-face="Times\nstave'), /Unexpected text/);
     // The flow editor selects the complete option when it directs the author to fixed layout.
     const flowSource = 'options beams=auto font-face="Times New Roman"\nstave';
-    assert.throws(() => parseScore(flowSource), error => error instanceof ScoreError &&
+    assert.throws(() => parseScore(flowSource, { language: 1 }), error => error instanceof ScoreError &&
       error.code === 'fixed-layout' && flowSource.slice(error.range.start, error.range.end) === 'font-face="Times New Roman"');
+  });
+
+  QUnit.test('Tab stems are opt-in for both paired and standalone tablature', assert => {
+    for (const display of ['both', 'tab']) {
+      for (const setting of ['', 'tabStems off', 'tabStems on']) {
+        const source = `guitar { view ${display} ${setting} meter 2/4 :8 0-2-3-2/1 | }`;
+        const view = notation(source);
+        const staves = view.composition.notes[0];
+        const tab = staves[staves.length - 1][0] as TabNote[];
+        const enabled = setting === 'tabStems on';
+        assert.deepEqual(tab.map(note => note.hasStem()), Array(4).fill(enabled));
+        assert.deepEqual(tab.map(note => note.getTicks().value()), Array(4).fill(2048));
+        assert.equal(Boolean(tab[0].getBeam()), enabled);
+        if (display === 'both') {
+          const staff = staves[0][0] as StaveNote[];
+          assert.true(staff.every(note => note.hasStem()));
+          assert.ok(staff[0].getBeam());
+        }
+        const print = document.createElement('div');
+        renderScorePart(print, parseScore(source), 'tab');
+        assert.equal(print.querySelectorAll('.vf-stem path').length > 0, enabled, 'printed tab stems');
+      }
+    }
+    const duet = notation('guitar { tabStems on voice a tabStems off { :h 0/1 1/1 | } voice b { :h 2/2 3/2 | } }');
+    assert.deepEqual(duet.composition.notes[0][1].map(notes => (notes[0] as TabNote).hasStem()), [false, true]);
   });
 
   QUnit.test('A tuplet keeps exact time in every projection, including a silent rest', assert => {
@@ -424,7 +449,7 @@ QUnit.module('Engraving', () => {
       host.setAttribute('show-errors', 'true');
       host.textContent = 'stave\nnotes C/4';
       document.querySelector('#qunit-fixture').append(host);
-      const editor = new Div(host) as any;
+      const editor = new Div(host, { language: 1 }) as any;
       const first = host.querySelector('.vex-canvas');
       editor.code = 'stave\nnotes ?';
       editor.redraw();

@@ -148,7 +148,7 @@ function directory(host: HTMLElement, items: Chapter[], section: string, title: 
 
 export function showFeatures(host: HTMLElement) {
   heading(host, 'Features', 'Beyond the tutorial', 'Take the same notation into measured scores, independent voices, lead sheets and printed parts.');
-  directory(host, features, 'features', 'Writing with VexTab 5');
+  directory(host, features, 'features', 'Writing with VexTab 6');
   host.append(node('h2', 'Practice scores'));
   const practice = node('ul', '');
   practice.className = 'practice-links';
@@ -188,7 +188,7 @@ export function showChapter(host: HTMLElement, section: keyof typeof chapterBook
 /** Search across signatures, arguments, examples and prose, including when starting at a deep link. */
 export function showReference(host: HTMLElement, id = '') {
   const group = groups.find(g => g.id === id || Array.from(g.element.querySelectorAll('article')).some(a => a.id === id));
-  heading(host, 'VexTab 5', 'API reference', 'Look up a module, method, editor option or notation command.');
+  heading(host, 'VexTab 6', 'API reference', 'Look up a module, method, editor option or notation command.');
   const label = node('label', 'Search the reference');
   label.htmlFor = 'search';
   const search = document.createElement('input');

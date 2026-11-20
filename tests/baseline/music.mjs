@@ -58,7 +58,7 @@ export function measureScore({ source, probe }) {
   const host = document.querySelector('#score');
   host.replaceChildren();
   const artist = new Artist(10, 10, 600);
-  const parser = new VexTab(artist);
+  const parser = new VexTab(artist, { language: 1 });
   const renderer = new Vex.Flow.Renderer(host, Vex.Flow.Renderer.Backends.SVG);
   try {
     const elements = parser.parse(source);
@@ -116,7 +116,7 @@ export function timeScores() {
       host.replaceChildren();
       const start = performance.now();
       const artist = new Artist(10, 10, 600);
-      new VexTab(artist).parse(source);
+      new VexTab(artist, { language: 1 }).parse(source);
       artist.render(new Vex.Flow.Renderer(host, Vex.Flow.Renderer.Backends.SVG));
       host.querySelector('svg').getBoundingClientRect();
       if (i > 0) samples.push(performance.now() - start);

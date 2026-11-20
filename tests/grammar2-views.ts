@@ -15,9 +15,9 @@ function performance(score: ReturnType<typeof renderScore>['score']) {
 
 QUnit.module('Grammar v2 score views', () => {
   QUnit.test('fret, pitch, slide and per-string bend agree with v1 on both drawing backends', assert => {
-    const old = parseScore('tabstave notation=true time=3/4 tuning=dropd capo=2\nnotes :q <0/6 (0/6.7z9z7/3) (0/6.7/3) !bend 3 +2 rise=1/2 release=1/1! |');
+    const old = parseScore('tabstave notation=true time=3/4 tuning=dropd capo=2\nnotes :q <0/6 (0/6.7z9z7/3) (0/6.7/3) !bend 3 +2 rise=1/2 release=1/1! |', { language: 1 });
     const source = 'meter 3/4 guitar { tuning dropD capo 2 0/6[slideIn below] (0/6 7/3[prebend +2 release]) (0/6 7/3[bend +2 rise=1/2 release=1]) | }';
-    const score = parseScore(source, { language: 2 });
+    const score = parseScore(source);
     for (const renderer of ['svg','canvas'] as const) {
       const root = host();
       const view = renderScore(root, score, { renderer, width: 510 });
@@ -39,8 +39,8 @@ QUnit.module('Grammar v2 score views', () => {
 
   QUnit.test('piano aligns hands, sustains a tied bass, and prints the correct fingering and sign', assert => {
     const input = 'meter 2/4 piano { upper { times 2 { (Fn4[finger 2, showSign] A4[finger 4 right]) G4[accent] | } } lower { :h C3 | C3[tie] | } }';
-    const score = parseScore(input, { language: 2 });
-    const old = parseScore('piano time=2/4\nnotes (Fn/4[f2].A/4[f4:r]) G/4[>] | (Fn/4[f2].A/4[f4:r]) G/4[>] |\nvoice hand=left\nnotes :h C/3 | TC/3 |');
+    const score = parseScore(input);
+    const old = parseScore('piano time=2/4\nnotes (Fn/4[f2].A/4[f4:r]) G/4[>] | (Fn/4[f2].A/4[f4:r]) G/4[>] |\nvoice hand=left\nnotes :h C/3 | TC/3 |', { language: 1 });
     for (const width of [655, 240]) {
       const a = renderScore(host(), old, { width }), b = renderScore(host(), score, { width });
       assert.deepEqual(performance(b.score), performance(old));
@@ -61,23 +61,23 @@ QUnit.module('Grammar v2 score views', () => {
   });
 
   QUnit.test('a four-string instrument and its player share the short opening measure', assert => {
-    const legacy = parseScore('tabstave time=2/4 pickup=1/8 strings=4 tuning=G/5,D/5,A/4,E/4\nnotes :8 0/4 | :q 2/3 0/2 |');
+    const legacy = parseScore('tabstave time=2/4 pickup=1/8 strings=4 tuning=G/5,D/5,A/4,E/4\nnotes :8 0/4 | :q 2/3 0/2 |', { language: 1 });
     const input = 'meter 2/4 pickup 1/8 guitar { tuning (G5 D5 A4 E4) view tab :8 0/4 | :q 2/3 0/2 | }';
-    const score = parseScore(input, { language: 2 });
+    const score = parseScore(input);
     const screen = renderScore(host(), score);
     assert.deepEqual(screen.score.measures.map(m => m.span), ['1/8','1/2']);
     assert.deepEqual(performance(screen.score), performance(legacy));
     assert.equal(screen.score.measures[0].state.strings, 4);
     assert.ok(screen.navigation.events.every(e => e.staff === 'tab'));
     assert.equal(renderScorePart(host(), score, 'tab').publication.diagnostics.length, 0);
-    assert.throws(() => parseScore(input.replace('pickup 1/8', 'pickup 2/4'), { language: 2 }), /shorter/);
-    assert.throws(() => parseScore(input.replace('0/4 |', '0/4 0/4 |'), { language: 2 }), /crosses/);
+    assert.throws(() => parseScore(input.replace('pickup 1/8', 'pickup 2/4')), /shorter/);
+    assert.throws(() => parseScore(input.replace('0/4 |', '0/4 0/4 |')), /crosses/);
   });
 
   QUnit.test('two guitar voices keep their clocks and tie reordered chord heads by string', assert => {
-    const before = parseScore('tabstave notation=true time=2/4\nnotes :h (1/2.2/3) | T(2/3.1/2) |\nvoice\nnotes :q 3-1/5 | 0-2/5 |');
+    const before = parseScore('tabstave notation=true time=2/4\nnotes :h (1/2.2/3) | T(2/3.1/2) |\nvoice\nnotes :q 3-1/5 | 0-2/5 |', { language: 1 });
     const source = 'meter 2/4 guitar { voice top { :h (1/2 2/3) | (2/3[tie] 1/2[tie]) | } voice bass { 3/5 1/5 | 0/5 2/5 | } }';
-    const after = parseScore(source, { language: 2 });
+    const after = parseScore(source);
     for (const width of [620, 230]) {
       const screen = renderScore(host(), after, { width });
       assert.deepEqual(performance(screen.score), performance(before));
@@ -93,7 +93,7 @@ QUnit.module('Grammar v2 score views', () => {
 
   QUnit.test('tuplets, lyrics, repeat endings and kit identities survive independent composition', assert => {
     const source = 'meter 2/4 staff { volta 2 { :8 tuplet 3:2 { C4[lyric "riv" hyphen] D4[lyric "er"] E4 } :q F4 | } ending 1 { :h G4 | } ending 2 { :h C4 | } } drums { times 3 { (kick hat) snare | } }';
-    const score = parseScore(source, { language: 2 });
+    const score = parseScore(source);
     const root = host(), melody = renderScore(root, score);
     const notes = melody.score.measures[0].voices[0].events;
     assert.deepEqual(notes.map(e => e.onset), ['0/1','1/12','1/6','1/4']);
@@ -107,7 +107,6 @@ QUnit.module('Grammar v2 score views', () => {
 
   QUnit.test('editable embeds preserve source revisions and select invalid v2 text', assert => {
     const root = host();
-    root.setAttribute('data-language','2');
     root.setAttribute('data-editor','true');
     root.textContent = 'pattern riff { :h 0/1 } guitar { times 2 { use riff } | }';
     const embed = new Div(root);
@@ -132,7 +131,7 @@ QUnit.module('Grammar v2 score views', () => {
   QUnit.test('local meters engrave, print and play on independent instrument clocks', assert => {
     const source = 'staff { meter 2/4 :h C4 | meter 3/8 :8 D4 E4 F4 | } '
       + 'guitar { view tab meter 3/4 :h. 0/6 | 3/6 | }';
-    const parts = parseScore(source, { language: 2 });
+    const parts = parseScore(source);
     for (const renderer of ['svg','canvas'] as const) {
       const views = parts.parts.map((_,partIndex) => renderScore(host(), parts, { partIndex, renderer }));
       const [melody, guitar] = views;
@@ -157,7 +156,6 @@ QUnit.module('Grammar v2 score views', () => {
     let clock = 0, stoppedAt = 0, bothAnimated = false;
     let done: () => void;
     const stopped = new Promise<void>(resolve => { done = resolve; });
-    root.setAttribute('data-language', '2');
     root.setAttribute('data-editor', 'true');
     root.textContent = source;
     const editor = new Div(root, { player: true, playback: { open: () => ({
@@ -189,14 +187,14 @@ QUnit.module('Grammar v2 score views', () => {
     } finally { editor.dispose(); }
     const selected = host();
     selected.textContent = source;
-    const solo = new Div(selected, { language: 2, partIndex: 1 });
+    const solo = new Div(selected, { partIndex: 1 });
     try { assert.equal(solo.getReadingEvents().length, 1); assert.equal(solo.getScore().measures[0].state.meter, '4/4'); }
     finally { solo.dispose(); }
   });
 
   QUnit.test('the public player sends all simultaneous instruments to an injected plugin', async assert => {
     const input = 'meter 1/4 staff { C4 | } piano { upper { E4 | } lower { C3 | } }';
-    const score = parseScore(input, { language: 2 });
+    const score = parseScore(input);
     const pitches: number[] = [];
     const player = new Player(score, { controls:host(), playback:{ open:() => ({
       playNote(note) { pitches.push(note.pitch); }, stop() {},

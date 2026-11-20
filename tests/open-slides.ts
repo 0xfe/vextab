@@ -24,7 +24,7 @@ QUnit.module('Open-ended guitar slides', () => {
     const host = document.createElement('div');
     document.querySelector('#qunit-fixture').append(host);
     const artist = new Artist(10, 10, 600);
-    new VexTab(artist).parse(legacy);
+    new VexTab(artist, { language: 1 }).parse(legacy);
     artist.render(new Renderer(host, Renderer.Backends.SVG));
     const slopes = [[-1, 1], [-1, -1], [1, 1], [1, -1]];
     assert.deepEqual(directions(host), slopes, 'fixed');
@@ -49,7 +49,7 @@ QUnit.module('Open-ended guitar slides', () => {
     assert.equal(source.slice(chord.heads[0].range.start, chord.heads[0].range.end), '9/3');
     assert.strictEqual(chord.heads[1].openSlide, undefined);
     const artist = new Artist(0, 0, 600);
-    const parser = new VexTab(artist);
+    const parser = new VexTab(artist, { language: 1 });
     parser.parse('tabstave notation=true\nnotes :8S 5s7/3 D4_7/3');
     assert.equal(artist.staves[0].tab_notes.length, 3, 'closed slide, slash rhythm and named D');
   });

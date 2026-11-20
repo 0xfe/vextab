@@ -7,14 +7,14 @@ cd vextab
 npm ci
 npm run build
 cp dist/div.prod.js /path/to/your/site/</code></pre></figure>
-  <p>These examples require the grammar v2 development build. Save this page as <code>index.html</code> beside the script and open it in your browser.</p>
+  <p>VexTab 6 reads this notation by default. Save this page as <code>index.html</code> beside the script and open it in your browser.</p>
   <figure class="code-sample"><figcaption>index.html</figcaption><pre data-language="html"><code>&lt;!doctype html&gt;
 &lt;html lang="en"&gt;
 &lt;meta charset="utf-8"&gt;
 &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
 &lt;title&gt;My first VexTab score&lt;/title&gt;
 
-&lt;div class="vextab-auto" data-language="2" layout="flow" editor="true"&gt;
+&lt;div class="vextab-auto" layout="flow" editor="true"&gt;
 meter 4/4
 guitar { :q 0/1 2/1 3/1 2/1 | }
 &lt;/div&gt;
@@ -27,13 +27,13 @@ guitar { :q 0/1 2/1 3/1 2/1 | }
 <section id="embed">
   <h2>Embed a score in your code</h2>
   <p>Use <code>vextab/browser</code> in an app with a JavaScript bundler. Give VexTab an empty element after it enters the DOM. Set its text to the music, then construct a <code>Div</code>.</p>
-  <figure class="code-sample"><figcaption>HTML</figcaption><pre data-language="html"><code>&lt;div id="score" data-language="2" layout="flow" editor="true"&gt;&lt;/div&gt;</code></pre></figure>
+  <figure class="code-sample"><figcaption>HTML</figcaption><pre data-language="html"><code>&lt;div id="score" layout="flow" editor="true"&gt;&lt;/div&gt;</code></pre></figure>
   <figure class="code-sample"><figcaption>JavaScript</figcaption><pre data-language="javascript"><code>import { Div } from 'vextab/browser';
 
 const host = document.querySelector('#score');
 host.textContent = `meter 4/4
 guitar { :q 0/1 2/1 3/1 2/1 | }`;
-const editor = new Div(host, { language: 2 });</code></pre></figure>
+const editor = new Div(host);</code></pre></figure>
   <p>Use <code>editor.setPart('tab')</code> to show just the frets and <code>editor.setPart('score')</code> to restore both staves. Omit <code>editor="true"</code> for a read-only score. Call <code>editor.dispose()</code> when the component unmounts.</p>
   <h3>Draw into your own preview</h3>
   <p>If your app already has a text editor, parse its value and draw the result into an empty preview element. Catch <code>ScoreV2Error</code> to select the offending text. This example accepts a textarea and a preview element.</p>
@@ -41,7 +41,7 @@ const editor = new Div(host, { language: 2 });</code></pre></figure>
 
 function updatePreview(input, preview) {
   try {
-    const score = parseScore(input.value, { language: 2 });
+    const score = parseScore(input.value);
     renderScore(preview, score, { part: 'score' });
   } catch (error) {
     if (!(error instanceof ScoreV2Error)) throw error;
@@ -55,12 +55,12 @@ function updatePreview(input, preview) {
 
 <section id="playback">
   <h2>Enable and configure playback</h2>
-  <p>The player in this guide adds browser audio, a moving playhead and a choice of instruments. These examples use the source build after npm 5.0.0. To run them in your own app, build the package from the repository using its <code>.nvmrc</code> Node.js version.</p>
+  <p>The player in this guide adds browser audio, a moving playhead and a choice of instruments. These examples use the 6.0.0 candidate. To run them in your own app, build the package from the repository using its <code>.nvmrc</code> Node.js version.</p>
   <figure class="code-sample"><figcaption>Build the package</figcaption><pre data-language="bash"><code>git clone --branch grammar-v2-development https://github.com/0xfe/vextab.git
 cd vextab
 npm ci
 npm pack</code></pre></figure>
-  <p>In your app directory, run <code>npm install /path/to/vextab/vextab-5.0.0.tgz</code>, substituting the path to the tarball printed by <code>npm pack</code>. For a plain HTML page, copy the newly built <code>dist/div.prod.js</code> beside your HTML instead.</p>
+  <p>In your app directory, run <code>npm install /path/to/vextab/vextab-6.0.0.tgz</code>, substituting the path to the tarball printed by <code>npm pack</code>. For a plain HTML page, copy the newly built <code>dist/div.prod.js</code> beside your HTML instead.</p>
   <h3>Play a bar</h3>
   <p>Add a <code>play</code> block before the first part in your embed. Press <strong>Play</strong> to start audio and <strong>Stop</strong> to end it. Try changing <code>tempo 96</code> to <code>tempo 72</code> in the example below, then play again.</p>
   <pre data-score>play { tempo 96 instrument 24 }
@@ -71,7 +71,7 @@ guitar {
   <p><code>tempo</code> sets quarter-note beats per minute. <code>instrument</code> accepts a General MIDI program from 0 to 127 or a name such as <code>acoustic_guitar_nylon</code>. A fresh embed uses native Web Audio for a synthesized tone. This guide uses SpessaSynth and a bundled SoundFont, so you can hear sampled instruments here.</p>
   <h3>Enable the sheet controls from JavaScript</h3>
   <p>Pass <code>{ player: true }</code> to <code>Div</code> to enable playback for any source. Play and Stop share a button at the bottom center of the sheet. Hover over the metronome beside Play, or activate it with a tap or keyboard, to change the tempo.</p>
-  <figure class="code-sample"><figcaption>HTML</figcaption><pre data-language="html"><code>&lt;div id="score" data-language="2" layout="flow" editor="true"&gt;
+  <figure class="code-sample"><figcaption>HTML</figcaption><pre data-language="html"><code>&lt;div id="score" layout="flow" editor="true"&gt;
 meter 4/4
 guitar { :q 0/1 2/1 3/1 2/1 | }
 &lt;/div&gt;</code></pre></figure>
@@ -128,7 +128,7 @@ export async function loadInstrument(audio) {
   <p>Put these elements on the page. The first button opens audio from a user gesture. Once the samples are ready, the editable score displays its playback controls.</p>
   <figure class="code-sample"><figcaption>HTML</figcaption><pre data-language="html"><code>&lt;button id="enable"&gt;Enable sound&lt;/button&gt;
 &lt;span id="status" role="status"&gt;&lt;/span&gt;
-&lt;div id="score" data-language="2" layout="flow" editor="true"&gt;
+&lt;div id="score" layout="flow" editor="true"&gt;
 play { tempo 84 instrument 24 }
 meter 2/4
 guitar { :q (0/6 7/3[prebend +1 release]) 7/3 | }

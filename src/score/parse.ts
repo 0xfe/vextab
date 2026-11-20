@@ -405,12 +405,12 @@ function pianoHand(node: Token): PianoHand {
 }
 
 /** Pure parse/validation entry. All mutable compiler state is local to this source revision. */
-export function parseScore(source: string, options?: { language?: 1 }): ParsedScore;
-export function parseScore(source: string, options: { language: 2 }): ScoreV2;
+export function parseScore(source: string, options: { language: 1 }): ParsedScore;
+export function parseScore(source: string, options?: { language?: 2 }): ScoreV2;
 export function parseScore(source: string, options: { language?: 1 | 2 }): ParsedScore | ScoreV2;
 export function parseScore(source: string, options: { language?: 1 | 2 } = {}): ParsedScore | ScoreV2 {
-  if (options.language === 2) return compileGrammar2(source);
-  if (options.language !== undefined && options.language !== 1) throw new RangeError('Expected VexTab language 1 or 2');
+  if (options.language === undefined || options.language === 2) return compileGrammar2(source);
+  if (options.language !== 1) throw new RangeError('Expected VexTab language 1 or 2');
   const nodes: Token[] = readSyntax(source, true);
   const measures: Measure[] = [], ties: Tie[] = [], spans: ScoreSpan[] = [];
   const cursor = { rhythm: { base: 'q', dots: 0, slash: false } };

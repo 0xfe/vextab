@@ -7,12 +7,12 @@ import { scorePerformance } from '../src/playback/performance';
 function host() {
   return document.querySelector('#qunit-fixture').appendChild(document.createElement('div'));
 }
-const read = (s: string) => parseScore(s, { language: 2 });
+const read = (s: string) => parseScore(s);
 
 /** Measure the actual legacy drawing when the shared v1 parser cannot describe a feature. */
 function fixed(source: string) {
   const surface = host(), artist = new Artist(10, 0, 560);
-  new VexTab(artist).parse(source);
+  new VexTab(artist, { language: 1 }).parse(source);
   artist.draw(new Vex.Flow.Renderer(surface, Vex.Flow.Renderer.Backends.SVG));
   return surface;
 }
@@ -109,7 +109,7 @@ QUnit.module('Grammar v2 historical parity', () => {
   });
 
   QUnit.test('scoped transposition keeps diagram, symbol, fret, string and performed notes together', assert => {
-    const legacy = parseScore('options transpose=2\ntabstave notation=true time=2/4\nnotes :h (0/5.2/4.2/3.1/2.0/1) !chord "Am/E"! !frame x,0,2,2,1,0 barre=2:4-3! |');
+    const legacy = parseScore('options transpose=2\ntabstave notation=true time=2/4\nnotes :h (0/5.2/4.2/3.1/2.0/1) !chord "Am/E"! !frame x,0,2,2,1,0 barre=2:4-3! |', { language: 1 });
     const input = 'meter 2/4 guitar { transpose +2 { :h (0/5 2/4 2/3 1/2 0/1)[symbol "Am/E", frame (x 0 2 2 1 0) barre=2/4..3] | } :h 0/5 | }';
     const root = host(), result = renderScore(root, read(input));
     const attack = result.score.measures[0].voices[0].events[0], old = legacy.measures[0].voices[0].events[0];
@@ -171,7 +171,7 @@ QUnit.module('Grammar v2 historical parity', () => {
   });
 
   QUnit.test('a migrated lead sheet preserves written bars, chord diagrams, lyrics and both voices', assert => {
-    const old = parseScore('options measure-numbers=true\nstave time=4/4 voice=top\nnotes :q (0/5.2/4.2/3.1/2.0/1) !chord "Am"! !frame x,0,2,2,1,0 barre=2:4-3! !lyric "Slow,"! :qSd X/5 !chord "Am/G"! !lyric "riv" -! :8S X/5 !lyric "er"! :qS X/5 |\nvoice voice=bottom\nnotes :h A/3 G/3 |');
+    const old = parseScore('options measure-numbers=true\nstave time=4/4 voice=top\nnotes :q (0/5.2/4.2/3.1/2.0/1) !chord "Am"! !frame x,0,2,2,1,0 barre=2:4-3! !lyric "Slow,"! :qSd X/5 !chord "Am/G"! !lyric "riv" -! :8S X/5 !lyric "er"! :qS X/5 |\nvoice voice=bottom\nnotes :h A/3 G/3 |', { language: 1 });
     const score = read('measureNumbers on meter 4/4 guitar { view notation voice upper { (0/5 2/4 2/3 1/2 0/1)[symbol "Am", frame (x 0 2 2 1 0) barre=2/4..3, lyric "Slow,"] :q. slash[symbol "Am/G", lyric "riv" hyphen] :8 slash[lyric "er"] :q slash | } voice lower { :h A3 G3 | } }');
     const root = host(), v = renderScore(root, score);
     const music = model => scorePerformance(model, 60).events.map(e => [e.time, e.duration, e.notes]);
@@ -185,7 +185,7 @@ QUnit.module('Grammar v2 historical parity', () => {
   QUnit.test('a written repeat has aligned boundaries, beam groups, layout and playback on both backends', assert => {
     const input = 'layout { width 490 rowGap 44 staffDistance 8 } meter 6/8 guitar { view tab tabStems on tabDirection down groupBeats (3 3) repeatStart mark "A" :8 0/6 2/6 3/6 0/5 2/5 3/5 bar repeatEnd }';
     const score = read(input);
-    const before = parseScore('options tab-stems=true\ntabstave time=6/8\nnotes =|: !mark "A"! :8 0-2-3/6 0-2-3/5 =:|');
+    const before = parseScore('options tab-stems=true\ntabstave time=6/8\nnotes =|: !mark "A"! :8 0-2-3/6 0-2-3/5 =:|', { language: 1 });
     for (const renderer of ['svg', 'canvas'] as const) {
       const view = renderScore(host(), score, { renderer });
       const voice = view.score.measures[0].voices[0];

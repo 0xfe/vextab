@@ -10,7 +10,7 @@ export {
   Vex,
   // Core renderer for VexTab content.
   Artist,
-  // Main parsing + rendering API.
+  // Stateful v2 parser, with explicit v1 support for the fixed-layout Artist.
   VexTab,
   // DOM plugin for rendering inside divs.
   Div,

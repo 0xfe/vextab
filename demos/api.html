@@ -23,7 +23,7 @@
     <script>
       const host = document.querySelector('#boo');
       const source = 'meter 4/4 guitar { key A :q 5/2 7/2 8/2 7/2 | }';
-      const score = vextab.parseScore(source, { language: 2 });
+      const score = vextab.parseScore(source);
       vextab.renderScore(host, score, { width: 600 });
       host.dataset.source = source;
       if (window.VexTabAudio) {

@@ -36,7 +36,7 @@ async function mountScore() {
   const playback = createSpessaSynthPlayback(synth, [0, 1, 2, 3]);
   const host = document.querySelector<HTMLElement>('#score')!;
   host.textContent = 'play { instrument acoustic_guitar_nylon } staff { :w (C4 E4 G4) | }';
-  return new Div(host, { language: 2, playback });
+  return new Div(host, { playback });
 }
 ```
 
@@ -49,7 +49,7 @@ To enable the sheet controls from JavaScript, pass <code>{ player: true }</code>
 ```ts
 import { createWebAudioPlayback, parseScore, Player } from 'vextab/browser';
 
-const score = parseScore('meter 2/4 guitar { (5/2 7/3[prebend +1 release]) 5/2[tie] | }', { language: 2 });
+const score = parseScore('meter 2/4 guitar { (5/2 7/3[prebend +1 release]) 5/2[tie] | }');
 const player = new Player(score, { playback: createWebAudioPlayback(), tempo: 90 });
 playButton.onclick = () => player.play().catch(showError);
 stopButton.onclick = () => player.stop();

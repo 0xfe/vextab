@@ -19,7 +19,7 @@ function host() {
 /** Render legacy scores through the public façade before inspecting actual engraving objects. */
 function fixed(source: string) {
   const artist = new Artist(10, 0, 640);
-  new VexTab(artist).parse(source);
+  new VexTab(artist, { language: 1 }).parse(source);
   artist.draw(new Renderer(host(), Renderer.Backends.SVG));
   return artist;
 }
@@ -133,7 +133,7 @@ QUnit.module('Shared score', () => {
   });
 
   QUnit.test('Tuplet timing survives hidden tab stems, rests, dots and serialized score data', assert => {
-    const parsed = parseScore('meter 2/4 guitar { tabStems off tuplet 3:2 { :8 1/2 rest 3/2 } :8. 0/1 :16 1/1 | }', { language: 2 });
+    const parsed = parseScore('meter 2/4 guitar { tabStems off tuplet 3:2 { :8 1/2 rest 3/2 } :8. 0/1 :16 1/1 | }');
     const copy = JSON.parse(JSON.stringify(parsed));
     const view = renderScore(host(), copy);
     for (const staff of ['notation','tab']) {
@@ -148,7 +148,7 @@ QUnit.module('Shared score', () => {
       ['stave\ntext :q,Hello\nnotes :w G/4 |', 'text :q,Hello'],
     ]) {
       assert.ok(fixed(source).staves[0]);
-      assert.throws(() => parseScore(source), (e: ScoreError) => e.code === 'fixed-layout' && excerpt(source, e.range).trim() === expected);
+      assert.throws(() => parseScore(source, { language: 1 }), (e: ScoreError) => e.code === 'fixed-layout' && excerpt(source, e.range).trim() === expected);
     }
     const target = host();
     const src = phrase.replace('tabStems on', 'tabStems on display meter hidden');
