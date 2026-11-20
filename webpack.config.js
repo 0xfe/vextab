@@ -63,7 +63,7 @@ module.exports = (env = {}) => {
         { from: require.resolve('prismjs/LICENSE'), to: guidePrefix + 'licenses/prismjs.txt' },
         { from: 'guide/audio/README.md', to: guidePrefix + 'licenses/florestan.txt' },
         { from: 'guide/scores', to: guidePrefix + 'scores' },
-        // The stylesheet lives under assets/ in both the package and the hosted build.
+        // Include the licensed title font for guides opened directly from disk.
         { from: 'guide/fonts', to: 'fonts' },
         ...(!guideSite ? [
           { from: 'static/index.html', to: 'index.html' },

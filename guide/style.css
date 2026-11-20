@@ -125,12 +125,6 @@ textarea.editor {
 }
 
 /* The tutorial's hand-lettered title, book typography and green source boxes. */
-@font-face {
-  font-family: Tangerine;
-  src: url('../fonts/tangerine/Tangerine-Bold.ttf') format('truetype');
-  font-weight: 700;
-  font-display: swap;
-}
 .brand { font: 700 50px/.9 Tangerine, Georgia, serif; letter-spacing: -.025em; }
 header { border-bottom: 3px double #c4cec0; }
 .book { grid-template-columns: 220px minmax(0, 1fr); gap: clamp(28px, 4vw, 58px); }
@@ -214,16 +208,6 @@ textarea.editor { font-family: ui-monospace, SFMono-Regular, Consolas, monospace
   .chapter-body { font-size: 17px; }
   .chapter-body th, .chapter-body td { padding: 6px; }
 }
-
-/* Audio controls sit on the page chrome so they never cover staff lines. */
-.guide-audio:empty { display: none; }
-.chapter-example > .guide-audio, .book-cover .guide-audio {
-  padding: 7px 12px;
-  background: var(--soft);
-  border-bottom: 1px solid var(--line);
-}
-.guide-audio button { color: var(--green); font-weight: 650; }
-.guide-audio [role="status"] { color: var(--muted); font-size: .88em; }
 
 /* One palette for code listings, inline examples and editable notation. */
 .token.comment, .token.prolog, .token.doctype { color: #626e69; }

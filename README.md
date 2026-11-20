@@ -11,7 +11,7 @@ npm ci
 npm start
 ```
 
-Open the [project index](http://127.0.0.1:9005/) for demos, tests, tools, and downloads. Start with the [15-step VexTab tutorial](http://127.0.0.1:9005/guide/) or open [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). Press **Play** above the score, change a fret, switch to tab and select the note from the keyboard. Explore [eight editable studies](http://127.0.0.1:9005/guide/#studies) or [search the API and notation reference](http://127.0.0.1:9005/guide/#reference).
+Open the [project index](http://127.0.0.1:9005/) for demos, tests, tools, and downloads. Start with the [15-step VexTab tutorial](http://127.0.0.1:9005/guide/) or open [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). Press **Play** at the bottom center of the score, change a fret, switch to tab and select the note from the keyboard. Explore [eight editable studies](http://127.0.0.1:9005/guide/#studies) or [search the API and notation reference](http://127.0.0.1:9005/guide/#reference).
 
 The current checkout adds per-string pre-bends, stave and note colours, and SoundFont playback to the 5.0.0 release. Try them in [Features](http://127.0.0.1:9005/guide/#features). For your own instrument or toolbar, see [Playback plugins](docs/playback.md).
 
@@ -30,7 +30,7 @@ notes :q 0-2-3-2/1 |</div>
 <script src="./div.dev.js"></script>
 ```
 
-See the [user guide and integration reference](docs/vt5-m4.md) for typed imports, keyboard controls, print, and migration from fixed layout. The [developer guide](docs/developers.md) covers testing and releases. [GitHub Release downloads](https://github.com/0xfe/vextab/releases) · [Security and score limits](SECURITY.md) · [Historical tutorial](doc/tutorial.html)
+See the [user guide and integration reference](docs/vt5-m4.md) for typed imports, keyboard controls, print, and migration from fixed layout. The [developer guide](docs/developers.md) covers testing and releases. [Engineering reports](docs/reports.md) track code quality and illustrate changes since VexTab 4.0.0. [GitHub Release downloads](https://github.com/0xfe/vextab/releases) · [Security and score limits](SECURITY.md) · [Historical tutorial](doc/tutorial.html)
 
 ## License
 

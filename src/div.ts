@@ -40,6 +40,8 @@ export interface DivOptions {
   language?: 1 | 2;
   partIndex?: number;
   playback?: PlaybackPlugin;
+  /** Enable sheet playback even when the source omits player=true. */
+  player?: boolean;
   /** Always offer playback for this embed and place its controls in this host. */
   playbackControls?: HTMLElement;
 }
@@ -47,6 +49,7 @@ export interface DivOptions {
 class Div {
   private player?: Player;
   private readonly playback: PlaybackPlugin;
+  private readonly enablePlayer: boolean;
   private readonly playbackControls?: HTMLElement;
   // Host element + renderer state.
   private sel: string | HTMLElement;
@@ -85,6 +88,7 @@ class Div {
    * Design note: we read once from the DOM and then manage our own state.
    */
   constructor(sel: string | HTMLElement, options: DivOptions = {}) {
+    this.enablePlayer = options.player || !!options.playbackControls;
     this.playbackControls = options.playbackControls;
     this.playback = options.playback ?? createWebAudioPlayback();
     this.sel = sel;
@@ -296,7 +300,7 @@ class Div {
     });
     this.player?.dispose();
     this.player = undefined;
-    if (this.playbackControls || score.playback?.enabled) {
+    if (this.enablePlayer || score.playback?.enabled) {
       const player = this.player = new Player(layout.score, { playback: this.playback, controls: this.playbackControls });
       player.render(next.querySelector('svg, canvas'));
     }
@@ -324,7 +328,7 @@ class Div {
             renderer.getContext().setBackgroundFillStyle(paper);
           }
         }
-        if (this.playbackControls) this.artist.customizations.player = 'true';
+        if (this.enablePlayer) this.artist.customizations.player = 'true';
         if (!this.player && this.artist.customizations.player === 'true') {
           this.player = new Player(this.artist, { playback: this.playback, controls: this.playbackControls });
         }

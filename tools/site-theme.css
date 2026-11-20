@@ -1,0 +1,44 @@
+/* Page typography and colors shared with the VexTab user guide. */
+@font-face {
+  font-family: Tangerine;
+  src: url('../guide/fonts/tangerine/Tangerine-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: Academico;
+  src: url('../node_modules/@vexflow-fonts/academico/academico.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: Academico;
+  src: url('../node_modules/@vexflow-fonts/academico/academico-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+:root {
+  color-scheme: light;
+  --paper: #faf9f5;
+  --ink: #263a32;
+  --muted: #63736c;
+  --line: #dce2d9;
+  --green: #355f49;
+  --soft: #eef2e9;
+  --accent: #a54732;
+  --control-border: #b7c3b7;
+  --sans: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --book: Academico, Georgia, 'Times New Roman', serif;
+  --title: 600 clamp(34px, 4vw, 54px) / 1.17 var(--book);
+  --brand: 700 50px / 0.9 Tangerine, Georgia, serif;
+  --mast-rule: 3px double #c4cec0;
+  --code-paper: #f0f5e9;
+  --code-edge: #a9c49c;
+  font: 15px/1.7 var(--sans);
+  color: var(--ink);
+  background: var(--paper);
+}
+:where(h1, h2, h3) {
+  font-family: var(--book);
+  color: #283e30;
+}

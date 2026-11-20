@@ -49,11 +49,18 @@
         "serve": "python3 -m http.server 8052 --bind 127.0.0.1",
         "watch": "webpack --watch --mode development --env TAG_NAME=dev",
         "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
-        "lint": "oxlint --deny-warnings src guide tests scripts webpack.config.js",
+        "lint": "oxlint --deny-warnings src guide tests scripts tools webpack.config.js",
         "typecheck": "tsc --noEmit",
         "test": "npm run build-dev && node scripts/test-browser.mjs",
         "test:baseline": "node scripts/test-baseline.mjs",
-        "prepack": "npm run clean && npm run build-dev && npm run build"
+        "prepack": "npm run clean && npm run build-dev && npm run build",
+        "report:setup": "npm ci --prefix tools --ignore-scripts",
+        "report": "node tools/reports/cli.mjs build",
+        "report:history": "node tools/reports/cli.mjs history",
+        "report:upload": "node tools/reports/cli.mjs upload",
+        "improvements:build": "node tools/improvements/build.mjs",
+        "improvements:verify": "node tools/improvements/verify.mjs",
+        "improvements:upload": "node tools/improvements/upload.mjs"
     },
     "homepage": "http://www.vexflow.com/vextab/",
     "keywords": [

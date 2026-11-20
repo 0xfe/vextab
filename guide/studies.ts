@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('#exercise').textContent = study.lesson;
     document.querySelector<HTMLElement>('#tab-control').hidden = current !== 'guitar';
     tab.checked = false;
-    editor = new Div(host, scoreOptions(host, document.querySelector('.controls')));
+    editor = new Div(host, scoreOptions(host));
     highlightEditor(host.querySelector('textarea'));
   }
   choice.addEventListener('change', () => open());

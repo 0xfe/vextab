@@ -54,7 +54,7 @@ export async function testDisplay(browser, dist, engine) {
       assert.deepEqual(await page.evaluate(tripletClearances), cold);
     }
     await page.goto('about:blank');
-    await page.setContent('<div class="vex-tabdiv" width="400">tabstave\nnotes :q 0/1 12/2</div>');
+    await page.setContent('<div class="vex-tabdiv" width="400">options player=true\ntabstave\nnotes :q 0/1 12/2</div>');
     await page.addScriptTag({ path: resolve(dist, 'vextab-div.js') });
     const canvas = page.locator('.vex-tabdiv canvas');
     await canvas.waitFor();
@@ -62,5 +62,11 @@ export async function testDisplay(browser, dist, engine) {
     assert.equal(size[4], 2);
     assert.equal(size[0], size[2] * 2);
     assert.equal(size[1], size[3] * 2);
+    // A fixed Canvas can overflow a narrow host. The cursor must match the music in both layouts.
+    await page.setViewportSize({ width: 320, height: 640 });
+    const ink = page.locator('.vextab-canvas-ink');
+    assert.deepEqual(await ink.boundingBox(), await canvas.boundingBox());
+    await page.addStyleTag({ content: 'canvas { max-width: 100%; height: auto !important; }' });
+    assert.deepEqual(await ink.boundingBox(), await canvas.boundingBox());
   } finally { await page.close(); }
 }

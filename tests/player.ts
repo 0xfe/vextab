@@ -43,8 +43,8 @@ QUnit.module('Canvas player', () => {
       const button = (label: string) => host.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
       const status = host.querySelector('[role="status"]');
       button('Play').click();
-      button('Play').click();
-      assert.strictEqual(loads.length, 1, 'a second click shares the pending request');
+      assert.ok(button('Stop'), 'the same control can cancel a pending load');
+      assert.strictEqual(loads.length, 1, 'one instrument request');
       assert.deepEqual(loads[0].instruments, ['acoustic_grand_piano']);
       assert.strictEqual(loads[0].soundfontUrl, '/music/');
       assert.strictEqual(status.textContent, 'Loading instruments...');
