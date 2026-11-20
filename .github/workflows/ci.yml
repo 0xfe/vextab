@@ -44,6 +44,11 @@ jobs:
         if: github.ref_type == 'tag' || github.base_ref == 'grammar-v2-development' || github.head_ref == 'grammar-v2-development'
         run: |
           npx --no-install playwright-core install --with-deps firefox webkit
+          # Firefox and WebKit need an active audio destination for the real SoundFont PCM check.
+          sudo apt-get install -y --no-install-recommends pulseaudio pulseaudio-utils
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=vextab
+          pactl set-default-sink vextab
           VEXTAB_BROWSER=firefox node scripts/test-browser.mjs "$RUNNER_TEMP/unpacked/package/dist"
           VEXTAB_BROWSER=webkit node scripts/test-browser.mjs "$RUNNER_TEMP/unpacked/package/dist"
       - name: Prepare standalone downloads and checksums
