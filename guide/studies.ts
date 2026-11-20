@@ -1,4 +1,5 @@
 // Mount the canonical M3 examples in the responsive editor and keep a draft for each study.
+import { highlightEditor } from './highlight';
 import Div from '../src/div';
 import { scoreOptions } from './audio';
 import guitar from './scores/drop-d-turnaround.vextab';
@@ -30,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector<HTMLElement>('#tab-control').hidden = current !== 'guitar';
     tab.checked = false;
     editor = new Div(host, scoreOptions(host, document.querySelector('.controls')));
+    highlightEditor(host.querySelector('textarea'));
   }
   choice.addEventListener('change', () => open());
   tab.addEventListener('change', () => editor.setPart(tab.checked ? 'tab' : 'score'));

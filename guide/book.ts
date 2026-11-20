@@ -1,7 +1,9 @@
 // Read the guide's bundled chapters and mount only the examples on the open page.
 import Div from '../src/div';
 import { scoreOptions } from './audio';
+import { highlightCode, highlightEditor } from './highlight';
 import historical from '../doc/tutorial.html?guide-content';
+import gettingStarted from './quickstart.html?guide-content';
 import additions from './features.html?guide-content';
 import api from './reference.html?guide-content';
 import { lessons, reference } from './catalog';
@@ -10,17 +12,20 @@ type Draft = (id: string, value?: string) => string | undefined;
 export interface Chapter { id: string; title: string; element: HTMLElement }
 
 /** Only repository-authored chapter markup is cloned. Score text and user drafts stay plain text. */
-function chapters(html: string, selector: string): Chapter[] {
+function chapters(html: string, selector: string, language: 'vextab' | 'javascript'): Chapter[] {
   const template = document.createElement('template');
   template.innerHTML = html;
+  highlightCode(template.content, language);
   return Array.from(template.content.querySelectorAll<HTMLElement>(selector), element => ({
     id: element.id, title: element.querySelector('h2').textContent.replace(/^Step \d+: /, ''), element,
   }));
 }
 
-export const tutorial = chapters(historical, 'section[data-step]');
-export const features = chapters(additions, 'section[id]');
-export const groups = chapters(api, 'section[id]');
+export const tutorial = chapters(historical, 'section[data-step]', 'vextab');
+export const features = chapters(additions, 'section[id]', 'vextab');
+export const quickstart = chapters(gettingStarted, 'section[id]', 'javascript');
+export const chapterBooks = { tutorial, quickstart, features };
+export const groups = chapters(api, 'section[id]', 'javascript');
 
 /** Keep the notation glossary searchable alongside the JavaScript API. */
 const syntax = document.createElement('section');
@@ -47,9 +52,12 @@ export function link(text: string, href: string): HTMLAnchorElement {
 
 /** Add a short publication-style heading without changing the score's text font. */
 function heading(host: HTMLElement, section: string, title: string, intro?: string) {
-  const label = node('p', section);
-  label.className = 'chapter-label';
-  host.append(label, node('h1', title));
+  if (section) {
+    const label = node('p', section);
+    label.className = 'chapter-label';
+    host.append(label);
+  }
+  host.append(node('h1', title));
   if (intro) {
     const lead = node('p', intro);
     lead.className = 'goal';
@@ -83,11 +91,11 @@ function examples(host: HTMLElement, chapter: Chapter, section: string, draft: D
     const editor = new Div(embed, scoreOptions(embed));
     const input = embed.querySelector('textarea');
     input.setAttribute('aria-label', chapter.title + ' · example ' + (index + 1));
-    input.spellcheck = false;
+    highlightEditor(input);
     input.oninput = () => draft(key, input.value);
     reset.onclick = () => {
       input.value = source;
-      draft(key, source);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
       editor.run();
     };
     return editor;
@@ -98,11 +106,16 @@ export function showCover(host: HTMLElement): Div {
   const cover = document.createElement('div');
   cover.className = 'book-cover';
   const introduction = document.createElement('div');
-  heading(introduction, 'By Mohit Muthanna Cheppudira', 'The VexTab Tutorial',
+  heading(introduction, '', 'The VexTab Tutorial',
     'Write standard notation and guitar tablature, one stave at a time. Play and edit the music as you work through the original fifteen steps.');
   const start = link('Start with the stave →', '#tutorial/' + tutorial[0].id);
   start.className = 'start-reading';
-  introduction.append(start);
+  const paths = node('nav', '');
+  paths.className = 'cover-links';
+  paths.setAttribute('aria-label', 'More ways to use VexTab');
+  paths.append(node('span', 'Or'), link('Embed in your code', '#quickstart'),
+    link('Explore features', '#features'), link('Read the API reference', '#reference'));
+  introduction.append(start, paths);
   const figure = document.createElement('figure');
   const sample = document.createElement('div');
   const original = tutorial.find(c => c.id === 'notes').element.querySelectorAll('.vex-tabdiv')[1];
@@ -145,25 +158,26 @@ export function showFeatures(host: HTMLElement) {
 }
 
 /** Display the original prose, tables and examples in their written sequence. */
-export function showChapter(host: HTMLElement, section: 'tutorial' | 'features', chapter: Chapter, draft: Draft): Div[] {
-  const sequence = section === 'tutorial' ? tutorial : features;
+export function showChapter(host: HTMLElement, section: keyof typeof chapterBooks, chapter: Chapter, draft: Draft): Div[] {
+  const sequence = chapterBooks[section];
   const index = sequence.indexOf(chapter);
   const body = chapter.element.cloneNode(true) as HTMLElement;
   body.removeAttribute('id');
   body.querySelector('h2').remove();
   body.className = 'chapter-body';
-  const label = section === 'tutorial' ? 'Tutorial · Step ' + (index + 1) + ' of ' + sequence.length : 'Beyond the tutorial';
+  const label = section === 'tutorial' ? 'Tutorial · Step ' + (index + 1) + ' of ' + sequence.length
+    : section === 'quickstart' ? 'Developer quickstart' : 'Beyond the tutorial';
   heading(host, label, chapter.title);
   host.append(body);
   const editors = examples(body, chapter, section, draft);
   const pages = node('nav', '');
   pages.className = 'page-turn';
   pages.setAttribute('aria-label', 'Chapter navigation');
-  pages.append(index ? link('← ' + sequence[index - 1].title, '#' + section + '/' + sequence[index - 1].id)
-    : link('← Contents', '#' + section));
+  if (index) pages.append(link('← ' + sequence[index - 1].title, '#' + section + '/' + sequence[index - 1].id));
+  else pages.append(section === 'quickstart' ? link('← Guide home', '#tutorial') : link('← Contents', '#' + section));
   const next = sequence[index + 1];
   pages.append(next ? link(next.title + ' →', '#' + section + '/' + next.id)
-    : section === 'tutorial' ? link('Beyond the tutorial →', '#features') : link('Read the studies →', '#studies'));
+    : section === 'features' ? link('Read the studies →', '#studies') : link('Explore features →', '#features'));
   host.append(pages);
   return editors;
 }

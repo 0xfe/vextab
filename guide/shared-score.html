@@ -30,10 +30,12 @@
   </main>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      VexTabSyntax.highlightCode(document.querySelector('main'), 'vextab');
       const host = document.querySelector('#score');
       const original = host.textContent;
       const editor = new vextab.Div(host, VexTabAudio.scoreOptions(host, document.querySelector('.controls')));
       const input = host.querySelector('textarea');
+      VexTabSyntax.highlightEditor(input);
       const narrow = document.querySelector('#narrow');
       const part = document.querySelector('#part');
       const find = document.querySelector('#find');

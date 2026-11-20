@@ -17,6 +17,8 @@ The current checkout adds per-string pre-bends, stave and note colours, and Soun
 
 ## Embed an editable score
 
+The [developer quickstart](http://127.0.0.1:9005/guide/#quickstart) covers installing VexTab, embedding it in an application and configuring playback.
+
 Build the development bundles with `npm run build-dev`. Put this HTML beside `dist/div.dev.js` and open it in a browser. The script includes VexFlow and the engraving fonts.
 
 ```html

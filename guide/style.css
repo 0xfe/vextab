@@ -161,6 +161,10 @@ h1 { font-size: clamp(34px, 4vw, 54px); letter-spacing: -.035em; }
 .book-cover .goal { font: 18px/1.55 Academico, Georgia, serif; margin: 12px 0 20px; }
 .start-reading { display: inline-block; padding: 8px 16px; background: var(--green); border-radius: 3px; color: white; font-weight: 650; text-decoration: none; }
 .start-reading:hover { color: white; background: #264a36; }
+.cover-links { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 15px; margin: 16px 0 0; font-size: 14px; }
+.cover-links span { font: italic 16px Academico, Georgia, serif; color: var(--muted); margin-right: -7px; }
+.cover-links a { padding: 3px 0; text-decoration-color: #a3b79d; text-underline-offset: 4px; }
+.cover-links a:hover { text-decoration-color: currentColor; }
 .book-cover figure { min-width: 0; margin: 0; background: white; border: 1px solid #d2dacb; border-top: 3px solid var(--green); padding: 12px; }
 .book-cover .vex-canvas svg, .chapter-example.fixed svg { max-width: 100%; height: auto !important; }
 .book-cover figcaption { text-align: center; border-top: 1px solid var(--line); padding-top: 8px; font: italic 14px/1.5 Georgia, serif; }
@@ -174,6 +178,10 @@ ol.chapter-list li::before { content: counter(step, decimal-leading-zero); font:
 .chapter-body { font: 18px/1.65 Academico, Georgia, serif; color: #353d32; }
 .chapter-body p, .chapter-body .description { max-width: 76ch; }
 .chapter-body code, .reference-results code { color: #31553c; overflow-wrap: anywhere; }
+.code-sample { margin: 14px 0 20px; background: #f0f5eb; border: 1px solid #d4dfcf; border-radius: 5px; overflow: hidden; }
+.code-sample figcaption { padding: 6px 14px; background: #e7eee1; color: var(--green); font: 600 12px/1.6 system-ui, sans-serif; }
+.code-sample pre { margin: 0; padding: 12px 14px; overflow-x: auto; font-size: 13px; line-height: 1.65; }
+.code-sample code { background: transparent; padding: 0; font-size: inherit; }
 .chapter-body table { width: 100%; border-collapse: collapse; font: 14px/1.6 system-ui, sans-serif; }
 .chapter-body th, .chapter-body td { padding: 9px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
 .chapter-body th { background: var(--soft); }
@@ -216,3 +224,34 @@ textarea.editor { font-family: ui-monospace, SFMono-Regular, Consolas, monospace
 }
 .guide-audio button { color: var(--green); font-weight: 650; }
 .guide-audio [role="status"] { color: var(--muted); font-size: .88em; }
+
+/* One palette for code listings, inline examples and editable notation. */
+.token.comment, .token.prolog, .token.doctype { color: #626e69; }
+.token.keyword, .token.command, .token.tag { color: #7b386b; }
+.token.property, .token.attr-name, .token.function, .token.class-name { color: #205981; }
+.token.string, .token.attr-value, .token.pitch, .token.builtin { color: #28633c; }
+.token.number, .token.boolean, .token.duration, .token.constant { color: #92410f; }
+.token.operator, .token.punctuation { color: #52616b; }
+
+/* The input owns the caret, scrolling and resize handle. Both layers wrap identically. */
+.syntax-editor { position: relative; background: #f0f5e9; }
+.syntax-editor > .editor, .syntax-editor > .syntax-layer {
+  margin: 0; padding: 14px 18px; border: 1px solid transparent; border-left-width: 5px;
+  font: 13px/1.7 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: normal; tab-size: 8; white-space: pre-wrap; overflow-wrap: break-word;
+  overflow: auto; scrollbar-gutter: stable; font-variant-ligatures: none;
+}
+.syntax-editor > .syntax-layer {
+  position: absolute; inset: 0; pointer-events: none; user-select: none;
+  color: #273b32; scrollbar-color: transparent transparent;
+}
+.syntax-layer::after { content: '\200b'; }
+.syntax-editor > textarea.editor {
+  position: relative; color: transparent; caret-color: var(--ink); background: transparent;
+  border-color: var(--line); border-left-color: #a9c49c;
+}
+.syntax-editor > textarea::selection { background: rgb(84 134 182 / .28); }
+@media (forced-colors: active) {
+  .syntax-editor > .syntax-layer { display: none; }
+  .syntax-editor > textarea.editor { color: CanvasText; background: Canvas; caret-color: auto; }
+}

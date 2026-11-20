@@ -12,6 +12,8 @@ The guide loads its bundled SpessaSynth worklet and Florestan SoundFont on deman
 
 ## Supply a SpessaSynth instance
 
+The [SpessaSynth quickstart](../dist/guide/index.html#quickstart/spessasynth) includes the worklet and SoundFont setup, a complete browser example and an editable instrument comparison.
+
 Install `spessasynth_lib` in **your application**. Serve its matching worklet from your own site. Choose and host a SoundFont you can distribute. The adapter accepts a configured synthesizer. The host owns its context, worklet, sound bank and output routing. VexTab's package and type declarations have no dependency on SpessaSynth.
 
 ```ts

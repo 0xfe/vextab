@@ -22,10 +22,12 @@
   <script>
     // Keep the view toggle and editable example in sync without discarding edits.
     document.addEventListener('DOMContentLoaded', () => {
+      VexTabSyntax.highlightCode(document.querySelector('main'), 'vextab');
       const host = document.querySelector('#score');
       const original = host.textContent;
       new vextab.Div(host, VexTabAudio.scoreOptions(host, document.querySelector('.controls')));
       const editor = host.querySelector('textarea');
+      VexTabSyntax.highlightEditor(editor);
       const toggle = document.querySelector('#notation');
       const visibility = /^(\s*tabstave\b[^\n]*?\bnotation=)(true|false)\b/m;
       function syncToggle() {

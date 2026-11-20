@@ -4,7 +4,8 @@ import Player from '../src/player';
 import { scoreOptions } from './audio';
 import { renderScorePart, type Part } from '../src/score/layout';
 import { lessons, type Lesson } from './catalog';
-import { tutorial, features, groups, link, node, showCover, showChapter, showFeatures, showReference } from './book';
+import { highlightEditor } from './highlight';
+import { chapterBooks, tutorial, quickstart, features, groups, link, node, showCover, showChapter, showFeatures, showReference } from './book';
 
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const button = (id: string) => el<HTMLButtonElement>(id);
@@ -105,7 +106,9 @@ function mount(host: HTMLElement, source: string, fixed = false): Div {
     host.setAttribute('layout','flow');
     host.removeAttribute('width');
   }
-  return new Div(host, scoreOptions(host, host.id === 'score' ? el('view-controls') : undefined));
+  const instance = new Div(host, scoreOptions(host, host.id === 'score' ? el('view-controls') : undefined));
+  highlightEditor(host.querySelector('textarea'));
+  return instance;
 }
 
 function setSource(text: string): void {
@@ -140,7 +143,6 @@ function showLesson(current: Lesson, section: string): void {
   el('notice').textContent = '';
   editor = mount(el('score'), section === 'original' ? lesson.source : draft(lesson.id) ?? lesson.source, lesson.fixed);
   input = el('score').querySelector('textarea');
-  input.spellcheck = false;
   input.addEventListener('input', () => {
     draft(lesson.id, input.value);
     readId = undefined;
@@ -183,6 +185,7 @@ function sidebar(section: string, active: string) {
     }
     contents.append(node('h2', title), links);
   }
+  if (section === 'quickstart') list('Developer quickstart', section, quickstart);
   if (section === 'tutorial') list('Tutorial contents', section, tutorial, true);
   if (section === 'features') {
     list('Beyond the tutorial', section, features);
@@ -230,9 +233,10 @@ function navigate() {
   } else if (section === 'studies') {
     showStudies(host);
   } else {
-    const book = section === 'features' ? 'features' : 'tutorial';
+    const book = section === 'features' || section === 'quickstart' ? section : 'tutorial';
     tab = book;
-    const chapter = (book === 'features' ? features : tutorial).find(c => c.id === id);
+    const chapter = chapterBooks[book].find(c => c.id === id) ?? (book === 'quickstart' ? quickstart[0] : undefined);
+    if (chapter) active = '#' + book + '/' + chapter.id;
     if (chapter) chapterEditors = showChapter(host, book, chapter, draft);
     else if (book === 'features') showFeatures(host);
     else chapterEditors = [showCover(host)];

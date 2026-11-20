@@ -20,6 +20,7 @@ module.exports = (env = {}) => {
   return {
     entry: {
       ...guideEntries,
+      'guide-syntax': { import: './guide/highlight.ts', library: { name: 'VexTabSyntax', type: 'umd' } },
       'example-audio': { import: './guide/example-audio.ts', library: { name: 'VexTabAudio', type: 'umd' } },
       ...(!guideSite && {
         score: { import: './src/score/parse.ts', layer: 'parser', filename: 'score.cjs', library: { type: 'commonjs-static' } },
@@ -44,7 +45,7 @@ module.exports = (env = {}) => {
       new webpack.ProvidePlugin({ $: 'zepto-webpack' }),
       new webpack.DefinePlugin({ __VERSION: JSON.stringify(version) }),
       ...Object.entries(guidePages).map(([name, entry]) => new HtmlWebpackPlugin({
-        template: './guide/' + name + '.html', filename: guidePrefix + name + '.html', chunks: ['triplets', 'shared-score'].includes(name) ? [entry, 'example-audio'] : [entry],
+        template: './guide/' + name + '.html', filename: guidePrefix + name + '.html', chunks: ['triplets', 'shared-score'].includes(name) ? [entry, 'example-audio', 'guide-syntax'] : [entry],
       })),
       ...(!guideSite ? [
         new HtmlWebpackPlugin({ template: './tests/tests.html', filename: 'tests.html', chunks: ['tests'] }),
@@ -59,6 +60,7 @@ module.exports = (env = {}) => {
         ...['spessasynth_lib', 'spessasynth_core'].map(pkg => ({
           from: require.resolve(pkg + '/LICENSE'), to: guidePrefix + 'licenses/' + pkg + '.txt',
         })),
+        { from: require.resolve('prismjs/LICENSE'), to: guidePrefix + 'licenses/prismjs.txt' },
         { from: 'guide/audio/README.md', to: guidePrefix + 'licenses/florestan.txt' },
         { from: 'guide/scores', to: guidePrefix + 'scores' },
         // The stylesheet lives under assets/ in both the package and the hosted build.

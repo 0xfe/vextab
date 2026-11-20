@@ -20,6 +20,35 @@ export async function testGuide(page, dist) {
   assert.equal(await page.locator('#index h1').textContent(), 'The VexTab Tutorial');
   const chapters = await page.locator('.book-cover + h2 + .chapter-list a').evaluateAll(links => links.map(a => a.hash));
   assert.equal(chapters.length, 15);
+  const coverLinks = page.getByRole('navigation', { name: 'More ways to use VexTab' });
+  assert.deepEqual(await coverLinks.locator('a').evaluateAll(links => links.map(a => a.hash)),
+    ['#quickstart', '#features', '#reference']);
+  await coverLinks.getByRole('link', { name: 'Embed in your code' }).click();
+  await page.locator('#main[data-route="#quickstart"]').waitFor();
+  assert.equal(await page.locator('#contents a[aria-current]').getAttribute('href'), '#quickstart/install');
+  assert.equal(await page.locator('header a[aria-current]').innerText(), 'Quickstart');
+  await page.locator('.page-turn').getByRole('link', { name: /Embed a score/ }).click();
+  await page.locator('#main[data-route="#quickstart/embed"]').waitFor();
+  assert.match(await page.locator('.chapter-body').textContent(), /new Div/);
+  await page.locator('.page-turn').getByRole('link', { name: /configure playback/ }).click();
+  await page.locator('#main[data-route="#quickstart/playback"]').waitFor();
+  assert.equal(await page.locator('.chapter-example .editor-error').textContent(), '');
+  assert.equal(await page.locator('.chapter-example .guide-audio button').innerText(), 'Play');
+  await page.locator('.page-turn').getByRole('link', { name: /SoundFont with SpessaSynth/ }).click();
+  await page.locator('#main[data-route="#quickstart/spessasynth"]').waitFor();
+  for (const language of ['bash', 'javascript', 'html']) {
+    assert.ok(await page.locator('pre[data-language="' + language + '"] .token').count(), language);
+  }
+  const audition = page.locator('.chapter-example textarea');
+  const ink = page.locator('.syntax-layer');
+  const phrase = await audition.inputValue();
+  assert.equal(await ink.getAttribute('aria-hidden'), 'true');
+  assert.ok(await ink.locator('.keyword').count() > 0);
+  await audition.fill(phrase + '\n<literal> & music');
+  assert.equal(await ink.textContent(), await audition.inputValue());
+  assert.equal(await ink.locator('literal').count(), 0);
+  await page.getByRole('button', { name: 'Reset example' }).click();
+  assert.equal(await ink.textContent(), phrase);
   let examples = 0;
   for (const hash of chapters) {
     await go(hash);
@@ -27,6 +56,7 @@ export async function testGuide(page, dist) {
     const editors = chapter.locator('textarea');
     const count = await editors.count();
     assert.ok(count > 0, hash);
+    assert.equal(await chapter.locator('.syntax-layer').count(), count, hash);
     assert.equal(await chapter.locator('svg').count(), count, hash);
     assert.equal(await chapter.locator('.guide-audio button').count(), count, hash);
     assert.ok((await chapter.locator('.editor-error').allTextContents()).every(text => !text), hash);

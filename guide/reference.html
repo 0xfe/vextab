@@ -10,7 +10,7 @@ const score = parseScore('stave time=1/4\nnotes C/4 |');</pre></article>
     <pre>import { Div, parseScore, renderScore } from 'vextab/browser';</pre></article>
   <article id="auto-module"><h3>vextab/auto and script tags</h3>
     <p>The auto entry mounts each <code>div.vextab-auto</code> on DOM ready. Load <code>dist/div.prod.js</code> for a plain HTML page. The package root and <code>dist/main.prod.js</code> retain the legacy browser API. The old <code>dist/vextab-div.js</code> adapter supports <code>.vex-tabdiv</code>, underscore editor attributes and the original Canvas default.</p>
-    <pre>&lt;div class="vextab-auto" editor="true"&gt;tabstave
+    <pre data-language="html">&lt;div class="vextab-auto" editor="true"&gt;tabstave
 notes :q 0-2-3-2/1 |&lt;/div&gt;
 &lt;script src="./div.prod.js"&gt;&lt;/script&gt;</pre></article>
 </section>
@@ -96,7 +96,7 @@ artist.render(new Renderer(host, Renderer.Backends.SVG));</pre></article>
     <p>Pass an Artist or a ParsedScore to <code>new Player(source, options)</code>. Call <code>play()</code> from a user gesture. Its promise resolves at the end or on Stop and rejects on audio errors. <code>stop()</code> cancels a pending load and releases sounding notes. <code>dispose()</code> also removes controls. <code>setTempo(bpm)</code> and <code>setInstrument(program)</code> stop the current performance.</p>
     <p>In an embed, put <code>options player=true tempo=96 instrument=24</code> before the first stave. Tempo defaults to 120 quarter notes per minute. Instrument accepts a General MIDI program from 0 to 127 or a supported name such as <code>acoustic_guitar_nylon</code>. The guide supplies its own toolbar. <a href="#features/playback">Play a phrase →</a></p></article>
   <article id="audio-plugins"><h3>createWebAudioPlayback() and createSpessaSynthPlayback(synth, channels?)</h3>
-    <p>Embeds default to a sample-free Web Audio instrument. For a SoundFont host, load the matching worklet and bank, connect the synth to your output, then pass the adapter to the editor. A reserved channel pool lets a bent string change pitch independently of its neighbours.</p>
+    <p>Embeds default to a sample-free Web Audio instrument. For a SoundFont host, load the matching worklet and bank, connect the synth to your output, then pass the adapter to the editor. A reserved channel pool lets a bent string change pitch independently of its neighbours. <a href="#quickstart/spessasynth">Set up SpessaSynth and play a SoundFont →</a></p>
     <pre>const playback = createSpessaSynthPlayback(synth);
 const editor = new Div(scoreHost, { playback, playbackControls: toolbar });</pre>
     <p><code>playbackControls</code> keeps the buttons outside the score and enables playback even for source without a player directive. Custom instruments implement <code>PlaybackPlugin.open(program, signal)</code> and return a session with <code>playNote(note)</code> and <code>stop()</code>.</p></article>
