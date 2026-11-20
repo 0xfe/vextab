@@ -1,6 +1,6 @@
 # VexTab 5 user guide and integration
 
-Run `npm ci` and `npm start`. Open [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). The same guide works offline by opening `dist/guide/index.html` in the built distribution. From any lesson, **Open in playground** opens the same editable score. **Open original source** links to the repository version of that lesson. Drafts stay in your browser.
+Run `npm ci` and `npm start`. Open the [VexTab tutorial](http://127.0.0.1:9005/guide/). Follow the 15 original steps, explore [features beyond the tutorial](http://127.0.0.1:9005/guide/#features), play the [studies](http://127.0.0.1:9005/guide/#studies), or search the [API reference](http://127.0.0.1:9005/guide/#reference). The same guide works offline by opening `dist/guide/index.html` in the built distribution. From any lesson, **Open in playground** opens the same editable score. **Open original source** links to the repository version of that lesson. Drafts stay in your browser.
 
 ## Learn the language
 
@@ -22,7 +22,7 @@ The detailed references cover [rhythm and fixed-layout syntax](vt5-m1.md), [stav
 - Edits render after a short pause. **Run** or **Ctrl/Command+Enter** engraves immediately. An input method can finish composing a character before rendering. **Find error** selects the located token. A dimmed score is the last valid drawing.
 - **Reset example** or **Ctrl/Command+Alt+R** restores the current example. The guide keeps a draft per score in local storage, falling back to memory if storage is unavailable. **Copy source**, **Save source** and **Open source** work on the current text. Opening a file replaces the current lesson’s draft.
 - In flow lessons, **Previous event** and **Next event** announce the measure, staff, voice, pitch or string and duration. **Select source** highlights the event in the editor. Switching view or width recomputes the geometry. Editing invalidates the old selection.
-- The guide follows the system’s dark appearance. Paper previews and browser printing use white pages. The fixed Canvas embed exposes a text summary of the staves, voices and attacks to assistive technology.
+- The guide uses light paper, green source boxes and the historical tutorial’s Tangerine lettering. Paper previews and browser printing use white pages. The fixed Canvas embed exposes a text summary of the staves, voices and attacks to assistive technology.
 - In the duet, two numbered voices represent the players. Choose **Full score**, **Guitar 1**, or **Guitar 2**, then choose **A4** or **Letter**. Print the edition, save the complete print document as HTML, or save one page as SVG. Both downloads contain outlined music and text and open offline. An invalid edit clears the previous edition.
 
 ## Embed and migrate
@@ -54,22 +54,4 @@ Start migration with a complete measure. Flow validates rhythm and wraps at barl
 
 ## Historical tutorial
 
-The [original tutorial](../doc/tutorial.html) and the earlier [tied-chord](../guide/shared-score.html) and [studies](../guide/studies.html) pages retain their paths. Each historical step has a starting point in the new guide.
-
-| Historical step | New lesson |
-| --- | --- |
-| 1 · Stave | [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret) |
-| 2 · Notes | [Count three or count two](http://127.0.0.1:9005/guide/#lesson/meter) |
-| 3 · Stave keywords | [Reference](http://127.0.0.1:9005/guide/#reference) |
-| 4 · Rests and barlines | [Find a missing beat](http://127.0.0.1:9005/guide/#lesson/diagnostics) |
-| 5 · Bends | [Drop D turnaround](http://127.0.0.1:9005/guide/#lesson/drop-d-turnaround) |
-| 6 · Mutes, strokes and vibrato | [Hammer, pull and slide](http://127.0.0.1:9005/guide/#lesson/guitar-gestures) |
-| 7 · Chords | [A-major chord workshop](http://127.0.0.1:9005/guide/#lesson/chord-workshop) |
-| 8 · Hammer-ons, pull-offs, taps and slides | [Hammer, pull and slide](http://127.0.0.1:9005/guide/#lesson/guitar-gestures) |
-| 9 · Durations and tuplets | [Compound-time picking](http://127.0.0.1:9005/guide/#lesson/compound-picking) |
-| 10 · Lyrics and annotations | [Slow river](http://127.0.0.1:9005/guide/#lesson/slow-river) |
-| 11 · Staccatos and fermatas | [Short notes and fermatas](http://127.0.0.1:9005/guide/#lesson/articulations) |
-| 12 · Timed text | [Slow river](http://127.0.0.1:9005/guide/#lesson/slow-river) |
-| 13 · Slash notation | [Slow river](http://127.0.0.1:9005/guide/#lesson/slow-river) |
-| 14 · Appearance | [Two independent editors](http://127.0.0.1:9005/guide/#lesson/embed-workbench) |
-| 15 · Rhythmic tab | [Hear a triplet](http://127.0.0.1:9005/guide/#triplets) |
+The [original tutorial](../doc/tutorial.html) and the earlier [tied-chord](../guide/shared-score.html) and [studies](../guide/studies.html) pages retain their paths. The guide uses the same chapter prose, tables and 24 musical examples as the original page. Each step has its own URL and each example has a local draft and reset button. [Start the original walkthrough in the guide](http://127.0.0.1:9005/guide/#tutorial/the-stave)

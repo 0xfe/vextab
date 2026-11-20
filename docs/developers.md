@@ -29,6 +29,19 @@ The development server watches the source. Open the [project index](http://127.0
 | `npm run watch` | Development bundles rebuilt on source changes |
 | `npm run clean` | Removes the generated `dist/` directory |
 
+## Upload the user guide
+
+Run these commands from the VexTab checkout. The dry run builds the production guide and prints the Cloud Storage operations. The live command uses your authenticated Google Cloud CLI.
+
+```sh
+npm run guide:upload -- --dry-run
+npm run guide:upload
+```
+
+The destination is `gs://vexflow.com/vextab/guide/`, served at **https://vexflow.com/vextab/guide/**. Each upload builds in a fresh staging directory, uploads hashed bundles and print chunks first, then publishes the standalone lessons and the guide index. It verifies the uploaded HTML against the build. For a staging bucket, pass `-- --destination=gs://your-bucket/vextab/guide/`.
+
+To preview the standalone site locally, run `npm run guide:build` and open `build/guide/index.html`.
+
 ## Test locally
 
 ```sh
@@ -49,7 +62,7 @@ VEXTAB_BROWSER=firefox node scripts/test-browser.mjs
 VEXTAB_BROWSER=webkit node scripts/test-browser.mjs
 ```
 
-Edit guide prose, routes and reference entries in `guide/catalog.ts`. Use stable score IDs for guide, playground and original-source links. Edit the study music in `guide/scores/*.vextab`. The guide and engraving tests import the same files. The suite exercises both scores at 360 and 960 CSS pixels, including a return to the starting width after fonts load. [Guitar and lead-sheet coverage](vt5-m3.md)
+Edit tutorial chapters and their fixed-layout examples in `doc/tutorial.html`. The historical page and the guide share this source. Edit feature chapters in `guide/features.html`, API entries in `guide/reference.html`, and study descriptions and the notation glossary in `guide/catalog.ts`. Preserve the chapter and entry IDs for incoming links. Use stable score IDs for guide, playground and original-source links. Edit the study music in `guide/scores/*.vextab`. The guide and engraving tests import the same files. The suite exercises both scores at 360 and 960 CSS pixels, including a return to the starting width after fonts load. [Guitar and lead-sheet coverage](vt5-m3.md)
 
 To test the package a consumer will download, build a tarball and run the browser suite against its extracted files. GitHub Actions performs this check on pushes, pull requests, and release tags.
 

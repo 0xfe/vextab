@@ -4,19 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Triplets in tab and notation · VexTab guide</title>
-  <style>
-    body { margin: 2rem auto; padding: 0 1rem; max-width: 42rem; font: 1rem/1.55 Academico, Georgia, serif; color: #262a2e; }
-    h1 { line-height: 1.15; }
-    button, input { font: inherit; }
-    button { margin-left: 1rem; }
-    code, textarea { font-family: ui-monospace, monospace; }
-    .vex-canvas { max-width: 100%; overflow-x: auto; }
-    .vex-canvas svg { display: block; max-width: 100%; height: auto !important; }
-    textarea.editor { box-sizing: border-box; max-width: 100%; padding: .75rem; }
-    .editor-error { color: #813b19; }
-  </style>
+  <link rel="stylesheet" href="<%= require('./style.css') %>">
 </head>
-<body>
+<body class="standalone triplets">
   <main id="triplets">
     <p>VexTab user guide</p>
     <h1>Triplets in tab and notation</h1>

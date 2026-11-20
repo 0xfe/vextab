@@ -3,27 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="<%= require('./style.css') %>">
   <title>VexTab · User guide</title>
 </head>
 <body>
-<header><a class="brand" href="#lesson/first-fret">VexTab</a><nav aria-label="Guide sections">
-  <a href="#lesson/first-fret">Guide</a><a href="#demos">Demos</a><a href="#playground/first-fret">Playground</a><a href="#reference">Reference</a>
-</nav></header>
+<a class="skip" href="#main">Skip to guide content</a>
+<header>
+  <a class="brand" href="#tutorial">VexTab</a>
+  <nav aria-label="Guide sections">
+    <a href="#tutorial">Tutorial</a><a href="#features">Features</a><a href="#studies">Studies</a>
+    <a href="#reference">API reference</a><a href="#playground/first-fret">Playground</a>
+  </nav>
+</header>
 <div class="book">
-  <aside><nav aria-label="Lessons and studies"><h2>Lessons</h2><div id="lessons"></div><h2>Studies</h2><div id="studies"></div></nav></aside>
-  <main id="main">
-    <section id="index" hidden><h1 id="index-title"></h1><label id="search-label">Search the reference <input type="search" id="search"></label><div id="entries"></div>
-      <section id="integration" hidden><h2>Embedding and migration</h2>
-        <p>Flow lessons use the VexTab 5 development build. Fixed-layout lessons use the existing Artist language. Set <code>layout="flow"</code> for measure-aware SVG.</p>
-        <p>Import <code>vextab/parse</code> for a DOM-free validator, <code>vextab/browser</code> for an explicitly mounted editor, or <code>vextab/auto</code> for script-tag style mounting.</p>
-        <a href="https://github.com/0xfe/vextab/blob/master/docs/vt5-m4.md">Embedding, keyboard controls and independent parts</a>
-      </section></section>
-    <article id="lesson">
+  <aside>
+    <button id="menu" aria-expanded="false" aria-controls="contents">Contents <span aria-hidden="true">☰</span></button>
+    <nav id="contents" aria-label="Section contents"></nav>
+  </aside>
+  <main id="main" tabindex="-1">
+    <section id="index"></section>
+    <article id="lesson" hidden>
+      <p class="chapter-label" id="lesson-section"></p>
       <label id="picker-label" hidden>Playground score <select id="picker"></select></label>
       <h1 id="title"></h1><p class="goal" id="goal"></p>
+      <div class="bench">
       <div class="toolbar"><label>View <select id="view"></select></label><label id="narrow-control"><input id="narrow" type="checkbox"> Narrow score</label></div>
       <div id="score"></div>
       <div class="actions"><button id="run">Run</button><button id="reset">Reset example</button><button id="error" disabled>Find error</button><button id="copy">Copy source</button><button id="save">Save source</button><label class="open">Open source <input type="file" id="open" accept=".vextab,.txt,text/plain"></label></div>
+      </div>
       <p id="notice" role="status"></p>
       <section id="reader" aria-label="Score reader">
         <h2>Read the score</h2><p aria-live="polite" id="reading"></p>

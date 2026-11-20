@@ -1,6 +1,6 @@
 # VexTab demos
 
-Run `npm ci` and `npm start`, then open the [demo library](http://127.0.0.1:9005/guide/#demos). Each study has an edit to try. Open it in the playground to save a draft or download the score. The same demos ship offline at `dist/guide/index.html#demos`.
+Run `npm ci` and `npm start`, then open the [demo library](http://127.0.0.1:9005/guide/#studies). Each study has an edit to try. Open it in the playground to save a draft or download the score. The same demos ship offline at `dist/guide/index.html#studies`.
 
 | Study | What to try |
 | --- | --- |
