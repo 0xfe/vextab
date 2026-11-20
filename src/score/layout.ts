@@ -1,4 +1,5 @@
 // Project the shared score into fresh VexFlow objects for each screen or publication view.
+import { attachHeadMarks, PrintedHeadMarks } from './head-marks';
 import { drumKit } from './drums';
 import { attachOpenSlide, describeOpenSlide, drawPrintedOpenSlides } from './open-slide';
 import { inkStyle } from './color';
@@ -73,7 +74,7 @@ function guitarNotation(event: Attack, instrument: FrettedInstrument) {
 }
 
 /** Both projections use the written duration, including dots before tuplet scaling. */
-function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources: Sources, index: number): EasyScoreVoiceSpec {
+function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources: Sources, index: number, printed?: PrintedHeadMarks): EasyScoreVoiceSpec {
   const direction = voice.stem ?? (measure.voices.length > 1 ? (index === 0 ? 'up' : 'down') : undefined);
   const stemDirection = direction ? (direction === 'up' ? 1 : -1) : staff === 'tab' ? voice.tabDirection : undefined;
   const instrument = new FrettedInstrument(measure.state.tuning, measure.state.capo);
@@ -85,6 +86,8 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
       const hit = drumKit.note(event.heads.map(head => head.drum), event.base, direction);
       return { id, note: { ...hit, dots: event.dots } };
     }
+    const marked = staff === 'notation' && printed?.note(event, id);
+    if (marked) return marked;
     const notation = guitarNotation(event, instrument);
     const keys = event.heads.map(h => h.position?.fret === 'X' ? h.written + '/X' : h.written);
     if (staff === 'tab') {
@@ -118,6 +121,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
   }
   const sources = new Sources(parsed.source);
   const eventId = sources.id;
+  const printed = publication ? new PrintedHeadMarks() : undefined;
   const spans: ContinuousSpan[] = [];
   // VexFlow can draw a tab ending between two TabNotes or two rendered rests.
   // Mixed endpoint types still need the screen fallback for a tab-only projection.
@@ -133,7 +137,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
         showTimeSignature: m.state.showTime && !(staff === 'tab' && staves.includes('notation')),
         endBarline: writtenEndBar(m),
         ...(staff === staves[0] && leadMarks(m, staff, id => eventId(staff, id), publication || !staves.includes('tab'))),
-        voices: m.voices.map((v, index) => voiceSpec(v, m, staff, sources, index)),
+        voices: m.voices.map((v, index) => voiceSpec(v, m, staff, sources, index, printed)),
       })),
     })),
     continuous: {
@@ -163,7 +167,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
     else if (staff === 'tab' && rests.has(mark.from) !== rests.has(mark.to)) mixedEndings.push(mark);
     else spans.push({ ...endpoints, kind: mark.kind, text: mark.label });
   }
-  return { spec, staves, sources, eventId, mixedEndings };
+  return { spec, staves, sources, eventId, mixedEndings, printed };
 }
 type Projection = ReturnType<typeof project>;
 
@@ -210,6 +214,9 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
           const beam = note.getBeam();
           if (beam) split.add(beam);
         }
+        event.heads.forEach((head, index) => {
+          if (head.marks) attachHeadMarks(note, index, head.marks, staff === 'tab');
+        });
         if (note instanceof TabNote) {
           event.heads.forEach((head, index) => {
             if (head.openSlide) attachOpenSlide(note, index, head.openSlide);
@@ -359,13 +366,15 @@ export function renderScorePart(host: HTMLElement, parsed: ParsedScore, part: St
       for (const event of voice.events) {
         if (event.frame) unsupported('a chord frame', event.frame.range);
         if (event.silent) unsupported('a silent position', event.silent);
+        const marked = event.heads.find(head => head.marks?.some(mark => part === 'notation' || mark.finger === undefined));
+        if (marked && !view.printed.has(view.eventId(part, event.id))) unsupported('a fingering or accent on a fretted or special head', marked.range);
         const sign = part === 'notation' && event.heads.find(h => h.accidental);
         if (sign) unsupported('an explicit accidental', sign.range);
         if (part === 'tab' && !voice.tabStems && !event.heads.length) unsupported('a silent tab rest', event.range);
       }
     }
   }
-  const publication = new Publication(view.spec).render(host, paper);
+  const publication = new Publication(view.spec).render(host, { ...paper, noteHooks: [...(paper.noteHooks ?? []), view.printed.hook] });
   if (part === 'tab') drawPrintedOpenSlides(publication, parsed, event => view.eventId(part, event.id));
   colorPublication(publication, parsed, event => view.eventId(part, event.id));
   return { publication, rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };

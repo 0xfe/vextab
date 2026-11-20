@@ -16,6 +16,17 @@ stave time=3/4
 notes :8 [ C-D-E/4 ] F/4 [ A/4 B@~/4 ] |</div>
   <p><a href="#lesson/meter">Compare the automatic beams in 3/4 and 6/8 →</a></p>
 </section>
+<section id="fingerings">
+  <h2>Fingerings and accents</h2>
+  <p>Attach a finger directly to the note, as in <code>6/4[f2]</code>. Add <code>&gt;</code> for an accent. Try moving the last finger from the right of the note to the left by changing <code>f3:r</code> to <code>f3:l</code>.</p>
+  <div class="vex-tabdiv" width="560" scale="1" editor_height="85">tabstave notation=true time=2/4 fingering=left accents=top
+notes :8 6/4[f2] h7/4[f3] :q 0/2[f3:r, &gt;] |</div>
+  <p>Finger numbers run from 0 to 5. Use <code>fT</code> for thumb. Fingers default to the left and accents above. Set <code>fingering=right</code> or <code>accents=bottom</code> on the stave to change the defaults. A <code>voice</code> inherits these settings and can override either one. A suffix such as <code>[f3:a, &gt;:below]</code> overrides them for one note. Finger positions accept <code>l</code>, <code>r</code>, <code>a</code> and <code>b</code>. Put a suffix inside a chord to mark that specific head.</p>
+  <pre data-score>stave time=2/4
+notes :q (C/4[f1].E/4[f3:r]) G/4[f5, &gt;] |</pre>
+  <p>Independent notation parts print marks on named pitches and chords. For marks on fretted notes, use the fixed or flow view. Finger numbers appear on standard notation. Accents also appear on tablature.</p>
+  <p><a href="#features/beaming">Group marked notes into beams →</a></p>
+</section>
 <section id="independent-voices">
   <h2>Independent voices and ties</h2>
   <p>Let a melody cross a barline while the bass keeps its own pulse.</p>

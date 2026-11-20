@@ -1,5 +1,6 @@
 // Layout-independent score values. Fractions are reduced strings in whole notes.
 import type { FretDiagramSpec, TimedStringBend } from 'vexflow';
+import type { HeadMark } from './shorthand';
 import type { SourceRange } from './source';
 
 /** One picked attack starts above the physical fret and may return to it. */
@@ -17,6 +18,7 @@ export interface OpenSlide {
 export interface Head {
   range: SourceRange;
   written: string;
+  marks?: HeadMark[]; // Bracketed fingering or accent attached to this head.
   drum?: string; // VexFlow kit identity. The written key supplies staff placement only.
   sounding: string | null; // A dead strike has a display position and no pitch.
   position?: { str: number; fret: number | 'X' };

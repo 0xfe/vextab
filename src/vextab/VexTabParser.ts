@@ -42,6 +42,7 @@ export class VexTabParser {
       const error = (msg: string) => this.newError(option, msg);
       params[option.key] = option.value;
       switch (option.key) {
+        case 'fingering': case 'accents': break; // Resolved on the heads by readSyntax.
         case 'notation':
         case 'tablature':
           notation_option = option;
@@ -156,7 +157,7 @@ export class VexTabParser {
     this.artist.addChord(
       _.map(
         element.chord,
-        (note: Record<string, any>) => _.pick(note, 'time', 'dot', 'fret', 'prebend', 'openSlide', 'abc', 'octave', 'string', 'articulation', 'decorator'),
+        (note: Record<string, any>) => _.pick(note, 'time', 'dot', 'fret', 'prebend', 'openSlide', 'marks', 'abc', 'octave', 'string', 'articulation', 'decorator'),
       ),
       element.articulation,
       element.decorator,
@@ -167,14 +168,14 @@ export class VexTabParser {
    * Convert a fret-based note AST node into an Artist note call.
    */
   parseFret(note: any): void {
-    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'prebend', 'openSlide', 'string', 'articulation', 'decorator'));
+    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'prebend', 'openSlide', 'marks', 'string', 'articulation', 'decorator'));
   }
 
   /**
    * Convert an ABC note AST node into an Artist note call.
    */
   parseABC(note: any): void {
-    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'prebend', 'openSlide', 'abc', 'octave', 'string', 'articulation', 'decorator'));
+    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'prebend', 'openSlide', 'marks', 'abc', 'octave', 'string', 'articulation', 'decorator'));
   }
 
   /**

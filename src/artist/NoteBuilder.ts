@@ -1,6 +1,7 @@
 // Note creation and expansion logic for tab/notation, including chords and rests.
 import { Accidental, Fraction, Music, StaveNote, WrittenAccidentalState } from 'vexflow';
 import Vex from '../vexflow';
+import { attachHeadMarks } from '../score/head-marks';
 import { drumKit } from '../score/drums';
 import { attachOpenSlide, describeOpenSlide } from '../score/open-slide';
 import { fixedHeads, tiedFixedHead } from '../playback/performance';
@@ -351,7 +352,7 @@ export class NoteBuilder {
         cautionary: note.abc ? note.abc.accidental_type === 'c'
           : this.artist.customizations.accidentals === 'cautionary' && sign !== 'n',
       } : null);
-      tab_specs[current_position].push({ fret: note.fret, str: note.string, prebend: note.prebend, openSlide: note.openSlide, inherit });
+      tab_specs[current_position].push({ fret: note.fret, str: note.string, prebend: note.prebend, openSlide: note.openSlide, marks: note.marks, inherit });
       if (note.articulation) {
         articulations[current_position].push(note.articulation);
       } else {
@@ -385,6 +386,11 @@ export class NoteBuilder {
           }
         }
       }
+      tab_specs[i].forEach((head, index) => {
+        if (!head.marks) return;
+        if (stave.tab) attachHeadMarks(_.last(stave.tab_notes), index, head.marks, true);
+        if (stave.note) attachHeadMarks(_.last(stave.note_notes), index, head.marks, false);
+      });
       const heads = sounding[i].map((key, index) => {
         const bend = tab_specs[i][index].prebend;
         return { key, release: bend?.release ? bend.semitones : 0, inherit: tab_specs[i][index].inherit };

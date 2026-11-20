@@ -1,4 +1,5 @@
 // Modifier pipeline for articulations, bends, tuplets, annotations, and special glyphs.
+import { fingerNumber } from '../score/head-marks';
 import { inkStyle, isScoreColor } from '../score/color';
 import Vex from '../vexflow';
 import { recordFixedTie } from '../playback/performance';
@@ -156,7 +157,6 @@ export class ArticulationBuilder {
     const POS = Vex.Flow.Modifier.Position;
     const fingers: string[] = [];
     const fingering: Array<{ num: number; modifier: any }> = [];
-    const offset_x = 4;
 
     if (parts) {
       parts[1].split(/-/).forEach((piece) => fingers.push(piece.trim()));
@@ -190,28 +190,7 @@ export class ArticulationBuilder {
           break;
       }
 
-      let modifier: any = null;
-      const number = pieces[4];
-      switch (pieces[3]) {
-        case 's':
-          modifier = new Vex.Flow.StringNumber(number).setPosition(position);
-          break;
-        case 'f':
-          modifier = new Vex.Flow.FretHandFinger(number).setPosition(position);
-          break;
-        default:
-          break;
-      }
-
-      // Offset right/left modifiers so they clear the note heads.
-      if (modifier && typeof modifier.setOffsetX === 'function') {
-        if (position === POS.RIGHT) {
-          modifier.setOffsetX(offset_x);
-        } else if (position === POS.LEFT) {
-          modifier.setOffsetX(-offset_x);
-        }
-      }
-
+      const modifier = fingerNumber(pieces[4], position, pieces[3] === 's');
       fingering.push({ num: note_number, modifier });
     });
 
