@@ -265,13 +265,20 @@ export async function testGuide(page, dist) {
   await firstLesson.click();
   await page.waitForFunction(hash => document.querySelector('#main').dataset.route === hash, destination);
   assert.equal(await menu.getAttribute('aria-expanded'), 'false');
-  const paperStyle = () => score.locator('.vex-canvas').evaluate(n => {
-    const style = getComputedStyle(n);
-    return [style.filter, style.backgroundColor, style.color];
-  });
-  assert.deepEqual(await paperStyle(), ['none', 'rgb(255, 255, 255)', 'rgb(0, 0, 0)']);
+  // Reflow replaces the sheet. Resolve the current element and read its style in one browser task.
+  async function paperStyle(print) {
+    const sample = await page.waitForFunction(print => {
+      const sheet = document.querySelector('#score .vex-canvas');
+      if (!sheet || matchMedia('print').matches !== print) return false;
+      const style = getComputedStyle(sheet);
+      return [style.filter, style.backgroundColor, style.color];
+    }, print);
+    return sample.jsonValue();
+  }
+  const whitePaper = ['none', 'rgb(255, 255, 255)', 'rgb(0, 0, 0)'];
+  assert.deepEqual(await paperStyle(false), whitePaper);
   await page.emulateMedia({ media:'print', colorScheme:'dark' });
-  assert.equal(await score.locator('.vex-canvas').evaluate(n => getComputedStyle(n).filter), 'none');
+  assert.deepEqual(await paperStyle(true), whitePaper);
   await page.emulateMedia({ media:'screen', colorScheme:'light' });
   await page.setViewportSize({width:1280,height:720});
 
