@@ -26,7 +26,7 @@ QUnit.module('Transposition', () => {
     assert.deepEqual(pitches(scorePerformance(parseScore(sharpened), 120)), [61, 66, 65, 65]);
     const artist = fixed(sharpened);
     assert.equal(artist.staves[0].key, 'D');
-    assert.deepEqual(pitches(artistPerformance(artist, 120, () => {})), [61, 66, 65, 65]);
+    assert.deepEqual(pitches(artistPerformance(artist, 120)), [61, 66, 65, 65]);
   });
 
   QUnit.test('Physical strings and capo survive a downward minor-key shift, including mute and pre-bend', assert => {
@@ -39,7 +39,7 @@ QUnit.module('Transposition', () => {
     assert.deepEqual(events.map(e => e.heads[0].sounding), ['c/4', null, 'c/4']);
     assert.equal(events[0].heads[0].prebend.semitones, 2);
     const artist = fixed(source);
-    assert.deepEqual(artistPerformance(artist, 120, () => {}).events.flatMap(e => e.notes.map(n => n.pitch)), [60, 60]);
+    assert.deepEqual(artistPerformance(artist, 120).events.flatMap(e => e.notes.map(n => n.pitch)), [60, 60]);
     const host = document.createElement('div');
     document.getElementById('qunit-fixture').append(host);
     assert.ok(renderScorePart(host, parsed, 'tab').publication.pages[0].svg.querySelector('metadata'));
@@ -68,7 +68,7 @@ QUnit.module('Transposition', () => {
     assert.throws(() => parseScore('stave time=1/4\nnotes C/4\noptions transpose=3'), /before the first stave/);
     const playable = 'options transpose=1\nstave key=Gb time=1/4\nnotes G/9';
     assert.equal(scorePerformance(parseScore(playable), 120).events[0].notes[0].pitch, 127);
-    assert.equal(artistPerformance(fixed(playable), 120, () => {}).events[0].notes[0].pitch, 127);
+    assert.equal(artistPerformance(fixed(playable), 120).events[0].notes[0].pitch, 127);
     const tooHigh = 'options transpose=2\nstave key=G time=1/4\nnotes F/9';
     assert.throws(() => parseScore(tooHigh), /MIDI range/);
     assert.throws(() => fixed(tooHigh), /MIDI range/);
