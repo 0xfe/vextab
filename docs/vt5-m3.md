@@ -59,3 +59,19 @@ In fixed and flow tab, the vertical arrow marks a pre-bent attack. In `(5/2.7z8z
 Independent tab parts can carry a timed bend and its palm-mute string targets. VexFlow 5.6 also engraves chord labels, notation lyrics, tab ties, and repeat endings in independent parts. Chord frames, silent positions, and tab endings that join a fret to a rest still need the screen pass. Requesting one in an independent part returns a diagnostic at the source. Use the existing fixed-layout Artist for legacy multi-note bend phrases.
 
 **Rasgueado remains proposed.** A VexFlow trial engraved four sixteenth-note strokes at both widths. It retained the fingers a–m–i–i and reversed string direction for the last stroke. A VexTab spelling still needs a player-reviewed example that distinguishes right-hand motion, string direction and stroke timing.
+
+## Transpose a score
+
+Put `options transpose=+2` before the first stave to move the entire score up two semitones. Use a negative integer to move down. The following C-major phrase is written and played in D major. Its four frets become 5, 7, 9, and 10 on string five.
+
+```vextab
+options transpose=+2
+tabstave notation=true key=C time=4/4
+notes :q 3-5-7-8/5 |
+```
+
+The signature keeps its major or minor mode. VexTab chooses the destination signature with the fewest accidentals and carries the diatonic interval through written notes and explicit signs. Octave transposition preserves the original spelling. Later key changes apply to every voice at the same bar.
+
+Frets stay on the authored string and remain relative to the same capo. A negative fret or a pitch outside the playable MIDI register produces a source error. Choose a different starting fingering to move the phrase further down. Pre-bend intervals, dead strokes, rests, durations, and unpitched percussion keep their meaning.
+
+Structured chord names such as `!chord "Cmaj7/E"!` move to `Dmaj7/F#` at +2. Frets and barres in `!frame!` diagrams move with the chord. Lyrics, annotations, and other free text are literal. Screen layout, playback, and independent parts use the transposed score, while the editor and source selections keep the original text.

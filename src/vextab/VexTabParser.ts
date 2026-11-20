@@ -97,6 +97,9 @@ export class VexTabParser {
             throw error(`Invalid tuning: '${option.value}'`);
           }
           break;
+        case 'capo':
+          if (!/^\d+$/.test(option.value) || !Number.isSafeInteger(Number(option.value))) throw error('Expected a nonnegative capo fret');
+          break;
         case 'strings': {
           const num_strings = Number(option.value);
           if (!Number.isInteger(num_strings) || num_strings < 4 || num_strings > 8) {
@@ -317,7 +320,8 @@ export class VexTabParser {
         case 'options': {
           const options: Record<string, string> = {};
           stave.params.forEach((option: any) => {
-            options[option.key] = option.value;
+            // Transposition has already been applied to the tokens shared with the flow compiler.
+            if (option.key !== 'transpose') options[option.key] = option.value;
           });
           this.artist.setOptions(options, (key, message) =>
             this.newError(stave.params.find((param: any) => param.key === key), message));
