@@ -6,7 +6,7 @@ import { renderScore, renderScorePart } from '../src/score/layout';
 import { projectScoreV2 } from '../src/score/grammar2/project';
 import { parseScore, ScoreError } from '../src/score/parse';
 
-function read(source: string) { return projectScoreV2(parseScore(source, { language: 2 })); }
+function read(source: string) { return projectScoreV2(parseScore(source)); }
 
 function host() {
   const target = document.createElement('div');

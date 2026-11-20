@@ -11,7 +11,7 @@ QUnit.module('Playback plugins', () => {
         return { playNote: note => notes.push(note), stop: () => { stops++; } };
       },
     };
-    const score = parseScore('play { tempo 600 instrument acoustic_guitar_nylon } meter 2/4 guitar { (5/2 7/3[prebend +1 release]) 5/2[tie] | }', { language: 2 });
+    const score = parseScore('play { tempo 600 instrument acoustic_guitar_nylon } meter 2/4 guitar { (5/2 7/3[prebend +1 release]) 5/2[tie] | }');
     const player = new Player(score, { playback: plugin });
     await player.play();
     assert.equal(notes.length, 2, 'the tied E4 has one attack');
@@ -25,7 +25,7 @@ QUnit.module('Playback plugins', () => {
     const notes: PlaybackNote[] = [];
     let clock = 0;
     let ready: (session: PlaybackSession) => void;
-    const score = parseScore('play { tempo 60 } meter 2/4 guitar { 0/1 7/3[prebend +1 release] | }', { language: 2 });
+    const score = parseScore('play { tempo 60 } meter 2/4 guitar { 0/1 7/3[prebend +1 release] | }');
     const player = new Player(score, { playback: { open: () => new Promise(resolve => { ready = resolve; }) } });
     try {
       const finished = player.play();
@@ -57,7 +57,7 @@ QUnit.module('Playback plugins', () => {
       let opens = 0, stops = 0;
       let ready;
       let signal: AbortSignal;
-      const embed = new Div(host, { language: 2, playback: { open(_program, cancellation) {
+      const embed = new Div(host, { playback: { open(_program, cancellation) {
         opens++;
         signal = cancellation;
         return new Promise(resolve => { ready = resolve; });
@@ -87,7 +87,7 @@ QUnit.module('Playback plugins', () => {
     host.textContent = 'play { tempo 120 } meter 4/4 guitar { (0/1 2/3) 2/1 rest 3/1 | :w 5/1 | }';
     document.querySelector('#qunit-fixture').append(host);
     let clock = 0;
-    const embed = new Div(host, { language: 2, playback: { open: () => ({
+    const embed = new Div(host, { playback: { open: () => ({
       get currentTime() { return clock; }, playNote() {}, stop() {},
     }) } });
     try {

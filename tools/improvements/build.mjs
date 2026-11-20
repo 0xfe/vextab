@@ -22,7 +22,7 @@ function draw({ source, study }) {
   const { Artist, VexTab, Vex, parseScore, renderScore } = window.vextab;
   const host = document.querySelector('#score');
   host.replaceChildren();
-  if (study) renderScore(host, parseScore(source, { language: 2 }), { width: 820 });
+  if (study) renderScore(host, parseScore(source), { width: 820 });
   else {
     const artist = new Artist(10, 10, 820);
     new VexTab(artist, { language: 1 }).parse(source);

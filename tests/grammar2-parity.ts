@@ -7,7 +7,7 @@ import { scorePerformance } from '../src/playback/performance';
 function host() {
   return document.querySelector('#qunit-fixture').appendChild(document.createElement('div'));
 }
-const read = (s: string) => parseScore(s, { language: 2 });
+const read = (s: string) => parseScore(s);
 
 /** Measure the actual legacy drawing when the shared v1 parser cannot describe a feature. */
 function fixed(source: string) {

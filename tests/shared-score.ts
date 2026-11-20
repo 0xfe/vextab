@@ -133,7 +133,7 @@ QUnit.module('Shared score', () => {
   });
 
   QUnit.test('Tuplet timing survives hidden tab stems, rests, dots and serialized score data', assert => {
-    const parsed = parseScore('meter 2/4 guitar { tabStems off tuplet 3:2 { :8 1/2 rest 3/2 } :8. 0/1 :16 1/1 | }', { language: 2 });
+    const parsed = parseScore('meter 2/4 guitar { tabStems off tuplet 3:2 { :8 1/2 rest 3/2 } :8. 0/1 :16 1/1 | }');
     const copy = JSON.parse(JSON.stringify(parsed));
     const view = renderScore(host(), copy);
     for (const staff of ['notation','tab']) {

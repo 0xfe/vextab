@@ -16,13 +16,13 @@ QUnit.module('Grammar selection', () => {
 
   QUnit.test('the browser can select the same definition for two distinct expanded attacks', assert => {
     const source = '// 🎸\r\npattern riff { :h 5/3 }\r\nguitar { times 2 { use riff } | }';
-    const events = parseScore(source, { language: 2 }).parts[0].staves[0].voices[0].events;
+    const events = parseScore(source).parts[0].staves[0].voices[0].events;
     assert.notEqual(events[0].id, events[1].id);
     const input = document.createElement('textarea');
     // DOM textareas normalize CRLF. Check offsets against the original revision first.
     for (const event of events) assert.equal(source.slice(...event.range), '5/3');
     input.value = source;
-    const normalized = parseScore(input.value, { language: 2 }).parts[0].staves[0].voices[0].events;
+    const normalized = parseScore(input.value).parts[0].staves[0].voices[0].events;
     input.setSelectionRange(...normalized[1].range);
     assert.equal(input.value.slice(input.selectionStart, input.selectionEnd), '5/3');
   });

@@ -5,7 +5,7 @@ import { scoreSurfaces } from '../src/playback/geometry';
 import { scorePerformance } from '../src/playback/performance';
 
 const duet = 'meter 4/4 piano { upper { C4 D4 E4 F4 | G4 A4 B4 C5 | } lower { :h C3 G2 | G2[tie] C3 | } }';
-function read(source: string) { return projectScoreV2(parseScore(source, { language: 2 })); }
+function read(source: string) { return projectScoreV2(parseScore(source)); }
 
 /** Attach scores so Chrome measures the same glyph and page geometry as an embed. */
 function host(): HTMLElement {
@@ -103,7 +103,7 @@ QUnit.module('Piano grand staff', () => {
 
     const el = host();
     el.textContent = duet;
-    const embed = new Div(el, { language: 2 });
+    const embed = new Div(el);
     assert.equal(embed.getReadingEvents().length, 12, 'a piano embed selects grand-staff layout');
     embed.setPart('right');
     assert.ok(embed.getReadingEvents().every(e => e.staff === 'right'));
