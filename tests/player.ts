@@ -1,3 +1,4 @@
+// Compatibility coverage for applications passing a legacy Artist and MIDI.js global to Player.
 // Exercise the public Player with a real Canvas score and a recording MIDI.js host.
 import Artist from '../src/artist';
 import Player from '../src/player';
@@ -15,7 +16,7 @@ QUnit.module('Canvas player', () => {
 
     const renderer = new Vex.Flow.Renderer(score, Vex.Flow.Renderer.Backends.CANVAS);
     const artist = new Artist(10, 10, 400);
-    new VexTab(artist).parse('options player=true tempo=240 scale=1.25\nstave\nnotes G/4 A/4 B/4');
+    new VexTab(artist, { language: 1 }).parse('options player=true tempo=240 scale=1.25\nstave\nnotes G/4 A/4 B/4');
     const player = new Player(artist, { soundfont_url: '/music/', overlay_class: 'my-player' });
     const originalMIDI = window['MIDI'];
     const originalCache = Player.INSTRUMENTS_LOADED;

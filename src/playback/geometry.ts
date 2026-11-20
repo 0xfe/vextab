@@ -14,7 +14,7 @@ export interface Position { row: PlaybackRow; x: number; heads: Point[] }
 export type Geometry = Map<object | string, Position>;
 
 /** A public Player can discover the layout of the exact parsed revision rendered on its surface. */
-export const scoreSurfaces = new WeakMap<SVGSVGElement, { score: ParsedScore; read: () => Geometry }>();
+export const scoreSurfaces = new WeakMap<SVGSVGElement | HTMLCanvasElement, { score: ParsedScore; read: () => Geometry }>();
 
 /** Include both staff and tab, with a little clearance beyond the outside lines. */
 export function staveRow(staves: Stave[]): PlaybackRow {

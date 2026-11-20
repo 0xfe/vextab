@@ -1,5 +1,6 @@
 // Run the built QUnit suite and check the interactive playground in the selected browser.
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import manifest from '../package.json' with { type: 'json' };
@@ -13,12 +14,13 @@ import { chromium, firefox, webkit } from 'playwright-core';
 // Release checks point the same suite at the files extracted from the package.
 const dist = resolve(process.argv[2] ?? 'dist');
 // The same packaged parser is usable by a command-line validator without a browser.
-const { parseScore, ScoreError } = createRequire(import.meta.url)(resolve(dist, 'score.cjs'));
-const sample = 'stave time=1/4\r\nnotes C/4';
+const { parseScore, ScoreV2Error } = createRequire(import.meta.url)(resolve(dist, 'score.cjs'));
+execFileSync(process.execPath, ['experiments/grammarv2/compiler.test.mjs', resolve(dist, 'score.cjs')], { stdio: 'inherit' });
+const sample = 'meter 1/4\r\nstaff { C4 | }';
 assert.throws(() => parseScore(sample + ' ?'), error =>
-  error instanceof ScoreError && error.range.start === sample.length + 1);
-const note = parseScore(sample).measures[0].voices[0].events[0];
-assert.equal(sample.slice(note.range.start, note.range.end), 'C/4');
+  error instanceof ScoreV2Error && error.range[0] === sample.length + 1);
+const note = parseScore(sample).parts[0].staves[0].voices[0].events[0];
+assert.equal(sample.slice(...note.range), 'C4');
 assert.equal(note.duration, '1/4');
 const engine = process.env.VEXTAB_BROWSER ?? 'chromium';
 const browsers = { chromium, firefox, webkit };
@@ -46,12 +48,12 @@ try {
   assert.equal(await page.locator('#error').innerText(), '');
 
   // A markup-shaped option name must stay readable when a user edits a score.
-  await page.locator('#blah').fill('tabstave <em>label</em>=true');
+  await page.locator('#blah').fill('staff { :w C4[<em>label</em>] | }');
   await page.locator('#blah').press('End');
   await page.waitForFunction(() => document.querySelector('#error').textContent.includes('<em>label</em>'));
   assert.equal(await page.locator('#error em').count(), 0);
   assert.equal(await page.locator('#boo').getAttribute('data-preview-stale'), 'true');
-  await page.locator('#blah').fill('stave\nnotes C/4');
+  await page.locator('#blah').fill('staff { :w C4 | }');
   await page.waitForFunction(() => !document.querySelector('#boo').hasAttribute('data-preview-stale'));
 
   // Exercise the packaged guide with keyboard editing, both views, and a mobile viewport.
@@ -64,11 +66,11 @@ try {
   await toggle.focus();
   await toggle.press('Space');
   await page.waitForFunction(h => document.querySelector('#score svg').getAttribute('height') !== h, pairedHeight);
-  assert.match(await source.inputValue(), /notation=false/);
+  assert.match(await source.inputValue(), /view tab/);
   await source.fill((await source.inputValue()).replace('4/1 |', '5/1 |'));
   await toggle.check();
   assert.match(await source.inputValue(), /5\/1 \|/);
-  await source.fill('stave\nnotes ?');
+  await source.fill('staff { ? }');
   await page.locator('[data-preview-stale="true"]').waitFor();
   assert.equal(await toggle.isDisabled(), true);
   await page.getByRole('button', { name: 'Reset example' }).click();
@@ -90,11 +92,11 @@ try {
   assert.ok(Number(await page.locator('#score svg').getAttribute('height')) > height);
   await selecting.focus();
   await selecting.press('Enter');
-  assert.equal(await selection(), 'T(2/3.1/2)');
+  assert.equal(await selection(), '(2/3[tie] 1/2[tie])');
   await page.getByRole('button', { name: 'Engrave notation part' }).click();
   await page.locator('#part svg').waitFor();
   await page.getByRole('button', { name: 'Find the chord from the part' }).click();
-  assert.equal(await selection(), 'T(2/3.1/2)');
+  assert.equal(await selection(), '(2/3[tie] 1/2[tie])');
   await source.fill(phrase + ' ?');
   // Exercise the revision guard before the debounced parser has even run.
   assert.equal(await page.evaluate(() => {
@@ -109,7 +111,7 @@ try {
   await page.getByRole('button', { name: 'Reset example' }).click();
   await page.waitForFunction(() => !document.querySelector('#score [data-preview-stale]'));
   await selecting.click();
-  assert.equal(await selection(), 'T(2/3.1/2)');
+  assert.equal(await selection(), '(2/3[tie] 1/2[tie])');
   await page.setViewportSize({ width: 360, height: 740 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -130,7 +132,7 @@ try {
   await tabs.check();
   const endingLabels = await page.locator('#score svg text').allTextContents();
   assert.ok(endingLabels.includes('1.') && endingLabels.includes('2.'), 'Both native tab endings are drawn');
-  const draft = (await source.inputValue()).replace('capo=0', 'capo=2');
+  const draft = (await source.inputValue()).replace('capo 0', 'capo 2');
   await source.fill(draft);
   await select.selectOption('lead');
   assert.equal(await tabs.isVisible(), false);
@@ -141,7 +143,7 @@ try {
   await select.selectOption('guitar');
   assert.equal(await source.inputValue(), draft);
   await page.getByRole('button', { name: 'Reset study' }).click();
-  assert.match(await source.inputValue(), /capo=0/);
+  assert.match(await source.inputValue(), /capo 0/);
   await page.setViewportSize({ width: 1280, height: 720 });
   await waitForScoreWidth(960);
   assert.equal(await scoreHeight(), wideHeight);
@@ -153,17 +155,18 @@ try {
   // Older pages load the VexTabDiv global and use a different class and attributes.
   await page.goto('about:blank');
   await page.setContent(`
-    <div id="legacy" class="vex-tabdiv" data-renderer="" editor="true" editor_width="520">tabstave\nnotes 5/2</div>
-    <div id="legacy-piano" class="vex-tabdiv">piano time=1/4\nnotes C/4\nvoice hand=left\nnotes C/3</div>
-    <div id="fixed" class="vex-tabdiv" layout="flow" data-layout="fixed" data-renderer="svg"
+    <div id="legacy" data-language="1" class="vex-tabdiv" data-renderer="" editor="true" editor_width="520">tabstave\nnotes 5/2</div>
+    <div id="legacy-piano" data-language="1" class="vex-tabdiv">piano time=1/4\nnotes C/4\nvoice hand=left\nnotes C/3</div>
+    <div id="fixed" data-language="1" class="vex-tabdiv" layout="flow" data-layout="fixed" data-renderer="svg"
       width="240" data-width="600" data-scale="0.5" data-editor="true"
       editor_height="100" data-editor_height="80" data-editor-height="60"
       data-editor_width="280">tabstave\nnotes 5/2</div>
-    <div id="flow" class="vextab-auto" style="width: 450px" width="200" data-width="auto"
+    <div id="flow" data-language="1" class="vextab-auto" style="width: 450px" width="200" data-width="auto"
       data-layout="flow" editor="true" data-editor="false">stave time=1/4\nnotes C/4</div>
-    <div id="fixed-width" class="vextab-auto" style="width: 450px" width="auto" data-width="300"
+    <div id="fixed-width" data-language="1" class="vextab-auto" style="width: 450px" width="auto" data-width="300"
       data-layout="" layout="flow">stave time=1/4\nnotes C/4</div>
-    <div id="invalid" class="vextab-auto" data-show-errors="true">notes ?</div>`);
+    <div id="default" class="vex-tabdiv">guitar { :w 3/2 | }</div>
+    <div id="invalid" class="vextab-auto" data-show-errors="true">guitar { use missing }</div>`);
   await page.addScriptTag({ path: resolve(dist, 'vextab-div.js') });
   await page.locator('#legacy canvas').waitFor();
   assert.equal(await page.locator('#legacy').getAttribute('renderer'), 'canvas');
@@ -181,7 +184,9 @@ try {
   assert.equal(Number(await page.locator('#fixed svg').getAttribute('width')), 300);
   assert.deepEqual(await page.locator('#fixed textarea').evaluate(el => [el.style.width, el.style.height]), ['280px', '60px']);
   assert.equal(await page.locator('#fixed .vex-canvas').evaluate(el => getComputedStyle(el).overflowX), 'visible');
-  assert.ok(await page.locator('#invalid [role="status"]').innerText());
+  assert.match(await page.locator('#invalid [role="status"]').innerText(), /syntax at 1:14: Declare pattern missing/);
+  await page.locator('#default canvas').waitFor();
+  assert.equal(await page.evaluate(() => window.VexTabDiv.parseScore('staff { :w C4 | }').measureCount), 1);
 
   // Only the host whose effective width is auto follows its container through a resize.
   assert.equal(Number(await page.locator('#flow svg').getAttribute('width')), 450);
@@ -200,16 +205,13 @@ try {
     await page.setContent('<div id="score"></div>');
     await page.addScriptTag({ path: resolve(dist, '..', packed.main) });
     await page.evaluate(() => {
-      const { Artist, Vex, VexTab } = window.vextab;
-      const artist = new Artist(10, 10, 500);
-      const renderer = new Vex.Flow.Renderer(document.querySelector('#score'), Vex.Flow.Renderer.Backends.SVG);
-      new VexTab(artist).parse('tabstave notation=true\nnotes 5/2');
-      artist.render(renderer);
+      const score = window.vextab.parseScore('guitar { fragment { 5/2 } }');
+      window.vextab.renderScore(document.querySelector('#score'), score, { width: 500 });
     });
     await page.locator('#score svg path').first().waitFor({ state: 'attached' });
 
     await page.goto('about:blank');
-    await page.setContent('<div class="vextab-auto">tabstave\nnotes 5/2</div>');
+    await page.setContent('<div class="vextab-auto">guitar { fragment { 5/2 } }</div>');
     await page.addScriptTag({ path: resolve(dist, 'div.prod.js') });
     await page.locator('.vextab-auto svg path').first().waitFor({ state: 'attached' });
   }

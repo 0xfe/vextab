@@ -10,7 +10,7 @@ type Register = (id: string, range: SourceRange) => string;
 
 /** Use note IDs so Publication can recreate the same marks in a fresh composition. */
 export function leadMarks(measure: Measure, staff: 'notation' | 'tab', noteId: (id: string) => string,
-  labelTechniques: boolean): Pick<EasyScoreMeasureSpec, 'chords' | 'verses'> {
+  labelTechniques: boolean, publication = false): Pick<EasyScoreMeasureSpec, 'chords' | 'verses'> {
   const chords: EasyScoreMeasureSpec['chords'][number][] = [];
   const verses: EasyScoreMeasureSpec['verses'][number][] = [];
   for (const voice of measure.voices) {
@@ -21,8 +21,17 @@ export function leadMarks(measure: Measure, staff: 'notation' | 'tab', noteId: (
       // The part names its string and release alongside any chord symbol at the same onset.
       const labels = event.chord ? [event.chord.text] : [];
       if (labelTechniques) for (const head of event.heads) {
+        if ((head.connection || head.hammer) && staff === 'tab') {
+          labels.push(head.connection === 'pull' ? 'P' : head.connection === 'slide' ? 'Slide' : 'H');
+        }
         if (head.openSlide && staff === 'notation') labels.push(describeOpenSlide(head.openSlide, head.position.str));
         if (head.prebend) labels.push(describePrebend(head.prebend, head.position.str));
+      }
+      if (publication) {
+        for (const gesture of event.gestures ?? []) {
+          if ('direction' in gesture) labels.push(gesture.kind + ' ' + gesture.direction);
+          else labels.push(gesture.kind === 'tap' ? 'T' : gesture.wide ? 'Wide vibrato' : 'Vibrato');
+        }
       }
       if (labels.length) chords.push({ note, text: labels.join(' · ') });
       if (!event.lyric) continue;

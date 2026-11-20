@@ -39,18 +39,13 @@
 <body>
     <h1>TabDiv Playground</h1>
 
-    <div id="example" width=800 scale=0.8 editor="true" editor-width=640 editor-height=330>
-        options space=20
-        tabstave
-        notation=true
-        key=A time=4/4
-
-        notes :q =|: (7/4.5/3.5/2) :8 7h5-6/3 ^3^ 5-6h7/5 ^3^ :q 7V/4 |
-        notes :8 t12p7/4 s5s3/4 :8 3s:16:5-7/5 :h p5/4
-        text :w, |#segno, ,|, :hd, , #tr
-
-        options space=25
-    </div>
+    <div id="example" width=800 scale=0.8 editor="true" editor-width=640 editor-height=330>meter 4/4
+guitar { key A
+  repeatStart :q (5/2 5/3 7/4) :8 tuplet 3:2 { 7/3 5/3 6/3[hammer] }
+  tuplet 3:2 { 5/5 6/5[hammer] 7/5 } :q 7/4[vibrato wide] |
+  :8 12/4[tap] 7/4[pull] 5/4[slide] 3/4[slide] 3/5 :16 5/5[slide] 7/5 :q 5/4 |
+  text roadmap line 10 { start sign segno :w skip | :h. skip :q sign tr | }
+}</div>
 </body>
 
 </html>

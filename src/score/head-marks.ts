@@ -21,9 +21,9 @@ export function attachHeadMarks(note: Note, index: number, marks: HeadMark[], ta
     const pos = positions[mark.position];
     if (mark.finger !== undefined) {
       if (tab) continue;
-      note.addModifier(fingerNumber(mark.finger, pos), index);
+      note.addModifier(fingerNumber(mark.finger, pos, mark.stringNumber), index);
     } else {
-      note.addModifier(new Articulation('a>').setPosition(pos), index);
+      note.addModifier(new Articulation(mark.articulation ?? 'a>').setPosition(pos), index);
     }
   }
 }

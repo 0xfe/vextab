@@ -4,6 +4,8 @@ A musician should be able to copy a score from the guide into a plain VexTab emb
 
 ## 1. Agree on the language and inventory the scores
 
+The [migration inventory](../issues/182/inventory.md) identifies the existing sources and acceptance checks. The [editing tasks](../issues/182/editing-tasks.md) are ready for musician review.
+
 - Try four editing tasks with a guitarist and a pianist. Enter a first phrase, finger a chord, edit one voice independently, and reuse a phrase across bars. Use their mistakes and edits to settle the syntax.
 - Inventory authored scores and syntax assumptions in the README, `docs/`, historical tutorial in `doc/`, guide lessons and score assets, demos, HTML embeds, playgrounds, test fixtures, scripts, and package consumer examples. Include scores embedded in TypeScript, Markdown and HTML, plus maintained website content.
 - Record each feature, a representative score, and its expected behavior in fixed SVG/Canvas, responsive engraving, printed parts, playback and reading navigation wherever it applies. Include landed work and pending score features such as grand staffs and per-head marks. Record intended major-version changes explicitly.
@@ -20,6 +22,8 @@ A musician should be able to copy a score from the guide into a plain VexTab emb
 
 ## 3. Reach feature parity across rendering, playback and editing
 
+The [parity ledger](../issues/182/parity.md) records the comparison scores and the limits of each output surface.
+
 - Connect the shared model to fixed SVG/Canvas, responsive scores, printed scores and individual parts, the playback plugins, and reading navigation. Carry source identity across reflow, part extraction and repeated passages.
 - Exercise a two-hand piano passage, a polyphonic guitar score, tuned/capoed tab, per-head fingerings and accidentals, bends and open slides, a drum groove, lyrics, tuplets and repeat endings. Cover the rest of the inventory with smaller fixtures.
 - Compare observable results with the existing grammar. Check pitches, onsets, durations, chord membership, rests and ties, then compare glyph placement, stave alignment, repeat boundaries and hit targets. Review representative engraving changes side by side.
@@ -34,6 +38,8 @@ A musician should be able to copy a score from the guide into a plain VexTab emb
 - Add a corpus check that extracts scores from the actual content, parses them, and catches new examples using the old syntax. Mark intentionally invalid teaching and diagnostic examples with the error they should produce.
 
 **Done when** the inventory is accounted for and every maintained teaching example and ordinary regression test uses v2. A reader following the guide encounters one language from the first lesson to the reference.
+
+The [corpus migration record](../issues/182/corpus.md) lists the converted material, the compatibility fixtures and the visual review.
 
 ## 5. Qualify the migrated release candidate
 

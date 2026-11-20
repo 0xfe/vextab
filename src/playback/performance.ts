@@ -24,7 +24,7 @@ function seconds(value: string, whole: number) {
 function scoreNote(event: Attack, head: Head, duration: number) {
   if (!head.sounding || event.silent) return;
   const note = soundingNote(head.sounding, duration, head.prebend?.release && head.prebend.semitones);
-  const spec = event.bend?.spec;
+  const spec = head.bend ?? event.bend?.spec;
   if (!note || !spec || spec.string !== head.position?.str) return note;
   const time = (fraction: readonly number[]) => duration * fraction[0] / fraction[1];
   const points = [{ time: time(spec.rise), semitones: spec.semitones }];
@@ -38,30 +38,32 @@ function scoreNote(event: Attack, head: Head, duration: number) {
 export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: string) => void): Performance {
   const events: PlaybackEvent[] = [];
   const prior = new Map(score.ties.map(tie => [tie.to + ':' + tie.toHead, tie.from + ':' + tie.fromHead]));
-  const sounding = new Map<string, PlaybackNote>();
+  const sounding = new Map<string, { note: PlaybackNote; start: number }>();
   const whole = 240 / tempo;
   let bar = 0;
   for (const measure of score.measures) {
-    for (const voice of measure.voices) for (const attack of voice.events) {
-      const time = bar + seconds(attack.onset, whole);
+    // Process by onset so an earlier attack in a later-written voice can start a named tie.
+    const attacks = measure.voices.flatMap(v => v.events).map(attack => ({ attack, time: bar + seconds(attack.onset, whole) }));
+    attacks.sort((a, b) => a.time - b.time);
+    for (const { attack, time } of attacks) {
       const duration = seconds(attack.duration, whole);
       const notes: PlaybackNote[] = [];
       attack.heads.forEach((head, i) => {
         const id = attack.id + ':' + i;
         const tied = sounding.get(prior.get(id));
         if (tied) {
-          tied.duration += duration;
+          tied.note.duration = Math.max(tied.note.duration, time + duration - tied.start);
           sounding.set(id, tied);
         } else {
           const note = scoreNote(attack, head, duration);
-          if (note) { notes.push(note); sounding.set(id, note); }
+          if (note) { notes.push(note); sounding.set(id, { note, start: time }); }
         }
       });
       events.push({ time, duration, source: attack.id, notes, mark: mark && (() => mark(attack.id)) });
     }
     bar += seconds(measure.span, whole);
   }
-  return { events: events.sort((a, b) => a.time - b.time), duration: bar };
+  return { events, duration: bar };
 }
 
 /** Fixed scores may contain fragments and text voices outside the shared parser's grammar. */

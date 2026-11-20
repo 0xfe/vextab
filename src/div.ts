@@ -13,9 +13,13 @@ import { createWebAudioPlayback } from './playback/web-audio';
 import type { PlaybackPlugin } from './playback/transport';
 import type { SourceRange } from './score/source';
 import type { ScoreReadingEvent } from 'vexflow';
-import { parseScore } from './score/parse';
+import { projectScoreV2 } from './score/grammar2/project';
+import { parseScore, ScoreV2Error } from './score/parse';
 import { renderScore, type Part } from './score/layout';
 import type { ParsedScore } from './score/model';
+import type { ScoreV2 } from './score/grammar2/model';
+
+import { setFretPaper } from './score/color';
 
 // Webpack embeds the stylesheet here. Consumers of the declarations need no CSS loader.
 declare const require: (asset: './vextab.css') => void;
@@ -36,6 +40,8 @@ export function usesFlowLayout(host: HTMLElement, source: string): boolean {
 
 /** Host integrations can supply an instrument without loading any synthesizer into VexTab. */
 export interface DivOptions {
+  language?: 1 | 2;
+  partIndex?: number;
   playback?: PlaybackPlugin;
   /** Enable sheet playback even when the source omits player=true. */
   player?: boolean;
@@ -55,6 +61,8 @@ class Div {
   private scale: number;
   private rendererBackend: string;
   private flow: boolean;
+  private readonly grammar2: boolean;
+  private readonly partIndex?: number;
   private part: Part = 'score';
   private observer?: ResizeObserver;
   private resizeFrame?: number;
@@ -62,7 +70,8 @@ class Div {
   private composing = false;
   private diagnostic?: SourceRange;
   private candidate?: ParsedScore;
-  private current?: { score: ParsedScore; layout: ReturnType<typeof renderScore> };
+  private document?: ScoreV2;
+  private current?: { score: ParsedScore; layouts: ReturnType<typeof renderScore>[] };
   private surface: HTMLElement | null = null;
 
   // Optional editor UI state.
@@ -76,7 +85,7 @@ class Div {
 
   // Parser + renderer helpers.
   private artist: Artist;
-  private parser: VexTab;
+  private parser: VexTab<1>;
 
   /**
    * Construct the Div renderer and immediately render the initial markup.
@@ -104,7 +113,11 @@ class Div {
     this.width = parseInt(width, 10) || 400;
     this.scale = parseFloat(embedAttribute(host, 'scale')) || 1.0;
     this.rendererBackend = embedAttribute(host, 'renderer') || 'svg';
-    this.flow = usesFlowLayout(host, this.code);
+    const language = options.language ?? Number(embedAttribute(host, 'language') ?? 2);
+    if (language !== 1 && language !== 2) throw new RangeError('Expected VexTab language 1 or 2');
+    this.grammar2 = language === 2;
+    this.partIndex = options.partIndex;
+    this.flow = this.grammar2 || usesFlowLayout(host, this.code);
     host.classList.toggle('vextab-flow', this.flow);
 
     this.editor = embedAttribute(host, 'editor') || '';
@@ -143,10 +156,10 @@ class Div {
     // Initialize parser and renderer.
     if (!this.flow) {
       this.artist = new Artist(10, 0, this.width, { scale: this.scale });
-      this.parser = new VexTab(this.artist);
+      this.parser = new VexTab(this.artist, { language: 1 });
     }
 
-    const autoWidth = this.flow && (width === null || width === 'auto');
+    const autoWidth = this.flow && embedAttribute(host, 'layout') !== 'fixed' && (width === null || width === 'auto');
     if (autoWidth && host.clientWidth > 20) this.width = host.clientWidth;
     this.redraw();
     // Embedded music fonts can finish after the first synchronous draw.
@@ -196,7 +209,7 @@ class Div {
 
   /** Reader IDs are valid only for the current, successfully drawn source revision. */
   getReadingEvents(): readonly ScoreReadingEvent[] {
-    return this.getScore() ? this.current.layout.navigation.events : [];
+    return this.getScore() ? this.current.layouts.flatMap(layout => layout.navigation.events) : [];
   }
 
   /** Return the current source diagnostic, including a located engraving warning. */
@@ -236,7 +249,8 @@ class Div {
   /** Report errors as text and identify the last successfully drawn score. */
   private reportError(error: Error): void {
     this.player?.removeControls();
-    this.diagnostic = (error as Error & { range?: SourceRange }).range;
+    this.diagnostic = error instanceof ScoreV2Error ? { start: error.range[0], end: error.range[1], line: error.line, column: error.column - 1 }
+      : (error as Error & { range?: SourceRange }).range;
     this.surface?.setAttribute('data-preview-stale', 'true');
     const prefix = this.surface ? 'Showing the last valid score. ' : '';
     this.editor_error?.text(prefix + error.message);
@@ -261,7 +275,7 @@ class Div {
   /** Accept either a musical ID or a projection ID from the current layout. */
   selectSource(id: string, revision: ParsedScore): boolean {
     const score = this.getScore();
-    const range = score && score === revision && this.current.layout.rangeFor(id, score.source);
+    const range = score && score === revision && this.current.layouts.map(layout => layout.rangeFor(id, score.source)).find(Boolean);
     if (!range || !this.text_area) return false;
     const editor = this.text_area[0] as HTMLTextAreaElement;
     editor.focus();
@@ -269,35 +283,58 @@ class Div {
     return true;
   }
 
-  /** Convert pointer coordinates through the SVG transform, including CSS scaling. */
+  /** Every instrument gets an independent engraving and hit-test coordinate system. */
+  private drawInstrument(host: HTMLElement, score: ParsedScore, revision: ParsedScore) {
+    const renderer = this.rendererBackend.toLowerCase() === 'canvas' ? 'canvas' : 'svg';
+    const layout = renderScore(host, score, { width: this.width, part: this.part, renderer });
+    const surface = host.querySelector<HTMLCanvasElement | SVGSVGElement>('svg, canvas');
+    if (this.text_area) surface.addEventListener('click', (event: MouseEvent) => {
+      let point: DOMPoint;
+      if (surface instanceof SVGSVGElement) {
+        const transform = surface.getScreenCTM();
+        if (!transform) return;
+        point = new DOMPoint(event.clientX, event.clientY).matrixTransform(transform.inverse());
+      } else {
+        const rect = surface.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        point = new DOMPoint((event.clientX - rect.left) * surface.clientWidth / rect.width,
+          (event.clientY - rect.top) * surface.clientHeight / rect.height);
+      }
+      const hit = layout.hitTest(point.x, point.y);
+      if (hit) this.selectSource(hit.id, revision);
+    });
+    return { layout, surface };
+  }
+
+  /** Mount all instruments in source order, or only the requested partIndex. */
   private drawFlow(next: HTMLElement): void {
-    if (this.rendererBackend.toLowerCase() !== 'svg' || this.scale !== 1) {
+    if (!this.grammar2 && (this.rendererBackend.toLowerCase() !== 'svg' || this.scale !== 1)) {
       throw new Error('Flow layout requires SVG at scale 1. Use width to reflow.');
     }
-    const score = this.candidate;
-    const layout = renderScore(next, score, { width: this.width, part: this.part });
-    if (this.text_area) next.addEventListener('click', event => {
-      const svg = next.querySelector('svg');
-      const transform = svg.getScreenCTM();
-      if (!transform) return;
-      const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(transform.inverse());
-      const hit = layout.hitTest(point.x, point.y);
-      if (hit) this.selectSource(hit.id, score);
+    const score = this.candidate, documentScore = this.document;
+    const ensemble = documentScore && this.part === 'score' && this.partIndex === undefined && documentScore.parts.length > 1;
+    const instruments = ensemble ? documentScore.parts.map((_,i) => projectScoreV2(documentScore, i)) : [score];
+    const drawings = instruments.map(instrument => {
+      const host = ensemble ? next.appendChild(document.createElement('div')) : next;
+      return this.drawInstrument(host, instrument, score);
     });
+    if (this.grammar2 && this.scale !== 1) next.style.zoom = String(this.scale);
     this.player?.dispose();
     this.player = undefined;
     if (this.enablePlayer || score.playback?.enabled) {
-      const player = this.player = new Player(layout.score, { playback: this.playback, controls: this.playbackControls });
-      player.render(next.querySelector('svg'));
+      const player = this.player = new Player(ensemble ? documentScore : drawings[0].layout.score, {
+        playback: this.playback, controls: this.playbackControls,
+      });
+      player.render(drawings[0].surface, undefined, drawings.slice(1).map(d => d.surface));
     }
-    this.current = { score, layout };
+    this.current = { score, layouts: drawings.map(d => d.layout) };
   }
 
   /** Commit a new surface only after engraving succeeds, including Canvas pixels. */
   private drawInternal(): this {
     if (this.flow ? !this.candidate : !this.parser.isValid()) return this;
     const canvas = this.rendererBackend.toLowerCase() === 'canvas';
-    const next = document.createElement(canvas ? 'canvas' : 'div');
+    const next = document.createElement(canvas && !this.flow ? 'canvas' : 'div');
     next.className = 'vex-canvas';
     const host = $(this.sel)[0] as HTMLElement;
     host.insertBefore(next, host.firstChild);
@@ -306,14 +343,7 @@ class Div {
       else {
         const backend = canvas ? Vex.Flow.Renderer.Backends.CANVAS : Vex.Flow.Renderer.Backends.SVG;
         const renderer = new Vex.Flow.Renderer(next, backend);
-        if (!canvas) {
-          // SVG clears strings by painting over them. Keep VexFlow's white default
-          // when the computed paper color has alpha (rgba or modern CSS slash syntax).
-          const paper = getComputedStyle(next).backgroundColor;
-          if (paper && !paper.startsWith('rgba(') && !paper.includes('/')) {
-            renderer.getContext().setBackgroundFillStyle(paper);
-          }
-        }
+        if (!canvas) setFretPaper(renderer.getContext(), next);
         if (this.enablePlayer) this.artist.customizations.player = 'true';
         if (!this.player && this.artist.customizations.player === 'true') {
           this.player = new Player(this.artist, { playback: this.playback, controls: this.playbackControls });
@@ -341,7 +371,7 @@ class Div {
       }
       this.surface?.remove();
       this.surface = next;
-      const warnings = this.flow ? this.current.layout.diagnostics : [];
+      const warnings = this.flow ? this.current.layouts.flatMap(layout => layout.diagnostics) : [];
       this.diagnostic = warnings[0]?.range;
       this.editor_error?.text(warnings.map(d => {
         const where = d.range ? ' (line ' + d.range.line + ', column ' + d.range.column + ')' : '';
@@ -360,7 +390,8 @@ class Div {
     try {
       if (this.flow) {
         this.candidate = undefined;
-        this.candidate = parseScore(this.code);
+        this.document = this.grammar2 ? parseScore(this.code) : undefined;
+        this.candidate = this.document ? projectScoreV2(this.document, this.partIndex) : parseScore(this.code, { language: 1 });
       } else {
         this.artist.reset();
         this.parser.parse(this.code);

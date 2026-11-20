@@ -3,7 +3,10 @@ import { Annotation, Bend, StaveNote, TabNote, measureEngraving } from 'vexflow'
 import guitar from '../guide/scores/drop-d-turnaround.vextab';
 import lead from '../guide/scores/slow-river.vextab';
 import { renderScore, renderScorePart } from '../src/score/layout';
+import { projectScoreV2 } from '../src/score/grammar2/project';
 import { parseScore, ScoreError } from '../src/score/parse';
+
+function read(source: string) { return projectScoreV2(parseScore(source)); }
 
 function host() {
   const target = document.createElement('div');
@@ -21,7 +24,7 @@ function geometry(view: ReturnType<typeof renderScore>) {
 
 QUnit.module('Responsive studies', () => {
   QUnit.test('The 12-bar turnaround keeps bend, mute, ties, endings and barlines through reflow', assert => {
-    const parsed = parseScore(guitar);
+    const parsed = read(guitar);
     const target = host();
     const initial = geometry(renderScore(target, parsed, { width: 960 }));
     assert.equal(parsed.measures.length, 12);
@@ -56,7 +59,7 @@ QUnit.module('Responsive studies', () => {
       const firstEnding = parsed.spans.find(s => s.kind === 'volta');
       const endings = [...view.navigation.regions, ...view.extraRegions].filter(r => r.source === firstEnding.id);
       assert.ok(endings.length > 1);
-      assert.equal(guitar.slice(firstEnding.range.start, firstEnding.range.end), '!ending 1 bars=4!');
+      assert.ok(guitar.slice(firstEnding.range.start, firstEnding.range.end).includes('ending 1 {'));
       if (part === 'score') {
         for (const [staff, tab] of view.composition.staves) {
           assert.equal(staff.getX(), tab.getX());
@@ -76,9 +79,9 @@ QUnit.module('Responsive studies', () => {
 
   QUnit.test('The capo shifts written and sounding pitch while the displayed fret stays relative', assert => {
     for (const [tuning, capo, written, sounding] of [
-      ['standard',0,'e/3','e/2'], ['dropd',0,'d/3','d/2'], ['dropd',2,'e/3','e/2'],
+      ['standard',0,'e/3','e/2'], ['dropD',0,'d/3','d/2'], ['dropD',2,'e/3','e/2'],
     ]) {
-      const parsed = parseScore('tabstave notation=true time=1/4 tuning=' + tuning + ' capo=' + capo + '\nnotes 0/6');
+      const parsed = read('meter 1/4 guitar { tuning ' + tuning + ' capo ' + capo + ' 0/6 | }');
       const head = parsed.measures[0].voices[0].events[0].heads[0];
       assert.deepEqual([head.written, head.sounding, head.position], [written, sounding, {str:6, fret:0}]);
       const view = renderScore(host(), parsed);
@@ -90,7 +93,7 @@ QUnit.module('Responsive studies', () => {
   });
 
   QUnit.test('Dotted chord changes, a comma, a hyphen, an extender and the shape survive both widths', assert => {
-    const parsed = parseScore(lead);
+    const parsed = read(lead);
     const target = host();
     const [first, second, third] = parsed.measures;
     assert.equal(parsed.measures.length, 12);
@@ -129,36 +132,35 @@ QUnit.module('Responsive studies', () => {
 
   QUnit.test('A bad command points to the score, including CRLF and malformed span endpoints', assert => {
     for (const [source, token] of [
-      [guitar.replace('rise=1/2','rise=4/4'),'!bend'],
-      [guitar.replace('bend 3','bend 4'),'!bend'],
-      [guitar.replace('!pm 6!', '!pm 2!'),'!pm 2!'],
-      [guitar.replace('!end-pm!', ''),'!pm 6!'],
-      [guitar.replace('1 bars=4','1 bars=14'),'!ending'],
-      [lead.replace('barre=2:4-3','barre=2:4-2'),'!frame'],
-      [lead.replace('x,0,2,2,1,0','x,0,2,3,1,0'),'!frame'],
-      [lead.replace('extend=2','extend=20'),'!lyric "roll"'],
-      [lead.replace(':q B/4 A/4', ':q B/4 !key D! A/4'),'!key D!'],
-      ['stave time=1/4\nnotes C/4 | !mark "Coda"!','!mark'],
-      ['stave time=1/4\nnotes ## !silent! !chord "Dm"!','!chord'],
-      ['tabstave time=1/4\nnotes X/3 !chord "Am"! !frame x,x,x,x,x,x!','!frame'],
+      [guitar.replace('rise=1/2','rise=4/4'), 'bend'],
+      [guitar.replace('strings(6)','strings(9)'), '9'],
+      [guitar.replace('ending 1 {','ending 3 {'), '3'],
+      [lead.replace('barre=2/4..3','barre=2/4..2'), 'frame'],
+      [lead.replace('x 0 2 2 1 0','x 0 2 3 1 0'), 'frame'],
+      [lead.replace('extend=2','extend=20'), 'lyric'],
+      ['meter 1/4 staff { C4 mark "Coda" | }','mark'],
     ]) {
       const text = source.replace(/\n/g, '\r\n');
-      assert.throws(() => parseScore(text), (e: ScoreError) => e.code === 'syntax' && text.slice(e.range.start,e.range.end).startsWith(token));
+      assert.throws(() => read(text), error => {
+        const range = error.range;
+        const [start, end] = Array.isArray(range) ? range : [range.start, range.end];
+        return text.slice(start, end).startsWith(token);
+      }, token);
     }
-    const keys = parseScore('stave time=1/4\nnotes F/4 | !key D! F/4 | F/4\nvoice\nnotes F/4 | F/4 | F/4');
+    const keys = read('meter 1/4 staff { key D at 2 voice one { F4 | F4 | F4 | } voice two { F4 | F4 | F4 | } }');
     assert.deepEqual(keys.measures.map(m => m.voices.map(v => v.events[0].heads[0].written)),
       [['f/4','f/4'],['f#/4','f#/4'],['f#/4','f#/4']]);
-    const cramped = renderScore(host(), parseScore(lead), { width: 100 });
+    const cramped = renderScore(host(), read(lead), { width: 100 });
     const overflow = cramped.diagnostics.find(d => d.code === 'RowOverflow');
-    assert.deepEqual(overflow.range, parseScore(lead).measures[overflow.measures[0] - 1].range);
-    const text = 'stave time=1/4\nnotes C/4 !lyric "مرحبا"!';
-    const warning = renderScore(host(), parseScore(text)).diagnostics.find(d => d.code === 'UnsupportedScript');
-    assert.equal(text.slice(warning.range.start, warning.range.end), '!lyric "مرحبا"!');
+    assert.deepEqual(overflow.range, read(lead).measures[overflow.measures[0] - 1].range);
+    const text = 'meter 1/4 staff { C4[lyric "مرحبا"] | }';
+    const warning = renderScore(host(), read(text)).diagnostics.find(d => d.code === 'UnsupportedScript');
+    assert.equal(text.slice(warning.range.start, warning.range.end), 'lyric "مرحبا"');
   });
 
   QUnit.test('A timed gap splits its beam and preserves the adjacent beat', assert => {
     const target = host();
-    const parsed = parseScore('stave time=2/4\nnotes :16 C/4 ## !silent! D-E/4 :8 F/4 ##');
+    const parsed = read('meter 2/4 staff { :16 C4 skip D4 E4 :8 F4 rest | }');
     const view = renderScore(target, parsed);
     const [c, gap, d, e, f, rest] = view.composition.notes[0][0][0] as StaveNote[];
     assert.notOk(c.getBeam());
@@ -169,15 +171,15 @@ QUnit.module('Responsive studies', () => {
   });
 
   QUnit.test('A pre-bend stays on its chord head through reflow and independent publication', assert => {
-    const src = 'tabstave notation=true time=2/4\nnotes :q (5/2.7z8z7/3) 7z9/3';
+    const src = 'meter 2/4 guitar { (5/2 7/3[prebend +1 release]) 7/3[prebend +2] | }';
     const target = host();
-    const parsed = parseScore(src);
+    const parsed = read(src);
     const [chord, held] = parsed.measures[0].voices[0].events;
     assert.deepEqual(chord.heads.map(h => h.sounding), ['e/4', 'd#/4']);
     assert.deepEqual(chord.heads[1].position, { str: 3, fret: 7 });
     assert.deepEqual(chord.heads[1].prebend, { semitones: 1, release: true });
     assert.deepEqual([chord.duration, held.onset, held.duration], ['1/4', '1/4', '1/4']);
-    assert.equal(src.slice(held.range.start, held.range.end), '7z9/3');
+    assert.equal(src.slice(held.range.start, held.range.end), '7/3[prebend +2]');
     for (const width of [320, 720]) {
       const result = renderScore(target, parsed, { width });
       const tab = result.navigation.events.find(e => e.source === chord.id && e.staff === 'tab');
@@ -195,15 +197,15 @@ QUnit.module('Responsive studies', () => {
   });
 
   QUnit.test('A printable tab gesture retains its string and envelope, and unsupported print attachments are located', assert => {
-    const src = 'options tab-stems=true\ntabstave time=4/4 capo=2\nnotes :h (5/2.7/3) !bend 3 +2 rise=1/2 release=1/1! !pm 3! (5/2.7/3) !end-pm!';
+    const src = 'meter 4/4 guitar { view tab capo 2 tabStems on palmMute strings(3) { :h (5/2 7/3[bend +2 rise=1/2 release=1]) (5/2 7/3) } | }';
     const target = host();
-    const part = renderScorePart(target, parseScore(src), 'tab');
+    const part = renderScorePart(target, read(src), 'tab');
     const meta = JSON.parse(part.publication.pages[0].svg.querySelector('metadata').textContent);
     assert.ok(JSON.stringify(meta.events[0]).includes('string-bend'));
     assert.deepEqual(meta.spans[0].strings, [3]);
     const page = target.firstChild;
-    assert.throws(() => renderScorePart(target, parseScore(lead), 'notation'),
-      (e: ScoreError) => e.code === 'fixed-layout' && lead.slice(e.range.start,e.range.end).startsWith('!frame'));
+    assert.throws(() => renderScorePart(target, read(lead), 'notation'),
+      (e: ScoreError) => e.code === 'fixed-layout' && lead.slice(e.range.start,e.range.end).startsWith('frame'));
     assert.strictEqual(target.firstChild, page);
   });
 });

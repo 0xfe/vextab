@@ -1,4 +1,5 @@
 // Validate score ink identically in the DOM-free parser, Canvas, and portable SVG.
+import type { RenderContext } from 'vexflow';
 
 /** CSS named colours have fixed values, independent of the page's theme or stylesheets. */
 const named = new Set(`
@@ -25,4 +26,10 @@ export function isScoreColor(value: string): boolean {
 /** A VexFlow foreground uses the same ink for filled glyphs and stroked lines. */
 export function inkStyle(color: string) {
   return { fillStyle: color, strokeStyle: color };
+}
+
+/** Clear SVG strings behind fret numbers with opaque paper, even on a transparent embed. */
+export function setFretPaper(ctx: RenderContext, host: HTMLElement) {
+  const paper = getComputedStyle(host).backgroundColor;
+  if (paper && !paper.startsWith('rgba(') && !paper.includes('/')) ctx.setBackgroundFillStyle(paper);
 }

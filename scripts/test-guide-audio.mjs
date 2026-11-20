@@ -51,7 +51,7 @@ export async function testGuideAudio(browser, dist) {
     await page.evaluate(() => document.fonts.ready);
     const examples = page.locator('.chapter-example');
     const control = index => examples.nth(index).locator('.vextab-sheet-controls > button');
-    assert.equal(await examples.count(), 2);
+    assert.equal(await examples.count(), 4);
     assert.ok(!requests.some(url => url.includes('guide-instrument')));
     // Cancel while the async chunk is still loading. Its late completion must stay silent.
     await control(0).evaluate(button => { button.click(); button.click(); });
@@ -62,6 +62,12 @@ export async function testGuideAudio(browser, dist) {
       const samples = new Float32Array(1024);
       window.guideMeter.getFloatTimeDomainData(samples);
       return samples.some(value => Math.abs(value) > 0.0001);
+    }).catch(async cause => {
+      const detail = await examples.first().evaluate(host => ({
+        audio: window.guideMeter?.context.state ?? 'output disconnected',
+        status: [...host.querySelectorAll('[role="status"]')].map(node => node.textContent),
+      }));
+      throw new Error('No SoundFont PCM at the guide output: ' + JSON.stringify(detail), { cause });
     });
     await control(1).click();
     assert.equal(await control(0).getAttribute('aria-label'), 'Play');

@@ -1,5 +1,6 @@
 // Read the guide's bundled chapters and mount only the examples on the open page.
 import Div from '../src/div';
+import { previousDraft } from './drafts';
 import { scoreOptions } from './audio';
 import { highlightCode, highlightEditor } from './highlight';
 import historical from '../doc/tutorial.html?guide-content';
@@ -71,7 +72,7 @@ function examples(host: HTMLElement, chapter: Chapter, section: string, draft: D
   return Array.from(host.querySelectorAll<HTMLElement>('.vex-tabdiv, pre[data-score]'), (original, index) => {
     const source = original.textContent.trim();
     const fixed = original.classList.contains('vex-tabdiv');
-    const key = section + '/' + chapter.id + '/' + index;
+    const key = original.dataset.draftKey ?? section + '/' + chapter.id + '/' + index;
     const frame = document.createElement('div');
     frame.className = 'chapter-example' + (fixed ? ' fixed' : '');
     const embed = document.createElement('div');
@@ -86,6 +87,8 @@ function examples(host: HTMLElement, chapter: Chapter, section: string, draft: D
     controls.className = 'example-controls';
     const reset = node('button', 'Reset example');
     controls.append(node('span', 'VexTab source'), reset);
+    const oldDraft = previousDraft(key);
+    if (oldDraft) controls.append(oldDraft);
     frame.append(embed, controls);
     original.replaceWith(frame);
     const editor = new Div(embed, scoreOptions(embed));
@@ -107,8 +110,8 @@ export function showCover(host: HTMLElement): Div {
   cover.className = 'book-cover';
   const introduction = document.createElement('div');
   heading(introduction, '', 'The VexTab Tutorial',
-    'Write standard notation and guitar tablature, one stave at a time. Play and edit the music as you work through the original fifteen steps.');
-  const start = link('Start with the stave →', '#tutorial/' + tutorial[0].id);
+    'Write standard notation and guitar tablature, one stave at a time. Start with four notes, then add rhythm, chords and guitar techniques as you play.');
+  const start = link('Play your first notes →', '#tutorial/' + tutorial[0].id);
   start.className = 'start-reading';
   const paths = node('nav', '');
   paths.className = 'cover-links';
@@ -122,7 +125,7 @@ export function showCover(host: HTMLElement): Div {
   sample.setAttribute('width', original.getAttribute('width'));
   sample.textContent = original.textContent;
   const caption = node('figcaption', '');
-  caption.append(link('Fret and string · from step 2', '#tutorial/notes'));
+  caption.append(link('Fret and string · from step 1', '#tutorial/notes'));
   figure.append(sample, caption);
   cover.append(introduction, figure);
   host.append(cover);
@@ -145,7 +148,7 @@ function directory(host: HTMLElement, items: Chapter[], section: string, title: 
 
 export function showFeatures(host: HTMLElement) {
   heading(host, 'Features', 'Beyond the tutorial', 'Take the same notation into measured scores, independent voices, lead sheets and printed parts.');
-  directory(host, features, 'features', 'Writing with VexTab 5');
+  directory(host, features, 'features', 'Writing with VexTab 6');
   host.append(node('h2', 'Practice scores'));
   const practice = node('ul', '');
   practice.className = 'practice-links';
@@ -185,7 +188,7 @@ export function showChapter(host: HTMLElement, section: keyof typeof chapterBook
 /** Search across signatures, arguments, examples and prose, including when starting at a deep link. */
 export function showReference(host: HTMLElement, id = '') {
   const group = groups.find(g => g.id === id || Array.from(g.element.querySelectorAll('article')).some(a => a.id === id));
-  heading(host, 'VexTab 5', 'API reference', 'Look up a module, method, editor option or notation command.');
+  heading(host, 'VexTab 6', 'API reference', 'Look up a module, method, editor option or notation command.');
   const label = node('label', 'Search the reference');
   label.htmlFor = 'search';
   const search = document.createElement('input');

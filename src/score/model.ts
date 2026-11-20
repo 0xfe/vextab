@@ -24,6 +24,9 @@ export interface Head {
   position?: { str: number; fret: number | 'X' };
   accidental?: string;
   cautionary?: boolean;
+  connection?: 'hammer' | 'pull' | 'slide';
+  hammer?: boolean; // Hammered destination of a fretted span.
+  bend?: TimedStringBend;
   prebend?: Prebend;
   openSlide?: OpenSlide;
   // A bare letter inherits the sign in force on the staff.
@@ -38,6 +41,9 @@ export interface Attack {
   dots: number;
   rhythmRange?: SourceRange; // The duration token can precede several attacks.
   slash: boolean;
+  restLine?: number;
+  labels?: { text: string; position?: 'above' | 'below'; family?: string; size?: number; style?: 'normal' | 'bold' | 'italic'; ink?: string; range: SourceRange }[];
+  gestures?: ({ kind: 'stroke' | 'brush' | 'roll' | 'rasgueado'; direction: 'up' | 'down' } | { kind: 'tap' | 'vibrato'; wide: boolean })[];
   color?: string; // Foreground override for this attack in both projections.
   silent?: SourceRange;
   bend?: { spec: TimedStringBend; range: SourceRange };
@@ -64,8 +70,10 @@ export interface MeasureVoice {
   span: string;
   stem?: 'up' | 'down';
   beams: boolean;
+  beamGroups?: { start: number; end: number; range: SourceRange }[];
   tabStems: boolean;
   tabDirection: number;
+  beatGroups?: number[];
   beamRests: boolean;
   stemlets: boolean;
   middleRests: boolean;
@@ -88,14 +96,23 @@ export interface StaffState {
   tuning: string;
   key: string;
   clef: string;
+  hideClef?: boolean;
   meter: string;
+  meterSign?: string;
   showTime: boolean;
   timeRange: SourceRange;
   pickup?: string;
   fragment: boolean;
 }
 
+export interface MeasuredText {
+  id: string; range: SourceRange; base: string; dots: number; text: string; glyph?: boolean;
+  style: import('./grammar2/model').LaneStyle;
+  boundaries?: { edge: 'start' | 'end'; text: string; glyph: boolean; style: import('./grammar2/model').LaneStyle; range: SourceRange }[];
+}
+
 export interface Measure {
+  text?: MeasuredText[][];
   number: number;
   range: SourceRange;
   state: StaffState;
@@ -117,10 +134,11 @@ export interface Tie {
 /** Endings cover whole bars. A palm mute follows the selected physical strings in one voice. */
 export type ScoreSpan = { id: string; from: string; to: string; range: SourceRange } & (
   { kind: 'volta'; label: string; firstBar: number; lastBar: number } |
-  { kind: 'palmMute'; strings: number[] }
+  { kind: 'palmMute'; strings: number[] } | { kind: 'slur' } | { kind: 'hammer' | 'pull' | 'slide'; fromHead: number; toHead: number }
 );
 
 export interface ParsedScore {
+  layout?: import('./grammar2/model').ScoreLayout;
   /** Playback directives, when authored before the first flow stave. */
   playback?: { enabled: boolean; tempo?: number; instrument?: string };
   source: string;

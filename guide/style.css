@@ -71,7 +71,7 @@ select, input[type=search] { max-width: 100%; }
 .bench > .toolbar { background: #f1f4ed; border-bottom: 1px solid var(--line); }
 .bench > .actions { background: #edf0e8; border-top: 1px solid var(--line); }
 #score, #second, #part { max-width: 100%; }
-#score.narrow { width: min(100%, 360px); }
+#score.narrow { width: min(100%, 360px); margin-inline: auto; }
 .vex-canvas { max-width: 100%; background: white; color: black; overflow-x: auto; }
 .vex-canvas svg, #part svg { display: block; }
 .fixed .vex-canvas svg, .triplets .vex-canvas svg { max-width: 100%; height: auto !important; }
@@ -181,6 +181,10 @@ ol.chapter-list li::before { content: counter(step, decimal-leading-zero); font:
 .chapter-body th { background: var(--soft); }
 .chapter-example { margin: 18px 0 26px; background: white; border: 1px solid #c5d3c1; border-radius: 5px; overflow: hidden; }
 .chapter-example .vex-canvas, .book-cover .vex-canvas { margin: 0 auto; }
+/* Center the engraved sheet and its transport together. A fixed score scales to a phone. */
+.vex-canvas > div, .vex-canvas .vextab-sheet, .vex-canvas > svg { margin-inline: auto; }
+.fixed .vex-canvas > div, .book-cover .vex-canvas > div { max-width: 100%; }
+.fixed .vextab-sheet, .book-cover .vextab-sheet { grid-template-columns: minmax(0, 1fr); }
 .chapter-example .vex-canvas { max-width: 100%; }
 .chapter-example p:empty, .book-cover figure p:empty { display: none; }
 textarea.editor { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; background: #f0f5e9; border-left-color: #a9c49c; }
@@ -202,7 +206,7 @@ textarea.editor { font-family: ui-monospace, SFMono-Regular, Consolas, monospace
 .practice-links { padding-left: 22px; }
 @media (max-width: 800px) {
   .book-cover { grid-template-columns: 1fr; gap: 18px; }
-  .book-cover figure { max-width: 440px; }
+  .book-cover figure { width: min(100%, 440px); margin-inline: auto; }
   .book-cover h1 { font-size: clamp(58px, 11vw, 78px); }
   .chapter-list, #entries { grid-template-columns: 1fr; }
   .chapter-body { font-size: 17px; }

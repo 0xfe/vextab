@@ -8,20 +8,106 @@ A first guitar score fits on one line. Play four quarter notes on the high E str
 guitar { 0/1 2/1 3/1 2/1 | }
 ```
 
-This is executable prototype syntax. The comparable current example starts with `tabstave notation=true`, then `notes :q 0-2-3-2/1 |`. Writing the string on each note costs a few characters inside the phrase. It makes moving a single note to another string a local edit. The braces give the outer score and reusable phrases the same shape. [Existing first-fret lesson](../guide/scores/first-fret.vextab)
+This is executable prototype syntax. The comparable current example starts with `tabstave notation=true`, then `notes :q 0-2-3-2/1 |`. In v2, the compact spelling is `guitar { 0-2-3-2/1 | }`. Spell out a fret/string pair to move one note to a different string. The braces give the outer score and reusable phrases the same shape. [Existing first-fret lesson](../guide/scores/first-fret.vextab)
+
+## The public parser class
+
+Use the stateful parser when an editor needs to ask whether its last revision parsed. Each successful v2 parse returns a fresh score. Its source ranges refer to that revision.
+
+```js
+import { VexTab, renderScore } from 'vextab/browser';
+
+const parser = new VexTab();
+const score = parser.parse('guitar { 4-5-6/3 }');
+renderScore(document.querySelector('#score'), score);
+```
+
+A parse error clears `parser.isValid()` and throws a `ScoreV2Error` with a source range. The package root, `vextab/browser`, and the script-tag globals `vextab` and `VexTabDiv` expose the same parser and rendering functions. Node programs can import the standalone `parseScore` function from `vextab/parse`.
+
+To keep a v1 fixed-layout integration, add the language option when constructing its parser. The original Artist receives the commands, and `parse` returns the v1 syntax elements. To keep a measured v1 integration, use `parseScore(source, { language: 1 })`.
+
+```js
+import { Artist, VexTab, Vex } from 'vextab/browser';
+
+const host = document.querySelector('#score');
+const artist = new Artist(10, 10, 480);
+const parser = new VexTab(artist, { language: 1 });
+parser.parse('tabstave\nnotes 4-5-6/3');
+artist.render(new Vex.Flow.Renderer(host, Vex.Flow.Renderer.Backends.SVG));
+```
 
 ## What to try
 
-Run the experiments from the repository root. The compiler and tests use Node.js with zero additional packages.
+VexTab 6 reads this language by default. Both `vextab/parse` and `vextab/browser` export the parser. Select `{ language: 1 }` for a historical measured score.
+
+```js
+import { parseScore } from 'vextab/parse';
+
+const score = parseScore('piano { upper { :w C4 | } lower { :w C3 | } }');
+const upper = score.parts[0].staves[0].voices[0];
+const bar = upper.measures[0];
+const notes = upper.events.slice(bar.start, bar.end);
+console.log(notes[0].duration); // 1/1 of a whole note
+```
+
+Run the same reader from the repository root with the Node version in `.nvmrc`. The CLI and standalone grammar tests need no installed dependencies.
 
 ```sh
 echo 'guitar { 0/1 2/1 3/1 2/1 | }' | node experiments/grammarv2/cli.mjs
 node --test experiments/grammarv2/compiler.test.mjs
 ```
 
-The CLI prints the meter, parts, staves and voices. Each event has an exact onset within its bar, written and scaled durations, head and event marks, original source offsets and an expansion trace. Paste the examples into the visual preview after running `npm run build-dev` and `npm run serve`. [Open the local preview](http://127.0.0.1:8052/experiments/grammarv2/preview.html) · [Experimental compiler](../experiments/grammarv2/compiler.mjs)
+The CLI prints the meter, parts, staves and voices. Each event has an exact onset within its bar, written and scaled durations, head and event marks, original source offsets and an expansion trace. Paste the examples into the visual preview after running `npm run build-dev` and `npm run serve`. [Open the local preview](http://127.0.0.1:8052/experiments/grammarv2/preview.html) · [Parser source](../src/score/grammar2/compiler.mts) · [ScoreV2 types](../src/score/grammar2/model.ts)
 
-Fences labelled `vextab2` in this document are executable and exercised by the test suite. Fences labelled `text` illustrate the wider proposal. The prototype runs alongside the current parser. The sketchbook engraves individual parts, including independent piano voices, silent skips, ordinary values with up to two dots and common 3:2 and 5:4 tuplets. The fixed guitar engraver shows hammer-ons and finger placement. Other tuplet ratios, nested tuplets and cross-bar tuplets appear in the checked timeline. Select an expanded event to inspect its authored source. Choosing this language as the public default requires the release criteria below.
+Fences labelled `vextab2` in this document are executable and exercised by the test suite. Fences labelled `text` illustrate the wider proposal. The sketchbook draws each instrument with the public renderer. Click a note or a timeline event to select its authored source, including notes expanded from patterns.
+
+### Reading a v2 result
+
+`ScoreV2` is a serializable snapshot of the source revision. `parts` contain named staves and voices. Each voice has one ordered array of events, measure slices into that array, and spans joining expanded event IDs. Hammer spans identify both chord heads. Tuplet spans retain their written ratio and endpoints even across a barline.
+
+Use `source.slice(...event.range)` to find an authored attack. Heads, marks, barlines and explicit duration tokens also have source ranges. Expanded copies have distinct IDs. Their `trace` lists enclosing invocations from the outside in. The same input and language produce the same IDs; keep the source revision with any selection.
+
+Catch `ScoreV2Error` for v2 syntax, time, alignment or resource errors. Its `range` contains half-open UTF-16 offsets ready for `setSelectionRange`. Its `line` and `column` start at one, and its `trace` points back to a failing pattern invocation. Pass the same parsed score to the screen, printer and player. An editable `Div` displays each instrument in source order. A direct `renderScore` call draws one instrument and accepts `partIndex` to select it. The player schedules all instruments together unless you select one.
+
+```js
+const score = parseScore('piano { upper { :w G4 | } lower { :w C3 | } }');
+renderScore(screen, score, { width: 640, renderer: 'svg' });
+renderScorePart(paper, score, 'left');
+const player = new Player(score, { controls, playback });
+```
+
+For an editable embed, set `data-editor="true"` on the source element. See [milestone 3 verification](../issues/182/parity.md) for the comparison scores and output-specific limits.
+
+### Working with historical scores
+
+```js
+const pickup = parseScore('meter 2/4 pickup 1/8 staff { :8 G4 | :q A4 G4 | }');
+```
+
+| Intent | V2 spelling |
+| --- | --- |
+| Change key for every voice of a part | Declare `key D key G at 4` at the beginning of the part. |
+| Change the key, chord names, frets and diagrams together | Declare `transpose +2` before the first part. Inside a voice, `transpose +2 { … }` moves a phrase and keeps the surrounding signature. Use `octave +1 { … }` for a playback-only shift. |
+| Play a shaped guitar chord | Put `[symbol "Am", frame (x 0 2 2 1 0) barre=2/4..3]` after the chord. Diagram strings run from low to high. |
+| Mark a guitar technique | Attach `[hammer]`, `[pull]` or `[slide]` to the destination head. Use `[tap]`, `[vibrato wide]`, `[stroke down]` or `[brush up]` on the attack. `palmMute strings(5 6) { … }` covers a phrase. |
+| Sustain or connect notes | Use `[tie]` on a destination head. Across an intervening rest or another voice, use the same lowercase name in `[tieStart name]` and `[tieEnd name]`. Use `slur { … }` for a visual connection. |
+| Set rhythm, grouping and boundaries | `slash` is an unpitched rhythm. `B4[slash]` has a pitch. `rest[line -1]` places a rest. Use `beam { … }`, `groupBeats (3 3)`, `break system`, `repeatStart`, `bar repeatEnd`, `bar double` and `bar final` as needed. |
+| Control ink and labels | Use part-level `ink navy`, attack-level `[ink crimson]`, or `[label "P.H." below font "Georgia" size 14 style italic ink teal]`. |
+| Set engraving or playback defaults | `voice bass stem down { … }` sets a voice’s stem direction. `layout { width 640 rowGap 36 }`, `measureNumbers on`, and `play { tempo 84 instrument 24 }` go before the first part. |
+
+Declare changes of tuning, ink or meter visibility at a bar boundary in the part header. For example, `tuning dropD at 3` retunes the same strings from bar three. `ink default at 2` returns the staff to its default colour, and `display meter shown at 3` prints the meter at that boundary.
+
+A text lane belongs inside its instrument after the music. Its durations are independent of the notes. Change its font, ink, alignment or staff line where the change should begin. A `start` or `end` marker sits on the bar boundary.
+
+```text
+meter 2/4
+staff {
+  :h C4 |
+  text counts font "Georgia" size 14 line 10 {
+    start sign coda :8 "One," "and" ink crimson "three" "four" |
+  }
+}
+```
 
 ## What a musician has to remember today
 
@@ -67,12 +153,17 @@ guitar {
 
 ## Reading and writing the core
 
-Whitespace and newlines separate words. Braces delimit structure, parentheses group simultaneous heads, and square brackets attach marks. `//` starts a comment through the end of the line. Use signed integers for semitones, positive integer ratios for musical time, and quoted strings for lyrics, labels and font names in the full language. Strings represent literal text.
+Whitespace and newlines separate words. Braces delimit structure, parentheses group simultaneous heads, and square brackets attach marks. `#` or `//` starts a comment through the end of the line. Sharps such as `F#4`, quoted labels and hex ink such as `ink #1565c0` keep their usual spelling. Use signed integers for semitones, positive integer ratios for musical time, and quoted strings for lyrics, labels and font names in the full language. Strings represent literal text.
+
+Declare a short name for one note mark before the parts that use it. For example, `alias v="vibrato" sd="stroke down"` lets you write `5/3[sd]` or `2/2[bend +1 rise=1, v]`. The quoted value is a complete built-in mark. It takes the same attachment position as its long form. Alias names are lowercase and each name has one definition per score.
+
+Write `4-5-6/3` for three successive attacks on string three. Each fret takes the current duration. A suffix such as `4-5-6/3[v]` marks the last attack. Write the notes separately to mark an earlier attack. An unmetered single-voice guitar sketch can contain just the notes, as in `guitar { 4-5-6/3 }`. An explicit meter or barline asks the reader to check the bar length.
 
 The following sketch describes the executable subset. In the grammar, `head` means a named pitch, physical position, or drum instrument, `duration` is a colon-prefixed rhythmic value, and `ratio` is actual:normal. A lowercase name begins with a letter and can contain digits or underscores. A part with one unnamed voice can contain the music directly. A piano declares both hands. Each hand can contain one or several voices. A document may contain multiple parts.
 
 ```ebnf
-document = { meter | pattern | part } ;
+document = { alias | meter | pattern | part } ;
+alias    = "alias" name "=" quotedMark { name "=" quotedMark } ;
 meter    = "meter" fraction ;
 pattern  = "pattern" name "{" sequence "}" ;
 part     = ("guitar" | "staff" | "drums") "{" voices "}"
@@ -82,14 +173,14 @@ voice    = "voice" name "{" sequence "}" ;
 sequence = { duration | attack | "rest" | "skip" | "|" | "use" name
            | "times" count "{" sequence "}" | "tuplet" ratio "{" sequence "}" } ;
 attack   = head [marks] | "(" head [marks] { head [marks] } ")" [marks] ;
-marks    = "[" mark { "," mark } "]" ;
+marks    = "[" (mark | name) { "," (mark | name) } "]" ;
 mark     = "finger" digit [side] | "accent" | "hammer" ;
 ```
 
 - **Head.** `C4`, `Bb3` and `F#5` name pitches. `7/3` names fret 7 on string 3, counted from the highest string. `x/6` is a dead strike. `kick`, `snare` and `hat` name kit instruments. A slash between two numbers in a head always means fret/string. A meter requires the preceding keyword. A `rest` prints a rest and advances time. A `skip` advances time invisibly.
 - **Rhythm.** Each voice starts with quarters. `:h`, `:q`, `:8` and `:16` change the written duration for following events. One or two dots augment it. `:8.` lasts 3/16 of a whole. A chord advances the clock once. A barline checks exact elapsed time and resets the local onset. Its voice keeps the previous duration.
 - **Scope.** A `times` or `tuplet` block inherits the entry duration. Every iteration starts with that same value. The caller resumes its own duration after the block. A pattern starts in quarters on every use. Rewriting a bass rhythm cannot change the register or duration in the melody.
-- **Meter.** The prototype accepts one document-wide meter, default 4/4, and an explicit final barline in every voice. All voices must fill the same measures. The full design adds `pickup 1/8` for a shared initial short bar, `fragment { … }` for an intentionally unmetered excerpt, and meter changes on a shared measure boundary. An incomplete bar should select its written range and report actual and expected lengths.
+- **Meter.** The score defaults to 4/4. A document-level `meter 2/4` applies to instruments that inherit it. Inside a part, write `meter 3/4` before the first note or immediately after a barline. A local signature stays in effect until that part changes it. `meter 3/8 at 4` in the part header schedules the change at its fourth written bar. Use `common`, `cut` or `3+2/8` to preserve a displayed sign. `pickup 1/8` sets a shared opening duration, which must fit each instrument's initial meter. `fragment { :8 C4 D4 E4 }` writes an intentionally short measure.
 - **Pitch in the full design.** Bare `F4` means the fourth-octave F degree in the current key. `Fn4`, `Fb4` and `F#4` choose an exact alteration. A written key change affects every voice on that staff. A change to a preceding attack in another voice cannot respell or retune the input. The engraver manages bar accidental memory and simultaneous conflicts and supplies necessary printed cancellations. `[showSign]` and `[courtesy]` preserve deliberately explicit and cautionary signs. Migration resolves pitches that v1 inherited from earlier notes before generating v2 text.
 - **Attachment.** In `(5/2[finger 2] 7/3[finger 3])[accent]` the fingers belong to physical heads, and the accent belongs to the attack. Attachment kinds are validated after parsing. A source selection on a finger can lead to the specific head. A label on a chord survives pitch-order sorting.
 
@@ -123,9 +214,28 @@ drums { :8 (kick hat) hat (snare hat) hat | }
 staff { tuplet 3:2 { :8 G4 A4 B4 } C5 | }
 ```
 
+### Different meters in the same score
+
+Two bars of 3/4 take as long as three bars of 2/4. Both instruments below start together. The second guitar attack arrives with the fourth quarter note in the melody.
+
+```vextab2
+staff {
+  meter 2/4
+  C4 D4 | E4 F4 | G4 A4 |
+}
+guitar {
+  meter 3/4
+  :h. 0/6 | 3/6 |
+}
+```
+
+To change a signature where you hear it, write `staff { meter 2/4 C4 D4 | meter 3/8 :8 E4 F4 G4 | }`. A change in one voice governs every voice, text lane and piano hand in that instrument. Conflicting declarations on a shared barline select the offending signature. Other instruments keep their own barlines. A shorter part falls silent while the longer one finishes.
+
+`Div` displays the instruments in source order and plays them together from one set of sheet controls. `partIndex` selects one instrument for a view or player. In the parsed score, `parts[i].measureCount` counts the selected instrument's written bars and the score's `measureCount` is the largest count. Each voice measure retains its effective meter, actual duration and the authored signature’s `meterRange`.
+
 ## Expressive notation and VexFlow
 
-The following is a **design coverage map**. Only syntax in the executable subset above has prototype support. This table assigns the remaining current capabilities a spelling and a place in the score model. Acceptance for a production compiler comes from translating and comparing real scores.
+The following is a **design coverage map**. The examples above and the parity ledger describe the implemented subset. This table assigns the remaining current capabilities a spelling and a place in the score model. Acceptance for a production compiler comes from translating and comparing real scores.
 
 | Existing musical intent | Proposed authoring form or rule | Required score data |
 | --- | --- | --- |
@@ -164,7 +274,7 @@ piano {
 - A keyboard part can show simultaneous voices with separate stems, cross-staff material and pedalling. A future cross-staff projection would annotate an event's display staff while keeping its voice, written rhythm and source identity intact.
 - Add one public typed feature at a time. For a hairpin, define its name, valid anchor kinds, endpoint and placement rules, drawing adapter, text description, print projection, and any playback effect. Unsupported effects on a chosen backend get a diagnostic at the mark. Hosts keep supplying trusted rendering and playback code through ordinary APIs. Score text consists of data.
 
-VexFlow **5.6.0**, pinned here, already has shared staff groups/barlines, split chords, span fragments across systems, pedal, trill, ottava, hairpin, tuplet and palm-mute spans, percussion maps, navigation and independent publication. For future grace groups, ornaments, tremolos and multimeasure rests, verify each corresponding screen, print and timing adapter before adding the mark to the public catalogue. The current VexTab publication path explicitly rejects some material, including unsupported explicit-sign projections and diagrams. Rendering conformance must be measured per backend. [Continuous layout](https://github.com/vexflow/vexflow/blob/5.6.0/src/continuouslayout.ts) · [Span kinds and fragment drawing](https://github.com/vexflow/vexflow/blob/5.6.0/src/continuousspan.ts) · [Instrument profiles](https://github.com/vexflow/vexflow/blob/5.6.0/src/instrumentprofile.ts) · [Publication](https://github.com/vexflow/vexflow/blob/5.6.0/src/publication.ts) · [VexTab projection](../src/score/layout.ts)
+VexFlow **5.6.1**, pinned here, already has shared staff groups/barlines, split chords, span fragments across systems, pedal, trill, ottava, hairpin, tuplet and palm-mute spans, percussion maps, navigation and independent publication. For future grace groups, ornaments, tremolos and multimeasure rests, verify each corresponding screen, print and timing adapter before adding the mark to the public catalogue. The current VexTab publication path explicitly rejects some material, including unsupported explicit-sign projections and diagrams. Rendering conformance must be measured per backend. [Continuous layout](https://github.com/vexflow/vexflow/blob/5.6.0/src/continuouslayout.ts) · [Span kinds and fragment drawing](https://github.com/vexflow/vexflow/blob/5.6.0/src/continuousspan.ts) · [Instrument profiles](https://github.com/vexflow/vexflow/blob/5.6.0/src/instrumentprofile.ts) · [Publication](https://github.com/vexflow/vexflow/blob/5.6.0/src/publication.ts) · [VexTab projection](../src/score/layout.ts)
 
 As an extension example, reserve qualified mark names such as `[ornament.turn above]`. A mark definition specifies its target (head, attack, boundary, or span), argument types, units and legal values. The compiler can then locate an invalid direction, a wrong endpoint or a missing print implementation before drawing. A core descriptor can map a pedal line to `ContinuousSpan`, a tremolo to a stem modifier and a grace passage to a pre-attack group whose written time belongs to the anchor. Implement a typed adapter and editor help together. This route can expose new VexFlow primitives without making their JavaScript constructor signatures part of the language.
 
@@ -207,7 +317,7 @@ A parser with no general loop can still expand exponentially. The compiler spend
 
 1. **Agree on the five writing decisions.** Fret/string order, explicit register, named scoped durations/voices, typed attachments and finite pattern use determine most examples. Ask a tab author and a pianist to enter the first-fret phrase, add a head fingering, edit an inner voice and move a repeated phrase. Record mistakes and correction steps. The comparisons above come from reading the existing scores and running the prototype. User testing is still needed.
 2. **Prove musical equivalence.** Translate all guide scores, tutorial snippets, current features and regression fixtures to paired versions. Compare meter, written heads, physical strings, tie endpoint identity, exact durations, simultaneous starts, key changes and playback pitches. Include #121 fingering/placement, two grand-staff hands, the open slide's single attack, transposition around a capo, unpitched kit hits, mixed tuplets, and lyric spans. Preserve the tests for stale selections, responsive breaks, SVG/Canvas and independent parts.
-3. **Use one typed score representation and multiple adapters.** Retain authored tokens and trivia in a revision-indexed syntax tree. Lower to parts → staves → voices → measures → attacks/heads/spans. Give every variant source ranges. Resolve keys, ties and physical playing instructions once. Feed that model to a fixed engraver, a flow/publication adapter, a performance scheduler and reading navigation. During transition, emit a feature/backend capability diagnostic for every missing projection. The prototype produces a smaller plain-data timeline with individual voice-local bars. It does not yet perform full pitch resolution, span traversals, publication, or playback.
+3. **Use one typed score representation and multiple adapters.** Retain authored tokens and trivia in a revision-indexed syntax tree. Lower to parts → staves → voices → measures → attacks/heads/spans. Give every variant source ranges. Resolve keys, ties and physical playing instructions once. Feed that model to a fixed engraver, a flow/publication adapter, a performance scheduler and reading navigation. During transition, emit a feature/backend capability diagnostic for every missing projection. The public parser and score renderer implement the first part of this design. The parity ledger records the qualified score families and publication diagnostics.
 4. **Select the major version explicitly.** Offer a versioned parser entry or `parseScore(source, { language: 2 })` during previews. A new major may choose v2 as its default. Versioning belongs to the host or document header. Guessing from the first symbol makes a broken v2 edit accidentally parse as another language.
 5. **Migrate authored scores with an explicit tool.** Parse v1 using its own semantics, then emit canonical v2 and a change report with source ranges. Preserve literal signs, derive the real attack order of grouped legacy frets, name the target of each backward annotation, and resolve timed text positions. Flag malformed-but-accepted fragments, unsupported output effects and ambiguous defaults for review. Provide a per-score diff before replacing user text. A v1-to-v2 migration of this library's source format is separate from importing music files.
 6. **Set the release gate.** Publish a capability table for fixed SVG/Canvas, responsive SVG, printed parts, navigation and playback. Every currently documented feature needs a translated fixture and either matching observable behavior or an explicit, reviewed major-version change. Grow the syntax for new VexFlow features only after their real scores work. Keep the prototype available for comparison while qualifying the replacement compiler.

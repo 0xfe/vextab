@@ -50,15 +50,15 @@ function observeApiSource() {
 
 // Serve only the local example pages, styles and selected bundles. Remote page fonts
 // are unnecessary for these checks. VexFlow supplies its own notation fonts.
-async function serveExamples(page, dist) {
+async function serveExamples(page, dist, candidate) {
   const content = new Map();
-  for (const [path] of pages) content.set('/' + path, await readFile(path, 'utf8'));
+  for (const [path] of pages) content.set('/' + path, await readFile(candidate ? path : resolve('tests/baseline/v1', path), 'utf8'));
   for (const path of ['doc/style.css', 'doc/vextab.css']) content.set('/' + path, await readFile(path, 'utf8'));
   for (const [requested, bundle] of [
     ['main.dev.js', 'main.prod.js'], ['div.dev.js', 'div.prod.js'], ['vextab-div.js', 'vextab-div.js'],
   ]) {
     let script = await readFile(resolve(dist, bundle), 'utf8');
-    if (requested === 'main.dev.js') script += '\n;(' + observeApiSource.toString() + ')();';
+    if (!candidate && requested === 'main.dev.js') script += '\n;(' + observeApiSource.toString() + ')();';
     content.set('/dist/' + requested, script);
   }
   await page.route('**/*', route => {
@@ -76,14 +76,21 @@ export async function runExamples(browser, dist, verifyInk) {
   page.on('pageerror', err => errors.push(err.message));
   const examples = [];
   try {
-    await serveExamples(page, dist);
-    for (const [path, selector, expectations] of pages) {
+    await serveExamples(page, dist, verifyInk);
+    for (const [path, selector, original] of pages) {
+      const expectations = original.map((text, i) => ({ text, number: String(i + 1) }));
+      // The old chord editor combined notation and bent tablature. Each example now has its own view.
+      if (verifyInk && path === 'doc/tutorial.html') {
+        expectations.splice(9, 0, { text: 'Hold the chord while two strings bend independently.', number: '9b' });
+        const empty = expectations.shift();
+        expectations.splice(2, 0, { text: 'Read the same four attacks in tab view.', number: '3b' }, empty);
+      }
       const count = expectations.length;
       await page.goto('https://examples.test/' + path);
       await page.locator(selector).nth(count - 1).waitFor({ state: 'attached' });
       await page.evaluate(() => document.fonts.ready);
       if (verifyInk && path === 'doc/tutorial.html') {
-        const labels = await page.locator(selector).nth(14).evaluate(svg => {
+        const labels = await page.locator(selector).nth(expectations.findIndex(e => e.number === '15')).evaluate(svg => {
           const { left, right, width } = svg.getBoundingClientRect();
           return { width, clipped: [...svg.querySelectorAll('text')].filter(text => {
             const ink = text.getBoundingClientRect();
@@ -91,11 +98,11 @@ export async function runExamples(browser, dist, verifyInk) {
           }).map(text => text.textContent) };
         });
         assert.equal(labels.width, 650);
-        assert.deepEqual(labels.clipped, [], 'Step 11 articulation labels must fit the printed staff');
+        assert.deepEqual(labels.clipped, [], 'Articulation labels must fit the printed staff');
       }
       const scores = await page.locator(selector).evaluateAll(surfaces => surfaces.map(surface => {
         const host = surface.closest('.vex-tabdiv, .vextab-auto');
-        const source = host?.querySelector('textarea')?.value ?? window.exampleSource;
+        const source = host?.querySelector('textarea')?.value ?? surface.closest('[data-source]')?.dataset.source ?? window.exampleSource;
         const heading = [...document.querySelectorAll('h1,h2')].filter(h =>
           h.compareDocumentPosition(surface) & Node.DOCUMENT_POSITION_FOLLOWING).at(-1)?.textContent;
         let hasInk = !!surface.querySelector('path,text');
@@ -107,11 +114,11 @@ export async function runExamples(browser, dist, verifyInk) {
       }));
       assert.equal(scores.length, count, path);
       for (const [i, score] of scores.entries()) {
-        const id = path + ' example ' + (i + 1);
+        const id = path + ' example ' + expectations[i].number;
         assert.ok(score.source?.trim(), id + ' is missing its source');
         assert.equal(score.error, '', id);
         assert.ok(score.hasInk, id + ' has no visible score');
-        examples.push({ id, expectation: expectations[i], ...score });
+        examples.push({ id, expectation: expectations[i].text, ...score });
       }
       assert.deepEqual(errors, [], path);
     }

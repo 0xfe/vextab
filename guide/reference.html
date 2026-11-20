@@ -4,35 +4,42 @@
   <article id="parser-module"><h3>vextab/parse</h3>
     <p>DOM-free entry point for Node, workers and validators. Exports <code>parseScore</code>, <code>ScoreError</code> and the TypeScript types <code>ParsedScore</code> and <code>SourceRange</code>. CommonJS and ES modules are supported.</p>
     <pre>import { parseScore } from 'vextab/parse';
-const score = parseScore('stave time=1/4\nnotes C/4 |');</pre></article>
+const score = parseScore('meter 1/4 staff { C4 | }');</pre></article>
   <article id="browser-module"><h3>vextab/browser</h3>
     <p>Use this entry for explicit mounting in a browser application. It exports the parser, <code>Div</code>, <code>renderScore</code>, <code>renderScorePart</code>, the <code>Part</code> type, the playback adapters <code>createWebAudioPlayback</code> and <code>createSpessaSynthPlayback</code>, and <code>Artist</code>, <code>VexTab</code>, <code>Player</code> and <code>Vex</code> objects.</p>
     <pre>import { Div, parseScore, renderScore } from 'vextab/browser';</pre></article>
   <article id="auto-module"><h3>vextab/auto and script tags</h3>
     <p>The auto entry mounts each <code>div.vextab-auto</code> on DOM ready. Load <code>dist/div.prod.js</code> for a plain HTML page. The package root and <code>dist/main.prod.js</code> retain the legacy browser API. The old <code>dist/vextab-div.js</code> adapter supports <code>.vex-tabdiv</code>, underscore editor attributes and the original Canvas default.</p>
-    <pre data-language="html">&lt;div class="vextab-auto" editor="true"&gt;tabstave
-notes :q 0-2-3-2/1 |&lt;/div&gt;
+    <pre data-language="html">&lt;div class="vextab-auto" editor="true"&gt;guitar { 0/1 2/1 3/1 2/1 | }&lt;/div&gt;
 &lt;script src="./div.prod.js"&gt;&lt;/script&gt;</pre></article>
 </section>
 <section id="parsing">
   <h2>Parsing and the score model</h2>
-  <article id="parse-score"><h3>parseScore(source): ParsedScore</h3>
-    <p>Pass the original VexTab string. The flow compiler validates measures and resolves voices, pitches, tuplets, ties and spans. It returns a fresh score revision or throws a located <code>ScoreError</code>. Use fixed layout for free-form Artist fragments and legacy gestures.</p></article>
-  <article id="transpose"><h3>options transpose</h3>
+  <article id="parse-score"><h3>parseScore(source)</h3><p>Parse a score once, then pass it to the renderer, printer or player. The returned ScoreV2 retains the original source and the expanded music. Use <code>fragment { … }</code> for an incomplete phrase.</p></article>
+  <article id="note-aliases"><h3>Note-mark aliases and comments</h3>
+    <p>Put <code>alias v="vibrato" sd="stroke down"</code> above a part. Now <code>5/3[sd]</code> has a downstroke and <code>2/2[v]</code> has vibrato. A name expands to one complete built-in mark. Use it in any voice or part in the score.</p>
+    <p>Use <code>#</code> for a line of commentary or after the music. A sharp in <code>F#4</code>, a hex colour such as <code>ink #abc</code>, and text inside quotes keep their musical meaning. <a href="#tutorial/strokes-and-vibrato">Play the example →</a></p>
+  </article>
+  <article id="string-runs"><h3>Same-string fret runs</h3>
+    <p><code>4-5-6/3</code> plays frets four, five and six on string three. Each attack uses the current duration. In <code>4-5-6/3[vibrato]</code> the vibrato belongs to fret six.</p>
+  </article>
+  <article id="part-meters"><h3>Meter by part</h3>
+    <p>Declare <code>meter 3/4</code> inside a staff or guitar part. Change it immediately after a barline, or declare <code>meter 6/8 at 2</code> in the part header. A meter before all parts supplies their default. <a href="#features/measured-music">Compare two parts with different meters →</a></p>
+  </article>
+  <article id="transpose"><h3>transpose</h3>
     <p>Write a signed semitone offset before the first stave. Both the printed signature and the sounding notes move. Guitar notes stay on their original strings. Change the source fingering if a downward shift would require a negative fret.</p>
-    <pre>options transpose=+2
-tabstave notation=true key=C time=4/4
-notes :q 3-5-7-8/5 |</pre>
+    <pre>transpose +2
+meter 4/4
+guitar { key C :q 3/5 5/5 7/5 8/5 | }</pre>
     <p>This shifts C major to D major and displays frets 5, 7, 9, and 10 on string five.</p></article>
-  <article id="parsed-score"><h3>ParsedScore</h3><p><code>source</code> is the original string. <code>measures</code> holds numbered bars, staff state and ordered voices. A voice’s <code>events</code> have an ID, source range, onset, duration and heads. A chord is one event with several heads. Fretted heads carry their string and fret. <code>ties</code> identifies endpoints and chord members. <code>spans</code> includes voltas and palm mutes.</p>
-    <pre>const event = score.measures[0].voices[0].events[0];
-const token = score.source.slice(event.range.start, event.range.end);</pre></article>
-  <article id="score-error"><h3>ScoreError and SourceRange</h3><p><code>error.code</code> is <code>syntax</code>, <code>measure</code> or <code>fixed-layout</code>. The last code identifies notation that needs the fixed renderer or a different projection. <code>range.start</code> is inclusive and <code>range.end</code> exclusive. Both count UTF-16 units in the original text, including CRLF. Lines start at one and columns at zero.</p>
-    <pre>try { parseScore(input.value); }
+  <article id="grammar-v2"><h3>Grammar v2</h3><p>VexTab 6 reads grammar v2 by default. <code>parseScore('staff { :w C4 | }').measureCount</code> is 1. Guitar tablature hides stems by default. Use <code>tabStems on</code> in a guitar part or voice to show its rhythm. Pass the score to <code>renderScore</code>, <code>renderScorePart</code> or <code>Player</code>. Use <code>ScoreV2Error.range</code> to select invalid input. Set <code>{ language: 1 }</code> or <code>data-language="1"</code> when loading a historical score.</p></article>
+  <article id="parsed-score"><h3>ScoreV2</h3><p>A part contains staves and named voices. Each voice has ordered events and a list of measures indexing them. An event has its exact onset, duration, heads and source range.</p><pre>const event = score.parts[0].staves[0].voices[0].events[0];
+const token = score.source.slice(...event.range);</pre></article>
+  <article id="score-error"><h3>ScoreV2Error and source ranges</h3><p>Grammar errors report a one-based line and column. The range contains two UTF-16 offsets into the original input. The end is exclusive.</p><pre>try { parseScore(input.value); }
 catch (error) {
-  if (!(error instanceof ScoreError)) throw error;
+  if (!(error instanceof ScoreV2Error)) throw error;
   input.focus();
-  input.setSelectionRange(error.range.start, error.range.end);
+  input.setSelectionRange(...error.range);
 }</pre></article>
 </section>
 <section id="layout">
@@ -51,7 +58,7 @@ if (range) input.setSelectionRange(range.start, range.end);</pre></article>
     <pre>import { Div } from 'vextab/browser';
 host.setAttribute('layout', 'flow');
 host.setAttribute('editor', 'true');
-host.textContent = 'stave time=1/4\nnotes C/4 |';
+host.textContent = 'meter 1/4 staff { C4 | }';
 const editor = new Div(host);</pre></article>
   <article id="attributes"><h3>Host attributes and defaults</h3>
     <p>Each setting accepts a <code>data-</code> prefix. For example, set <code>data-layout="flow" data-editor="true" data-width="auto"</code> for a responsive editor. A nonempty prefixed value takes precedence over the plain attribute.</p>
@@ -73,36 +80,32 @@ if (revision &amp;&amp; first) editor.selectSource(first.id, revision);</pre></a
 });</pre></article>
   <article id="publication-result"><h3>PublicationResult.pages, diagnostics and toPrintHTML()</h3><p>Each page has an SVG and its musical metadata. Inspect <code>publication.diagnostics</code> for overflow and engraving details. Supply matching outline fonts to <code>toPrintHTML(faces)</code> for an offline print document or <code>toSVG(pageNumber, faces)</code> for a single outlined page. Page numbers start at one. The guide supplies Bravura and Academico.</p></article>
   <article id="piano"><h3>Piano grand staff and hand parts</h3>
-    <p><code>piano key=D time=4/4</code> starts a right-hand treble stave. Add <code>voice hand=left</code> for bass. Share the meter, key changes, bar boundaries and pickups between the hands. Additional voices can use <code>hand=right voice=bottom</code> or <code>hand=left voice=top</code>. Each piano voice starts with a quarter-note duration. A new <code>piano</code> line starts a new row.</p>
+    <p>Put <code>upper { … }</code> and <code>lower { … }</code> inside a piano part. Both hands share the meter, keys and bar boundaries. A hand can contain several named voices. Set <code>stem up</code> and <code>stem down</code> for opposing stems.</p>
     <p>Use <code>layout="flow"</code> for an SVG embed. Modern and legacy embeds initially containing a piano declaration also select flow automatically. For a programmatic score, pass <code>parseScore(source)</code> to <code>renderScore</code> or <code>Player</code>. Pass <code>part: 'left'</code> or <code>'right'</code> to show one hand. The reader and playback follow the visible hand in an embed.</p>
     <p><code>renderScorePart(host, score, 'notation')</code> prints both staves. Use <code>'right'</code> or <code>'left'</code> for a practice part. The optional <code>voice</code> number selects one voice within that hand. Native part <a href="#reference/publication-scope">engraving limits</a> also apply to piano. <a href="#features/piano">Try two-hand and four-voice examples</a>.</p>
   </article>
   <article id="publication-scope"><h3>Independent part coverage</h3><p>Parts preserve augmentation dots, tab ties, repeat boundaries, chord names and notation lyrics. Some marks still need the screen pass, including chord frames, silent positions and explicit written accidentals in single-stave notation parts. Piano parts preserve explicit and cautionary accidentals on each hand. A located error identifies the unsupported mark. Selecting a voice missing from a bar also produces an error.</p></article>
 </section>
 <section id="fixed-api">
-  <h2>Fixed layout and engraving</h2>
-  <article id="artist"><h3>Artist(x, y, width, options?)</h3><p>Use a fixed-layout Artist for the tutorial’s free-form examples. The first two arguments are the drawing origin. Constructor options include <code>scale</code>, <code>font_face</code>, <code>font_size</code> and <code>font_style</code>. The default score text face is Academico. Call <code>artist.reset()</code> before compiling a replacement score.</p></article>
-  <article id="vextab-parser"><h3>new VexTab(artist) and parse(code)</h3><p>The fixed parser compiles into its Artist and returns the parsed elements. <code>isValid()</code> reports whether the most recent parse succeeded. <code>getArtist()</code> returns the bound Artist. Parsing does not paint the score.</p>
-    <pre>import { Artist, VexTab, Vex } from 'vextab/browser';
-const artist = new Artist(10, 10, 500);
-new VexTab(artist).parse('tabstave\nnotes :q 0-2-3-2/1');
-const { Renderer } = Vex.Flow;
-artist.render(new Renderer(host, Renderer.Backends.SVG));</pre></article>
-  <article id="artist-render"><h3>Artist.render(), draw() and setOptions()</h3><p>Pass a VexFlow renderer to <code>render</code> or <code>draw</code> to paint the compiled music. For Canvas, construct the renderer with a canvas element and <code>Renderer.Backends.CANVAS</code>. Use <code>artist.setOptions({ width: '500', scale: '0.8' })</code> and draw again to resize.</p></article>
+  <h2>Rendering a fragment</h2>
+  <article id="artist"><h3>Free-form examples</h3><p>Put an unfinished bar inside a fragment block. Set the host width to keep a fixed-width example.</p></article>
+  <article id="vextab-parser"><h3>Render into SVG or Canvas</h3><pre>const score = parseScore('guitar { fragment { 3/2 5/2 } }');
+renderScore(host, score, { width: 500, renderer: 'canvas' });</pre></article>
+  <article id="artist-render"><h3>Change the view</h3><p>Pass the same score back to renderScore when the available width changes. A Div editor can use setWidth directly.</p></article>
 </section>
 <section id="audio-api">
   <h2>Playback and instruments</h2>
   <article id="player"><h3>Player, tempo and instrument</h3>
-    <p>Pass an Artist or a ParsedScore to <code>new Player(source, options)</code>. Call <code>play()</code> from a user gesture. Its promise resolves at the end or on Stop and rejects on audio errors. <code>stop()</code> cancels a pending load and releases sounding notes. <code>dispose()</code> also removes controls. <code>setTempo(bpm)</code> changes the tempo during playback. <code>setInstrument(program)</code> stops the current performance.</p>
-    <p>In an embed, put <code>options player=true tempo=96 instrument=24</code> before the first stave. Tempo defaults to 120 quarter notes per minute. Instrument accepts a General MIDI program from 0 to 127 or a supported name such as <code>acoustic_guitar_nylon</code>. Use the metronome beside Play to adjust playback tempo. <a href="#features/playback">Play a phrase →</a></p></article>
+    <p>Pass a ScoreV2 to <code>new Player(source, options)</code>. Call <code>play()</code> from a user gesture. Its promise resolves at the end or on Stop and rejects on audio errors. <code>stop()</code> cancels a pending load and releases sounding notes. <code>dispose()</code> also removes controls. <code>setTempo(bpm)</code> changes the tempo during playback. <code>setInstrument(program)</code> stops the current performance.</p>
+    <p>In an embed, put <code>play { tempo 96 instrument 24 }</code> before the first stave. Tempo defaults to 120 quarter notes per minute. Instrument accepts a General MIDI program from 0 to 127 or a supported name such as <code>acoustic_guitar_nylon</code>. Use the metronome beside Play to adjust playback tempo. <a href="#features/playback">Play a phrase →</a></p></article>
   <article id="audio-plugins"><h3>createWebAudioPlayback() and createSpessaSynthPlayback(synth, channels?)</h3>
     <p>Embeds default to a sample-free Web Audio instrument. For a SoundFont host, load the matching worklet and bank, connect the synth to your output, then pass the adapter to the editor. A reserved channel pool lets a bent string change pitch independently of its neighbours. <a href="#quickstart/spessasynth">Set up SpessaSynth and play a SoundFont →</a></p>
     <pre>const playback = createSpessaSynthPlayback(synth);
 const editor = new Div(scoreHost, { playback, player: true });</pre>
     <p><code>player: true</code> enables the sheet controls even for source without a player directive. Custom instruments implement <code>PlaybackPlugin.open(program, signal)</code> and return a session with <code>playNote(note)</code> and <code>stop()</code>.</p></article>
-  <article id="prebend"><h3>Pre-bent attacks · 7z8/3 · 7z8z7/3</h3><p>The physical fret comes first, followed by the raised fret. Optionally repeat the physical fret to release during the attack. Each chord member keeps its own string and pitch. Fixed and flow playback both sound the raised attack and its release. <a href="#features/pre-bends">Hear the release →</a></p></article>
+  <article id="prebend"><h3>Pre-bent attacks</h3><p>Write <code>7/3[prebend +1 release]</code> to pick fret seven with the string already bent up one semitone, then release it during the attack. Omit <code>release</code> to hold the bend. <a href="#features/pre-bends">Hear the release →</a></p></article>
 </section>
 <section id="appearance-api">
   <h2>Score appearance</h2>
-  <article id="ink"><h3>color, !color and label colours</h3><p><code>color=SeaGreen</code> on a stave colours that row and any wrapped rows. <code>!color #1565c0!</code> colours the preceding attack. In flow, <code>!chord "Am" color=crimson!</code> colours a single label. Fixed annotation and text fonts accept an optional fourth field, as in <code>.font=Times-12-italic-darkorange</code>. Use CSS colour names or three-, four-, six- or eight-digit hex. <a href="#features/score-colours">Edit the colours →</a></p></article>
+  <article id="ink"><h3>Staff, attack and label ink</h3><p>Use <code>ink SeaGreen</code> inside the part. Add <code>[ink #1565c0]</code> to colour one attack or <code>[symbol "Am" ink crimson]</code> to colour its chord name. Text lanes and individual labels also accept an ink setting. <a href="#features/score-colours">Edit the colours →</a></p></article>
 </section>

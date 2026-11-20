@@ -1,6 +1,6 @@
 # VexTab 5 user guide and integration
 
-Run `npm ci` and `npm start`. Open the [VexTab tutorial](http://127.0.0.1:9005/guide/). Follow the 15 original steps, explore [features beyond the tutorial](http://127.0.0.1:9005/guide/#features), play the [studies](http://127.0.0.1:9005/guide/#studies), or search the [API reference](http://127.0.0.1:9005/guide/#reference). The same guide works offline by opening `dist/guide/index.html` in the built distribution. From any lesson, **Open in playground** opens the same editable score. **Open original source** links to the repository version of that lesson. Drafts stay in your browser.
+Run `npm ci` and `npm start`. Open the [VexTab tutorial](http://127.0.0.1:9005/guide/). Follow the 14 tutorial steps, explore [features beyond the tutorial](http://127.0.0.1:9005/guide/#features), play the [studies](http://127.0.0.1:9005/guide/#studies), or search the [API reference](http://127.0.0.1:9005/guide/#reference). The same guide works offline by opening `dist/guide/index.html` in the built distribution. From any lesson, **Open in playground** opens the same editable score. **Open original source** links to the repository version of that lesson. Drafts stay in your browser.
 
 ## Learn the language
 
@@ -40,7 +40,7 @@ The detailed references cover [rhythm and fixed-layout syntax](vt5-m1.md), [stav
 ```ts
 import { parseScore, renderScorePart } from 'vextab/browser';
 
-const duet = parseScore(source.value);
+const duet = parseScore(source.value, { language: 2 });
 const { publication } = renderScorePart(preview, duet, 'notation', {
   voice: 2, paper: 'Letter', title: 'Guitar 2',
 });
@@ -57,4 +57,4 @@ Start migration with a complete measure. Flow validates rhythm and wraps at barl
 
 ## Historical tutorial
 
-The [original tutorial](../doc/tutorial.html) and the earlier [tied-chord](../guide/shared-score.html) and [studies](../guide/studies.html) pages retain their paths. The guide uses the same chapter prose, tables and 24 musical examples as the original page. Each step has its own URL and each example has a local draft and reset button. [Start the original walkthrough in the guide](http://127.0.0.1:9005/guide/#tutorial/the-stave)
+The [original tutorial](../doc/tutorial.html) and the earlier [tied-chord](../guide/shared-score.html) and [studies](../guide/studies.html) pages retain their paths. The guide uses the same chapter prose, tables and 26 musical examples as the original page. Each step has its own URL and each example has a local draft and reset button. [Start the original walkthrough in the guide](http://127.0.0.1:9005/guide/#tutorial/notes)

@@ -1,6 +1,6 @@
 # Playback plugins
 
-Add `options player=true tempo=100` before the first stave of an embed to show playback controls on the sheet. This works with the fixed SVG and Canvas renderers, responsive SVG and the legacy `.vex-tabdiv` class. The default embed uses native Web Audio and needs no samples. The first Play gesture opens audio. [Runnable bass chords and guitar pre-bend](../demos/player.html)
+Add `play { tempo 100 }` before the first stave of an embed to show playback controls on the sheet. This works with the fixed SVG and Canvas renderers, responsive SVG and the legacy `.vex-tabdiv` class. The default embed uses native Web Audio and needs no samples. The first Play gesture opens audio. [Runnable bass chords and guitar pre-bend](../demos/player.html)
 
 The controls fade after three seconds. Hover over the sheet, tap it, or tab to a control to reveal them. Hover over the metronome beside Play, or activate it with a tap or keyboard, to adjust the tempo in steps of 5 BPM. Changes apply to upcoming notes during playback and leave the written tempo in the source intact.
 
@@ -35,7 +35,7 @@ async function mountScore() {
 
   const playback = createSpessaSynthPlayback(synth, [0, 1, 2, 3]);
   const host = document.querySelector<HTMLElement>('#score')!;
-  host.textContent = 'options player=true instrument=acoustic_guitar_nylon\nstave\nnotes :q (C/4.E/4.G/4)';
+  host.textContent = 'play { instrument acoustic_guitar_nylon } staff { :w (C4 E4 G4) | }';
   return new Div(host, { playback });
 }
 ```
@@ -49,7 +49,7 @@ To enable the sheet controls from JavaScript, pass <code>{ player: true }</code>
 ```ts
 import { createWebAudioPlayback, parseScore, Player } from 'vextab/browser';
 
-const score = parseScore('tabstave time=2/4\nnotes :q (5/2.7z8z7/3) T5/2');
+const score = parseScore('meter 2/4 guitar { (5/2 7/3[prebend +1 release]) 5/2[tie] | }');
 const player = new Player(score, { playback: createWebAudioPlayback(), tempo: 90 });
 playButton.onclick = () => player.play().catch(showError);
 stopButton.onclick = () => player.stop();

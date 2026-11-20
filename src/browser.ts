@@ -10,7 +10,7 @@ export {
   Vex,
   // Core renderer for VexTab content.
   Artist,
-  // Main parsing + rendering API.
+  // Stateful v2 parser, with explicit v1 support for the fixed-layout Artist.
   VexTab,
   // DOM plugin for rendering inside divs.
   Div,
@@ -18,7 +18,7 @@ export {
   Player,
 };
 
-export { parseScore, ScoreError, type ParsedScore, type SourceRange } from './score/parse';
+export { parseScore, ScoreError, ScoreV2Error, type ScoreV2, type ParsedScore, type SourceRange } from './score/parse';
 export { renderScore, renderScorePart, type Part } from './score/layout';
 
 export { createWebAudioPlayback } from './playback/web-audio';

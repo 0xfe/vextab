@@ -1,5 +1,8 @@
 # Responsive guitar scores and lead sheets
 
+Historical VexTab 5 report. Its examples use the version 1 grammar. See the [current tutorial](../doc/tutorial.html) for grammar v2.
+
+
 Run `npm ci` and `npm start`, then open the [editable guitar and lead-sheet studies](http://127.0.0.1:9005/guide/studies.html). The packaged guide opens offline at `dist/guide/studies.html`. Switch studies to keep an edit in the current page session. **Reset study** restores the selected score.
 
 ## Play the Drop D turnaround

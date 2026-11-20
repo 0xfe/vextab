@@ -31,4 +31,4 @@ $(() => { if (Div.SEL) Div.start(); });
 
 export { Artist, Div, Flow, VexTab };
 
-export { Player, createWebAudioPlayback, createSpessaSynthPlayback } from './browser';
+export { parseScore, renderScore, renderScorePart, ScoreError, ScoreV2Error, Player, createWebAudioPlayback, createSpessaSynthPlayback } from './browser';

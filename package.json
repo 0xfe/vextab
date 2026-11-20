@@ -1,6 +1,6 @@
 {
     "name": "vextab",
-    "version": "5.0.0",
+    "version": "6.0.0",
     "author": {
         "name": "Mohit Muthanna Cheppudira",
         "email": "mohit@muthanna.com",
@@ -14,7 +14,7 @@
     },
     "license": "LicenseRef-LICENSE",
     "dependencies": {
-        "vexflow": "5.6.0"
+        "vexflow": "5.6.1"
     },
     "devDependencies": {
         "@lahmatiy/jison": "0.4.18-remastered.7",
@@ -51,7 +51,9 @@
         "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
         "lint": "oxlint --deny-warnings src guide tests scripts tools webpack.config.js",
         "typecheck": "tsc --noEmit",
-        "test": "npm run build-dev && node scripts/test-browser.mjs",
+        "test:corpus": "node scripts/check-corpus.mjs && node scripts/test-migration.mjs",
+        "migrate:score": "node scripts/migrate-score.mjs",
+        "test": "npm run build-dev && npm run test:corpus && node scripts/test-browser.mjs",
         "test:baseline": "node scripts/test-baseline.mjs",
         "prepack": "npm run clean && npm run build-dev && npm run build",
         "report:setup": "npm ci --prefix tools --ignore-scripts",
@@ -69,7 +71,9 @@
         "guitar",
         "tablature"
     ],
+    "bin": { "vextab-migrate": "scripts/migrate-score.mjs" },
     "files": [
+        "scripts/migrate-score.mjs",
         "dist",
         "src",
         "SECURITY.md"

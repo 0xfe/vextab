@@ -8,7 +8,7 @@ type Instrument = { tuning: Tuning; capo: number };
 type Reject = (token: Token, message: string) => never;
 
 /** Pick a conventional major or minor signature, then use its diatonic interval for every note. */
-class Interval {
+export class Interval {
   readonly steps: number;
   readonly target: string;
 
@@ -78,7 +78,7 @@ function transposeHead(note: Token, interval: Interval, instrument: Instrument, 
 }
 
 /** Transpose conventional chord roots and slash basses. Free-form labels, lyrics and annotations are text. */
-function transposeChord(label: string, interval: Interval): string {
+export function transposeChord(label: string, interval: Interval): string {
   const match = /^([A-G][#b]?)([^\s/]*)(?:\/([A-G][#b]?))?$/.exec(label);
   if (!match || !/^(?:maj|min|dim|aug|sus|add|omit|no|alt|m|M|Δ|ø|°|[0-9#+b(),−-])*$/.test(match[2])) return label;
   const name = (root: string) => {
