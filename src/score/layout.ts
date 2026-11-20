@@ -2,6 +2,7 @@
 import { drumKit } from './drums';
 import { attachOpenSlide, describeOpenSlide, drawPrintedOpenSlides } from './open-slide';
 import { inkStyle } from './color';
+import { PrintedPianoAccidentals } from './piano-publication';
 import { colorPublication } from './publication-color';
 import { scoreFont } from './engraving';
 import {
@@ -11,26 +12,33 @@ import {
 } from 'vexflow';
 import { describePrebend, makePrebend } from './music';
 import { leadMarks, drawFrames } from './lead';
-import type { Attack, Measure, MeasureVoice, ParsedScore, ScoreSpan } from './model';
+import type { Attack, Measure, MeasureVoice, ParsedScore, PianoHand, ScoreSpan } from './model';
 import { ScoreError, type SourceRange } from './source';
 
-type Staff = 'notation' | 'tab';
+type Staff = 'notation' | 'tab' | PianoHand;
 export type Part = 'score' | Staff;
 
 /** Different views may coexist in one document. Keep DOM IDs unique and musical IDs stable. */
 let nextView = 0;
 function projections(parsed: ParsedScore, part: Part): Staff[] {
-  const choices: Staff[] = ['notation', 'tab'];
   const initial = parsed.measures[0].state;
-  const staves = choices.filter(s => initial[s] && (part === 'score' || part === s));
-  if (!staves.length) throw new ScoreError('fixed-layout', `No ${part} staff in this score`, parsed.measures[0].range);
+  const choices: Staff[] = initial.piano ? ['right', 'left']
+    : (['notation', 'tab'] as const).filter(s => initial[s]);
+  const staves = choices.filter(s => part === 'score' || part === s || (initial.piano && part === 'notation'));
+  if (!staves.length) throw new ScoreError('fixed-layout', `No ${part} staff in this score`, initial.declaration);
   for (const m of parsed.measures) {
-    if (choices.some(s => (part === 'score' || part === s) && m.state[s] !== initial[s]) ||
+    if (m.state.piano !== initial.piano || (['notation', 'tab'] as const).some(s =>
+        (part === 'score' || part === s) && m.state[s] !== initial[s]) ||
         (staves.includes('tab') && m.state.strings !== initial.strings)) {
-      throw new ScoreError('fixed-layout', 'Use fixed layout for a change of staff configuration', m.state.declaration);
+      throw new ScoreError('fixed-layout', 'A flow score must keep its staff configuration', m.state.declaration);
     }
   }
   return staves;
+}
+
+/** Guitar projects the same voices twice. Piano assigns each voice to one physical stave. */
+function voicesFor(measure: Measure, staff: Staff): MeasureVoice[] {
+  return measure.state.piano ? measure.voices.filter(voice => voice.hand === staff) : measure.voices;
 }
 
 /** Resolve geometry or a publication ID only against the source revision that produced it. */
@@ -73,12 +81,15 @@ function guitarNotation(event: Attack, instrument: FrettedInstrument) {
 }
 
 /** Both projections use the written duration, including dots before tuplet scaling. */
-function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources: Sources, index: number): EasyScoreVoiceSpec {
-  const direction = voice.stem ?? (measure.voices.length > 1 ? (index === 0 ? 'up' : 'down') : undefined);
+function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources: Sources, index: number, voiceCount: number, printedSigns?: PrintedPianoAccidentals): EasyScoreVoiceSpec {
+  const direction = voice.stem ?? (voiceCount > 1 ? (index === 0 ? 'up' : 'down') : undefined);
   const stemDirection = direction ? (direction === 'up' ? 1 : -1) : staff === 'tab' ? voice.tabDirection : undefined;
   const instrument = new FrettedInstrument(measure.state.tuning, measure.state.capo);
+  const clef = staff === 'left' ? 'bass' : measure.state.clef;
   const notes: EasyScoreContent[] = voice.events.map(event => {
     const id = sources.project(staff, event.id, event.range);
+    const marked = printedSigns?.note(id, event);
+    if (marked) return marked;
     const rhythm = { duration: event.base, dots: event.dots, stemDirection };
     if (!event.heads.length) return { id, note: { ...rhythm, keys: ['r/4'], clef: 'treble', type: 'r' } };
     if (event.heads[0].drum) {
@@ -90,11 +101,11 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     if (staff === 'tab') {
       return { id, tab: { ...rhythm, keys, notation, positions: event.heads.map(h => ({ ...h.position! })) }, drawStem: voice.tabStems && !['w', '1'].includes(event.base) };
     }
-    return { id, note: { ...rhythm, keys, notation, clef: measure.state.clef, type: event.slash ? 's' : 'n', autoStem: !direction } };
+    return { id, note: { ...rhythm, keys, notation, clef, type: event.slash ? 's' : 'n', autoStem: !direction } };
   });
   return {
     notes, stem: direction ?? 'auto',
-    autoBeam: voice.beams && (staff === 'notation' || voice.tabStems) && {
+    autoBeam: voice.beams && (staff !== 'tab' || voice.tabStems) && {
       stemDirection, beamRests: voice.beamRests, showStemlets: voice.stemlets, beamMiddleOnly: voice.middleRests },
     tuplets: voice.tuplets.map(t => ({ start: t.start, count: t.count, options: { numNotes: t.numNotes, notesOccupied: t.notesOccupied } })),
   };
@@ -117,6 +128,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
     }
   }
   const sources = new Sources(parsed.source);
+  const printedSigns = publication && parsed.measures[0].state.piano ? new PrintedPianoAccidentals() : undefined;
   const eventId = sources.id;
   const spans: ContinuousSpan[] = [];
   // VexFlow can draw a tab ending between two TabNotes or two rendered rests.
@@ -127,18 +139,30 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
     accidentals: 'key-aware', sheet: { width, x: 10, y: 14, rowGap: 36 }, system: { spaceBetweenStaves: 9 },
     staves: staves.map(staff => ({
       id: staff, kind: staff === 'tab' ? 'tab' : 'stave',
+      // Native instrument labels reserve horizontal room for the brace on every printed system.
+      ...(staff === 'right' && { name: 'R.H.', shortName: 'R.H.' }),
+      ...(staff === 'left' && { name: 'L.H.', shortName: 'L.H.' }),
       options: staff === 'tab' ? { numLines: parsed.measures[0].state.strings } : {},
-      measures: parsed.measures.map(m => ({
-        clef: staff === 'tab' ? 'tab' : m.state.clef, key: m.state.key, time: m.state.meter, span: m.span,
-        showTimeSignature: m.state.showTime && !(staff === 'tab' && staves.includes('notation')),
-        endBarline: writtenEndBar(m),
-        ...(staff === staves[0] && leadMarks(m, staff, id => eventId(staff, id), publication || !staves.includes('tab'))),
-        voices: m.voices.map((v, index) => voiceSpec(v, m, staff, sources, index)),
-      })),
+      measures: parsed.measures.map(m => {
+        const voices = voicesFor(m, staff);
+        const showMarks = staff === staves[0] || m.state.piano;
+        const clef = staff === 'tab' ? 'tab' : staff === 'left' ? 'bass' : m.state.clef;
+        return {
+          clef, key: m.state.key, time: m.state.meter, span: m.span,
+          showTimeSignature: m.state.showTime && !(staff === 'tab' && staves.includes('notation')),
+          endBarline: writtenEndBar(m),
+          ...(showMarks && leadMarks({ ...m, voices }, staff === 'tab' ? 'tab' : 'notation',
+            id => eventId(staff, id), publication || !staves.includes('tab'))),
+          voices: voices.map((v, index) => voiceSpec(v, m, staff, sources, index, voices.length, printedSigns)),
+        };
+      }),
     })),
     continuous: {
       courtesy: false, measureNumbers: parsed.measureNumbers, spans,
-      groups: staves.length === 2 ? [{ first: 'notation', last: 'tab', type: 'bracket' }] : [],
+      groups: staves.length === 2 ? [{
+        first: staves[0], last: staves[1], type: parsed.measures[0].state.piano ? 'brace' : 'bracket',
+        barlines: !!parsed.measures[0].state.piano,
+      }] : [],
       boundaries: parsed.measures.map(m => ({
         measure: m.number, rehearsal: m.voices[0].rehearsal, breakBefore: m.newRow && m.number > 1 ? 'force' : undefined,
         repeatStart: ['repeat-begin', 'repeat-both'].includes(m.voices[0].opening?.type),
@@ -147,10 +171,12 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
     },
   };
   for (const tie of parsed.ties) {
-    for (const staff of staves) spans.push({
-      kind: 'tie', id: sources.project(staff, tie.id, tie.range), from: eventId(staff, tie.from),
-      to: eventId(staff, tie.to), fromHead: tie.fromHead, toHead: tie.toHead,
-    });
+    for (const staff of staves) {
+      const from = eventId(staff, tie.from);
+      if (!sources.ids[from]) continue;
+      spans.push({ kind: 'tie', id: sources.project(staff, tie.id, tie.range), from,
+        to: eventId(staff, tie.to), fromHead: tie.fromHead, toHead: tie.toHead });
+    }
   }
   for (const mark of parsed.spans ?? []) {
     if (mark.kind === 'palmMute' && !staves.includes('tab')) {
@@ -163,7 +189,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
     else if (staff === 'tab' && rests.has(mark.from) !== rests.has(mark.to)) mixedEndings.push(mark);
     else spans.push({ ...endpoints, kind: mark.kind, text: mark.label });
   }
-  return { spec, staves, sources, eventId, mixedEndings };
+  return { spec, staves, sources, eventId, mixedEndings, printedSigns };
 }
 type Projection = ReturnType<typeof project>;
 
@@ -197,7 +223,7 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
         composition.staves[m.number - 1][index].setStyle(inkStyle(staveColor));
         for (const voice of composition.voices[m.number - 1][index]) voice.setStyle(inkStyle(staveColor));
       }
-      for (const voice of m.voices) for (const event of voice.events) {
+      for (const voice of voicesFor(m, staff)) for (const event of voice.events) {
         const note = composition.getNote(view.eventId(staff, event.id));
         if (event.color) {
           note.setStyle(inkStyle(event.color));
@@ -222,7 +248,7 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
           if (!event.heads.length) note.renderOptions.draw = false;
         }
         // Native lead descriptors own the engraving. Retain the authored source IDs for diagnostics.
-        if (staff === view.staves[0]) {
+        if (staff === view.staves[0] || m.state.piano) {
           for (const mark of note.getModifiers()) {
             if (!(mark instanceof Annotation)) continue;
             const kind = mark.getVerticalJustification() === Annotation.VerticalJustify.TOP ? 'chord' : 'lyric';
@@ -231,7 +257,7 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
             if (range) mark.setAttribute('id', view.sources.project(staff, kind + range.start, range));
           }
         }
-        if (staff !== 'notation') continue;
+        if (staff === 'tab') continue;
         event.heads.forEach((head, i) => {
           if (!head.accidental) return;
           let mark = note.getModifiers().find((m): m is Accidental => m instanceof Accidental && m.getIndex() === i);
@@ -280,7 +306,9 @@ function drawTabEndings(view: Projection, composition: EasyScoreComposition, ctx
 export function renderScore(host: HTMLElement, parsed: ParsedScore, options: { width?: number; part?: Part } = {}) {
   const width = options.width ?? (host.clientWidth || 640);
   if (!Number.isFinite(width) || width <= 20) throw new RangeError('Score width must exceed 20 pixels');
-  const view = project(parsed, options.part ?? 'score', width - 20);
+  const part = options.part ?? 'score';
+  parsed = selectVoices(parsed, part);
+  const view = project(parsed, part, width - 20);
   const surface = document.createElement('div');
   const ctx = new SVGContext(surface);
   const frames = drawFrames(parsed, width, ctx, (id, range) => view.sources.project(view.staves[0], id, range));
@@ -321,18 +349,28 @@ export function renderScore(host: HTMLElement, parsed: ParsedScore, options: { w
       diagnostics.push({ code: d.code, measures: [m.number], source, range: view.sources.rangeFor(source, parsed.source) ?? m.range });
     }
   }
-  return { composition, navigation, hitTest, tabRegions, extraRegions, diagnostics,
+  return { score: parsed, composition, navigation, hitTest, tabRegions, extraRegions, diagnostics,
     rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };
 }
 
-/** Extract one numbered voice across all measures. Shared endings follow its boundary events. */
-function selectVoice(score: ParsedScore, number: number): ParsedScore {
+/** Independent hands and parts retain their boundaries, source IDs and shared endings. */
+function selectVoices(score: ParsedScore, part: Part, number?: number): ParsedScore {
+  const hand = part === 'right' || part === 'left' ? part : undefined;
+  if (!hand && number === undefined) return score;
+  if (hand && !score.measures[0].state.piano) throw new ScoreError('measure', 'A hand part needs a piano score', score.measures[0].range);
+  if (!hand && score.measures[0].state.piano && number !== undefined) {
+    throw new ScoreError('measure', 'Choose a hand before selecting its voice', score.measures[0].range);
+  }
   const events = new Set<string>();
   const measures = score.measures.map(m => {
-    const voice = m.voices[number - 1];
-    if (!Number.isInteger(number) || !voice) throw new ScoreError('measure', 'Missing voice ' + number + ' in bar ' + m.number, m.range);
-    for (const event of voice.events) events.add(event.id);
-    return { ...m, voices: [{ ...voice, stem: undefined, rehearsal: m.voices[0].rehearsal }] };
+    let voices = hand ? voicesFor(m, hand) : m.voices;
+    if (number !== undefined) {
+      const voice = voices[number - 1];
+      if (!Number.isInteger(number) || !voice) throw new ScoreError('measure', 'Missing voice ' + number + ' in bar ' + m.number, m.range);
+      voices = [{ ...voice, stem: undefined }];
+    }
+    for (const voice of voices) for (const event of voice.events) events.add(event.id);
+    return { ...m, voices: voices.map((v,i) => i ? v : { ...v, rehearsal: m.voices[0].rehearsal }) };
   });
   const ties = score.ties.filter(t => events.has(t.from) && events.has(t.to));
   const spans = (score.spans ?? []).filter(s => s.kind === 'volta' || events.has(s.from)).map(s => {
@@ -347,7 +385,7 @@ function selectVoice(score: ParsedScore, number: number): ParsedScore {
 export function renderScorePart(host: HTMLElement, parsed: ParsedScore, part: Staff,
   options: Omit<PublicationOptions, 'staves'> & { voice?: number } = {}) {
   const { voice, ...paper } = options;
-  if (voice !== undefined) parsed = selectVoice(parsed, voice);
+  parsed = selectVoices(parsed, part, voice);
   const view = project(parsed, part, 600, true);
   const unsupported = (feature: string, range: SourceRange): never => {
     throw new ScoreError('fixed-layout', `Independent ${part} parts cannot engrave ${feature} yet`, range);
@@ -359,14 +397,15 @@ export function renderScorePart(host: HTMLElement, parsed: ParsedScore, part: St
       for (const event of voice.events) {
         if (event.frame) unsupported('a chord frame', event.frame.range);
         if (event.silent) unsupported('a silent position', event.silent);
-        const sign = part === 'notation' && event.heads.find(h => h.accidental);
-        if (sign) unsupported('an explicit accidental', sign.range);
+        const sign = part !== 'tab' && event.heads.find(h => h.accidental);
+        if (sign && !view.printedSigns) unsupported('an explicit accidental', sign.range);
         if (part === 'tab' && !voice.tabStems && !event.heads.length) unsupported('a silent tab rest', event.range);
       }
     }
   }
+  if (view.printedSigns) paper.noteHooks = [view.printedSigns.hook, ...(paper.noteHooks ?? [])];
   const publication = new Publication(view.spec).render(host, paper);
   if (part === 'tab') drawPrintedOpenSlides(publication, parsed, event => view.eventId(part, event.id));
-  colorPublication(publication, parsed, event => view.eventId(part, event.id));
+  colorPublication(publication, parsed, (event, voice) => view.eventId(voice.hand ?? part, event.id));
   return { publication, rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };
 }

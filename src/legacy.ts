@@ -1,6 +1,6 @@
 // Preserve the original VexTabDiv global and markup using the current renderer.
 import './auto';
-import ModernDiv, { type DivOptions, Artist, Vex, VexTab } from './div';
+import ModernDiv, { type DivOptions, Artist, Vex, VexTab, usesFlowLayout } from './div';
 
 /** Adapter for pages that use the original class, attributes, and canvas default. */
 class Div extends ModernDiv {
@@ -13,7 +13,8 @@ class Div extends ModernDiv {
       if (legacy && !host.attr(`editor-${name}`)) host.attr(`editor-${name}`, legacy);
     }
     if (!host.attr('renderer')) {
-      host.attr('renderer', 'VEXTAB_USE_SVG' in window || 'Raphael' in window ? 'svg' : 'canvas');
+      const svg = usesFlowLayout(host[0], host.text()) || 'VEXTAB_USE_SVG' in window || 'Raphael' in window;
+      host.attr('renderer', svg ? 'svg' : 'canvas');
     }
     super(selector, options);
   }

@@ -28,6 +28,12 @@ function embedAttribute(host: HTMLElement, name: string, legacyName?: string): s
     || host.getAttribute(name);
 }
 
+/** A grand staff needs the shared measure formatter. An explicit embed layout wins. */
+export function usesFlowLayout(host: HTMLElement, source: string): boolean {
+  const layout = embedAttribute(host, 'layout');
+  return layout === 'flow' || (!layout && /^[ \t]*piano(?:\s|$)/m.test(source));
+}
+
 /** Host integrations can supply an instrument without loading any synthesizer into VexTab. */
 export interface DivOptions { playback?: PlaybackPlugin }
 
@@ -88,7 +94,7 @@ class Div {
     this.width = parseInt(width, 10) || 400;
     this.scale = parseFloat(embedAttribute(host, 'scale')) || 1.0;
     this.rendererBackend = embedAttribute(host, 'renderer') || 'svg';
-    this.flow = embedAttribute(host, 'layout') === 'flow';
+    this.flow = usesFlowLayout(host, this.code);
     host.classList.toggle('vextab-flow', this.flow);
 
     this.editor = embedAttribute(host, 'editor') || '';
@@ -271,7 +277,7 @@ class Div {
     this.player?.dispose();
     this.player = undefined;
     if (score.playback?.enabled) {
-      const player = this.player = new Player(score, { playback: this.playback });
+      const player = this.player = new Player(layout.score, { playback: this.playback });
       const events = new Map(layout.navigation.events.map(event => [event.source, event.id]));
       player.render(next.querySelector('svg'), id => {
         const glyph = layout.composition.getNote(events.get(id));
