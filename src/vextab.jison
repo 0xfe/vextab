@@ -57,6 +57,9 @@
 
 /* These are valid inside fret/string expressions only */
 
+/* Named, unpitched instruments use the native VexFlow kit. */
+<notes>("kick"|"snare"|"hat")   return 'DRUM'
+
 /* Articulations */
 <notes>[b]                return 'b'
 <notes>[s]                return 's'
@@ -232,6 +235,10 @@ notes
 lingo
   : line
     { $$ = $1 }
+  | drum
+    { $$ = [{drums: [$1], _l: @1.first_line, _c: @1.first_column}] }
+  | '(' drum_hits ')'
+    { $$ = [{drums: $2, _l: @1.first_line, _c: @1.first_column}] }
   | chord
     { $$ = $1 }
   | time
@@ -289,6 +296,19 @@ lingo
         params: $1
       }]
     }
+  ;
+
+/* A parenthesized group has one duration and one source range per instrument. */
+drum
+  : DRUM
+    { $$ = {id: $1, ...(yy.locate ? {range: yy.locate(@1)} : {})} }
+  ;
+
+drum_hits
+  : drum
+    { $$ = [$1] }
+  | drum_hits '.' drum
+    { $$ = [].concat($1, $3) }
   ;
 
 bar

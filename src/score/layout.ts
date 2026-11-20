@@ -1,4 +1,5 @@
 // Project the shared score into fresh VexFlow objects for each screen or publication view.
+import { drumKit } from './drums';
 import { inkStyle } from './color';
 import { colorPublication } from './publication-color';
 import { scoreFont } from './engraving';
@@ -78,6 +79,10 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     const id = sources.project(staff, event.id, event.range);
     const rhythm = { duration: event.base, dots: event.dots, stemDirection };
     if (!event.heads.length) return { id, note: { ...rhythm, keys: ['r/4'], clef: 'treble', type: 'r' } };
+    if (event.heads[0].drum) {
+      const hit = drumKit.note(event.heads.map(head => head.drum), event.base, direction);
+      return { id, note: { ...hit, dots: event.dots } };
+    }
     const notation = guitarNotation(event, instrument);
     const keys = event.heads.map(h => h.position?.fret === 'X' ? h.written + '/X' : h.written);
     if (staff === 'tab') {

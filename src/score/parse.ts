@@ -1,5 +1,6 @@
 // Compile located Jison events to aligned measures without creating rendering objects.
 import { Fraction, KeyManager, Music, Tuning, VexFlow } from 'vexflow';
+import { drumError, drumKit } from './drums';
 import { isScoreColor } from './color';
 import { readSyntax, ScoreError, type SourceRange } from './source';
 import { VoiceCommands, resolveMarks } from './commands';
@@ -90,8 +91,8 @@ function staffState(node: Token): StaffState {
         if (!Number.isInteger(state.strings) || state.strings < 4 || state.strings > 8) invalid(opt, 'Expected 4–8 strings');
         break;
       case 'clef':
-        if (['percussion', 'none'].includes(opt.value)) fixed(opt, `clef '${opt.value}'`);
-        if (!['treble', 'bass', 'tenor', 'alto'].includes(opt.value)) invalid(opt, 'Invalid clef');
+        if (opt.value === 'none') fixed(opt, `clef '${opt.value}'`);
+        if (!['treble', 'bass', 'tenor', 'alto', 'percussion'].includes(opt.value)) invalid(opt, 'Invalid clef');
         state.clef = opt.value;
         break;
       case 'voice': break; // Applied when the voice is opened.
@@ -174,6 +175,15 @@ function chordHead(note: Token, state: StaffState, tuning: Tuning, manager: KeyM
   return { range: note.range, written: name + '/' + octave, sounding, position, ...(note.prebend && { prebend: note.prebend }) };
 }
 
+/** Keep each drum's identity and source range separate from its display-only staff key. */
+function kitHeads(node: Token, state: StaffState, slash: boolean): Head[] {
+  const ids: string[] = node.drums.map(hit => hit.id);
+  const error = drumError(state.clef, state.tab, ids, slash);
+  if (error) invalid(node, error);
+  const { keys } = drumKit.note(ids, 'q');
+  return ids.map((drum, i) => ({ drum, range: node.drums[i].range, written: keys[i], sounding: null }));
+}
+
 /** Match each tied head once. Reordering the destination chord preserves string identity. */
 function connect(previous: Attack | undefined, next: Attack, indexes: number[], ties: Tie[], token: Token) {
   const used = new Set<number>();
@@ -244,10 +254,11 @@ function compileVoice(voiceNode: Token, state: StaffState, settings: Settings, d
     if (node.decorator || (node.articulation && !['T', '-'].includes(node.articulation))) {
       fixed(node, `technique '${node.decorator || node.articulation}'`);
     }
-    if (!node.command && !node.chord && !node.abc && node.fret === undefined) continue;
+    if (!node.command && !node.chord && !node.drums && !node.abc && node.fret === undefined) continue;
     const members: Token[] = node.command === 'rest' ? [] : node.chord ?? [node];
     if (node.chord && members.some(n => n.time)) fixed(node, 'duration changes inside a chord');
-    const heads = members.map(n => chordHead(n, state, tuning, manager, music, cursor.rhythm.slash));
+    const heads = node.drums ? kitHeads(node, state, cursor.rhythm.slash)
+      : members.map(n => chordHead(n, state, tuning, manager, music, cursor.rhythm.slash));
     const strings = heads.flatMap(h => h.position ? [h.position.str] : []);
     if (new Set(strings).size !== strings.length) fixed(node, 'a multi-stop chord on one string');
     const { base, dots, slash } = cursor.rhythm;
