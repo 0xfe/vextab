@@ -15,6 +15,7 @@
 
 <INITIAL>"notes"              { this.begin('notes'); return 'NOTES'; }
 <INITIAL>"tabstave"           { this.begin('options'); return 'TABSTAVE'; }
+<INITIAL>"piano"              { this.begin('options'); return 'PIANO'; }
 <INITIAL>"stave"              { this.begin('options'); return 'STAVE'; }
 <INITIAL>"voice"              { this.begin('options'); return 'VOICE'; }
 <INITIAL>"options"            { this.begin('options'); return 'OPTIONS'; }
@@ -46,6 +47,8 @@
 "="                       return '='
 "("                       return '('
 ")"                       return ')'
+/* A slash inside a bracketed run belongs to an ordinary explicit beam. */
+<notes>\[([f]|[>])[^\]/\r\n]*\]  return 'HEAD_MARKS'
 "["                       return '['
 "]"                       return ']'
 "^"                       return '^'
@@ -56,6 +59,9 @@
 "@"                       return '@'
 
 /* These are valid inside fret/string expressions only */
+
+/* Named, unpitched instruments use the native VexFlow kit. */
+<notes>("kick"|"snare"|"hat")   return 'DRUM'
 
 /* Articulations */
 <notes>[b]                return 'b'
@@ -72,6 +78,9 @@
 <notes>[V]                return 'V'
 <notes>[u]                return 'u'
 <notes>[d]                return 'd'
+
+/* The marker points toward the free end's fret and binds to one numeric fret. */
+<notes>[<>]               return 'SLIDE_END'
 
 /* A pre-bend has one picked attack, its raised pitch, and an optional release. */
 <notes>[0-9]+z[0-9]+(z[0-9]+)?  return 'PREBEND'
@@ -157,6 +166,7 @@ stave
 voice
   : TABSTAVE
   | STAVE
+  | PIANO
   | VOICE
   ;
 
@@ -232,6 +242,10 @@ notes
 lingo
   : line
     { $$ = $1 }
+  | drum
+    { $$ = [{drums: [$1], _l: @1.first_line, _c: @1.first_column}] }
+  | '(' drum_hits ')'
+    { $$ = [{drums: $2, _l: @1.first_line, _c: @1.first_column}] }
   | chord
     { $$ = $1 }
   | time
@@ -291,6 +305,19 @@ lingo
     }
   ;
 
+/* A parenthesized group has one duration and one source range per instrument. */
+drum
+  : DRUM
+    { $$ = {id: $1, ...(yy.locate ? {range: yy.locate(@1)} : {})} }
+  ;
+
+drum_hits
+  : drum
+    { $$ = [$1] }
+  | drum_hits '.' drum
+    { $$ = [].concat($1, $3) }
+  ;
+
 bar
   : '|'         { $$ = 'single' }
   | '=' '|' '|' { $$ = 'double' }
@@ -301,13 +328,20 @@ bar
   ;
 
 line
-  : frets maybe_decorator '/' string
+  : frets maybe_decorator '/' string maybe_head_marks
     {
       _.extend(_.last($1), {decorator: $2})
       _.each($1, function(fret) { fret['string'] = $4 })
-      if (yy.locate) _.last($1).range.end = yy.locate(@4).end
+      if ($5) _.last($1).suffix = $5
+      if (yy.locate) _.last($1).range.end = yy.locate($5 ? @5 : @4).end
       $$ = $1
     }
+  ;
+
+/* A note suffix also works on an individual head inside a parenthesized chord. */
+maybe_head_marks
+  : HEAD_MARKS { $$ = { text: $1, range: yy.markRange(@1) } }
+  |            { $$ = null }
   ;
 
 chord_line
@@ -327,6 +361,10 @@ chord
 fret
   : NUMBER
     { $$ = {fret: $1} }
+  | SLIDE_END NUMBER
+    { $$ = { fret: $2, openSlide: { edge: 'in', side: $1 === '>' ? 'above' : 'below' } } }
+  | NUMBER SLIDE_END
+    { $$ = { fret: $1, openSlide: { edge: 'out', side: $2 === '>' ? 'above' : 'below' } } }
   | PREBEND
     { $$ = yy.prebend($1, @$) }
   ;

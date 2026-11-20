@@ -10,7 +10,7 @@ const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElem
 const button = (id: string) => el<HTMLButtonElement>(id);
 const choice = (id: string) => el<HTMLSelectElement>(id);
 const drafts = new Map<string, string>();
-const views: Record<Part, string> = { score:'Paired', notation:'Notation', tab:'Tab' };
+const views: Record<Part, string> = { score:'Paired', notation:'Notation', tab:'Tab', right:'Right hand', left:'Left hand' };
 let lesson: Lesson;
 let editor: Div;
 let partner: Div;

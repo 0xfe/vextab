@@ -1,5 +1,6 @@
 // Layout-independent score values. Fractions are reduced strings in whole notes.
 import type { FretDiagramSpec, TimedStringBend } from 'vexflow';
+import type { HeadMark } from './shorthand';
 import type { SourceRange } from './source';
 
 /** One picked attack starts above the physical fret and may return to it. */
@@ -8,14 +9,23 @@ export interface Prebend {
   release: boolean;
 }
 
+/** The free end lies above or below the played fret in pitch. */
+export interface OpenSlide {
+  edge: 'in' | 'out';
+  side: 'above' | 'below';
+}
+
 export interface Head {
   range: SourceRange;
   written: string;
+  marks?: HeadMark[]; // Bracketed fingering or accent attached to this head.
+  drum?: string; // VexFlow kit identity. The written key supplies staff placement only.
   sounding: string | null; // A dead strike has a display position and no pitch.
   position?: { str: number; fret: number | 'X' };
   accidental?: string;
   cautionary?: boolean;
   prebend?: Prebend;
+  openSlide?: OpenSlide;
   // A bare letter inherits the sign in force on the staff.
   inheritSign?: boolean;
 }
@@ -43,7 +53,11 @@ export interface Bar {
   range: SourceRange;
 }
 
+export type PianoHand = 'right' | 'left';
+
 export interface MeasureVoice {
+  /** A hand identifies the physical stave, independently of this voice's stem direction. */
+  hand?: PianoHand;
   declaration: SourceRange;
   events: Attack[];
   tuplets: { start: number; count: number; numNotes: number; notesOccupied: number; range: SourceRange }[];
@@ -64,6 +78,7 @@ export interface MeasureVoice {
 }
 
 export interface StaffState {
+  piano?: boolean;
   color?: string; // Foreground for this stave declaration and its wrapped rows.
   declaration: SourceRange;
   notation: boolean;

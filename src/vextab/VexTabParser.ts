@@ -1,4 +1,5 @@
 // Semantic compiler that turns the parsed VexTab AST into concrete Artist calls.
+import { drumError } from '../score/drums';
 import { isScoreColor } from '../score/color';
 import Vex from '../vexflow';
 import * as _ from '../utils';
@@ -41,6 +42,7 @@ export class VexTabParser {
       const error = (msg: string) => this.newError(option, msg);
       params[option.key] = option.value;
       switch (option.key) {
+        case 'fingering': case 'accents': break; // Resolved on the heads by readSyntax.
         case 'notation':
         case 'tablature':
           notation_option = option;
@@ -97,6 +99,9 @@ export class VexTabParser {
             throw error(`Invalid tuning: '${option.value}'`);
           }
           break;
+        case 'capo':
+          if (!/^\d+$/.test(option.value) || !Number.isSafeInteger(Number(option.value))) throw error('Expected a nonnegative capo fret');
+          break;
         case 'strings': {
           const num_strings = Number(option.value);
           if (!Number.isInteger(num_strings) || num_strings < 4 || num_strings > 8) {
@@ -152,7 +157,7 @@ export class VexTabParser {
     this.artist.addChord(
       _.map(
         element.chord,
-        (note: Record<string, any>) => _.pick(note, 'time', 'dot', 'fret', 'prebend', 'abc', 'octave', 'string', 'articulation', 'decorator'),
+        (note: Record<string, any>) => _.pick(note, 'time', 'dot', 'fret', 'prebend', 'openSlide', 'marks', 'abc', 'octave', 'string', 'articulation', 'decorator'),
       ),
       element.articulation,
       element.decorator,
@@ -163,14 +168,14 @@ export class VexTabParser {
    * Convert a fret-based note AST node into an Artist note call.
    */
   parseFret(note: any): void {
-    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'prebend', 'string', 'articulation', 'decorator'));
+    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'prebend', 'openSlide', 'marks', 'string', 'articulation', 'decorator'));
   }
 
   /**
    * Convert an ABC note AST node into an Artist note call.
    */
   parseABC(note: any): void {
-    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'prebend', 'abc', 'octave', 'string', 'articulation', 'decorator'));
+    this.artist.addNote(_.pick(note, 'time', 'dot', 'fret', 'prebend', 'openSlide', 'marks', 'abc', 'octave', 'string', 'articulation', 'decorator'));
   }
 
   /**
@@ -207,6 +212,12 @@ export class VexTabParser {
         this.parseCommand(element);
       }
 
+      if (element.drums) {
+        const ids = element.drums.map(hit => hit.id);
+        const error = drumError(this.artist.current_clef, !!stave.tab, ids, this.artist.current_head === 's');
+        if (error) throw this.newError(element, error);
+        this.artist.notes.addDrums(ids);
+      }
       if (element.chord) {
         this.parseChord(element);
       }
@@ -303,6 +314,8 @@ export class VexTabParser {
   generate(elements: any[]): void {
     elements.forEach((stave) => {
       switch (stave.element) {
+        case 'piano':
+          throw this.newError(stave, 'Use layout="flow" or parseScore for a piano grand staff');
         case 'stave':
         case 'tabstave':
           this.artist.addStave(stave.element, this.parseStaveOptions(stave.options, stave.element));
@@ -317,7 +330,8 @@ export class VexTabParser {
         case 'options': {
           const options: Record<string, string> = {};
           stave.params.forEach((option: any) => {
-            options[option.key] = option.value;
+            // Transposition has already been applied to the tokens shared with the flow compiler.
+            if (option.key !== 'transpose') options[option.key] = option.value;
           });
           this.artist.setOptions(options, (key, message) =>
             this.newError(stave.params.find((param: any) => param.key === key), message));

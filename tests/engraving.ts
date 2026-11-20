@@ -2,7 +2,7 @@
 import Artist from '../src/artist';
 import { renderScore, renderScorePart } from '../src/score/layout';
 import { parseScore, ScoreError } from '../src/score/parse';
-import type { StaveNote } from 'vexflow';
+import { FretHandFinger, StaveNote } from 'vexflow';
 import Div from '../src/div';
 import Vex from '../src/vexflow';
 import VexTab from '../src/vextab';
@@ -28,6 +28,62 @@ function ink(host: HTMLElement) {
 }
 
 QUnit.module('Engraving', () => {
+  QUnit.test('Compact fingering and accent spellings engrave the original hammer-on identically', assert => {
+    const long = score('tabstave notation=true\nnotes :8 6/4 $.fingering/1:l:f:2.$ h7/4 $.fingering/1:l:f:3.$ :q 0/2 $.fingering/1:r:f:3.$ $.a>/top.$');
+    const compact = score('tabstave notation=true fingering=left accents=top\nnotes :8 6/4[f2] h7/4[f3] :q 0/2[f3:r, >]');
+    assert.deepEqual(ink(compact.host), ink(long.host), 'same glyph positions, shapes and sizes');
+
+    const chord = score('stave\nnotes :q (G/4[f4:r].C/4[f1])');
+    const fingerings = chord.group.note_notes[0].getModifiers().filter(m => m instanceof Vex.Flow.FretHandFinger);
+    assert.deepEqual(fingerings.map(m => [m.getIndex(), m.getFretHandFinger()]), [[0, '4'], [1, '1']]);
+    const beamed = score('options beams=explicit\nstave\nnotes :8 [ C/4[f1] D/4[f2] ]');
+    assert.ok(beamed.group.note_notes[0].getBeam(), 'beam brackets can enclose marked notes');
+  });
+
+  QUnit.test('Responsive marks respect stave, voice and per-head placement and preserve source selection', assert => {
+    const source = 'stave time=1/4 fingering=right accents=bottom\nnotes :q (C/4[f1].G/4[f5:l, >]) |\nvoice voice=bottom\nnotes :q C/3[f2, >:above] |';
+    const parsed = parseScore(source);
+    const voices = parsed.measures[0].voices;
+    const chord = voices[0].events[0];
+    assert.deepEqual(chord.heads.map(h => h.marks), [[{finger:'1',position:'right'}], [{finger:'5',position:'left'}, {position:'below'}]]);
+    assert.equal(source.slice(chord.heads[1].range.start, chord.heads[1].range.end), 'G/4[f5:l, >]');
+    assert.deepEqual(voices[1].events[0].heads[0].marks, [{finger:'2',position:'right'}, {position:'above'}]);
+    const host = document.createElement('div');
+    document.querySelector('#qunit-fixture').append(host);
+    const view = renderScore(host, parsed, { width: 440 });
+    assert.ok(host.querySelector('svg path'));
+    const note = view.composition.getNote(view.navigation.events[0].id);
+    assert.equal(note.getModifiers().filter(m => m instanceof Vex.Flow.FretHandFinger).length, 2);
+    assert.equal(note.getModifiers().filter(m => m instanceof Vex.Flow.Articulation).length, 1);
+    for (const invalid of ['[f7]', '[f1:near]', '[>:left]', '[f2,]']) {
+      assert.throws(() => parseScore('stave time=1/4\r\nnotes C/4' + invalid), e =>
+        e instanceof ScoreError && e.range.column === 9 && e.range.line === 2);
+    }
+    const overridden = parseScore(source.replace('voice voice=bottom', 'voice voice=bottom fingering=above'));
+    assert.equal(overridden.measures[0].voices[1].events[0].heads[0].marks[0].position, 'above');
+    assert.throws(() => parseScore('stave fingering=unknown\nnotes C/4'), /Place a fingering/);
+  });
+
+  QUnit.test('Printed piano fingerings keep chord heads, dotted rhythm, ties and source IDs', assert => {
+    const source = 'stave time=3/4\nnotes :qd (G/4[f5:r].C/4[f1]) :8 D/4[f2, >] :q G/4 | T G/4[f4] :h A/4 |';
+    const parsed = parseScore(source);
+    const host = document.createElement('div');
+    document.querySelector('#qunit-fixture').append(host);
+    const seen: StaveNote[] = [];
+    const { publication, sourceFor } = renderScorePart(host, parsed, 'notation', {
+      noteHooks: [(_options, note) => { if (note instanceof StaveNote) seen.push(note); }],
+    });
+    const chord = seen.find(note => note.getKeys().length === 2);
+    assert.deepEqual(chord.getModifiers().filter(m => m instanceof FretHandFinger).map(m => [m.getIndex(), m.getFretHandFinger()]), [[0, '5'], [1, '1']]);
+    assert.equal(sourceFor(chord.getAttribute('id')), parsed.measures[0].voices[0].events[0].id);
+    assert.equal(chord.getTicks().value(), 6144, 'dotted quarter retained');
+    const svg = publication.pages[0].svg;
+    assert.ok([...svg.querySelectorAll('text')].some(text => text.textContent === '5'), 'the exported SVG contains the fingering');
+    assert.ok(JSON.parse(svg.querySelector('metadata').textContent).spans.some(s => s.kind === 'tie'), 'tie survives re-composition');
+    const tab = parseScore('tabstave time=1/4\nnotes :q 3/4[>] |');
+    assert.throws(() => renderScorePart(host, tab, 'tab'), /fretted or special head/);
+  });
+
   QUnit.test('A pre-bent fret sounds at the raised pitch for one written attack', assert => {
     const source = 'tabstave notation=true time=2/4\nnotes :q (5/2.7z8z7/3) 7z9/3';
     const { group, host, parser } = score(source);
