@@ -1,5 +1,6 @@
 // Exercise the historical score families through the public grammar v2 browser APIs.
 import { Artist, parseScore, renderScore, renderScorePart, Vex, VexTab } from '../src/browser';
+import { Clef, VexFlow } from 'vexflow';
 import { scorePerformance } from '../src/playback/performance';
 
 /** Each independent surface needs its own VexFlow objects. */
@@ -14,6 +15,15 @@ function fixed(source: string) {
   new VexTab(artist).parse(source);
   artist.draw(new Vex.Flow.Renderer(surface, Vex.Flow.Renderer.Backends.SVG));
   return surface;
+}
+
+/** Measure painted text rather than SVG's much taller font line box. */
+function textInk(text: SVGTextElement) {
+  const style = getComputedStyle(text), context = document.createElement('canvas').getContext('2d');
+  context.font = [style.fontStyle, style.fontWeight, style.fontSize, style.fontFamily].join(' ');
+  const m = context.measureText(text.textContent), x = Number(text.getAttribute('x')), y = Number(text.getAttribute('y'));
+  return { left: x - m.actualBoundingBoxLeft, right: x + m.actualBoundingBoxRight,
+    top: y - m.actualBoundingBoxAscent, bottom: y + m.actualBoundingBoxDescent };
 }
 
 QUnit.module('Grammar v2 historical parity', () => {
@@ -37,6 +47,65 @@ QUnit.module('Grammar v2 historical parity', () => {
     assert.equal(renderScorePart(host(), blank, 'tab').publication.diagnostics.length, 0);
     assert.throws(() => read('staff { voice a { fragment { C4 } } voice b { fragment { :h E4 } } }'), /length of bar/);
     assert.throws(() => read('staff { :8 C4 D4 E4 | }'), /expected 4\/4/i);
+  });
+
+  QUnit.test('four-string TAB clef ink fits blank, wrapped and published staves', assert => {
+    const tuning = 'guitar { view tab tuning (G4 D4 A3 E3) ';
+    for (const source of [tuning + 'fragment {} }', tuning + ':w 0/4 | break system 0/3 | }']) {
+      const score = read(source);
+      for (const renderer of ['svg', 'canvas'] as const) {
+        const root = host(), view = renderScore(root, score, { width: 330, renderer });
+        for (const [stave] of view.composition.staves) {
+          const [clef] = stave.getModifiers(undefined, Clef.CATEGORY) as Clef[];
+          const ink = clef.getInkBounds();
+          assert.equal(clef.getText(), VexFlow.Glyphs.fourStringTabClef);
+          assert.ok(ink.h > 25 && ink.y >= stave.getYForLine(0) - 0.5 && ink.y + ink.h <= stave.getYForLine(3) + 0.5);
+        }
+      }
+      const svg = renderScorePart(host(), score, 'tab').publication.pages[0].svg;
+      const clefs = [...svg.querySelectorAll<SVGTextElement>('.vf-clef text')];
+      const staves = [...svg.querySelectorAll('.vf-stave')];
+      assert.equal(clefs.length, staves.length);
+      for (const [index, clef] of clefs.entries()) {
+        const lines = [...staves[index].querySelectorAll('path')].map(p => p.getBBox().y);
+        const ink = textInk(clef);
+        assert.equal(clef.textContent, VexFlow.Glyphs.fourStringTabClef);
+        assert.ok(ink.top >= Math.min(...lines) - 0.5 && ink.bottom <= Math.max(...lines) + 0.5);
+      }
+    }
+    const six = renderScore(host(), read('guitar { view tab fragment {} }'));
+    const [clef] = six.composition.staves[0][0].getModifiers(undefined, Clef.CATEGORY) as Clef[];
+    assert.equal(clef.getText(), VexFlow.Glyphs.sixStringTabClef);
+  });
+
+  QUnit.test('timed signs keep their music glyphs and clear the words, notes and barlines', assert => {
+    const source = 'meter 2/4 staff { :h C4 | text words line 8 font "Georgia" size 14 style italic ink navy { start sign coda :8 "One," "and" ink crimson "three" "four" end sign segno | } }';
+    const score = read(source);
+    const inspect = (svg: SVGSVGElement) => {
+      const labels = [...svg.querySelectorAll<SVGTextElement>('.vf-timed-text text')];
+      const coda = labels.find(label => label.textContent === VexFlow.Glyphs.coda);
+      const segno = labels.find(label => label.textContent === VexFlow.Glyphs.segno);
+      const words = labels.filter(label => label !== coda && label !== segno);
+      assert.ok(getComputedStyle(coda).fontFamily.includes('Bravura') && getComputedStyle(segno).fontFamily.includes('Bravura'));
+      assert.ok(words.every(word => getComputedStyle(word).fontFamily.includes('Georgia')));
+      const boxes = [coda, ...words, segno].map(textInk);
+      for (let i = 1; i < boxes.length; i++) assert.ok(boxes[i].left > boxes[i - 1].right, 'separate horizontal ink ' + i);
+      const staff = svg.querySelector<SVGGraphicsElement>('.vf-stave').getBBox();
+      assert.ok(boxes[0].left >= staff.x && boxes[boxes.length - 1].right <= staff.x + staff.width + 0.5, 'edge marks inside bar');
+      const note = svg.querySelector<SVGTextElement>('.vf-notehead text');
+      assert.ok(boxes.every(box => box.top > textInk(note).bottom), 'lyric lane below the ledger note');
+    };
+    for (const width of [290, 540]) {
+      const root = host(), view = renderScore(root, score, { width });
+      inspect(root.querySelector('svg'));
+      for (const region of view.extraRegions) {
+        const hit = view.hitTest(region.x + region.w / 2, region.y + region.h / 2);
+        assert.equal(hit.id, region.id, 'each word or sign selects its source');
+      }
+      const canvas = renderScore(host(), score, { width, renderer: 'canvas' });
+      assert.deepEqual(canvas.extraRegions.map(r => [r.x, r.y, r.w, r.h]), view.extraRegions.map(r => [r.x, r.y, r.w, r.h]));
+    }
+    inspect(renderScorePart(host(), score, 'notation').publication.pages[0].svg);
   });
 
   QUnit.test('scoped transposition keeps diagram, symbol, fret, string and performed notes together', assert => {

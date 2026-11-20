@@ -21,25 +21,14 @@
     <script src="/dist/main.dev.js"></script>
     <script src="../dist/example-audio.dev.js"></script>
     <script>
-      const { VexTab, Artist, Vex } = window.vextab;
-      const Renderer = Vex.Flow.Renderer;
-      const renderer = new Renderer(document.getElementById('boo'), Renderer.Backends.SVG);
-
-      const artist = new Artist(10, 10, 600, { scale: 0.8 });
-      const tab = new VexTab(artist);
-
-      try {
-        tab.parse([
-          'tabstave notation=true key=A time=4/4',
-          'notes :q 5/2 7/2 8/2 7/2',
-        ].join('\n'));
-        artist.render(renderer);
-        if (window.VexTabAudio) {
-          const { playback } = VexTabAudio.scoreOptions(document.getElementById('boo'));
-          new vextab.Player(artist, { playback }).render();
-        }
-      } catch (e) {
-        console.error(e);
+      const host = document.querySelector('#boo');
+      const source = 'meter 4/4 guitar { key A :q 5/2 7/2 8/2 7/2 | }';
+      const score = vextab.parseScore(source, { language: 2 });
+      vextab.renderScore(host, score, { width: 600 });
+      host.dataset.source = source;
+      if (window.VexTabAudio) {
+        const { playback } = VexTabAudio.scoreOptions(host);
+        new vextab.Player(score, { playback }).render(host.querySelector('svg'));
       }
     </script>
   </body>

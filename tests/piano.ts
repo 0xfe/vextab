@@ -1,10 +1,11 @@
 // Exercise aligned piano timing, clefs and connectors, independent hand parts, and located diagnostics.
 import { Div, parseScore, renderScore, renderScorePart } from '../src/browser';
+import { projectScoreV2 } from '../src/score/grammar2/project';
 import { scoreSurfaces } from '../src/playback/geometry';
 import { scorePerformance } from '../src/playback/performance';
 
-const duet = 'piano time=4/4\nnotes :q C-D-E-F/4 | G-A-B/4 C/5 |\n' +
-  'voice hand=left\nnotes :h C/3 G/2 | TG/2 C/3 |';
+const duet = 'meter 4/4 piano { upper { C4 D4 E4 F4 | G4 A4 B4 C5 | } lower { :h C3 G2 | G2[tie] C3 | } }';
+function read(source: string) { return projectScoreV2(parseScore(source, { language: 2 })); }
 
 /** Attach scores so Chrome measures the same glyph and page geometry as an embed. */
 function host(): HTMLElement {
@@ -21,7 +22,7 @@ function bracePaths(element: Element): number {
 
 QUnit.module('Piano grand staff', () => {
   QUnit.test('Aligned beats, shared barlines, and braces survive reflow', assert => {
-    const score = parseScore(duet);
+    const score = read(duet);
     for (const [width, rows] of [[650, 1], [225, 2]]) {
       const root = host();
       const {composition, navigation, rangeFor} = renderScore(root, score, {width});
@@ -35,7 +36,7 @@ QUnit.module('Piano grand staff', () => {
         const upper = composition.getNote(simultaneous.id), lower = composition.getNote(event.id);
         assert.equal(upper.getAbsoluteX(), lower.getAbsoluteX(), 'align matching onsets');
         assert.deepEqual([upper.getStave().getClef(), lower.getStave().getClef()], ['treble', 'bass']);
-        assert.equal(rangeFor(event.id, duet)?.start, Number(event.source.slice(1)), 'the left-hand hit resolves to its own source');
+        assert.equal(rangeFor(event.id, duet)?.start, score.measures.flatMap(m => m.voices.flatMap(v => v.events)).find(e => e.id === event.source).range.start, 'the left-hand hit resolves to its own source');
       }
     }
     const notes = scorePerformance(score, 60).events.flatMap(e => e.notes.map(n => [e.time, n.pitch, n.duration]));
@@ -44,11 +45,9 @@ QUnit.module('Piano grand staff', () => {
   });
 
   QUnit.test('Four voices keep accidental memory on the owning stave', assert => {
-    const satb = 'piano time=2/4 voice=top\nnotes :q F#-F/4 |\n' +
-      'voice hand=right voice=bottom\nnotes :h C/4 |\n' +
-      'voice hand=left voice=top\nnotes F-F/4 |\n' +
-      'voice hand=left voice=bottom\nnotes :h C/3 |';
-    const score = parseScore(satb);
+    const satb = 'meter 2/4 piano { upper { voice lead stem up { F#4 F#4 | } voice alto stem down { :h C4 | } } '
+      + 'lower { voice tenor stem up { F4 F4 | } voice bass stem down { :h C3 | } } }';
+    const score = read(satb);
     const voices = score.measures[0].voices;
     assert.deepEqual(voices.map(v => [v.hand, v.stem]), [['right','up'],['right','down'],['left','up'],['left','down']]);
     assert.deepEqual(voices[0].events.map(e => e.heads[0].sounding), ['f#/4','f#/4']);
@@ -60,7 +59,7 @@ QUnit.module('Piano grand staff', () => {
     const printed = renderScorePart(host(), score, 'notation').publication.pages[0].svg;
     const signs = [...printed.querySelectorAll('.vf-notehead text')].filter(text => text.textContent === '\uE262');
     assert.equal(signs.length, 1, 'one SMuFL sharp');
-    const marked = parseScore('piano time=2/4\nnotes F#-F#~/4 |\nvoice hand=left\nnotes Fn-F/4 |');
+    const marked = read('meter 2/4 piano { upper { F#4 F#4[courtesy] | } lower { Fn4[showSign] F4 | } }');
     const page = renderScorePart(host(), marked, 'notation').publication.pages[0].svg;
     const heads = [...page.querySelectorAll('.vf-notehead')].map(head => head.textContent);
     assert.ok(heads[1].includes('\uE26A\uE262\uE26B'), 'cautionary sharp retains both parentheses');
@@ -72,8 +71,7 @@ QUnit.module('Piano grand staff', () => {
   });
 
   QUnit.test('Chord fingerings and explicit accidentals stay with their piano hand', assert => {
-    const score = parseScore('piano time=2/4 fingering=left accents=top\nnotes :q (Fn/4[f2].A/4[f4:r]) G/4[>] |\n' +
-      'voice hand=left\nnotes :h C/3[f1] |');
+    const score = read('meter 2/4 piano { upper { (Fn4[finger 2, showSign] A4[finger 4 right]) G4[accent] | } lower { :h C3[finger 1] | } }');
     for (const part of ['score', 'notation', 'right', 'left'] as const) {
       const root = host();
       if (part === 'score') renderScore(root, score);
@@ -87,7 +85,7 @@ QUnit.module('Piano grand staff', () => {
   });
 
   QUnit.test('Printed pages and practice hands preserve their source identities', assert => {
-    const score = parseScore(duet);
+    const score = read(duet);
     for (const part of ['notation','right','left'] as const) {
       const root = host();
       const {publication, rangeFor} = renderScorePart(root, score, part);
@@ -105,7 +103,7 @@ QUnit.module('Piano grand staff', () => {
 
     const el = host();
     el.textContent = duet;
-    const embed = new Div(el);
+    const embed = new Div(el, { language: 2 });
     assert.equal(embed.getReadingEvents().length, 12, 'a piano embed selects grand-staff layout');
     embed.setPart('right');
     assert.ok(embed.getReadingEvents().every(e => e.staff === 'right'));
@@ -113,7 +111,7 @@ QUnit.module('Piano grand staff', () => {
   });
 
   QUnit.test('Playback highlights the engraved hand on screen and on the printed page', assert => {
-    const score = parseScore(duet);
+    const score = read(duet);
     for (const part of ['notation', 'right', 'left'] as const) {
       const root = host();
       const screen = renderScore(root, score, { part });
@@ -131,10 +129,9 @@ QUnit.module('Piano grand staff', () => {
 
   QUnit.test('Incomplete or inconsistent hands identify the score line', assert => {
     for (const [source, error] of [
-      ['piano time=1/4\nnotes C/4', /left hand.*line 1/],
-      ['piano time=1/4\nnotes C/4\nvoice\nnotes C/3', /hand=right or hand=left.*line 3/],
-      ['piano time=1/4\nnotes C/4\nvoice hand=left\nnotes :h C/3', /fill the same bar.*line 4/],
-      ['piano time=1/4\nnotes 0/1\nvoice hand=left\nnotes C/3', /named pitches.*line 2/],
-    ] as const) assert.throws(() => parseScore(source), error);
+      ['meter 1/4 piano { upper { C4 | } }', /lower/],
+      ['meter 1/4 piano { upper { C4 | } lower { :h C3 | } }', /bar/],
+      ['meter 1/4 piano { upper { 0/1 | } lower { C3 | } }', /does not belong to piano/],
+    ] as const) assert.throws(() => read(source), error);
   });
 });

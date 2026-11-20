@@ -10,9 +10,9 @@
 </style>
 <h1>SpessaSynth playback</h1>
 <p>Press Play to hear the third string release over a steady open bass. Change the fret or tempo and play it again.</p>
-<div id="score" layout="flow" editor="true">options tempo=80 instrument=24
-tabstave notation=true time=2/4
-notes :q (0/6.7z8z7/3) 7/3 |</div>
+<div id="score" data-language="2" layout="flow" editor="true">play { tempo 80 instrument 24 }
+meter 2/4
+guitar { :q (0/6 7/3[prebend +1 release]) 7/3 | }</div>
 <script src="../dist/div.dev.js"></script>
 <script src="../dist/example-audio.dev.js"></script>
 <script>

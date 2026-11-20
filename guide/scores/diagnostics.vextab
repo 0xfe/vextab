@@ -1,2 +1,4 @@
-stave time=3/4
-notes :q C/4 D/4 E/4 |
+meter 3/4
+staff {
+  :q C4 D4 E4 |
+}

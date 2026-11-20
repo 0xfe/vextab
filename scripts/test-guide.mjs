@@ -64,15 +64,15 @@ export async function testGuide(page, dist) {
     assert.ok((await chapter.locator('.editor-error').allTextContents()).every(text => !text), hash);
     examples += count;
   }
-  assert.equal(examples, 24);
+  assert.equal(examples, 25);
   await go('#tutorial/notes');
   const tutorialInput = page.locator('.chapter-example textarea').first();
   const written = await tutorialInput.inputValue();
-  await tutorialInput.fill(written.replace('F#/5', 'G/5'));
+  await tutorialInput.fill(written.replace('F#5', 'G5'));
   await tutorialInput.press('Control+Enter');
   await go('#tutorial/chords');
   await go('#tutorial/notes');
-  assert.match(await tutorialInput.inputValue(), /G\/5/);
+  assert.match(await tutorialInput.inputValue(), /G5/);
   await page.getByRole('button', {name:'Reset example'}).first().click();
   assert.equal(await tutorialInput.inputValue(), written);
 
@@ -95,7 +95,14 @@ export async function testGuide(page, dist) {
     assert.equal(await svg.count(), 1, hash);
   }
 
+  // Saved v1 text stays recoverable while the new editor opens a valid v2 score.
+  const v1Draft = 'tabstave\nnotes 7/3';
+  await page.evaluate(value => localStorage.setItem('vextab.guide.first-fret', value), v1Draft);
   await go('#lesson/first-fret');
+  const oldDraft = page.getByRole('link', { name: 'Download previous v1 draft' });
+  assert.equal(await oldDraft.getAttribute('download'), 'first-fret-v1.vextab');
+  assert.equal(decodeURIComponent((await oldDraft.getAttribute('href')).split(',')[1]), v1Draft);
+  assert.match(await source.inputValue(), /guitar \{/);
   await page.locator('#view').selectOption('tab');
   assert.match(await page.locator('#reading').textContent(), /tab.*string 1 fret 0/i);
   assert.match(await page.locator('#reader').ariaSnapshot(), /region "Score reader"[\s\S]*Measure 1, tab, voice 1/);
@@ -104,7 +111,7 @@ export async function testGuide(page, dist) {
   await page.locator('#select').click();
   const selection = () => source.evaluate(s => s.value.slice(s.selectionStart, s.selectionEnd));
   assert.match(await selection(), /2/);
-  const changed = (await source.inputValue()).replace('0-2-3-2', '0-2-5-2');
+  const changed = (await source.inputValue()).replace('0/1 2/1 3/1 2/1', '0/1 2/1 5/1 2/1');
   await source.fill(changed);
   await source.press('Control+Enter');
   const download = page.waitForEvent('download');
@@ -126,7 +133,7 @@ export async function testGuide(page, dist) {
 
   await go('#lesson/diagnostics');
   const valid = await source.inputValue();
-  await source.fill(valid.replace(' E/4', ''));
+  await source.fill(valid.replace(' E4', ''));
   await source.press('Control+Enter');
   await score.locator('[data-preview-stale]').waitFor();
   await page.locator('#error').focus();
@@ -149,7 +156,7 @@ export async function testGuide(page, dist) {
   await page.locator('#reset').click();
   await go('#reference');
   await page.locator('#search').fill('capo');
-  assert.deepEqual(await page.locator('.reference-results h3').allTextContents(), ['tuning · capo · bend · pm']);
+  assert.deepEqual(await page.locator('.reference-results h3').allTextContents(), ['tuning · capo · palm mute']);
   await page.locator('#search').fill('Div.setWidth()');
   assert.ok(await page.locator('.reference-results #editor-view').count());
   await page.locator('#search').fill('selectSource revision');

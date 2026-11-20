@@ -1,6 +1,7 @@
 // The guide, demo library and playground share one warmed renderer and one catalogue of scores.
 import Div from '../src/div';
 import Player from '../src/player';
+import { previousDraft } from './drafts';
 import { scoreOptions } from './audio';
 import { renderScorePart, type Part } from '../src/score/layout';
 import { lessons, type Lesson } from './catalog';
@@ -26,7 +27,7 @@ let printEdition: { html: string; pages: string[]; filename: string };
 
 /** Persistent storage can be disabled by a host. The in-page draft still survives navigation. */
 function draft(id: string, value?: string): string | undefined {
-  const key = 'vextab.guide.' + id;
+  const key = 'vextab.guide.v2.' + id;
   if (value !== undefined) drafts.set(id, value);
   try {
     if (value !== undefined) localStorage.setItem(key, value);
@@ -140,7 +141,9 @@ function showLesson(current: Lesson, section: string): void {
   const play = el<HTMLAnchorElement>('play');
   play.href = (playground ? '#lesson/' : '#playground/') + lesson.id;
   play.textContent = playground ? 'Return to lesson' : 'Open in playground';
-  el('notice').textContent = '';
+  el('notice').replaceChildren();
+  const oldDraft = previousDraft(lesson.id);
+  if (oldDraft) el('notice').append(oldDraft);
   editor = mount(el('score'), section === 'original' ? lesson.source : draft(lesson.id) ?? lesson.source, lesson.fixed);
   input = el('score').querySelector('textarea');
   input.addEventListener('input', () => {

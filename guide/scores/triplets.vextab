@@ -1,3 +1,5 @@
-options tab-stems=true
-tabstave notation=true time=2/4
-notes :8 1-2-3/1 ^3^ :q 4/1 |
+meter 2/4
+guitar { view both
+  tabStems on
+  tuplet 3:2 { :8 1/1 2/1 3/1 } :q 4/1 |
+}

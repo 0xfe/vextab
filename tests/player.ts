@@ -1,3 +1,4 @@
+// Compatibility coverage for applications passing a legacy Artist and MIDI.js global to Player.
 // Exercise the public Player with a real Canvas score and a recording MIDI.js host.
 import Artist from '../src/artist';
 import Player from '../src/player';

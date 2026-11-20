@@ -1,54 +1,32 @@
-// Interactive playground harness used by playground.html for manual rendering checks.
+// Render the editable grammar v2 example and preserve the last valid picture during edits.
 import { scoreOptions } from '../guide/audio';
-import * as _ from '../src/utils';
-import * as vextab from '../src/main';
+import { parseScore, renderScore, Player } from '../src/browser';
+import { throttle } from '../src/utils';
 
-$(() => {
-  // Local aliases for the public API to keep the playground readable.
-  const VexTab = vextab.VexTab;
-  const Artist = vextab.Artist;
-  const Renderer = vextab.Vex.Flow.Renderer;
-
-  // Debug toggles for the playground.
-  Artist.DEBUG = true;
-  VexTab.DEBUG = false;
-
-  const host = document.querySelector<HTMLElement>('#boo')!;
-
-  // Initialize VexTab artist and parser.
-  const artist = new Artist(10, 10, 700, { scale: 0.8 });
-  const tab = new VexTab(artist);
+document.addEventListener('DOMContentLoaded', () => {
+  const host = document.querySelector<HTMLElement>('#boo');
+  const input = document.querySelector<HTMLTextAreaElement>('#blah');
+  const status = document.querySelector<HTMLElement>('#error');
   const { playback } = scoreOptions(host);
-  const player = new vextab.Player(artist, { playback });
+  let player: Player;
 
-  /**
-   * Parse the textarea contents and render into the SVG renderer.
-   * Design note: errors are surfaced in the UI for quick feedback.
-   */
   function render() {
     try {
-      // Reset state on each render to avoid stale layout artifacts.
-      tab.reset();
-      artist.reset();
-      tab.parse($('#blah').val());
+      const score = parseScore(input.value, { language: 2 });
       const next = document.createElement('div');
-      artist.render(new Renderer(next, Renderer.Backends.SVG));
+      renderScore(next, score, { width: 600 });
       host.replaceChildren(next);
-      player.setTempo(Number(artist.customizations.tempo));
-      player.setInstrument(artist.customizations.instrument);
-      player.render();
+      player?.dispose();
+      player = new Player(score, { playback });
+      player.render(next.querySelector('svg'));
       delete host.dataset.previewStale;
-      $('#error').text('');
-    } catch (e: any) {
-      // Surface errors in the playground UI for quick debugging.
-      console.error(e);
+      status.textContent = '';
+    } catch (error) {
       if (host.firstChild) host.dataset.previewStale = 'true';
-      $('#error').text((host.firstChild ? 'Showing the last valid score. ' : '') + e.message);
+      status.textContent = (host.firstChild ? 'Showing the last valid score. ' : '') + error.message;
     }
   }
-
-  // Debounce keystrokes to avoid flooding renders.
-  const schedule = _.throttle(render, 250);
-  $('#blah').on('input', () => { player.removeControls(); schedule(); });
+  const schedule = throttle(render, 250);
+  input.addEventListener('input', () => { player?.removeControls(); schedule(); });
   render();
 });

@@ -3,10 +3,11 @@ import { position, staveRow, printedGeometry, scoreSurfaces, type Geometry } fro
 import { projectScoreV2 } from './grammar2/project';
 import type { ScoreV2 } from './grammar2/model';
 import { attachHeadMarks, PrintedHeadMarks } from './head-marks';
+import { fitTabClefs, fitPrintedTabClefs } from './tab-clef';
 import { TextLanes } from './text-lanes';
 import { drumKit } from './drums';
 import { attachOpenSlide, describeOpenSlide, drawPrintedOpenSlides } from './open-slide';
-import { inkStyle } from './color';
+import { inkStyle, setFretPaper } from './color';
 import { colorPublication } from './publication-color';
 import { scoreFont } from './engraving';
 import {
@@ -97,7 +98,12 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
   const notes: EasyScoreContent[] = voice.events.map(event => {
     const id = sources.project(staff, event.id, event.range);
     const rhythm = { duration: event.base, dots: event.dots, stemDirection };
-    if (!event.heads.length) return { id, note: { ...rhythm, keys: ['r/4'], clef: 'treble', type: 'r', restLine: event.restLine } };
+    if (!event.heads.length) {
+      // Rest positions count up from the bottom of the written staff, including shorter tab staves.
+      const offset = staff === 'tab' ? 5 - measure.state.strings : 0;
+      const restLine = event.restLine === undefined ? undefined : event.restLine + offset;
+      return { id, note: { ...rhythm, keys: ['r/4'], clef: 'treble', type: 'r', restLine } };
+    }
     if (event.heads[0].drum) {
       const hit = drumKit.note(event.heads.map(head => head.drum), event.base, direction);
       return { id, note: { ...hit, dots: event.dots } };
@@ -384,6 +390,7 @@ export function renderScore(host: HTMLElement, source: ParsedScore | ScoreV2,
   const surface = document.createElement('div');
   const canvas = options.renderer === 'canvas' ? surface.appendChild(document.createElement('canvas')) : undefined;
   const ctx = canvas ? new CanvasContext(canvas.getContext('2d')) : new SVGContext(surface);
+  if (!canvas) setFretPaper(ctx, host);
   const frames = drawFrames(parsed, width, ctx, (id, range) => view.sources.project(view.staves[0], id, range));
   view.spec.sheet.y += frames.height + (view.mixedEndings.length ? 20 : 0);
   const factory = new Factory({ renderer: { elementId: null, width, height: 1 } }).setContext(ctx);
@@ -402,10 +409,12 @@ export function renderScore(host: HTMLElement, source: ParsedScore | ScoreV2,
     resize();
     if (frames.height) drawFrames(parsed, width, ctx, (id, range) => view.sources.project(view.staves[0], id, range));
   }
-  if (parsed.measures[0].state.hideClef) {
+  const initial = parsed.measures[0].state;
+  if (initial.hideClef || (view.staves.includes('tab') && initial.strings !== 6)) {
     composition.sheet.format();
     for (const row of composition.staves) for (const stave of row) {
-      for (const clef of stave.getModifiers(undefined, Clef.CATEGORY)) clef.setText('');
+      if (initial.hideClef) for (const clef of stave.getModifiers(undefined, Clef.CATEGORY)) clef.setText('');
+      else fitTabClefs(stave);
     }
   }
   factory.draw();
@@ -541,8 +550,9 @@ export function renderScorePart(host: HTMLElement, source: ParsedScore | ScoreV2
   paper.noteHooks = [view.textLanes.hook, view.printed.hook, ...(paper.noteHooks ?? [])];
   const publication = new Publication(view.spec).render(host, paper);
   if (part === 'tab') drawPrintedOpenSlides(publication, parsed, event => view.eventId(part, event.id));
-  if (parsed.measures[0].state.hideClef) for (const page of publication.pages) {
-    for (const glyph of page.svg.querySelectorAll('.vf-clef')) glyph.remove();
+  for (const page of publication.pages) {
+    if (parsed.measures[0].state.hideClef) for (const glyph of page.svg.querySelectorAll('.vf-clef')) glyph.remove();
+    else if (part === 'tab') fitPrintedTabClefs(page.svg, parsed.measures[0].state.strings);
   }
   colorPublication(publication, parsed, (event, voice) => view.eventId(voice.hand ?? part, event.id));
   function playbackGeometry(): Geometry {

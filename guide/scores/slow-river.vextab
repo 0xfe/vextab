@@ -1,25 +1,34 @@
-options measure-numbers=true
-stave time=4/4 voice=top
-notes :q (0/5.2/4.2/3.1/2.0/1) !chord "Am"! !frame x,0,2,2,1,0 barre=2:4-3! !lyric "Slow,"!
-notes :qSd X/5 !chord "Am/G"! !lyric "riv" -! :8S X/5 !lyric "er"! :qS X/5 |
-notes :q D/5 !chord "Dm7"! !lyric "roll" extend=2! :q E/5 F/5 :q E/5 |
-notes !key G! :h D/5 !chord "G"! !lyric "to"! :q B/4 A/4 |
-notes :h G/4 !chord "G6"! !lyric "sea" extend=1! G/4 |
-voice voice=bottom
-notes :h A/3 G/3 | :h D/3 A/3 | :w G/3 | :w G/3 |
-
-stave time=4/4 key=G voice=top
-notes :q G/4 !chord "G"! !lyric "Car" -! A/4 !lyric "ry"! :h B/4 !lyric "me"! |
-notes :h C/5 !chord "C"! !lyric "past"! :q B/4 A/4 |
-notes :h A/4 !chord "Am7"! !lyric "the"! :q G/4 !lyric "wil" -! E/4 !lyric "low"! |
-notes :h F/4 !chord "D7"! !lyric "tree" extend=2! :q E/4 D/4 |
-voice voice=bottom
-notes :h G/3 D/3 | C/3 G/3 | A/3 E/3 | D/3 A/3 |
-
-stave time=4/4 key=G voice=top
-notes :q E/4 !chord "C"! !lyric "Sing"! G/4 :h C/5 !lyric "soft,"! |
-notes :q A/4 !chord "D7"! !lyric "flow"! B/4 :h A/4 !lyric "on"! |
-notes :h G/4 !chord "G"! !lyric "and"! :q A/4 B/4 |
-notes :h G/4 !chord "G6"! !lyric "rest" extend=1! G/4 =|=
-voice voice=bottom
-notes :h C/3 G/3 | D/3 A/3 | :w G/3 | G/3 =|=
+measureNumbers on
+meter 4/4
+guitar {
+  view notation
+  key G at 3
+  voice melody stem up {
+    :q (0/5 2/4 2/3 1/2 0/1)[symbol "Am", frame (x 0 2 2 1 0) barre=2/4..3, lyric "Slow,"] :q. slash[symbol "Am/G", lyric "riv" hyphen] :8 slash[lyric "er"] :q slash |
+    :q D5[symbol "Dm7", lyric "roll" extend=2] E5 F5 E5 |
+    :h D5[symbol "G", lyric "to"] :q B4 A4 |
+    :h G4[symbol "G6", lyric "sea" extend=1] G4 |
+    break system :q G4[symbol "G", lyric "Car" hyphen] A4[lyric "ry"] :h B4[lyric "me"] |
+    :h C5[symbol "C", lyric "past"] :q B4 A4 |
+    :h A4[symbol "Am7", lyric "the"] :q G4[lyric "wil" hyphen] E4[lyric "low"] |
+    :h F#4[symbol "D7", lyric "tree" extend=2] :q E4 D4 |
+    break system :q E4[symbol "C", lyric "Sing"] G4 :h C5[lyric "soft,"] |
+    :q A4[symbol "D7", lyric "flow"] B4 :h A4[lyric "on"] |
+    :h G4[symbol "G", lyric "and"] :q A4 B4 |
+    :h G4[symbol "G6", lyric "rest" extend=1] G4 bar final
+  }
+  voice bass stem down {
+    :h A3 G3 |
+    :h D3 A3 |
+    :w G3 |
+    :w G3 |
+    break system :h G3 D3 |
+    :h C3 G3 |
+    :h A3 E3 |
+    :h D3 A3 |
+    break system :h C3 G3 |
+    :h D3 A3 |
+    :w G3 |
+    :w G3 bar final
+  }
+}

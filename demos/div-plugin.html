@@ -19,16 +19,13 @@
     <p>Matches the Quick Start example from the README.</p>
     <div class="vextab-auto"
       width="680" scale="1.0" editor="true"
-      editor-width="680" editor-height="330">
-options space=20
-tabstave notation=true key=A time=4/4
-
-notes :q =|: (5/2.5/3.7/4) :8 7-5h6/3 ^3^ 5h6-7/5 ^3^ :q 7V/4 |
-notes :8 t12p7/4 s5s3/4 :8 3s:16:5-7/5 :h p5/4
-text :w, |#segno, ,|, :hd, , #tr
-
-options space=25
-    </div>
+      editor-width="680" editor-height="330" data-language="2">meter 4/4
+guitar { key A
+  repeatStart :q (5/2 5/3 7/4) :8 tuplet 3:2 { 7/3 5/3 6/3[hammer] }
+  tuplet 3:2 { 5/5 6/5[hammer] 7/5 } :q 7/4[vibrato wide] |
+  :8 12/4[tap] 7/4[pull] 5/4[slide] 3/4[slide] 3/5 :16 5/5[slide] 7/5 :q 5/4 |
+  text roadmap line 10 { start sign segno :w skip | :h. skip :q sign tr | }
+}</div>
 
     <script src="/dist/div.dev.js"></script>
   <script src="../dist/example-audio.dev.js" data-mount="auto"></script>

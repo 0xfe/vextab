@@ -3,11 +3,13 @@ import { Barline, Fraction, Renderer, TimeSignature, VexFlow } from 'vexflow';
 import Artist from '../src/artist';
 import Div from '../src/div';
 import VexTab from '../src/vextab';
+import { readScore } from './read-score';
 import { parseScore, ScoreError } from '../src/score/parse';
 import { renderScore, renderScorePart } from '../src/score/layout';
 import type { SourceRange } from '../src/score/source';
 
-const phrase = 'options tab-stems=true\ntabstave notation=true time=4/4\nnotes :q 0/3 ## :h (1/2.2/3) | :h T(2/3.1/2) :q 3-1/2 |';
+const legacyPhrase = 'options tab-stems=true\ntabstave notation=true time=4/4\nnotes :q 0/3 ## :h (1/2.2/3) | :h T(2/3.1/2) :q 3-1/2 |';
+const phrase = 'meter 4/4\nguitar { tabStems on 0/3 rest :h (1/2 2/3) |\n  :h (2/3[tie] 1/2[tie]) :q 3/2 1/2 | }';
 function host() {
   const node = document.createElement('div');
   document.querySelector('#qunit-fixture').append(node);
@@ -26,8 +28,8 @@ function excerpt(source: string, range: SourceRange) { return source.slice(range
 
 QUnit.module('Shared score', () => {
   QUnit.test('The two-bar phrase has the same attacks, positions and per-head ties in each renderer', assert => {
-    const artist = fixed(phrase);
-    const parsed = parseScore(phrase);
+    const artist = fixed(legacyPhrase);
+    const parsed = readScore(phrase);
     const result = renderScore(host(), parsed, { width: 640 });
     const sourceEvents = parsed.measures.flatMap(m => m.voices[0].events);
     const legacy = artist.staves[0];
@@ -68,9 +70,9 @@ QUnit.module('Shared score', () => {
 
   QUnit.test('Reflow, independent page metadata and hit targets resolve to the original CRLF revision', assert => {
     const source = phrase.replace(/\n/g, '\r\n');
-    const parsed = parseScore(source);
+    const parsed = readScore(source);
     const events = parsed.measures[1].voices[0].events;
-    assert.deepEqual(events.map(e => excerpt(source, e.range)), ['T(2/3.1/2)', '3', '-1/2']);
+    assert.deepEqual(events.map(e => excerpt(source, e.range)), ['(2/3[tie] 1/2[tie])', '3/2', '1/2']);
     assert.deepEqual(events[0].heads.map(h => excerpt(source, h.range)), ['2/3', '1/2']);
     assert.equal(events[0].range.line, 3);
     const wide = renderScore(host(), parsed, { width: 640 });
@@ -103,9 +105,9 @@ QUnit.module('Shared score', () => {
   });
 
   QUnit.test('Meter, pickup, aligned voices, signatures, tuning and boundary scope', assert => {
-    const source = 'tabstave notation=true time=4/4 pickup=1/4 show-time=false\nnotes =|: :q 0/6 | :w 0/6 =|='
-      + '\ntabstave notation=true tuning=dropd key=D time=3/4\nnotes :hd 0/6 |';
-    const parsed = parseScore(source);
+    const source = 'meter 4/4 pickup 1/4 meter 3/4 at 3 guitar { display meter hidden display meter shown at 3 '
+      + 'tuning dropD at 3 key D at 3 repeatStart 0/6 | :w 0/6 bar final break system :h. 0/6 | }';
+    const parsed = readScore(source);
     const [pickup, full, change] = parsed.measures;
     assert.deepEqual(parsed.measures.map(m => m.span), ['1/4','1/1','3/4']);
     assert.deepEqual([pickup.state.showTime, full.state.meter, change.state.key, change.state.showTime], [false,'4/4','D',true]);
@@ -116,22 +118,22 @@ QUnit.module('Shared score', () => {
     assert.true(view.composition.staves[2][0].getModifiers().some(m => m instanceof TimeSignature));
     assert.equal((view.composition.staves[0][0].getModifiers()[0] as Barline).getType(), Barline.type.REPEAT_BEGIN);
     assert.equal((view.composition.staves[1][0].getModifiers()[1] as Barline).getType(), Barline.type.END);
-    const poly = parseScore('stave fragment=true key=D\nnotes :q ## F/4\nvoice\nnotes :q Fn/4 ## |');
+    const poly = readScore('staff { key D voice melody { fragment { rest Fn4 } } voice bass { fragment { Fn4 rest } } }');
     assert.equal(poly.measures[0].voices[0].events[1].heads[0].written, 'f/4');
     assert.equal(poly.measures[0].voices[1].span, '1/2');
-    assert.equal(excerpt(poly.source, poly.measures[0].state.declaration), 'stave fragment=true key=D');
-    assert.equal(excerpt(poly.source, poly.measures[0].voices[1].declaration), 'voice');
-    const mixed = parseScore('tabstave notation=true time=1/4\nnotes C3_1/2');
+    assert.equal(excerpt(poly.source, poly.measures[0].state.declaration), 'staff');
+    assert.equal(excerpt(poly.source, poly.measures[0].voices[1].declaration), 'bass');
+    const mixed = readScore('meter 1/4 guitar { 1/2[write C3] | }');
     const override = mixed.measures[0].voices[0].events[0].heads[0];
     assert.deepEqual([override.written, override.sounding], ['c/3','c/4']);
-    for (const bad of ['stave\nnotes C/4 |', 'stave fragment=true\nnotes :h C/4\nvoice\nnotes :q G/4 |',
-      'stave pickup=1/4\nnotes :h C/4 |', 'stave fragment=true\nnotes C/4 | D/4\nvoice\nnotes E/4 |']) {
-      assert.throws(() => parseScore(bad), (e: ScoreError) => e.code === 'measure' && e.range.end > e.range.start);
+    for (const bad of ['staff { C4 | }', 'staff { voice a { fragment { :h C4 } } voice b { fragment { G4 } } }',
+      'pickup 1/4 staff { :h C4 | }', 'staff { voice a { fragment { C4 | D4 } } voice b { fragment { E4 } } }']) {
+      assert.throws(() => readScore(bad), e => ['bar-length','alignment'].includes(e.code) && e.range[1] > e.range[0]);
     }
   });
 
   QUnit.test('Tuplet timing survives hidden tab stems, rests, dots and serialized score data', assert => {
-    const parsed = parseScore('tabstave notation=true time=2/4\nnotes :8 1/2 ## 3/2 ^3^ :8d 0/1 :16 1/1 |');
+    const parsed = parseScore('meter 2/4 guitar { tabStems off tuplet 3:2 { :8 1/2 rest 3/2 } :8. 0/1 :16 1/1 | }', { language: 2 });
     const copy = JSON.parse(JSON.stringify(parsed));
     const view = renderScore(host(), copy);
     for (const staff of ['notation','tab']) {
@@ -149,25 +151,26 @@ QUnit.module('Shared score', () => {
       assert.throws(() => parseScore(source), (e: ScoreError) => e.code === 'fixed-layout' && excerpt(source, e.range).trim() === expected);
     }
     const target = host();
-    const src = phrase.replace('time=4/4', 'time=4/4 show-time=false');
-    const tab = renderScorePart(target, parseScore(phrase), 'tab');
+    const src = phrase.replace('tabStems on', 'tabStems on display meter hidden');
+    const tab = renderScorePart(target, readScore(phrase), 'tab');
     const metadata = JSON.parse(tab.publication.pages[0].svg.querySelector('metadata').textContent);
     assert.deepEqual(metadata.spans.map(span => span.strings), [[3], [2]]);
-    renderScorePart(target, parseScore(src), 'notation');
+    renderScorePart(target, readScore(src), 'notation');
     assert.equal(target.querySelectorAll('.vf-timesignature').length, 0);
-    const dotted = 'stave time=3/4\nnotes :hd C/4 !chord "C"! !lyric "home"! =||';
-    renderScorePart(target, parseScore(dotted), 'notation');
+    const dotted = 'meter 3/4 staff { :h. C4[symbol "C", lyric "home"] bar double }';
+    renderScorePart(target, readScore(dotted), 'notation');
     assert.ok(target.textContent.includes('home'));
     assert.ok(target.textContent.includes('C'));
     const page = target.firstChild;
-    const silent = 'stave time=4/4\nnotes :w ## !silent!';
-    assert.throws(() => renderScorePart(target, parseScore(silent), 'notation'),
-      (e: ScoreError) => e.code === 'fixed-layout' && excerpt(silent, e.range) === '!silent!');
+    const silent = 'meter 4/4 staff { :w skip | }';
+    assert.throws(() => renderScorePart(target, readScore(silent), 'notation'),
+      (e: ScoreError) => e.code === 'fixed-layout' && excerpt(silent, e.range) === 'skip');
     assert.strictEqual(target.firstChild, page);
   });
 
   QUnit.test('An old selection cannot select a different note at the same offset', async assert => {
     const target = host();
+    target.setAttribute('language', '2');
     target.setAttribute('layout', 'flow');
     target.setAttribute('editor', 'true');
     target.textContent = phrase;

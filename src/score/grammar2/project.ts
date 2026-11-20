@@ -45,7 +45,8 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   if (prior) return prior;
   const part = score.parts[index], locate = locations(score.source);
   const declaration = locate(part.range);
-  const tuning = new Tuning(part.tuning ?? 'standard'), music = new Music();
+  let tuning = new Tuning(part.tuning ?? 'standard');
+  const music = new Music();
   let writtenKey = part.key ?? 'C';
   let manager = new KeyManager(writtenKey);
   const fretKeys = new Map<string, KeyManager>();
@@ -61,7 +62,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   }
   const tuningName = part.tuning ?? 'standard';
   const state: StaffState = {
-    declaration, color: part.ink && ink(part.ink, declaration), timeRange: locate(score.meterRange ?? part.range), meter: score.meter, showTime: !!score.meterRange,
+    declaration, color: part.ink && part.ink !== 'default' ? ink(part.ink, declaration) : undefined, timeRange: locate(score.meterRange ?? part.range), meter: score.meter, showTime: !!score.meterRange,
     tab: part.kind === 'guitar' && part.view !== 'notation' && !hasUnassignedPitch, notation: part.view !== 'tab', piano: part.kind === 'piano',
     tuning: tuningName, strings: (Tuning.names[tuningName] ?? tuningName).split(',').length, capo, key: part.key ?? 'C',
     hideClef: part.clef === 'none', clef: part.kind === 'drums' ? 'percussion' : part.clef === 'none' ? 'treble' : part.clef ?? 'treble', pickup: score.pickup, fragment: false,
@@ -88,7 +89,9 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       manager.reset();
       const spelling = sign ? letter + (sign === 'n' ? '' : sign) : manager.getAccidental(letter).note;
       const written = interval ? interval.pitch(spelling, Number(head.pitch.slice(-1))) : spelling + '/' + head.pitch.slice(-1);
-      result = { written, sounding: written, accidental: sign ? written.split('/')[0].slice(1) || 'n' : undefined, range };
+      // A spelling determines pitch. The engraver prints changes and cancellations across the bar.
+      // Only showSign and courtesy force ink on a repeated or otherwise redundant alteration.
+      result = { written, sounding: written, range };
     } else {
       if (head.string > state.strings) throw new ScoreError('measure', 'String outside the tuning', range);
       const position = { str: head.string, fret: head.fret === 'x' ? 'X' as const : head.fret + (interval?.semitones ?? 0) };
@@ -112,7 +115,6 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         const letter = mark.pitch[0].toLowerCase(), sign = mark.pitch.slice(1, -1);
         const name = sign ? letter + (sign === 'n' ? '' : sign) : manager.getAccidental(letter).note;
         result.written = interval ? interval.pitch(name, Number(mark.pitch.slice(-1))) : name + '/' + mark.pitch.slice(-1);
-        if (sign) result.accidental = result.written.split('/')[0].slice(1) || 'n';
       }
       if (mark.kind === 'sign') marks.push({ articulation: mark.code, position: mark.position });
       if (mark.kind === 'courtesy' || mark.kind === 'showSign') {
@@ -241,6 +243,10 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     writtenKey = part.key ?? 'C';
     manager = new KeyManager(writtenKey);
     state.key = intervalFor(score.transpose)?.target ?? writtenKey;
+    state.tuning = tuningName;
+    tuning = new Tuning(tuningName);
+    state.color = part.ink === 'default' ? undefined : part.ink;
+    let displayMeter = part.displayMeter;
     for (const bar of voice.measures) {
       if (part.keys?.[bar.number]) {
         writtenKey = part.keys[bar.number];
@@ -248,6 +254,15 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         state.key = intervalFor(score.transpose)?.target ?? writtenKey;
       }
       const range = locate(bar.barlineRange);
+      const change = part.changes?.[bar.number];
+      if (change?.tuning) {
+        const strings = (Tuning.names[change.tuning] ?? change.tuning).split(',').length;
+        if (strings !== state.strings) throw new ScoreError('measure', 'A tuning change must keep the same string count', range);
+        state.tuning = change.tuning;
+        tuning = new Tuning(change.tuning);
+      }
+      if (change?.ink) state.color = change.ink === 'default' ? undefined : ink(change.ink, range);
+      if (change?.displayMeter !== undefined) displayMeter = change.displayMeter;
       const span = bar.span ?? (bar.number === 1 && score.pickup ? score.pickup : fullBar);
       const meter = bar.meter ?? score.meter;
       const value: MeasureVoice = { declaration: locate(voice.range), hand, span, events: voice.events.slice(bar.start, bar.end).map(voiceAttack),
@@ -257,7 +272,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       const prior = measures[bar.number - 2]?.state;
       const changedMeter = prior?.meter !== meter || prior?.meterSign !== bar.meterSign;
       const m = measures[bar.number - 1] ??= {
-        number: bar.number, range, state: { ...state, fragment: !!bar.fragment, meter, meterSign: bar.meterSign, showTime: part.displayMeter !== false && (bar.number === 1 ? part.displayMeter || state.showTime : changedMeter) },
+        number: bar.number, range, state: { ...state, fragment: !!bar.fragment, meter, meterSign: bar.meterSign, showTime: displayMeter !== false && (bar.number === 1 ? displayMeter || state.showTime : changedMeter || change?.displayMeter === true) },
         span, newRow: !!bar.newRow, voices: []
       };
       m.newRow ||= !!bar.newRow;

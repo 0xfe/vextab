@@ -1,2 +1,2 @@
-stave time=2/4
-notes :q C/4 $.a./bottom.$ E/4 $.a@a/top.$ |
+meter 2/4
+staff { :q C4[staccato below] E4[fermata above] | }

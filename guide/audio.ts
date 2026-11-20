@@ -32,7 +32,7 @@ const playback: PlaybackPlugin = {
 /** Enable the default sheet player with the guide's shared, lazily loaded instrument. */
 export function scoreOptions(host: HTMLElement): DivOptions {
   host.addEventListener('click', stopPrevious, true);
-  return { playback, player: true };
+  return { playback, player: true, language: 2 };
 }
 
 let lastPlay: HTMLButtonElement;

@@ -69,6 +69,8 @@ const pickup = parseScore('meter 2/4 pickup 1/8 staff { :8 G4 | :q A4 G4 | }', {
 | Control ink and labels | Use part-level `ink navy`, attack-level `[ink crimson]`, or `[label "P.H." below font "Georgia" size 14 style italic ink teal]`. |
 | Set engraving or playback defaults | `voice bass stem down { … }` sets a voice’s stem direction. `layout { width 640 rowGap 36 }`, `measureNumbers on`, and `play { tempo 84 instrument 24 }` go before the first part. |
 
+Declare changes of tuning, ink or meter visibility at a bar boundary in the part header. For example, `tuning dropD at 3` retunes the same strings from bar three. `ink default at 2` returns the staff to its default colour, and `display meter shown at 3` prints the meter at that boundary.
+
 A text lane belongs inside its instrument after the music. Its durations are independent of the notes. Change its font, ink, alignment or staff line where the change should begin. A `start` or `end` marker sits on the bar boundary.
 
 ```text
