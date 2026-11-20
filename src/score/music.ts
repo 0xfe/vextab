@@ -2,6 +2,16 @@
 import { Bend, KeyManager, Music, Tuning, VexFlow } from 'vexflow';
 import type { Prebend } from './model';
 
+/** Preserve enharmonic octave crossings such as B sharp and C flat. */
+export function midiPitch(key: string): number | undefined {
+  const match = /^([a-g])(bb|##|b|#|n)?\/(-?\d+)$/i.exec(key);
+  if (!match) return;
+  const natural = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 }[match[1].toLowerCase()];
+  const offset = { bb: -2, b: -1, n: 0, '': 0, '#': 1, '##': 2 }[match[2] ?? ''];
+  const pitch = 12 * (Number(match[3]) + 1) + natural + offset;
+  if (pitch >= 0 && pitch <= 127) return pitch;
+}
+
 /** Use guitar bend amounts in both the tab arrow and the printed playing instruction. */
 function bendAmount(semitones: number): string {
   return semitones === 1 ? '½' : semitones === 2 ? 'full' : semitones + ' st';

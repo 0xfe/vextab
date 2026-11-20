@@ -193,6 +193,7 @@ export class StaveBuilder {
       note_notes,
       meter,
       key: opts.key,
+      capo: Number(opts.capo ?? 0),
       color: opts.color,
       tabRhythmSpace: 0,
       voiceSettings: [{ options: { ...this.artist.customizations }, direction: opts.voice, groups: [] }],

@@ -18,6 +18,12 @@ notes :q 0-2-3-2/1 |&lt;/div&gt;
   <h2>Parsing and the score model</h2>
   <article id="parse-score"><h3>parseScore(source): ParsedScore</h3>
     <p>Pass the original VexTab string. The flow compiler validates measures and resolves voices, pitches, tuplets, ties and spans. It returns a fresh score revision or throws a located <code>ScoreError</code>. Use fixed layout for free-form Artist fragments and legacy gestures.</p></article>
+  <article id="transpose"><h3>options transpose</h3>
+    <p>Write a signed semitone offset before the first stave. Both the printed signature and the sounding notes move. Guitar notes stay on their original strings. Change the source fingering if a downward shift would require a negative fret.</p>
+    <pre>options transpose=+2
+tabstave notation=true key=C time=4/4
+notes :q 3-5-7-8/5 |</pre>
+    <p>This shifts C major to D major and displays frets 5, 7, 9, and 10 on string five.</p></article>
   <article id="parsed-score"><h3>ParsedScore</h3><p><code>source</code> is the original string. <code>measures</code> holds numbered bars, staff state and ordered voices. A voice’s <code>events</code> have an ID, source range, onset, duration and heads. A chord is one event with several heads. Fretted heads carry their string and fret. <code>ties</code> identifies endpoints and chord members. <code>spans</code> includes voltas and palm mutes.</p>
     <pre>const event = score.measures[0].voices[0].events[0];
 const token = score.source.slice(event.range.start, event.range.end);</pre></article>

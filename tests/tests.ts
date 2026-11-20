@@ -15,6 +15,7 @@ import './drums';
 import './open-slides';
 import './colors';
 import './shared-score';
+import './transpose';
 import './studies';
 import './player';
 import './playback';

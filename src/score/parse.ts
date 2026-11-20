@@ -4,7 +4,7 @@ import { drumError, drumKit } from './drums';
 import { isScoreColor } from './color';
 import { readSyntax, ScoreError, type SourceRange } from './source';
 import { VoiceCommands, resolveMarks } from './commands';
-import { soundingGuitarPitch, spellFret, tupletOccupancy } from './music';
+import { midiPitch, soundingGuitarPitch, spellFret, tupletOccupancy } from './music';
 import type { Attack, Head, Measure, MeasureVoice, ParsedScore, StaffState, Tie, ScoreSpan } from './model';
 
 export { ScoreError, type SourceRange } from './source';
@@ -120,7 +120,7 @@ function readSettings(settings: Settings, node: Token): void {
       case 'tempo':
         if (!Number.isFinite(Number(opt.value)) || Number(opt.value) <= 0) invalid(opt, 'Tempo must be positive');
         break;
-      case 'instrument': break;
+      case 'transpose': case 'instrument': break;
       case 'player': case 'measure-numbers': case 'tab-stems': case 'beam-rests': case 'beam-stemlets': case 'beam-middle-only': booleanOption(opt); break;
       case 'tab-stem-direction':
         if (!['up','down'].includes(opt.value)) invalid(opt, 'Invalid tab stem direction');
@@ -330,7 +330,7 @@ function staffPitch(head: Head): string {
 }
 
 /** Resolve implicit named pitches at simultaneous onsets after all voices have been read. */
-function resolvePitches(measures: Measure[], ties: Tie[]): void {
+function resolvePitches(measures: Measure[], ties: Tie[], transposed: boolean): void {
   const music = new Music();
   const heads = new Map<string, Head[]>();
   const arrivals = new Map(ties.map(t => [t.to + '/' + t.toHead, t]));
@@ -357,6 +357,9 @@ function resolvePitches(measures: Measure[], ties: Tie[]): void {
             if (name === '?') throw new ScoreError('syntax', 'Write the accidental after a conflicting unison', h.range);
             h.written = name + pitch.slice(1);
             if (!h.position) h.sounding = h.written;
+          }
+          if (transposed && midiPitch(h.sounding) === undefined) {
+            throw new ScoreError('syntax', 'Transposed note is outside the playable MIDI range', h.range);
           }
           if (prior && prior.written !== h.written) throw new ScoreError('syntax', 'Tied pitches differ', h.range);
           const name = h.written.split('/')[0];
@@ -399,7 +402,7 @@ export function parseScore(source: string): ParsedScore {
   }
   if (!row) invalid(nodes[0], 'Expected a stave');
   finishRow(row, measures);
-  resolvePitches(measures, ties);
+  resolvePitches(measures, ties, Boolean(Number(settings.transpose)));
   resolveMarks(measures, spans);
   const parsed: ParsedScore = { source, measures, ties, spans, measureNumbers: settings['measure-numbers'] === 'true' };
   if (settings.player || settings.tempo || settings.instrument) {

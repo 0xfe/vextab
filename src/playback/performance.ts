@@ -1,18 +1,10 @@
 // Translate parsed scores and legacy fixed rows into sounding notes on one timeline.
 import { VexFlow } from 'vexflow';
+import { midiPitch } from '../score/music';
+import type { SourceRange } from '../score/source';
 import type Artist from '../artist';
 import type { Attack, Head, ParsedScore } from '../score/model';
 import type { Performance, PlaybackEvent, PlaybackNote } from './transport';
-
-/** Preserve enharmonic octave crossings such as B sharp and C flat. */
-function midiPitch(key: string): number | undefined {
-  const match = /^([a-g])(bb|##|b|#|n)?\/(-?\d+)$/i.exec(key);
-  if (!match) return;
-  const natural = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 }[match[1].toLowerCase()];
-  const offset = { bb: -2, b: -1, n: 0, '': 0, '#': 1, '##': 2 }[match[2] ?? ''];
-  const pitch = 12 * (Number(match[3]) + 1) + natural + offset;
-  if (pitch >= 0 && pitch <= 127) return pitch;
-}
 
 /** A single picked string owns its pitch envelope, including the release of a pre-bend. */
 function soundingNote(key: string, duration: number, release?: number): PlaybackNote | undefined {
@@ -116,11 +108,17 @@ export function artistPerformance(artist: Artist, tempo: number, mark: (note: an
 }
 
 /** Keep legacy VexFlow getPlayNote() values intact while recording the physical sounding octave. */
-interface FixedHead { key: string; release?: number }
+interface FixedHead { key: string; release?: number; inherit?: { written: string; range: SourceRange } }
 export const fixedHeads = new WeakMap<object, FixedHead[]>();
 
 /** Each tied destination head remembers its source even when the chord is reordered. */
 const fixedTies = new WeakMap<object, Map<number, { glyph: object; index: number }>>();
+/** An implicit continuation can inherit a source accidental across the barline. */
+export function tiedFixedHead(glyph: object, index: number): FixedHead | undefined {
+  const tie = fixedTies.get(glyph)?.get(index);
+  return tie && fixedHeads.get(tie.glyph)?.[tie.index];
+}
+
 export function recordFixedTie(from: object, to: object, first: number[], last: number[]): void {
   if (!from || !to) return;
   const ties = fixedTies.get(to) ?? new Map();
