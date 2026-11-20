@@ -93,13 +93,13 @@ artist.render(new Renderer(host, Renderer.Backends.SVG));</pre></article>
 <section id="audio-api">
   <h2>Playback and instruments</h2>
   <article id="player"><h3>Player, tempo and instrument</h3>
-    <p>Pass an Artist or a ParsedScore to <code>new Player(source, options)</code>. Call <code>play()</code> from a user gesture. Its promise resolves at the end or on Stop and rejects on audio errors. <code>stop()</code> cancels a pending load and releases sounding notes. <code>dispose()</code> also removes controls. <code>setTempo(bpm)</code> and <code>setInstrument(program)</code> stop the current performance.</p>
-    <p>In an embed, put <code>options player=true tempo=96 instrument=24</code> before the first stave. Tempo defaults to 120 quarter notes per minute. Instrument accepts a General MIDI program from 0 to 127 or a supported name such as <code>acoustic_guitar_nylon</code>. The guide supplies its own toolbar. <a href="#features/playback">Play a phrase →</a></p></article>
+    <p>Pass an Artist or a ParsedScore to <code>new Player(source, options)</code>. Call <code>play()</code> from a user gesture. Its promise resolves at the end or on Stop and rejects on audio errors. <code>stop()</code> cancels a pending load and releases sounding notes. <code>dispose()</code> also removes controls. <code>setTempo(bpm)</code> changes the tempo during playback. <code>setInstrument(program)</code> stops the current performance.</p>
+    <p>In an embed, put <code>options player=true tempo=96 instrument=24</code> before the first stave. Tempo defaults to 120 quarter notes per minute. Instrument accepts a General MIDI program from 0 to 127 or a supported name such as <code>acoustic_guitar_nylon</code>. Use the metronome beside Play to adjust playback tempo. <a href="#features/playback">Play a phrase →</a></p></article>
   <article id="audio-plugins"><h3>createWebAudioPlayback() and createSpessaSynthPlayback(synth, channels?)</h3>
     <p>Embeds default to a sample-free Web Audio instrument. For a SoundFont host, load the matching worklet and bank, connect the synth to your output, then pass the adapter to the editor. A reserved channel pool lets a bent string change pitch independently of its neighbours. <a href="#quickstart/spessasynth">Set up SpessaSynth and play a SoundFont →</a></p>
     <pre>const playback = createSpessaSynthPlayback(synth);
-const editor = new Div(scoreHost, { playback, playbackControls: toolbar });</pre>
-    <p><code>playbackControls</code> keeps the buttons outside the score and enables playback even for source without a player directive. Custom instruments implement <code>PlaybackPlugin.open(program, signal)</code> and return a session with <code>playNote(note)</code> and <code>stop()</code>.</p></article>
+const editor = new Div(scoreHost, { playback, player: true });</pre>
+    <p><code>player: true</code> enables the sheet controls even for source without a player directive. Custom instruments implement <code>PlaybackPlugin.open(program, signal)</code> and return a session with <code>playNote(note)</code> and <code>stop()</code>.</p></article>
   <article id="prebend"><h3>Pre-bent attacks · 7z8/3 · 7z8z7/3</h3><p>The physical fret comes first, followed by the raised fret. Optionally repeat the physical fret to release during the attack. Each chord member keeps its own string and pitch. Fixed and flow playback both sound the raised attack and its release. <a href="#features/pre-bends">Hear the release →</a></p></article>
 </section>
 <section id="appearance-api">

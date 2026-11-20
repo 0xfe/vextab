@@ -33,7 +33,7 @@ export async function testGuide(page, dist) {
   await page.locator('.page-turn').getByRole('link', { name: /configure playback/ }).click();
   await page.locator('#main[data-route="#quickstart/playback"]').waitFor();
   assert.equal(await page.locator('.chapter-example .editor-error').textContent(), '');
-  assert.equal(await page.locator('.chapter-example .guide-audio button').innerText(), 'Play');
+  assert.equal(await page.locator('.chapter-example .vextab-sheet .vextab-play').getAttribute('aria-label'), 'Play');
   await page.locator('.page-turn').getByRole('link', { name: /SoundFont with SpessaSynth/ }).click();
   await page.locator('#main[data-route="#quickstart/spessasynth"]').waitFor();
   for (const language of ['bash', 'javascript', 'html']) {
@@ -58,7 +58,7 @@ export async function testGuide(page, dist) {
     assert.ok(count > 0, hash);
     assert.equal(await chapter.locator('.syntax-layer').count(), count, hash);
     assert.equal(await chapter.locator('svg').count(), count, hash);
-    assert.equal(await chapter.locator('.guide-audio button').count(), count, hash);
+    assert.equal(await chapter.locator('.vextab-sheet .vextab-play').count(), count, hash);
     assert.ok((await chapter.locator('.editor-error').allTextContents()).every(text => !text), hash);
     examples += count;
   }

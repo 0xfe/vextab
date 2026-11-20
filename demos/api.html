@@ -35,8 +35,8 @@
         ].join('\n'));
         artist.render(renderer);
         if (window.VexTabAudio) {
-          const { playback, playbackControls } = VexTabAudio.scoreOptions(document.getElementById('boo'));
-          new vextab.Player(artist, { playback, controls: playbackControls }).render();
+          const { playback } = VexTabAudio.scoreOptions(document.getElementById('boo'));
+          new vextab.Player(artist, { playback }).render();
         }
       } catch (e) {
         console.error(e);

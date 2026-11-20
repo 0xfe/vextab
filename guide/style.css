@@ -215,16 +215,6 @@ textarea.editor { font-family: ui-monospace, SFMono-Regular, Consolas, monospace
   .chapter-body th, .chapter-body td { padding: 6px; }
 }
 
-/* Audio controls sit on the page chrome so they never cover staff lines. */
-.guide-audio:empty { display: none; }
-.chapter-example > .guide-audio, .book-cover .guide-audio {
-  padding: 7px 12px;
-  background: var(--soft);
-  border-bottom: 1px solid var(--line);
-}
-.guide-audio button { color: var(--green); font-weight: 650; }
-.guide-audio [role="status"] { color: var(--muted); font-size: .88em; }
-
 /* One palette for code listings, inline examples and editable notation. */
 .token.comment, .token.prolog, .token.doctype { color: #626e69; }
 .token.keyword, .token.command, .token.tag { color: #7b386b; }

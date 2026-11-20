@@ -69,8 +69,8 @@ async function printPart(): Promise<void> {
       el('print-status').textContent = publication.diagnostics.map(d => d.detail).join(' ');
       return;
     }
-    const options = scoreOptions(part, el('edition-controls'));
-    partPlayer = new Player(music, { playback: options.playback, controls: options.playbackControls });
+    const options = scoreOptions(part);
+    partPlayer = new Player(music, { playback: options.playback });
     partPlayer.render(publication.pages[0].svg);
     const { faces } = await import(/* webpackChunkName: "print-outlines" */ './outlines');
     if (revision !== printRevision) return;
@@ -106,7 +106,7 @@ function mount(host: HTMLElement, source: string, fixed = false): Div {
     host.setAttribute('layout','flow');
     host.removeAttribute('width');
   }
-  const instance = new Div(host, scoreOptions(host, host.id === 'score' ? el('view-controls') : undefined));
+  const instance = new Div(host, scoreOptions(host));
   highlightEditor(host.querySelector('textarea'));
   return instance;
 }
