@@ -15,4 +15,4 @@ The chord tutorial now has two editors. One shows named pitches on a staff and t
 
 Run `npm test` to parse the authored examples and exercise the guide and rendering in Chrome. The [corpus checker](../../scripts/check-corpus.mjs) extracts scores from the source pages and downloads. The [frozen baseline pages](../../tests/baseline/v1) supply the original scores to the historical renderer. The [Artist parser suite](../../tests/compat/artist-parser.ts), legacy API, migration and differential tests retain v1 where a comparison or backward compatibility is the assertion.
 
-The four-string clef uses a local size correction. Track [VexFlow #373](https://github.com/vexflow/vexflow/issues/373) before removing it. The timed-text example covers independent signs and lyric placement, including adjacent signs at one beat.
+VexFlow 5.6.1 now sizes and centers the four-string TAB clef in both screen and printed scores. [Upstream fix](https://github.com/vexflow/vexflow/issues/373) The timed-text example covers independent signs and lyric placement, including adjacent signs at one beat.

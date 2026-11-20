@@ -3,7 +3,6 @@ import { position, staveRow, printedGeometry, scoreSurfaces, type Geometry } fro
 import { projectScoreV2 } from './grammar2/project';
 import type { ScoreV2 } from './grammar2/model';
 import { attachHeadMarks, PrintedHeadMarks } from './head-marks';
-import { fitTabClefs, fitPrintedTabClefs } from './tab-clef';
 import { TextLanes } from './text-lanes';
 import { drumKit } from './drums';
 import { attachOpenSlide, describeOpenSlide, drawPrintedOpenSlides } from './open-slide';
@@ -409,12 +408,10 @@ export function renderScore(host: HTMLElement, source: ParsedScore | ScoreV2,
     resize();
     if (frames.height) drawFrames(parsed, width, ctx, (id, range) => view.sources.project(view.staves[0], id, range));
   }
-  const initial = parsed.measures[0].state;
-  if (initial.hideClef || (view.staves.includes('tab') && initial.strings !== 6)) {
+  if (parsed.measures[0].state.hideClef) {
     composition.sheet.format();
     for (const row of composition.staves) for (const stave of row) {
-      if (initial.hideClef) for (const clef of stave.getModifiers(undefined, Clef.CATEGORY)) clef.setText('');
-      else fitTabClefs(stave);
+      for (const clef of stave.getModifiers(undefined, Clef.CATEGORY)) clef.setText('');
     }
   }
   factory.draw();
@@ -550,9 +547,8 @@ export function renderScorePart(host: HTMLElement, source: ParsedScore | ScoreV2
   paper.noteHooks = [view.textLanes.hook, view.printed.hook, ...(paper.noteHooks ?? [])];
   const publication = new Publication(view.spec).render(host, paper);
   if (part === 'tab') drawPrintedOpenSlides(publication, parsed, event => view.eventId(part, event.id));
-  for (const page of publication.pages) {
-    if (parsed.measures[0].state.hideClef) for (const glyph of page.svg.querySelectorAll('.vf-clef')) glyph.remove();
-    else if (part === 'tab') fitPrintedTabClefs(page.svg, parsed.measures[0].state.strings);
+  if (parsed.measures[0].state.hideClef) {
+    for (const page of publication.pages) for (const glyph of page.svg.querySelectorAll('.vf-clef')) glyph.remove();
   }
   colorPublication(publication, parsed, (event, voice) => view.eventId(voice.hand ?? part, event.id));
   function playbackGeometry(): Geometry {

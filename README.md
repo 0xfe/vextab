@@ -13,13 +13,13 @@ npm start
 
 Open the [project index](http://127.0.0.1:9005/) for demos, tests, tools, and downloads. Start with the [14-step VexTab tutorial](http://127.0.0.1:9005/guide/) or open [Your first fret](http://127.0.0.1:9005/guide/#lesson/first-fret). Press **Play** at the bottom center of the score, change a fret, switch to tab and select the note from the keyboard. Explore [eight editable studies](http://127.0.0.1:9005/guide/#studies) or [search the API and notation reference](http://127.0.0.1:9005/guide/#reference).
 
-The **6.0.0 release candidate** reads grammar v2 by default. A guitar phrase can be as short as `guitar { 0-2-3-2/1 | }`. See [migration notes](docs/migrate-scores.md) for existing scores and [playback plugins](docs/playback.md) for custom instruments.
+**VexTab 6.0** reads grammar v2 by default. A guitar phrase can be as short as `guitar { 0-2-3-2/1 | }`. See the [6.0 release notes](docs/release-6.0.0.md), [migration guide](docs/migrate-scores.md) for existing scores and [playback plugins](docs/playback.md) for custom instruments.
 
 ## Embed an editable score
 
 The [developer quickstart](http://127.0.0.1:9005/guide/#quickstart) covers installing VexTab, embedding it in an application and configuring playback.
 
-The examples on this branch use grammar v2. To convert an existing score, follow the [migration guide](docs/migrate-scores.md). Build the development bundles with `npm run build-dev`. Put this HTML beside `dist/div.dev.js` and open it in a browser. The script includes VexFlow and the engraving fonts.
+The examples use grammar v2. To convert an existing score, follow the [migration guide](docs/migrate-scores.md). Build the development bundles with `npm run build-dev`. Put this HTML beside `dist/div.dev.js` and open it in a browser. The script includes VexFlow and the engraving fonts.
 
 ```html
 <!doctype html>

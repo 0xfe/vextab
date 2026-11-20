@@ -1,5 +1,4 @@
 // Stave creation logic that manages bars, voices, and stave layout.
-import { fitTabClefs } from '../score/tab-clef';
 import { inkStyle } from '../score/color';
 import Vex from '../vexflow';
 import * as _ from '../utils';
@@ -172,10 +171,7 @@ export class StaveBuilder {
         Number(this.artist.customizations.width) - 20,
         { leftBar: false },
       ).setNumLines(opts.strings);
-      if (opts.clef !== 'none') {
-        tab_stave.addTabGlyph();
-        fitTabClefs(tab_stave);
-      }
+      if (opts.clef !== 'none') tab_stave.addTabGlyph();
       tab_stave.setNoteStartX(tabstave_start_x);
       this.artist.last_y += tab_stave.getHeight() + this.artist.options.tab_stave_lower_spacing;
     }
