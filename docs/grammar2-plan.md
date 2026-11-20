@@ -4,6 +4,8 @@ A musician should be able to copy a score from the guide into a plain VexTab emb
 
 ## 1. Agree on the language and inventory the scores
 
+The [migration inventory](../issues/182/inventory.md) identifies the existing sources and acceptance checks. The [editing tasks](../issues/182/editing-tasks.md) are ready for musician review.
+
 - Try four editing tasks with a guitarist and a pianist. Enter a first phrase, finger a chord, edit one voice independently, and reuse a phrase across bars. Use their mistakes and edits to settle the syntax.
 - Inventory authored scores and syntax assumptions in the README, `docs/`, historical tutorial in `doc/`, guide lessons and score assets, demos, HTML embeds, playgrounds, test fixtures, scripts, and package consumer examples. Include scores embedded in TypeScript, Markdown and HTML, plus maintained website content.
 - Record each feature, a representative score, and its expected behavior in fixed SVG/Canvas, responsive engraving, printed parts, playback and reading navigation wherever it applies. Include landed work and pending score features such as grand staffs and per-head marks. Record intended major-version changes explicitly.
