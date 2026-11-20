@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- Local editor for the language experiment. Run with the checkout's development bundles. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grammar v2 sketchbook · VexTab</title>
+  <style>
+    :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; color: #23312d; background: #faf9f5; }
+    * { box-sizing: border-box; }
+    main { margin: 2rem auto; padding: 0 1rem; max-width: 56rem; }
+    h1 { font: 2.5rem Georgia, serif; margin-bottom: .5rem; }
+    h2 { font-size: 1.15rem; }
+    textarea { display: block; width: 100%; font: 1rem/1.5 ui-monospace, monospace; padding: .75rem; }
+    button, select { font: inherit; }
+    #draw { margin-top: .5rem; }
+    #scores { background: white; overflow-x: auto; }
+    #scores > section { padding: .5rem; }
+    #scores h2 { margin: .5rem 0; }
+    #timeline { font: .875rem/1.5 ui-monospace, monospace; }
+    li { padding: .15rem 0; }
+    li button { text-align: left; }
+    [role=status] { white-space: pre-wrap; }
+    :focus-visible { outline: 2px solid #20614f; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Grammar v2 sketchbook</h1>
+  <label>Example <select id="example"></select></label>
+  <p><label for="input">Edit the score, then render it. Select a timeline event to see the source that produced it.</label></p>
+  <textarea id="input" rows="10" spellcheck="false"></textarea>
+  <button type="button" id="draw">Render score</button>
+  <p id="status" role="status"></p>
+  <div id="scores" aria-label="Score preview"></div>
+  <details><summary>Event timeline</summary><ol id="timeline"></ol></details>
+</main>
+<script src="../../dist/main.dev.js"></script>
+<script type="module" src="./preview.mjs"></script>
+</body>
+</html>
