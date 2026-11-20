@@ -16,11 +16,14 @@ execFileSync('npm', ['install','--ignore-scripts','--no-audit','--no-fund','--no
 const consumerRequire = createRequire(join(cwd, 'package.json'));
 assert.throws(() => consumerRequire.resolve('spessasynth_lib'), { code: 'MODULE_NOT_FOUND' });
 const check = 'if (parseScore("stave time=1/4\\nnotes C/4").measures.length !== 1) process.exit(1)';
-execFileSync(process.execPath, ['--input-type=module','-e',"import {parseScore} from 'vextab/parse';" + check], { cwd });
-execFileSync(process.execPath, ['-e',"const {parseScore}=require('vextab/parse');" + check], { cwd });
-await writeFile(join(cwd,'consumer.ts'), `import { Div, parseScore, renderScore, type ParsedScore, type PlaybackPlugin, createSpessaSynthPlayback } from 'vextab/browser';
+const previewCheck = "if (parseScore('staff { :w C4 | }', { language: 2 }).measureCount !== 1) process.exit(1)";
+execFileSync(process.execPath, ['--input-type=module','-e',"import {parseScore} from 'vextab/parse';" + check + "; " + previewCheck], { cwd });
+execFileSync(process.execPath, ['-e',"const {parseScore}=require('vextab/parse');" + check + "; " + previewCheck], { cwd });
+await writeFile(join(cwd,'consumer.ts'), `import { Div, parseScore, renderScore, type ParsedScore, type ScoreV2, type PlaybackPlugin, createSpessaSynthPlayback } from 'vextab/browser';
 const host = document.getElementById('manual')!;
 const score: ParsedScore = parseScore('stave time=1/4\\nnotes C/4');
+const preview: ScoreV2 = parseScore('staff { :w C4 | }', { language: 2 });
+if (preview.parts[0].staves[0].voices[0].events[0].duration !== '1/1') throw new Error('bad preview timing');
 const screen = renderScore(host, score);
 host.dataset.event = screen.navigation.events[0].label;
 const example: PlaybackPlugin = { open: () => ({ playNote() {}, stop() {} }) };
