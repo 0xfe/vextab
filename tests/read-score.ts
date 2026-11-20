@@ -3,5 +3,5 @@ import { parseScore } from '../src/score/parse';
 import { projectScoreV2 } from '../src/score/grammar2/project';
 
 export function readScore(source: string) {
-  return projectScoreV2(parseScore(source, { language: 2 }));
+  return projectScoreV2(parseScore(source));
 }

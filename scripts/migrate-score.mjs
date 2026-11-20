@@ -123,7 +123,7 @@ export function migrateScore(source) {
     if (blank[2] && blank[2] !== '6') review({line:1,column:source.indexOf('strings')}, 'Choose the pitches of the open strings for this empty staff');
     return blank[1] === 'stave' ? 'staff { fragment {} }\n' : 'guitar { view tab fragment {} }\n';
   }
-  const score = parseScore(source);
+  const score = parseScore(source, { language: 1 });
   const { state, voices } = score.measures[0];
   const lines = [];
   if (score.measureNumbers) lines.push('measureNumbers on');
@@ -175,7 +175,7 @@ export function migrateScore(source) {
   } else body.push(...voices.map((v,i) => writeVoice(v,i,voices.length > 1)));
   lines.push(kind + ' {\n' + indent(body.join('\n')) + '\n}');
   const result = lines.join('\n') + '\n';
-  parseScore(result, {language:2});
+  parseScore(result);
   return result;
 }
 

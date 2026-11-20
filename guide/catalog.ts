@@ -94,5 +94,5 @@ export const reference = [
   ['lyric · symbol · frame · slash', 'A lyric or chord symbol follows its attack. :q. slash is a dotted quarter slash. Frame strings run from low to high.', 'slow-river'],
   ['volta · ending · mark', 'The volta block gives the shared bars. Each numbered ending has its own block.', 'repeat-endings'],
   ['print · voice · paper', 'Select a one-based voice and choose A4 or Letter for an independent part.', 'guitar-duet'],
-  ['layout · width · editor · Canvas', 'Set data-language="2" and data-editor="true" on an embed. Select SVG or Canvas with data-renderer.', 'embed-workbench'],
+  ['layout · width · editor · Canvas', 'Set and data-editor="true" on an embed. Select SVG or Canvas with data-renderer.', 'embed-workbench'],
 ];

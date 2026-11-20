@@ -85,7 +85,7 @@ class Div {
 
   // Parser + renderer helpers.
   private artist: Artist;
-  private parser: VexTab;
+  private parser: VexTab<1>;
 
   /**
    * Construct the Div renderer and immediately render the initial markup.
@@ -113,7 +113,9 @@ class Div {
     this.width = parseInt(width, 10) || 400;
     this.scale = parseFloat(embedAttribute(host, 'scale')) || 1.0;
     this.rendererBackend = embedAttribute(host, 'renderer') || 'svg';
-    this.grammar2 = (options.language ?? Number(embedAttribute(host, 'language') ?? 1)) === 2;
+    const language = options.language ?? Number(embedAttribute(host, 'language') ?? 2);
+    if (language !== 1 && language !== 2) throw new RangeError('Expected VexTab language 1 or 2');
+    this.grammar2 = language === 2;
     this.partIndex = options.partIndex;
     this.flow = this.grammar2 || usesFlowLayout(host, this.code);
     host.classList.toggle('vextab-flow', this.flow);
@@ -154,7 +156,7 @@ class Div {
     // Initialize parser and renderer.
     if (!this.flow) {
       this.artist = new Artist(10, 0, this.width, { scale: this.scale });
-      this.parser = new VexTab(this.artist);
+      this.parser = new VexTab(this.artist, { language: 1 });
     }
 
     const autoWidth = this.flow && embedAttribute(host, 'layout') !== 'fixed' && (width === null || width === 'auto');
@@ -388,8 +390,8 @@ class Div {
     try {
       if (this.flow) {
         this.candidate = undefined;
-        this.document = this.grammar2 ? parseScore(this.code, { language: 2 }) : undefined;
-        this.candidate = this.document ? projectScoreV2(this.document, this.partIndex) : parseScore(this.code);
+        this.document = this.grammar2 ? parseScore(this.code) : undefined;
+        this.candidate = this.document ? projectScoreV2(this.document, this.partIndex) : parseScore(this.code, { language: 1 });
       } else {
         this.artist.reset();
         this.parser.parse(this.code);

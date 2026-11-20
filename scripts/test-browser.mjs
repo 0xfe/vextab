@@ -17,9 +17,9 @@ const dist = resolve(process.argv[2] ?? 'dist');
 const { parseScore, ScoreV2Error } = createRequire(import.meta.url)(resolve(dist, 'score.cjs'));
 execFileSync(process.execPath, ['experiments/grammarv2/compiler.test.mjs', resolve(dist, 'score.cjs')], { stdio: 'inherit' });
 const sample = 'meter 1/4\r\nstaff { C4 | }';
-assert.throws(() => parseScore(sample + ' ?', { language: 2 }), error =>
+assert.throws(() => parseScore(sample + ' ?'), error =>
   error instanceof ScoreV2Error && error.range[0] === sample.length + 1);
-const note = parseScore(sample, { language: 2 }).parts[0].staves[0].voices[0].events[0];
+const note = parseScore(sample).parts[0].staves[0].voices[0].events[0];
 assert.equal(sample.slice(...note.range), 'C4');
 assert.equal(note.duration, '1/4');
 const engine = process.env.VEXTAB_BROWSER ?? 'chromium';
@@ -155,17 +155,18 @@ try {
   // Older pages load the VexTabDiv global and use a different class and attributes.
   await page.goto('about:blank');
   await page.setContent(`
-    <div id="legacy" class="vex-tabdiv" data-renderer="" editor="true" editor_width="520">tabstave\nnotes 5/2</div>
-    <div id="legacy-piano" class="vex-tabdiv">piano time=1/4\nnotes C/4\nvoice hand=left\nnotes C/3</div>
-    <div id="fixed" class="vex-tabdiv" layout="flow" data-layout="fixed" data-renderer="svg"
+    <div id="legacy" data-language="1" class="vex-tabdiv" data-renderer="" editor="true" editor_width="520">tabstave\nnotes 5/2</div>
+    <div id="legacy-piano" data-language="1" class="vex-tabdiv">piano time=1/4\nnotes C/4\nvoice hand=left\nnotes C/3</div>
+    <div id="fixed" data-language="1" class="vex-tabdiv" layout="flow" data-layout="fixed" data-renderer="svg"
       width="240" data-width="600" data-scale="0.5" data-editor="true"
       editor_height="100" data-editor_height="80" data-editor-height="60"
       data-editor_width="280">tabstave\nnotes 5/2</div>
-    <div id="flow" class="vextab-auto" style="width: 450px" width="200" data-width="auto"
+    <div id="flow" data-language="1" class="vextab-auto" style="width: 450px" width="200" data-width="auto"
       data-layout="flow" editor="true" data-editor="false">stave time=1/4\nnotes C/4</div>
-    <div id="fixed-width" class="vextab-auto" style="width: 450px" width="auto" data-width="300"
+    <div id="fixed-width" data-language="1" class="vextab-auto" style="width: 450px" width="auto" data-width="300"
       data-layout="" layout="flow">stave time=1/4\nnotes C/4</div>
-    <div id="invalid" class="vextab-auto" data-show-errors="true">notes ?</div>`);
+    <div id="default" class="vex-tabdiv">guitar { :w 3/2 | }</div>
+    <div id="invalid" class="vextab-auto" data-show-errors="true">guitar { use missing }</div>`);
   await page.addScriptTag({ path: resolve(dist, 'vextab-div.js') });
   await page.locator('#legacy canvas').waitFor();
   assert.equal(await page.locator('#legacy').getAttribute('renderer'), 'canvas');
@@ -183,7 +184,9 @@ try {
   assert.equal(Number(await page.locator('#fixed svg').getAttribute('width')), 300);
   assert.deepEqual(await page.locator('#fixed textarea').evaluate(el => [el.style.width, el.style.height]), ['280px', '60px']);
   assert.equal(await page.locator('#fixed .vex-canvas').evaluate(el => getComputedStyle(el).overflowX), 'visible');
-  assert.ok(await page.locator('#invalid [role="status"]').innerText());
+  assert.match(await page.locator('#invalid [role="status"]').innerText(), /syntax at 1:14: Declare pattern missing/);
+  await page.locator('#default canvas').waitFor();
+  assert.equal(await page.evaluate(() => window.VexTabDiv.parseScore('staff { :w C4 | }').measureCount), 1);
 
   // Only the host whose effective width is auto follows its container through a resize.
   assert.equal(Number(await page.locator('#flow svg').getAttribute('width')), 450);
@@ -202,13 +205,13 @@ try {
     await page.setContent('<div id="score"></div>');
     await page.addScriptTag({ path: resolve(dist, '..', packed.main) });
     await page.evaluate(() => {
-      const score = window.vextab.parseScore('guitar { fragment { 5/2 } }', {language:2});
+      const score = window.vextab.parseScore('guitar { fragment { 5/2 } }');
       window.vextab.renderScore(document.querySelector('#score'), score, { width: 500 });
     });
     await page.locator('#score svg path').first().waitFor({ state: 'attached' });
 
     await page.goto('about:blank');
-    await page.setContent('<div class="vextab-auto" data-language="2">guitar { fragment { 5/2 } }</div>');
+    await page.setContent('<div class="vextab-auto">guitar { fragment { 5/2 } }</div>');
     await page.addScriptTag({ path: resolve(dist, 'div.prod.js') });
     await page.locator('.vextab-auto svg path').first().waitFor({ state: 'attached' });
   }

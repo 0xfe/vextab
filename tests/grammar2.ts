@@ -1,16 +1,17 @@
 // Verify version selection and source-mapped results through the public browser API.
 import { parseScore, ScoreError, ScoreV2Error } from '../src/browser';
 
-QUnit.module('Grammar v2 preview', () => {
-  QUnit.test('ordinary callers keep v1 and explicit callers can read independent v2 parts', assert => {
+QUnit.module('Grammar selection', () => {
+  QUnit.test('ordinary calls read v2 and explicit v1 calls retain their historical model', assert => {
     const old = 'stave time=1/4\nnotes C/4';
-    assert.deepEqual(parseScore(old, { language: 1 }), parseScore(old));
+    assert.equal(parseScore(old, { language: 1 }).measures.length, 1);
     const source = 'meter 1/4\npiano { upper { C4 | } lower { C3 | } } drums { kick | }';
-    const score = parseScore(source, { language: 2 });
+    const score = parseScore(source);
+    assert.deepEqual(score, parseScore(source, { language: 2 }));
     assert.deepEqual(score.parts.map(p => p.staves.map(s => s.name)), [['upper','lower'],['main']]);
     assert.ok(score.parts.every(part => part.staves.every(staff => staff.voices[0].measures.length === score.measureCount)));
-    assert.throws(() => parseScore(source), ScoreError);
-    assert.throws(() => parseScore(old, { language: 2 }), ScoreV2Error);
+    assert.throws(() => parseScore(source, { language: 1 }), ScoreError);
+    assert.throws(() => parseScore(old), ScoreV2Error);
   });
 
   QUnit.test('the browser can select the same definition for two distinct expanded attacks', assert => {

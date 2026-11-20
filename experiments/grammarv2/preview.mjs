@@ -34,7 +34,7 @@ function render() {
   timeline.replaceChildren();
   status.textContent = '';
   try {
-    const score = window.vextab.parseScore(input.value, { language: 2 });
+    const score = window.vextab.parseScore(input.value);
     const events = score.parts.flatMap(part => part.staves.flatMap(staff => staff.voices.flatMap(voice => voice.events)));
     if (events.length > 128) throw new Error('Score compiled. Use the CLI for timelines longer than 128 events.');
     for (const event of events) {

@@ -17,7 +17,7 @@ QUnit.module('Drum kit notation', () => {
     const host = document.createElement('div');
     document.querySelector('#qunit-fixture').append(host);
     const artist = new Artist(0, 0, 420);
-    new VexTab(artist).parse(legacyGroove);
+    new VexTab(artist, { language: 1 }).parse(legacyGroove);
     artist.draw(new Vex.Flow.Renderer(host, Vex.Flow.Renderer.Backends.SVG));
     const staffNotes = artist.staves[0].note_notes.filter(n => !n.shouldIgnoreTicks());
     assert.deepEqual(staffNotes.map(n => n.getKeys()), displayKeys, 'fixed staff positions and custom heads');
@@ -62,8 +62,8 @@ QUnit.module('Drum kit notation', () => {
       ['stave clef=percussion time=1/4\nnotes (snare.snare)', /only once.*line 2/],
       ['stave clef=percussion time=1/4\nnotes :qS hat', /ordinary duration.*line 2/],
     ] as const) {
-      assert.throws(() => parseScore(source), message);
-      assert.throws(() => new VexTab(new Artist(0, 0, 400)).parse(source), message);
+      assert.throws(() => parseScore(source, { language: 1 }), message);
+      assert.throws(() => new VexTab(new Artist(0, 0, 400), { language: 1 }).parse(source), message);
     }
   });
 });

@@ -9,7 +9,7 @@ let count = 0;
 
 /** Report the source file as well as the compiler's line inside the example. */
 function check(source, id) {
-  try { parseScore(source.trim(), { language: 2 }); }
+  try { parseScore(source.trim()); }
   catch (error) { throw new Error(id + ': ' + error.message); }
   count++;
 }

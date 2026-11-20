@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function render() {
     try {
-      const score = parseScore(input.value, { language: 2 });
+      const score = parseScore(input.value);
       const next = document.createElement('div');
       renderScore(next, score, { width: 600 });
       host.replaceChildren(next);

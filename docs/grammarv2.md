@@ -10,14 +10,40 @@ guitar { 0/1 2/1 3/1 2/1 | }
 
 This is executable prototype syntax. The comparable current example starts with `tabstave notation=true`, then `notes :q 0-2-3-2/1 |`. In v2, the compact spelling is `guitar { 0-2-3-2/1 | }`. Spell out a fret/string pair to move one note to a different string. The braces give the outer score and reusable phrases the same shape. [Existing first-fret lesson](../guide/scores/first-fret.vextab)
 
+## The public parser class
+
+Use the stateful parser when an editor needs to ask whether its last revision parsed. Each successful v2 parse returns a fresh score. Its source ranges refer to that revision.
+
+```js
+import { VexTab, renderScore } from 'vextab/browser';
+
+const parser = new VexTab();
+const score = parser.parse('guitar { 4-5-6/3 }');
+renderScore(document.querySelector('#score'), score);
+```
+
+A parse error clears `parser.isValid()` and throws a `ScoreV2Error` with a source range. The package root, `vextab/browser`, and the script-tag globals `vextab` and `VexTabDiv` expose the same parser and rendering functions. Node programs can import the standalone `parseScore` function from `vextab/parse`.
+
+To keep a v1 fixed-layout integration, add the language option when constructing its parser. The original Artist receives the commands, and `parse` returns the v1 syntax elements. To keep a measured v1 integration, use `parseScore(source, { language: 1 })`.
+
+```js
+import { Artist, VexTab, Vex } from 'vextab/browser';
+
+const host = document.querySelector('#score');
+const artist = new Artist(10, 10, 480);
+const parser = new VexTab(artist, { language: 1 });
+parser.parse('tabstave\nnotes 4-5-6/3');
+artist.render(new Vex.Flow.Renderer(host, Vex.Flow.Renderer.Backends.SVG));
+```
+
 ## What to try
 
-Select the preview with the second argument to the public parser. Both `vextab/parse` and `vextab/browser` export this API. Omitting the option selects v1.
+VexTab 6 reads this language by default. Both `vextab/parse` and `vextab/browser` export the parser. Select `{ language: 1 }` for a historical measured score.
 
 ```js
 import { parseScore } from 'vextab/parse';
 
-const score = parseScore('piano { upper { :w C4 | } lower { :w C3 | } }', { language: 2 });
+const score = parseScore('piano { upper { :w C4 | } lower { :w C3 | } }');
 const upper = score.parts[0].staves[0].voices[0];
 const bar = upper.measures[0];
 const notes = upper.events.slice(bar.start, bar.end);
@@ -44,18 +70,18 @@ Use `source.slice(...event.range)` to find an authored attack. Heads, marks, bar
 Catch `ScoreV2Error` for v2 syntax, time, alignment or resource errors. Its `range` contains half-open UTF-16 offsets ready for `setSelectionRange`. Its `line` and `column` start at one, and its `trace` points back to a failing pattern invocation. Pass the same parsed score to the screen, printer and player. An editable `Div` displays each instrument in source order. A direct `renderScore` call draws one instrument and accepts `partIndex` to select it. The player schedules all instruments together unless you select one.
 
 ```js
-const score = parseScore('piano { upper { :w G4 | } lower { :w C3 | } }', { language: 2 });
+const score = parseScore('piano { upper { :w G4 | } lower { :w C3 | } }');
 renderScore(screen, score, { width: 640, renderer: 'svg' });
 renderScorePart(paper, score, 'left');
 const player = new Player(score, { controls, playback });
 ```
 
-For an editable embed, set `data-language="2"` and `data-editor="true"` on the source element. See [milestone 3 verification](../issues/182/parity.md) for the comparison scores and output-specific limits.
+For an editable embed, set `data-editor="true"` on the source element. See [milestone 3 verification](../issues/182/parity.md) for the comparison scores and output-specific limits.
 
 ### Working with historical scores
 
 ```js
-const pickup = parseScore('meter 2/4 pickup 1/8 staff { :8 G4 | :q A4 G4 | }', { language: 2 });
+const pickup = parseScore('meter 2/4 pickup 1/8 staff { :8 G4 | :q A4 G4 | }');
 ```
 
 | Intent | V2 spelling |

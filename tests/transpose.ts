@@ -8,7 +8,7 @@ function fixed(source: string) {
   const artist = new Artist(10, 10, 600);
   const host = document.createElement('div');
   document.getElementById('qunit-fixture').append(host);
-  new VexTab(artist).parse(source);
+  new VexTab(artist, { language: 1 }).parse(source);
   artist.draw(new Vex.Flow.Renderer(host, Vex.Flow.Renderer.Backends.SVG));
   return artist;
 }

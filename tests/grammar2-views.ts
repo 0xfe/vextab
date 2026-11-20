@@ -15,7 +15,7 @@ function performance(score: ReturnType<typeof renderScore>['score']) {
 
 QUnit.module('Grammar v2 score views', () => {
   QUnit.test('fret, pitch, slide and per-string bend agree with v1 on both drawing backends', assert => {
-    const old = parseScore('tabstave notation=true time=3/4 tuning=dropd capo=2\nnotes :q <0/6 (0/6.7z9z7/3) (0/6.7/3) !bend 3 +2 rise=1/2 release=1/1! |');
+    const old = parseScore('tabstave notation=true time=3/4 tuning=dropd capo=2\nnotes :q <0/6 (0/6.7z9z7/3) (0/6.7/3) !bend 3 +2 rise=1/2 release=1/1! |', { language: 1 });
     const source = 'meter 3/4 guitar { tuning dropD capo 2 0/6[slideIn below] (0/6 7/3[prebend +2 release]) (0/6 7/3[bend +2 rise=1/2 release=1]) | }';
     const score = parseScore(source, { language: 2 });
     for (const renderer of ['svg','canvas'] as const) {
@@ -40,7 +40,7 @@ QUnit.module('Grammar v2 score views', () => {
   QUnit.test('piano aligns hands, sustains a tied bass, and prints the correct fingering and sign', assert => {
     const input = 'meter 2/4 piano { upper { times 2 { (Fn4[finger 2, showSign] A4[finger 4 right]) G4[accent] | } } lower { :h C3 | C3[tie] | } }';
     const score = parseScore(input, { language: 2 });
-    const old = parseScore('piano time=2/4\nnotes (Fn/4[f2].A/4[f4:r]) G/4[>] | (Fn/4[f2].A/4[f4:r]) G/4[>] |\nvoice hand=left\nnotes :h C/3 | TC/3 |');
+    const old = parseScore('piano time=2/4\nnotes (Fn/4[f2].A/4[f4:r]) G/4[>] | (Fn/4[f2].A/4[f4:r]) G/4[>] |\nvoice hand=left\nnotes :h C/3 | TC/3 |', { language: 1 });
     for (const width of [655, 240]) {
       const a = renderScore(host(), old, { width }), b = renderScore(host(), score, { width });
       assert.deepEqual(performance(b.score), performance(old));
@@ -61,7 +61,7 @@ QUnit.module('Grammar v2 score views', () => {
   });
 
   QUnit.test('a four-string instrument and its player share the short opening measure', assert => {
-    const legacy = parseScore('tabstave time=2/4 pickup=1/8 strings=4 tuning=G/5,D/5,A/4,E/4\nnotes :8 0/4 | :q 2/3 0/2 |');
+    const legacy = parseScore('tabstave time=2/4 pickup=1/8 strings=4 tuning=G/5,D/5,A/4,E/4\nnotes :8 0/4 | :q 2/3 0/2 |', { language: 1 });
     const input = 'meter 2/4 pickup 1/8 guitar { tuning (G5 D5 A4 E4) view tab :8 0/4 | :q 2/3 0/2 | }';
     const score = parseScore(input, { language: 2 });
     const screen = renderScore(host(), score);
@@ -75,7 +75,7 @@ QUnit.module('Grammar v2 score views', () => {
   });
 
   QUnit.test('two guitar voices keep their clocks and tie reordered chord heads by string', assert => {
-    const before = parseScore('tabstave notation=true time=2/4\nnotes :h (1/2.2/3) | T(2/3.1/2) |\nvoice\nnotes :q 3-1/5 | 0-2/5 |');
+    const before = parseScore('tabstave notation=true time=2/4\nnotes :h (1/2.2/3) | T(2/3.1/2) |\nvoice\nnotes :q 3-1/5 | 0-2/5 |', { language: 1 });
     const source = 'meter 2/4 guitar { voice top { :h (1/2 2/3) | (2/3[tie] 1/2[tie]) | } voice bass { 3/5 1/5 | 0/5 2/5 | } }';
     const after = parseScore(source, { language: 2 });
     for (const width of [620, 230]) {

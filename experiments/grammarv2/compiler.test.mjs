@@ -6,7 +6,7 @@ import { createRequire } from 'node:module';
 
 // CI passes the actual development or unpacked release bundle; standalone design checks use source.
 const api = process.argv[2] ? createRequire(import.meta.url)(process.argv[2]) : await import('./compiler.mjs');
-const compile = api.parseScore ? source => api.parseScore(source, { language: 2 }) : api.compile;
+const compile = api.parseScore ? source => api.parseScore(source) : api.compile;
 
 const events = (score, part = 0, staff = 0, voice = 0) => score.parts[part].staves[staff].voices[voice].events;
 const errorCode = (source, code) => assert.throws(() => compile(source), error => error instanceof api.ScoreV2Error && error.code === code);

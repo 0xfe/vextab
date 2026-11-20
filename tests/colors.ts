@@ -20,7 +20,7 @@ QUnit.module('Score colours', () => {
   QUnit.test('Row, note and label scopes survive reflow and publication', assert => {
     const target = host();
     const artist = new Artist(10, 0, 460);
-    new VexTab(artist).parse(fixed);
+    new VexTab(artist, { language: 1 }).parse(fixed);
     artist.draw(new Vex.Flow.Renderer(target, Vex.Flow.Renderer.Backends.SVG));
 
     function check(layout: string) {
@@ -62,7 +62,7 @@ QUnit.module('Score colours', () => {
         'meter 1/4 staff { C4[ink ' + bad + '] | }',
         'meter 1/4 staff { C4[symbol "A" ink ' + bad + '] | }',
       ]) assert.throws(() => readScore(sample), e => e.range && /color|syntax|expected/i.test(e.message));
-      const parser = new VexTab(new Artist(10, 0, 460));
+      const parser = new VexTab(new Artist(10, 0, 460), { language: 1 });
       for (const sample of ['stave time=1/4 color=' + bad + '\nnotes C/4', 'stave time=1/4\nnotes C/4 !color ' + bad + '!',
         'stave\nnotes C/4 $.Times-12-bold-' + bad + '.A$']) assert.throws(() => parser.parse(sample), /color/);
     }

@@ -9,7 +9,48 @@ var VexTabTests, qunit, test;
 import Vex from '../../src/vexflow';
 import Artist from '../../src/artist';
 import Div from '../../src/div';
-import VexTab from '../../src/vextab';
+import { VexTab, ScoreV2Error, parseScore, renderScore } from '../../src/browser';
+
+// Exercise the class exported from the package's browser entry with both language contracts.
+QUnit.module('Public VexTab parser', () => {
+  QUnit.test('the default class returns a renderable score and selects errors in the original revision', assert => {
+    const parser = new VexTab();
+    const source = '// 🎸\r\nmeter 1/4 guitar { 5/2 | }';
+    assert.false(parser.isValid());
+    const score = parser.parse(source);
+    assert.true(parser.isValid());
+    assert.deepEqual(score, parseScore(source, { language: 2 }));
+    assert.deepEqual(new VexTab({ language: 2 }).parse(source), score);
+    assert.strictEqual(parser.getArtist(), undefined);
+    const head = score.parts[0].staves[0].voices[0].events[0].heads[0];
+    assert.equal(source.slice(...head.range), '5/2');
+    const host = document.querySelector('#qunit-fixture').appendChild(document.createElement('div'));
+    renderScore(host, score);
+    assert.ok(host.querySelector('.vf-tabnote'), 'the returned document engraves through the public API');
+
+    const broken = source + ' ?';
+    assert.throws(() => parser.parse(broken), error =>
+      error instanceof ScoreV2Error && broken.slice(...error.range) === '?');
+    assert.false(parser.isValid());
+    assert.throws(() => parser.parse('tabstave\nnotes 5/2'), ScoreV2Error);
+    parser.parse(source);
+    parser.reset();
+    assert.false(parser.isValid());
+  });
+
+  QUnit.test('explicit Artist mode preserves fixed syntax elements and parser identity', assert => {
+    const artist = new Artist(0, 0, 400);
+    // @ts-expect-error An old JavaScript call must receive an actionable migration error.
+    assert.throws(() => new VexTab(artist), /new VexTab\(artist, \{ language: 1 \}\)/);
+    const parser = new VexTab(artist, { language: 1 });
+    assert.strictEqual(parser.getArtist(), artist);
+    const elements = parser.parse('stave\nnotes C/4');
+    assert.equal(elements[0].element, 'stave');
+    assert.equal(artist.staves[0].note_notes.length, 1);
+    assert.throws(() => parser.parse('staff { :w C4 | }'));
+    assert.false(parser.isValid());
+  });
+});
 
 // QUnit globals injected by tests.html.
 qunit = QUnit;
@@ -41,7 +82,7 @@ VexTabTests = (function() {
         document.querySelector('#qunit-fixture').append(host);
         host.setAttribute('show-errors', 'true');
         host.textContent = 'tabstave <em>label</em>=true';
-        new Div(host);
+        new Div(host, { language: 1 });
         const error = host.querySelector('.editor-error');
         assert.true(error.textContent.includes('<em>label</em>'));
         assert.strictEqual(error.querySelector('em'), null);
@@ -779,7 +820,7 @@ options space=60`;
   makeParser = function() {
     return new VexTab(new Artist(0, 0, 800, {
       scale: 0.8
-    }));
+    }), { language: 1 });
   };
 
   /**
@@ -836,7 +877,7 @@ options space=60`;
       var canvas, renderer, tab;
       tab = new VexTab(new Artist(0, 0, 500, {
         scale: 0.8
-      }));
+      }), { language: 1 });
       tab.parse(code);
       canvas = $('#' + canvasid);
       renderer = new Vex.Flow.Renderer(canvas[0], Vex.Flow.Renderer.Backends.SVG);
