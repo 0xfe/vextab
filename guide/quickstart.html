@@ -65,7 +65,7 @@ tabstave notation=true time=4/4
 notes :q 0-2-3-2/1 |</pre>
   <p><code>tempo</code> sets quarter-note beats per minute. <code>instrument</code> accepts a General MIDI program from 0 to 127 or a name such as <code>acoustic_guitar_nylon</code>. A fresh embed uses native Web Audio for a synthesized tone. This guide uses SpessaSynth and a bundled SoundFont, so you can hear sampled instruments here.</p>
   <h3>Enable the sheet controls from JavaScript</h3>
-  <p>Pass <code>{ player: true }</code> to <code>Div</code> to enable playback for any source. Play and Stop share a button in the lower left. Hover over the metronome in the lower right, or activate it with a tap or keyboard, to change the tempo.</p>
+  <p>Pass <code>{ player: true }</code> to <code>Div</code> to enable playback for any source. Play and Stop share a button at the bottom center of the sheet. Hover over the metronome beside Play, or activate it with a tap or keyboard, to change the tempo.</p>
   <figure class="code-sample"><figcaption>HTML</figcaption><pre data-language="html"><code>&lt;div id="score" layout="flow" editor="true"&gt;
 tabstave notation=true time=4/4
 notes :q 0-2-3-2/1 |

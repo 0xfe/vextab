@@ -2,11 +2,11 @@
 
 Add `options player=true tempo=100` before the first stave of an embed to show playback controls on the sheet. This works with the fixed SVG and Canvas renderers, responsive SVG and the legacy `.vex-tabdiv` class. The default embed uses native Web Audio and needs no samples. The first Play gesture opens audio. [Runnable bass chords and guitar pre-bend](../demos/player.html)
 
-The controls fade after three seconds. Hover over the sheet, tap it, or tab to a control to reveal them. Hover over the metronome in the lower right, or activate it with a tap or keyboard, to adjust the tempo in steps of 5 BPM. Changes apply to upcoming notes during playback and leave the written tempo in the source intact.
+The controls fade after three seconds. Hover over the sheet, tap it, or tab to a control to reveal them. Hover over the metronome beside Play, or activate it with a tap or keyboard, to adjust the tempo in steps of 5 BPM. Changes apply to upcoming notes during playback and leave the written tempo in the source intact.
 
 ## Listen in the guide
 
-Press **Play** in the lower-left corner of a tutorial example, study or playground score. The button becomes **Stop** and can cancel the first instrument load. Changing an edit or starting a different score ends playback. The duet edition has its own button for the selected voice. An empty stave or an example containing only rests has no pitches to play.
+Press **Play** at the bottom center of a tutorial example, study or playground score. The button becomes **Stop** and can cancel the first instrument load. Changing an edit or starting a different score ends playback. The duet edition has its own button for the selected voice. An empty stave or an example containing only rests has no pitches to play.
 
 A soft blue dot appears just before each sounding head or fret, reaches full strength on the beat and fades at the end of its written duration. The vertical playhead spans the system and continues through rests. It follows the spacing of the selected layout, including printed parts.
 
