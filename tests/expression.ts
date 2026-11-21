@@ -119,6 +119,31 @@ QUnit.module('Expressive notation and performance', () => {
     assert.equal(attacks.find(e => e.source === study.measures[0].voices[2].events[0].id).notes[0].duration, 6, 'bass continues into the next bar');
   });
 
+  QUnit.test('Joplin bar 8 moves the complete upper voice to the bass staff with separate beams and rests', assert => {
+    const model = parseScore(joplin);
+    for (const renderer of ['svg','canvas'] as const) {
+      const view = renderConductor(host(), model, {width:920, renderer});
+      const bar = view.score.measures[7];
+      const glyphs = bar.voices.map(v => v.events.map(event => {
+        const id = view.navigation.events.find(e => e.source === event.id).id;
+        return view.composition.getNote(id) as StaveNote;
+      }));
+      const [upper, lower] = glyphs;
+      assert.ok(upper.every(n => n.getStave() === view.composition.staves[7][1] && n.getStemDirection() === 1));
+      assert.ok(lower.every(n => n.getStemDirection() === -1 && !n.getBeam()));
+      assert.deepEqual(upper.map(n => n.getBeam()?.getNotes().length ?? 0), [0,3,3,3,0,3,3,3]);
+      assert.notStrictEqual(upper[1].getBeam(),upper[5].getBeam());
+      const dynamic = upper[0].getModifiers().find((m): m is Annotation => m instanceof Annotation);
+      assert.ok(dynamic.computeY().y < upper[0].getStave().getYForLine(0), 'p clears the shared bass staff');
+    }
+    const printed: StaveNote[] = [];
+    renderScorePart(host(), model, 'notation', {noteHooks:[(opts,note) => {
+      if (opts.id.endsWith('keys.upper.main.43') || opts.id.endsWith('keys.lower.main.24')) printed.push(note as StaveNote);
+    }]});
+    assert.equal(printed.length,2);
+    assert.strictEqual(printed[0].getStave(),printed[1].getStave(), 'the upper rest also crosses in print');
+  });
+
   QUnit.test('all five signs engrave and resolve in key, including the inverted glyphs and an after-grace', assert => {
     const source = 'meter 1/4 staff { key G E4[ornament tr] | E4[ornament mordent] | E4[ornament mordent_inverted] | '
       + 'E4[ornament turn] | E4[ornament turn_inverted] | E4[grace after (F4)] | }';

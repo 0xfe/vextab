@@ -1,6 +1,6 @@
 # Expressive notation and playback
 
-The acceptance passages use the same score text for the conductor, extracted parts and playback. The reference comparison and automated engraving checks are reproducible below. The project owner approved the Handy, Joplin and Sor passages after reviewing the attached scores. [Review scores and M3 comparisons](https://github.com/0xfe/vextab/issues/199#issuecomment-7064932813)
+The acceptance passages use the same score text for the conductor, extracted parts and playback. The reference comparison and automated engraving checks are reproducible below. The project owner reviewed the three passages and subsequently identified four engraving corrections in Joplin and Sor. [Review scores and M3 comparisons](https://github.com/0xfe/vextab/issues/199#issuecomment-7064932813)
 
 ## Repertoire
 
@@ -21,6 +21,17 @@ The acceptance passages use the same score text for the conductor, extracted par
 
 The bundled 5.7.0 validator accepts a syllable anchor on an extender. VexTab also admits it on a hyphen, then supplies the final destination syllable’s measured coordinates to the native fragment. VexFlow draws the marks in SVG, Canvas and publication. The adapter checks its insertion point at build time. [Adapter](../../scripts/vexflow-publication-loader.cjs) · [Verse positioning](../../src/score/lead.ts)
 
+## Follow-up engraving review
+
+| Passage | Correction and verification |
+| --- | --- |
+| Joplin, third system, first bar | The source moves the complete upper voice, including both sixteenth rests, to the bass stave. The right hand stems up, the bass stems down, and each sixteenth beam contains three notes. The dynamic sits above the shared staff. The source MIDI check still covers both endings. |
+| Sor, TAB fingerings | Numeric fingerings use enclosed Bravura glyphs on native fret-hand modifiers. Open-string zero remains distinct from the fret. Letter fingerings retain their text face. Direct attachment to an unadapted TabNote currently throws in the native formatter. [VexFlow #446](https://github.com/vexflow/vexflow/issues/446) |
+| Sor, notation bars 7–8 | VexTab now uses the native side spacing. The former four-pixel finger offset intruded into the sharp’s column. Two voices sharing the same altered fret show one automatic sharp. Printing either voice preserves its own sharp. [VexFlow #447](https://github.com/vexflow/vexflow/issues/447) |
+| Sor, opening TAB tie | Polyphonic TAB ties follow the written voice side. The bass tie runs below string 5 and clears the accompaniment on string 4. The native collision fitter currently overlooks TAB fret ink. [VexFlow #448](https://github.com/vexflow/vexflow/issues/448) |
+
+The [stock VexFlow controls](review-controls.mjs) draw into a separate page using the published bundle. The [Joplin regression](../../tests/expression.ts) checks stems, both beams, rests and the displaced dynamic. The [Sor regressions](../../tests/part-engraving.ts) check actual glyph clearance, side selection and single-voice publication.
+
 ## Reproduce
 
 Use the repository’s pinned Node toolchain and Chrome. The comparison script accepts the downloaded MIDI as an optional argument and checks its SHA-256. Python and mido are used only for the independent reference comparison.
@@ -29,6 +40,7 @@ Use the repository’s pinned Node toolchain and Chrome. The comparison script a
 npm ci
 npm test
 node issues/199/inspect.mjs
+node issues/199/review-controls.mjs
 uv run --no-project --with mido==1.3.3 python issues/199/check-joplin.py
 ```
 

@@ -92,21 +92,38 @@ function guitarNotation(event: Attack, instrument: FrettedInstrument) {
   return labels;
 }
 
+/** Hands on the same physical stave need independent stem directions, including through their rests. */
+function handsShareStave(measure: Measure) {
+  if (!measure.state.piano) return false;
+  const owners = new Map<PianoHand, PianoHand>();
+  for (const voice of measure.voices) for (const event of voice.events) {
+    if (!voice.hand || event.silent) continue;
+    const staff = event.displayHand ?? voice.hand;
+    if (owners.has(staff) && owners.get(staff) !== voice.hand) return true;
+    owners.set(staff, voice.hand);
+  }
+  return false;
+}
+
 /** Both projections use the written duration, including dots before tuplet scaling. */
-function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources: Sources, index: number, voiceCount: number): EasyScoreVoiceSpec {
-  const direction = voice.stem ?? (voiceCount > 1 ? (index === 0 ? 'up' : 'down') : undefined);
+function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources: Sources, index: number, voiceCount: number,
+  sharedPianoStaff: boolean): EasyScoreVoiceSpec {
+  let direction = voice.stem;
+  if (!direction && voiceCount > 1) direction = index === 0 ? 'up' : 'down';
+  if (!direction && sharedPianoStaff) direction = voice.hand === 'right' ? 'up' : 'down';
   const stemDirection = direction ? (direction === 'up' ? 1 : -1) : staff === 'tab' ? voice.tabDirection : undefined;
   const instrument = new FrettedInstrument(measure.state.tuning, measure.state.capo);
   const clef = staff === 'left' ? 'bass' : measure.state.clef;
   let pairStem: number;
   const notes: EasyScoreContent[] = voice.events.map(event => {
     const id = sources.project(staff, event.id, event.range);
+    const destination = measure.state.piano ? event.displayHand : undefined;
     const rhythm = { duration: event.base, dots: event.dots, stemDirection };
     if (!event.heads.length) {
       // Rest positions count up from the bottom of the written staff, including shorter tab staves.
       const offset = staff === 'tab' ? 5 - measure.state.strings : 0;
       const restLine = event.restLine === undefined ? undefined : event.restLine + offset;
-      return { id, note: { ...rhythm, keys: ['r/4'], clef: 'treble', type: 'r', restLine } };
+      return { id, ...(destination && { stave: destination }), note: { ...rhythm, keys: ['r/4'], clef: 'treble', type: 'r', restLine } };
     }
     if (event.heads[0].drum) {
       const hit = (measure.state.kit ?? drumKit).note(event.heads.map(head => head.drum), event.base, direction);
@@ -117,7 +134,6 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     if (staff === 'tab') {
       return { id, tab: { ...rhythm, keys, notation, positions: event.heads.map(h => ({ ...h.position! })) }, drawStem: voice.tabStems && !['w', '1'].includes(event.base) };
     }
-    const destination = measure.state.piano ? event.displayHand : undefined;
     const writtenClef = destination === 'left' ? 'bass' : destination === 'right' ? 'treble' : clef;
     const note = { ...rhythm, keys, notation, clef: writtenClef, type: event.slash ? 's' : 'n', autoStem: !direction };
     if (event.tremolo) {
@@ -181,6 +197,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       options: staff === 'tab' ? { numLines: parsed.measures[0].state.strings } : {},
       measures: parsed.measures.map(m => {
         const voices = voicesFor(m, staff);
+        const sharedPianoStaff = handsShareStave(m);
         const showMarks = staff === staves[0] || m.state.piano;
         const clef = staff === 'tab' ? 'tab' : staff === 'left' ? 'bass' : m.state.clef;
         return {
@@ -190,7 +207,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
           ...(showMarks && leadMarks({ ...m, voices }, staff === 'tab' ? 'tab' : 'notation',
             id => eventId(staff, id), publication || !staves.includes('tab'), publication)),
           voices: [
-            ...voices.map((v, index) => v.events.length ? voiceSpec(v, m, staff, sources, index, voices.length)
+            ...voices.map((v, index) => v.events.length ? voiceSpec(v, m, staff, sources, index, voices.length, sharedPianoStaff)
               : { notes: [textLanes.anchor(eventId(staff, 'blank-' + m.number + '-' + index), null)] }),
             ...(staff === staves[0] ? m.text ?? [] : []).map(lane => ({
               notes: lane.map(cell => {
@@ -215,12 +232,22 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       })),
     },
   };
+  // Match TAB ties in polyphony to the voice's side, including unstemmed display TAB.
+  const tabTieSides = new Map<string, 'above' | 'below'>();
+  if (staves.includes('tab') && parsed.ties.length) for (const m of parsed.measures) {
+    if (m.voices.length < 2) continue;
+    m.voices.forEach((v, index) => {
+      const up = v.stem ? v.stem === 'up' : index === 0;
+      for (const e of v.events) tabTieSides.set(e.id, up ? 'above' : 'below');
+    });
+  }
   for (const tie of parsed.ties) {
     for (const staff of staves) {
       const from = eventId(staff, tie.from);
       if (!sources.ids[from]) continue;
       spans.push({ kind: 'tie', id: sources.project(staff, tie.id, tie.range), from,
-        to: eventId(staff, tie.to), ...(staff === 'tab' && tie.bend && { bend: tie.bend, string: tie.string }), fromHead: tie.fromHead, toHead: tie.toHead });
+        to: eventId(staff, tie.to), ...(staff === 'tab' && !tie.bend && { side: tabTieSides.get(tie.from) }),
+        ...(staff === 'tab' && tie.bend && { bend: tie.bend, string: tie.string }), fromHead: tie.fromHead, toHead: tie.toHead });
     }
   }
   for (const mark of parsed.spans ?? []) {
@@ -350,6 +377,8 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
   const split = new Set<Beam>();
   for (const m of parsed.measures) {
     for (const staff of view.staves) {
+      // A single fretted unison can carry two rhythms. Each extracted voice still owns its sign.
+      const automaticFretSigns = new Set<string>();
       const staveColor = m.state.color;
       if (staveColor) {
         const index = view.staves.indexOf(staff);
@@ -377,7 +406,9 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
         if (event.ornament && staff !== 'tab') note.addModifier(new Ornament(event.ornament.replace('_inverted', 'Inverted')), 0);
         if (event.dynamic && (voice.hand || staff === view.staves[0])) {
           const glyphs = [...event.dynamic].map(letter => TextDynamics.GLYPHS[letter]).join('');
-          note.addModifier(new Annotation(glyphs).setFont('Bravura', 15).setVerticalJustification(Annotation.VerticalJustify.BOTTOM), 0);
+          // A right-hand dynamic on the bass staff sits above the two voices, as in a grand staff.
+          const side = voice.hand === 'right' && event.displayHand === 'left' ? Annotation.VerticalJustify.TOP : Annotation.VerticalJustify.BOTTOM;
+          note.addModifier(new Annotation(glyphs).setFont('Bravura', 15).setVerticalJustification(side), 0);
         }
         attachPerformanceMarks(note as StaveNote | TabNote, event, staff === 'tab');
         if (event.color) {
@@ -420,8 +451,15 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
         }
         if (staff === 'tab') continue;
         event.heads.forEach((head, i) => {
-          if (!head.accidental) return;
           let mark = note.getModifiers().find((m): m is Accidental => m instanceof Accidental && m.getIndex() === i);
+          if (!head.accidental) {
+            if (mark && head.position && !event.silent && !mark.isCautionary()) {
+              const unison = [event.onset, head.position.str, head.position.fret, head.written].join(':');
+              if (automaticFretSigns.has(unison)) note.getModifiers().splice(note.getModifiers().indexOf(mark), 1);
+              else automaticFretSigns.add(unison);
+            }
+            return;
+          }
           if (!mark) {
             mark = new Accidental(head.accidental);
             note.addModifier(mark, i);

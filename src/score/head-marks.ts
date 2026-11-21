@@ -5,12 +5,10 @@ import type { HeadMark } from './shorthand';
 const positions = { left: Modifier.Position.LEFT, right: Modifier.Position.RIGHT,
   above: Modifier.Position.ABOVE, below: Modifier.Position.BELOW };
 
-/** Keep side clearance identical for finger and string numbers in both annotation spellings. */
+/** Let the native modifier context reserve the side column alongside accidentals. */
 export function fingerNumber(label: string, position: ModifierPosition, stringNumber = false) {
   const modifier = stringNumber ? new StringNumber(label) : new FretHandFinger(label);
   modifier.setPosition(position);
-  if (position === Modifier.Position.LEFT) modifier.setOffsetX(-4);
-  if (position === Modifier.Position.RIGHT) modifier.setOffsetX(4);
   return modifier;
 }
 
@@ -25,9 +23,14 @@ export function attachHeadMarks(note: Note, index: number, marks: HeadMark[], ta
           ...VexFlow.keyProperties(note.getKeys()[i]), line: -str,
         }));
       }
-      // Native StringNumber accepts pitched notes only. A circled digit retains the authored label on TAB.
-      const label = tab && mark.stringNumber ? String.fromCodePoint(0x245f + Number(mark.finger)) : mark.finger;
-      note.addModifier(fingerNumber(label, pos, !tab && mark.stringNumber), index);
+      // Use the bundled SMuFL circled digits on TAB. Letter fingerings retain their text face.
+      const finger = fingerNumber(mark.finger, pos, !tab && mark.stringNumber);
+      if (tab && /^\d$/.test(mark.finger)) {
+        const glyph = VexFlow.Glyphs['guitarString' + mark.finger];
+        finger.setFont('Bravura', 16).setText(glyph);
+        if (pos === Modifier.Position.LEFT || pos === Modifier.Position.RIGHT) finger.setOffsetY(-5);
+      }
+      note.addModifier(finger, index);
     } else {
       note.addModifier(new Articulation(mark.articulation ?? 'a>').setPosition(pos), index);
     }

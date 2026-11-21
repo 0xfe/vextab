@@ -208,7 +208,8 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         throw new ScoreError('measure', 'A grace group or ornament needs a pitched notation anchor', locate(mark.range));
       if (mark.kind === 'ornament') result.ornament = mark.value;
       if (mark.kind === 'onStaff' || mark.kind === 'sharedStem') {
-        if (!state.piano || !heads.length) throw new ScoreError('measure', 'This assignment needs a pitched piano note', locate(mark.range));
+        if (!state.piano || (mark.kind === 'sharedStem' && !heads.length))
+          throw new ScoreError('measure', 'Staff assignments need piano and a shared stem needs pitched notes', locate(mark.range));
         if (mark.kind === 'onStaff') result.displayHand = mark.hand === 'upper' ? 'right' : 'left';
         else result.sharedStem = mark.name;
       }

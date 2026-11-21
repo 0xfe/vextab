@@ -110,7 +110,7 @@ QUnit.module('Independent part engraving', () => {
         for (const n of notes) {
           assert.equal(printed.sourceFor(n.getAttribute('id')), '1.main.main.1');
           const mods = n.getModifiers();
-          assert.deepEqual(mods.filter(m => m instanceof FretHandFinger).map(m => [m.getIndex(), m.getFretHandFinger()]), [[index, '2']]);
+          assert.deepEqual(mods.filter(m => m instanceof FretHandFinger).map(m => [m.getIndex(), m.getFretHandFinger()]), [[index, n instanceof TabNote ? '\ue835' : '2']]);
           assert.deepEqual(mods.filter(m => m instanceof Articulation).map(m => m.getIndex()), [index]);
           if (n instanceof TabNote) assert.deepEqual(n.getPositions()[index], { str: 2, fret: 3 });
           if (n instanceof StaveNote) {
@@ -149,6 +149,37 @@ QUnit.module('Independent part engraving', () => {
     assert.equal(ink(), '');
   });
 
+  QUnit.test('Sor places the bass tie below TAB and reserves ink clearance for both altered fingerings', assert => {
+    const source = parseScore(sor), root = host();
+    const view = renderScore(root, source, {width:920});
+    const tie = view.composition.sheet.getContinuousLayout().fragments.find(f => f.kind === 'tie' && f.strings?.includes(5));
+    assert.strictEqual(tie.above, false);
+    const check = (group: Element, digit: string) => {
+      const texts = [...group.querySelectorAll('text')];
+      const sharp = texts.find(t => t.textContent === '\ue262').getBBox();
+      const finger = texts.find(t => t.textContent === digit).getBBox();
+      assert.ok(finger.x >= sharp.x + sharp.width + 1, 'finger clears the sharp by at least one layout unit');
+    };
+    const visible = (id: string) => root.querySelector('[id="vf-' + view.navigation.events.find(e => e.source === id && !e.id.includes('-tab-')).id + '"]');
+    check(visible('1.main.melody.14'), '1');
+    check(visible('1.main.accompaniment.45'), '2');
+    // Both voices write E-sharp on the same string in bar 7. Each extracted voice needs a sign.
+    for (const voice of [undefined,1,2]) {
+      const printed = renderScorePart(host(),source,'notation',{voice});
+      const groups = printed.publication.pages.flatMap(p => [...p.svg.querySelectorAll('.vf-stavenote')]);
+      const notes = groups.filter(g => ['1.main.melody.14','1.main.accompaniment.41'].includes(printed.sourceFor(g.getAttribute('data-vf-id')?.replace(/^vf-/,''))));
+      assert.equal(notes.flatMap(g => [...g.querySelectorAll('text')]).filter(t => t.textContent === '\ue262').length,1);
+      if (voice !== 2) check(notes.find(g => [...g.querySelectorAll('text')].some(t => t.textContent === '1')), '1');
+    }
+  });
+
+  QUnit.test('a letter fingering retains its text on TAB beside an enclosed open-string zero', assert => {
+    const root = host();
+    const view = renderScore(root,parseScore('meter 2/4 guitar { :q 0/1[finger 0] 3/2[finger T] | }'),{part:'tab'});
+    const notes = view.navigation.events.map(e => view.composition.getNote(e.id));
+    assert.deepEqual(notes.map(n => n.getModifiers().find(m => m instanceof FretHandFinger).getText()), ['\ue833','T']);
+  });
+
   QUnit.test('Sor’s eight-bar opening prints its three independent voices and the opening finger on string two', assert => {
     const source = parseScore(sor);
     assert.equal(source.parts[0].staves[0].voices.length, 3);
@@ -161,7 +192,7 @@ QUnit.module('Independent part engraving', () => {
       assert.deepEqual(print.diagnostics, []);
       assert.equal(print.pages.length, 1);
       assert.equal(first.length, 1);
-      assert.deepEqual(first[0].getModifiers().filter(m => m instanceof FretHandFinger).map(m => [m.getIndex(), m.getFretHandFinger()]), [[0, '2']]);
+      assert.deepEqual(first[0].getModifiers().filter(m => m instanceof FretHandFinger).map(m => [m.getIndex(), m.getFretHandFinger()]), [[0, part === 'tab' ? '\ue835' : '2']]);
       if (first[0] instanceof TabNote) assert.deepEqual(first[0].getPositions(), [{ str: 2, fret: 3 }]);
     }
   });
