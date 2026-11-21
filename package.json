@@ -54,6 +54,7 @@
         "test:corpus": "node scripts/check-corpus.mjs && node scripts/test-migration.mjs",
         "migrate:score": "node scripts/migrate-score.mjs",
         "test": "npm run build-dev && npm run test:corpus && node scripts/test-browser.mjs",
+        "test:vt6-baseline": "node issues/195/run.mjs",
         "test:baseline": "node scripts/test-baseline.mjs",
         "prepack": "npm run clean && npm run build-dev && npm run build",
         "report:setup": "npm ci --prefix tools --ignore-scripts",

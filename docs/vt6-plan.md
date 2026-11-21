@@ -15,6 +15,8 @@ M1 and M2 can proceed independently after their M0 fixtures exist. Build each de
 
 ## M0 · Capture the release
 
+Completed 21 November 2026. The release fixtures reproduce on a clean checkout. The isolated trial qualified VexFlow 5.7.0 for this branch. [Run, findings and capability inventory](../issues/195/README.md)
+
 1. Add a test for two lyric marks on one attack and the four-bar ensemble fixture. Capture the released 6.0.0 result, the intended musical result and a direct VexFlow control for the ensemble. Record exact pitches, owners and bar membership at 800, 360 and 800 px again.
 2. Add *Slow River* bars 2–4 at 560 px, an explicitly beamed bar and a silent skip sent to the part printer. Keep the working bossa and guitar duet beside them. Record parse, draw, edit, reflow and print timings for representative generated scores. Save white-background crops with the source, browser, fonts, dependency versions and measured geometry.
 3. Start the capability inventory by musical operation. For each operation record the v2 spelling, native VexFlow path, supported outputs, failing fixture and milestone. Trial VexFlow 5.7.0 against the 5.6.1 pin with both native chord symbols and VexTab’s literal chord labels. Make the dependency decision in its own change. [Comparison method](vt6-baseline.md#test-and-visual-review-plan)

@@ -10,6 +10,8 @@ Establish musical and visual controls first. Close screen/print losses and intro
 
 ## What was compared
 
+M0 subsequently qualified the published VexFlow 5.7.0 package and pinned it on `uplevel`. The observations below describe the original release. [Reproduce the three builds and compare their results](../issues/195/README.md)
+
 | Evidence | What it establishes |
 | --- | --- |
 | [VexTab 6.0.0 source](https://github.com/0xfe/vextab/tree/5c3c0c5ddf0b1bf3d254240c135300da87c1dd42), [release assets](https://github.com/0xfe/vextab/releases/tag/6.0.0) | The v2 reader, compiler, part projection, screen and publication paths, legacy Artist, player, guide, tests and CI. The release pins VexFlow 5.6.1. |
