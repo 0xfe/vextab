@@ -1,5 +1,6 @@
 // Register grammar v2, public API and historical-reader compatibility tests.
 import './engraving';
+import './part-engraving';
 import './drums';
 import './open-slides';
 import './colors';

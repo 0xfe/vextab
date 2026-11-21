@@ -119,7 +119,7 @@ QUnit.module('Grammar v2 historical parity', () => {
     assert.deepEqual(scorePerformance(result.score, 60).events[0].notes, scorePerformance(legacy, 60).events[0].notes);
     assert.equal(result.score.measures[1].voices[0].events[0].heads[0].position.fret, 0);
     assert.throws(() => renderScore(host(), read('guitar { transpose -2 { :w 0/6 | } }')), /original string/);
-    assert.throws(() => renderScorePart(host(), read(input), 'tab'), /chord frame/);
+    assert.ok(renderScorePart(host(), read(input), 'tab').publication.pages[0].svg.querySelector('.vf-chord-frames'));
   });
 
   QUnit.test('native tab gestures, manual beams, slurs and a cross-bar palm mute', assert => {
@@ -140,7 +140,7 @@ QUnit.module('Grammar v2 historical parity', () => {
     const root2 = host(), beams = read('staff { :8 beam { C4 D4 E4 F4 } slur { G4 F4 E4 D4 } | }');
     renderScore(root2, beams);
     assert.ok(root2.querySelector('.vf-beam'));
-    assert.throws(() => renderScorePart(host(), beams, 'notation'), /explicit beam groups/);
+    assert.ok(renderScorePart(host(), beams, 'notation').publication.pages[0].svg.querySelector('.vf-beam'));
   });
 
   QUnit.test('two bend contours sound independently in a three-string chord', assert => {

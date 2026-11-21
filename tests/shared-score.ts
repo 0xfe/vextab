@@ -161,11 +161,11 @@ QUnit.module('Shared score', () => {
     renderScorePart(target, readScore(dotted), 'notation');
     assert.ok(target.textContent.includes('home'));
     assert.ok(target.textContent.includes('C'));
-    const page = target.firstChild;
     const silent = 'meter 4/4 staff { :w skip | }';
-    assert.throws(() => renderScorePart(target, readScore(silent), 'notation'),
-      (e: ScoreError) => e.code === 'fixed-layout' && excerpt(silent, e.range) === 'skip');
-    assert.strictEqual(target.firstChild, page);
+    const blank = renderScorePart(target, readScore(silent), 'notation').publication.pages[0].svg;
+    assert.equal(blank.querySelectorAll('.vf-notehead').length, 0);
+    assert.throws(() => renderScorePart(target, readScore(silent), 'tab'), /No tab staff/);
+    assert.strictEqual(target.firstChild, blank);
   });
 
   QUnit.test('An old selection cannot select a different note at the same offset', async assert => {

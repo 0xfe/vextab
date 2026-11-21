@@ -2,12 +2,13 @@
 import { position, staveRow, printedGeometry, scoreSurfaces, type Geometry } from '../playback/geometry';
 import { projectScoreV2 } from './grammar2/project';
 import type { ScoreV2 } from './grammar2/model';
-import { attachHeadMarks, PrintedHeadMarks } from './head-marks';
+import { attachHeadMarks } from './head-marks';
 import { TextLanes } from './text-lanes';
 import { drumKit } from './drums';
-import { attachOpenSlide, describeOpenSlide, drawPrintedOpenSlides } from './open-slide';
+import { attachOpenSlide, describeOpenSlide } from './open-slide';
 import { inkStyle, setFretPaper } from './color';
-import { colorPublication } from './publication-color';
+import { drawPrepared, type PartDrawingOptions } from './publication-draw';
+import { alignVerseBaselines } from './lead';
 import { scoreFont } from './engraving';
 import {
   Clef, Fraction, Accidental, Annotation, Stroke, Vibrato, Articulation, Modifier, TabSlide, Barline, StaveNote, TabNote, TabTie, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, CanvasContext,
@@ -89,7 +90,7 @@ function guitarNotation(event: Attack, instrument: FrettedInstrument) {
 }
 
 /** Both projections use the written duration, including dots before tuplet scaling. */
-function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources: Sources, index: number, voiceCount: number, printed?: PrintedHeadMarks): EasyScoreVoiceSpec {
+function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources: Sources, index: number, voiceCount: number): EasyScoreVoiceSpec {
   const direction = voice.stem ?? (voiceCount > 1 ? (index === 0 ? 'up' : 'down') : undefined);
   const stemDirection = direction ? (direction === 'up' ? 1 : -1) : staff === 'tab' ? voice.tabDirection : undefined;
   const instrument = new FrettedInstrument(measure.state.tuning, measure.state.capo);
@@ -107,8 +108,6 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
       const hit = drumKit.note(event.heads.map(head => head.drum), event.base, direction);
       return { id, note: { ...hit, dots: event.dots } };
     }
-    const marked = staff !== 'tab' && printed?.note(event, id);
-    if (marked) return marked;
     const notation = guitarNotation(event, instrument);
     const keys = event.heads.map(h => h.position?.fret === 'X' ? h.written + '/X' : h.written);
     if (staff === 'tab') {
@@ -144,10 +143,9 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
   const sources = new Sources(parsed.source);
   const eventId = sources.id;
   const textLanes = new TextLanes();
-  const printed = publication ? new PrintedHeadMarks(!!parsed.measures[0].state.piano) : undefined;
   const spans: ContinuousSpan[] = [];
   // VexFlow can draw a tab ending between two TabNotes or two rendered rests.
-  // Mixed endpoint types still need the screen fallback for a tab-only projection.
+  // A volta spans bar boundaries, so any compatible anchor in each boundary bar is sufficient.
   const rests = new Set(parsed.measures.flatMap(m => m.voices.flatMap(v => v.events.filter(e => !e.heads.length).map(e => e.id))));
   const mixedEndings: ScoreSpan[] = [];
   const spec: EasyScoreCompositionSpec = {
@@ -169,9 +167,8 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
           ...(showMarks && leadMarks({ ...m, voices }, staff === 'tab' ? 'tab' : 'notation',
             id => eventId(staff, id), publication || !staves.includes('tab'), publication)),
           voices: [
-            ...voices.map((v, index) => v.events.length ? voiceSpec(v, m, staff, sources, index, voices.length, printed)
+            ...voices.map((v, index) => v.events.length ? voiceSpec(v, m, staff, sources, index, voices.length)
               : { notes: [textLanes.anchor(eventId(staff, 'blank-' + m.number + '-' + index), null)] }),
-            ...(publication ? voices.flatMap(v => textLanes.labels(v, (key, cell) => sources.project(staff, key, cell.range))) : []),
             ...(staff === staves[0] ? m.text ?? [] : []).map(lane => ({
               notes: lane.map(cell => {
                 for (const at of cell.boundaries ?? []) sources.project(staff, cell.id + '-at-' + at.range.start, at.range);
@@ -228,10 +225,18 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
     const id = sources.project(staff, mark.id, mark.range);
     const endpoints = { id, from: eventId(staff, mark.from), to: eventId(staff, mark.to) };
     if (mark.kind === 'palmMute') spans.push({ ...endpoints, kind: mark.kind, strings: mark.strings });
-    else if (staff === 'tab' && rests.has(mark.from) !== rests.has(mark.to)) mixedEndings.push(mark);
+    else if (staff === 'tab' && rests.has(mark.from) !== rests.has(mark.to)) {
+      const first = parsed.measures[mark.firstBar - 1].voices.flatMap(v => v.events);
+      const last = parsed.measures[mark.lastBar - 1].voices.flatMap(v => v.events);
+      const to = last.find(e => rests.has(e.id) === rests.has(mark.from));
+      const from = first.find(e => rests.has(e.id) === rests.has(mark.to));
+      if (to || from) spans.push({ ...endpoints, kind: 'volta', text: mark.label,
+        from: to ? endpoints.from : eventId(staff, from.id), to: to ? eventId(staff, to.id) : endpoints.to });
+      else mixedEndings.push(mark);
+    }
     else spans.push({ ...endpoints, kind: mark.kind, text: mark.label });
   }
-  return { spec, staves, sources, eventId, mixedEndings, printed, textLanes };
+  return { spec, staves, sources, eventId, mixedEndings, textLanes };
 }
 type Projection = ReturnType<typeof project>;
 
@@ -275,7 +280,7 @@ function attachPerformanceMarks(note: StaveNote | TabNote, event: Attack, tab: b
   }
 }
 
-/** Install screen-only modifiers before formatting, while note IDs still refer to both projections. */
+/** Decorate the fresh native objects of this part before the formatter measures their ink. */
 function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, factory: Factory) {
   const silent = new Set<string>();
   const split = new Set<Beam>();
@@ -309,7 +314,7 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
           if (beam) split.add(beam);
         }
         event.heads.forEach((head, index) => {
-          if (head.marks) attachHeadMarks(note, index, head.marks, staff === 'tab');
+          if (head.marks) attachHeadMarks(note, index, head.marks, staff === 'tab', true);
         });
         if (note instanceof TabNote) {
           event.heads.forEach((head, index) => {
@@ -326,6 +331,9 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
         if (staff === view.staves[0] || m.state.piano) {
           for (const mark of note.getModifiers()) {
             if (!(mark instanceof Annotation)) continue;
+            // VexFlow's TAB chord label is an ordinary annotation outside the pitched phrase lane.
+            const tabChord = staff === 'tab' && event.chord && mark.getText().split(' · ')[0] === event.chord.text;
+            if (!mark.phraseManaged && !tabChord) continue;
             const kind = mark.getVerticalJustification() === Annotation.VerticalJustify.TOP ? 'chord' : 'lyric';
             if (kind === 'chord' && event.chord?.color) mark.setStyle(inkStyle(event.chord.color));
             const range = event[kind]?.range;
@@ -377,6 +385,36 @@ function drawTabEndings(view: Projection, composition: EasyScoreComposition, ctx
   return regions;
 }
 
+/** Attach native guitar ties and slides to their physical string endpoints after row breaks are known. */
+function drawTabConnections(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, ctx: RenderContext) {
+  if (view.staves.includes('tab')) for (const span of parsed.spans) {
+    if (!('fromHead' in span)) continue;
+    const from = composition.getNote(view.eventId('tab', span.from)) as TabNote;
+    const to = composition.getNote(view.eventId('tab', span.to)) as TabNote;
+    const indexes = { firstIndexes: [span.fromHead], lastIndexes: [span.toHead] };
+    const up = Number(to.getPositions()[span.toHead].fret) > Number(from.getPositions()[span.fromHead].fret);
+    const draw = (firstNote?: TabNote, lastNote?: TabNote) => {
+      const ends = { firstNote, lastNote, ...indexes };
+      const mark = span.kind === 'slide' ? new TabSlide(ends, up ? TabSlide.SLIDE_UP : TabSlide.SLIDE_DOWN)
+        : !firstNote ? new TabTie(ends)
+          : span.kind === 'pull' ? TabTie.createPulloff(ends) : TabTie.createHammeron(ends);
+      mark.setContext(ctx).draw();
+    };
+    if (from.getStave().getY() === to.getStave().getY()) draw(from, to);
+    else { draw(from); draw(undefined, to); }
+  }
+}
+
+/** Hide an authored invisible clef after native layout has inserted any courtesy clefs. */
+function finishLayout(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition) {
+  if (parsed.measures[0].state.hideClef) {
+    for (const row of composition.staves) for (const stave of row) {
+      for (const clef of stave.getModifiers(undefined, Clef.CATEGORY)) clef.setText('');
+    }
+  }
+  alignVerseBaselines(parsed, composition, view.staves, view.eventId);
+}
+
 /** Recompose off-screen, then replace the host after all layout, drawing and indexing succeeds. */
 export function renderScore(host: HTMLElement, source: ParsedScore | ScoreV2,
   options: { width?: number; part?: Part; partIndex?: number; renderer?: 'svg' | 'canvas' } = {}) {
@@ -408,29 +446,8 @@ export function renderScore(host: HTMLElement, source: ParsedScore | ScoreV2,
     resize();
     if (frames.height) drawFrames(parsed, width, ctx, (id, range) => view.sources.project(view.staves[0], id, range));
   }
-  if (parsed.measures[0].state.hideClef) {
-    composition.sheet.format();
-    for (const row of composition.staves) for (const stave of row) {
-      for (const clef of stave.getModifiers(undefined, Clef.CATEGORY)) clef.setText('');
-    }
-  }
-  factory.draw();
-  if (view.staves.includes('tab')) for (const span of parsed.spans) {
-    if (!('fromHead' in span)) continue;
-    const from = composition.getNote(view.eventId('tab', span.from)) as TabNote;
-    const to = composition.getNote(view.eventId('tab', span.to)) as TabNote;
-    const indexes = { firstIndexes: [span.fromHead], lastIndexes: [span.toHead] };
-    const up = Number(to.getPositions()[span.toHead].fret) > Number(from.getPositions()[span.fromHead].fret);
-    const draw = (firstNote?: TabNote, lastNote?: TabNote) => {
-      const ends = { firstNote, lastNote, ...indexes };
-      const mark = span.kind === 'slide' ? new TabSlide(ends, up ? TabSlide.SLIDE_UP : TabSlide.SLIDE_DOWN)
-        : !firstNote ? new TabTie(ends)
-          : span.kind === 'pull' ? TabTie.createPulloff(ends) : TabTie.createHammeron(ends);
-      mark.setContext(ctx).draw();
-    };
-    if (from.getStave().getY() === to.getStave().getY()) draw(from, to);
-    else { draw(from); draw(undefined, to); }
-  }
+  drawPrepared(factory, () => finishLayout(parsed, view, composition));
+  drawTabConnections(parsed, view, composition, ctx);
   const extraRegions = [...view.textLanes.regions.values(), ...frames.regions, ...drawTabEndings(view, composition, ctx)];
   const navigation = new ScoreNavigation(composition, view.spec.staves, view.sources.ids);
   // Expose the fragments of each written tie together, in source order.
@@ -517,40 +534,51 @@ function selectVoices(score: ParsedScore, part: Part, number?: number): ParsedSc
   return { ...score, measures, ties, spans };
 }
 
-/** Publication recomposes from descriptors. Reject any selected mark that needs the screen pass. */
+/** Prepare every native publication and cue before VexFlow measures its ink and breaks pages. */
+function drawPart(parsed: ParsedScore, view: Projection, hooks: PublicationOptions['noteHooks']): PartDrawingOptions['drawComposition'] {
+  return (spec, composition, factory, builder, insetMeasure) => {
+    const staves = spec.staves.map(staff => staff.id as Staff);
+    const ctx = factory.getContext() as SVGContext;
+    // An inset has its original event IDs but a single local measure on one selected staff.
+    const selected = insetMeasure === undefined ? parsed : {
+      ...parsed, measures: [{ ...parsed.measures[insetMeasure - 1], number: 1 }], spans: [],
+    };
+    const partView = { ...view, staves, mixedEndings: insetMeasure === undefined ? view.mixedEndings : [] };
+    prepareScreen(selected, partView, composition, factory);
+    if (hooks?.length) {
+      for (const measure of selected.measures) for (const staff of staves) {
+        for (const voice of voicesFor(measure, staff)) for (const event of voice.events) {
+          const id = view.eventId(staff, event.id);
+          const note = composition.getNote(id) as StemmableNote;
+          for (const hook of hooks) hook({ id, clef: staff === 'tab' ? 'tab' : staff === 'left' ? 'bass' : measure.state.clef, stem: voice.stem ?? 'auto' }, note, builder);
+        }
+      }
+    }
+    drawPrepared(factory, () => finishLayout(selected, partView, composition));
+    drawTabConnections(selected, partView, composition, ctx);
+    drawTabEndings(partView, composition, ctx);
+
+    if (!selected.measures.some(m => m.voices.some(v => v.events.some(e => e.frame)))) return;
+    // The page planner measures this native diagram key as first-system ink, including on a short page.
+    const top = Math.min(0, ctx.svg.getBBox().y);
+    const key = ctx.openGroup('chord-frames');
+    drawFrames(selected, spec.sheet.width, ctx, (id, range) => view.sources.project(staves[0], id, range));
+    ctx.closeGroup();
+    const box = key.getBBox();
+    key.setAttribute('transform', 'translate(0,' + (top - box.y - box.height - 8) + ')');
+  };
+}
+
+/** Rebuild an independent part with the same descriptors and native decorations as the screen. */
 export function renderScorePart(host: HTMLElement, source: ParsedScore | ScoreV2, part: Staff,
   options: Omit<PublicationOptions, 'staves'> & { voice?: number; partIndex?: number } = {}) {
   const { voice, partIndex, ...paper } = options;
   let parsed = 'parts' in source ? projectScoreV2(source, partIndex) : source;
   parsed = selectVoices(parsed, part, voice);
   const view = project(parsed, part, 600, true);
-  const unsupported = (feature: string, range: SourceRange): never => {
-    throw new ScoreError('fixed-layout', `Independent ${part} parts cannot engrave ${feature} yet`, range);
-  };
-  if (view.mixedEndings.length) unsupported('a tab ending between a rest and a fret', view.mixedEndings[0].range);
-  for (const m of parsed.measures) {
-    for (const voice of m.voices) {
-      if (voice.beamGroups?.length) unsupported('explicit beam groups', voice.beamGroups[0].range);
-      if (part === 'tab' && !voice.tabStems && voice.tuplets.length) unsupported('an unstemmed tab tuplet', voice.tuplets[0].range);
-      for (const event of voice.events) {
-        if (event.frame) unsupported('a chord frame', event.frame.range);
-        if (event.silent) unsupported('a silent position', event.silent);
-        const id = view.eventId(voice.hand ?? part, event.id);
-        const marked = event.heads.find(head => head.marks?.some(mark => part !== 'tab' || mark.finger === undefined));
-        if (marked && !view.printed.has(id)) unsupported('a fingering or accent on a fretted or special head', marked.range);
-        const sign = part !== 'tab' && event.heads.find(h => h.accidental);
-        if (sign && !(m.state.piano && view.printed.has(id))) unsupported('an explicit accidental', sign.range);
-        if (part === 'tab' && !voice.tabStems && !event.heads.length) unsupported('a silent tab rest', event.range);
-      }
-    }
-  }
-  paper.noteHooks = [view.textLanes.hook, view.printed.hook, ...(paper.noteHooks ?? [])];
-  const publication = new Publication(view.spec).render(host, paper);
-  if (part === 'tab') drawPrintedOpenSlides(publication, parsed, event => view.eventId(part, event.id));
-  if (parsed.measures[0].state.hideClef) {
-    for (const page of publication.pages) for (const glyph of page.svg.querySelectorAll('.vf-clef')) glyph.remove();
-  }
-  colorPublication(publication, parsed, (event, voice) => view.eventId(voice.hand ?? part, event.id));
+  const settings: PartDrawingOptions = { ...paper, noteHooks: [view.textLanes.hook, ...(paper.noteHooks ?? [])],
+    drawComposition: drawPart(parsed, view, paper.noteHooks) };
+  const publication = new Publication(view.spec).render(host, settings);
   function playbackGeometry(): Geometry {
     const attacks = new Map<string, Attack>();
     for (const m of parsed.measures) for (const voice of m.voices) for (const event of voice.events) {

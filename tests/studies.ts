@@ -4,7 +4,7 @@ import guitar from '../guide/scores/drop-d-turnaround.vextab';
 import lead from '../guide/scores/slow-river.vextab';
 import { renderScore, renderScorePart } from '../src/score/layout';
 import { projectScoreV2 } from '../src/score/grammar2/project';
-import { parseScore, ScoreError } from '../src/score/parse';
+import { parseScore } from '../src/score/parse';
 
 function read(source: string) { return projectScoreV2(parseScore(source)); }
 
@@ -196,16 +196,15 @@ QUnit.module('Responsive studies', () => {
     }
   });
 
-  QUnit.test('A printable tab gesture retains its string and envelope, and unsupported print attachments are located', assert => {
+  QUnit.test('A printable tab gesture retains its string and envelope, and a lead sheet prints its chord frame', assert => {
     const src = 'meter 4/4 guitar { view tab capo 2 tabStems on palmMute strings(3) { :h (5/2 7/3[bend +2 rise=1/2 release=1]) (5/2 7/3) } | }';
     const target = host();
     const part = renderScorePart(target, read(src), 'tab');
     const meta = JSON.parse(part.publication.pages[0].svg.querySelector('metadata').textContent);
     assert.ok(JSON.stringify(meta.events[0]).includes('string-bend'));
     assert.deepEqual(meta.spans[0].strings, [3]);
-    const page = target.firstChild;
-    assert.throws(() => renderScorePart(target, read(lead), 'notation'),
-      (e: ScoreError) => e.code === 'fixed-layout' && lead.slice(e.range.start,e.range.end).startsWith('frame'));
-    assert.strictEqual(target.firstChild, page);
+    const sheet = renderScorePart(target, read(lead), 'notation').publication;
+    assert.deepEqual(sheet.diagnostics, []);
+    assert.ok(sheet.pages[0].svg.querySelector('.vf-chord-frames'));
   });
 });

@@ -1,4 +1,5 @@
 // Translate one v2 instrument into the measured score used by engraving, printing, navigation and playback.
+import { duplicateMark } from './marks.mts';
 import { Fraction, FrettedInstrument, KeyManager, Music, Tuning } from 'vexflow';
 import type { Attack, Head, Measure, MeasureVoice, ParsedScore, StaffState } from '../model';
 import { midiPitch, soundingGuitarPitch, spellFret } from '../music';
@@ -120,11 +121,14 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         result.written = interval ? interval.pitch(name, Number(mark.pitch.slice(-1))) : name + '/' + mark.pitch.slice(-1);
       }
       if (mark.kind === 'sign') marks.push({ articulation: mark.code, position: mark.position });
+      if (mark.kind === 'finger' || mark.kind === 'stringNumber') marks.push({ finger: String(mark.value), stringNumber: mark.kind === 'stringNumber', position: mark.side });
+    }
+    // Resolve forced signs after the written spelling, regardless of mark order in the source.
+    for (const mark of head.marks) {
       if (mark.kind === 'courtesy' || mark.kind === 'showSign') {
         result.accidental = result.written.split('/')[0].slice(1) || 'n';
         result.cautionary = mark.kind === 'courtesy';
       }
-      if (mark.kind === 'finger' || mark.kind === 'stringNumber') marks.push({ finger: String(mark.value), stringNumber: mark.kind === 'stringNumber', position: mark.side });
     }
     for (const mark of head.marks) if (mark.kind === 'hammer' || mark.kind === 'pull' || mark.kind === 'slide') result.connection = mark.kind;
     if ('hammerFrom' in head && head.hammerFrom) result.hammer = true;
@@ -136,6 +140,11 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   /** Place one expanded event on the measure clock and resolve its annotations. */
   function attack(event: ScoreEvent): Attack {
     const interval = intervalFor((score.transpose ?? 0) + (event.transpose ?? 0));
+    // Previously serialized models can predate duplicate-mark validation in the compiler.
+    for (const marks of [event.marks, ...event.heads.map(head => head.marks)]) {
+      const duplicate = duplicateMark(marks);
+      if (duplicate) throw new ScoreError('measure', duplicate.reason, locate(duplicate.range));
+    }
     const heads = event.heads.map(head => projectHead(head, interval));
     if (event.soundingOctaves) for (const head of heads) {
       if (!head.sounding) continue;

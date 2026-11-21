@@ -89,7 +89,11 @@ QUnit.module('Engraving', () => {
     assert.ok([...svg.querySelectorAll('text')].some(text => text.textContent === '5'), 'the exported SVG contains the fingering');
     assert.ok(JSON.parse(svg.querySelector('metadata').textContent).spans.some(s => s.kind === 'tie'), 'tie survives re-composition');
     const tab = readScore('meter 1/4 guitar { view tab 3/4[accent] | }');
-    assert.throws(() => renderScorePart(host, tab, 'tab'), /fretted or special head/);
+    let accents = 0;
+    renderScorePart(host, tab, 'tab', { noteHooks: [(_options, note) => {
+      accents += note.getModifiers().filter(mark => mark instanceof Vex.Flow.Articulation).length;
+    }] });
+    assert.equal(accents, 1);
   });
 
   QUnit.test('A pre-bent fret sounds at the raised pitch for one written attack', assert => {

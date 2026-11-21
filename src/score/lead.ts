@@ -2,7 +2,7 @@
 import { describeOpenSlide } from './open-slide';
 import { describePrebend } from './music';
 import { scoreFont } from './engraving';
-import { FretDiagram, type EasyScoreMeasureSpec, type RenderContext, type ScoreHitRegion } from 'vexflow';
+import { Annotation, FretDiagram, type EasyScoreComposition, type EasyScoreMeasureSpec, type RenderContext, type ScoreHitRegion } from 'vexflow';
 import type { Measure, ParsedScore } from './model';
 import { ScoreError, type SourceRange } from './source';
 
@@ -67,4 +67,50 @@ export function drawFrames(score: ParsedScore, width: number, ctx: RenderContext
   }
   ctx.restore();
   return { height: bottom, width: right, regions };
+}
+
+/** Fit a voice's native verse to the lowest required baseline across its final system.
+ * Re-run the native phrase solver so the syllables, hyphens and extenders move together. */
+export function alignVerseBaselines<Staff extends string>(score: ParsedScore, composition: EasyScoreComposition,
+  staves: Staff[], eventId: (staff: Staff, id: string) => string) {
+  for (const row of composition.sheet.getContinuousLayout().rows) {
+    const lanes = new Map<Staff, Map<number, Annotation[]>>();
+    const measures = new Set<number>();
+    for (const number of row.measures) {
+      const m = score.measures[number - 1];
+      for (const [vi, voice] of m.voices.entries()) for (const event of voice.events) {
+        if (!event.lyric) continue;
+        const staff = voice.hand ? staves.find(s => s === voice.hand) : staves[0];
+        if (!staff) continue;
+        const note = composition.getNote(eventId(staff, event.id));
+        const mark = note.getModifiers().find((mod): mod is Annotation => mod instanceof Annotation &&
+          mod.phraseManaged && mod.getVerticalJustification() === Annotation.VerticalJustify.BOTTOM);
+        if (!mark) continue;
+        const voices = lanes.get(staff) ?? new Map<number, Annotation[]>();
+        const syllables = voices.get(vi) ?? [];
+        syllables.push(mark);
+        voices.set(vi, syllables);
+        lanes.set(staff, voices);
+        measures.add(number);
+      }
+    }
+    if (measures.size < 2) continue;
+    const pinned: Annotation[] = [];
+    for (const voices of lanes.values()) {
+      let bottom = -Infinity;
+      for (const [, syllables] of [...voices].sort(([a], [b]) => a - b)) {
+        const ink = syllables.map(mark => mark.getTextInk(0, 0));
+        const baseline = Math.max(...syllables.map(mark => mark.computeY().y), bottom - Math.min(...ink.map(box => box.y)));
+        for (const mark of syllables) mark.setTextBaseline(baseline);
+        pinned.push(...syllables);
+        bottom = baseline + Math.max(...ink.map(box => box.y + box.h)) + syllables[0].getNote().getStave().space(0.35);
+      }
+    }
+    for (const n of measures) {
+      composition.systems[n - 1].getPhraseLayout().format(composition.staves[n - 1], composition.voices[n - 1].flat());
+    }
+    // Retained native objects may later be formatted at a different width. Preserve the computed
+    // layout baseline for this draw, and release the absolute pin for the next formatting pass.
+    for (const mark of pinned) mark.setTextBaseline(undefined);
+  }
 }

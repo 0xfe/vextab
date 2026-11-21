@@ -1,6 +1,6 @@
 // Engrave a short slide on one guitar string. Its unwritten end has no fixed pitch.
-import { Modifier, TabNote, type PublicationResult } from 'vexflow';
-import type { Attack, OpenSlide, ParsedScore } from './model';
+import { Modifier, TabNote } from 'vexflow';
+import type { OpenSlide } from './model';
 
 /** Keep the free end inside a single string space and clear of the adjacent fret. */
 const slideWidth = 10;
@@ -53,33 +53,4 @@ export function attachOpenSlide(note: TabNote, index: number, slide: OpenSlide):
     else note.setRightDisplacedHeadPx(note.getRightDisplacedHeadPx() + slideWidth + 2);
   }
   note.addModifier(mark, index);
-}
-
-/** Publication recomposes tab notes from plain descriptors. Its native fret masks supply
- * the edges and centres of each printed fret, including two-digit frets and cue copies. */
-export function drawPrintedOpenSlides(result: PublicationResult, score: ParsedScore, id: (event: Attack) => string): void {
-  const marked = new Map<string, Attack>();
-  for (const measure of score.measures) for (const voice of measure.voices) for (const attack of voice.events) {
-    if (attack.heads.some(head => head.openSlide)) marked.set('vf-' + id(attack), attack);
-  }
-  if (!marked.size) return;
-  for (const { svg } of result.pages) {
-    for (const group of svg.querySelectorAll('.vf-tabnote[data-vf-id]')) {
-      const attack = marked.get(group.getAttribute('data-vf-id'));
-      if (!attack) continue;
-      const masks = group.querySelectorAll<SVGRectElement>(':scope > rect');
-      attack.heads.forEach((head, i) => {
-        const mask = masks[i];
-        if (!head.openSlide || !mask) return;
-        const x = mask.x.baseVal.value + (head.openSlide.edge === 'out' ? mask.width.baseVal.value : 0);
-        const y = mask.y.baseVal.value + mask.height.baseVal.value / 2;
-        const end = freeEnd(x, y, head.openSlide);
-        const path = svg.ownerDocument.createElementNS(svg.namespaceURI, 'path');
-        path.setAttribute('class', 'vf-open-slide');
-        path.setAttribute('d', `M${x} ${y}L${end.x} ${end.y}`);
-        path.setAttribute('fill', 'none');
-        group.append(path);
-      });
-    }
-  }
 }

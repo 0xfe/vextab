@@ -1,5 +1,6 @@
 // Compile finite phrases on a separate measure grid for each instrument.
 /// <reference lib="es2020.bigint" />
+import { duplicateMark } from './marks.mts';
 import { limits, readScore, type DiagnosticCode, type Fail, type Fraction, type Node, type TimedNode,
   type PartSyntax, type StaffSyntax, type VoiceSyntax } from './reader.mts';
 import type { ExpansionFrame, Head, HeadRef, ScoreEvent, ScoreV2, ScoreVoice, TextRange, WrittenMeter } from './model.js';
@@ -103,10 +104,14 @@ export function compile(source: string): ScoreV2 {
     function emit(node: TimedNode, duration: Fraction, rhythmRange: TextRange | undefined, scale: Fraction, trace: ExpansionFrame[]) {
       if (++eventCount > limits.events) fail('event-limit', 'Too many expanded attacks, rests or skips', node.range, trace);
       const length = rational(duration[0] * scale[0], duration[1] * scale[1], fail, node.range, trace);
+      const duplicate = duplicateMark(node.marks ?? []);
+      if (duplicate) fail('syntax', duplicate.reason, duplicate.range, trace);
       const id = [partIndex + 1, staff.name, voice.name, events.length + 1].join('.');
       const heads = node.kind === 'attack' ? node.heads.map((head, index) => {
         if ((part.kind === 'drums') !== ('drum' in head) || ('string' in head && part.kind !== 'guitar'))
           fail('instrument', 'This head does not belong to ' + part.kind, head.range, trace);
+        const duplicate = duplicateMark(head.marks);
+        if (duplicate) fail('syntax', duplicate.reason, duplicate.range, trace);
         for (const mark of head.marks) {
           if (['bend', 'prebend', 'slideIn', 'slideOut'].includes(mark.kind) && (!('fret' in head) || typeof head.fret !== 'number'))
             fail('instrument', 'This technique needs a pitched fret', mark.range, trace);

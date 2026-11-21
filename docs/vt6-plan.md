@@ -25,6 +25,8 @@ Completed 21 November 2026. The release fixtures reproduce on a clean checkout. 
 
 ## M1 · Preserve authored music on screen and paper
 
+Implemented on `uplevel`. The *Slow River* verse and diagram and the fingered Sor opening now survive independent printing. [M1 evidence and native engraving audit](../issues/196/README.md)
+
 1. Trace marks from `ScoreV2` through part projection. Fix ambiguous duplicate lyrics with a diagnostic pointing to the second mark. Audit other repeated marks lowered into a single field. Fit a verse across the whole system so its syllables share a baseline and extenders clear the bass voice.
 2. Give screen rendering and `Publication` the same instructions for constructing beams, silent positions, forced accidentals, head-specific marks and chord frames. Test a reordered chord and render each part twice to catch misplaced or duplicated modifiers.
 3. Audit remaining custom drawing for TAB endings, free-end slides, timed text, color and hidden clefs. Replace a workaround when the native control preserves its ink, spacing, source selection and print behavior. Record a bounded fixture and the missing native capability for each retained fallback. [Rendering audit](vt6-baseline.md#where-engraving-decisions-live)

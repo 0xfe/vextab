@@ -1,7 +1,7 @@
 // Recreate timed text in each screen or print composition using its own formatted voice.
 import { TextNote, type ScoreHitRegion, type PublicationOptions } from 'vexflow';
 import { inkStyle } from './color';
-import type { MeasuredText, MeasureVoice } from './model';
+import type { MeasuredText } from './model';
 
 /** Resolve source ranges and fresh VexFlow text objects separately for each composition. */
 export class TextLanes {
@@ -12,22 +12,6 @@ export class TextLanes {
   anchor(id: string, cell: MeasuredText | null): string {
     this.cells.set(id, cell);
     return 'B4/' + (cell?.base ?? 'w') + (cell?.text || cell?.boundaries?.length ? '/r' : '/g') + '.'.repeat(cell?.dots ?? 0) + '[clef="treble",id="' + id + '"]';
-  }
-
-  /** A printed label follows its attack through tuplets, voice selection and repagination. */
-  labels(voice: MeasureVoice, id: (name: string, cell: MeasuredText) => string) {
-    const count = Math.max(0, ...voice.events.map(e => e.labels?.length ?? 0));
-    return Array.from({ length: count }, (_, line) => ({
-      notes: voice.events.map(e => {
-        const label = e.labels?.[line];
-        const cell: MeasuredText = {
-          id: e.id + '-label-' + line, range: label?.range ?? e.range, base: e.base, dots: e.dots,
-          text: label?.text ?? '', style: { ...label, line: label?.position === 'below' ? 10 + 2 * line : -2 * line }
-        };
-        return this.anchor(id(cell.id, cell), cell);
-      }),
-      tuplets: voice.tuplets.map(t => ({ start: t.start, count: t.count, options: { numNotes: t.numNotes, notesOccupied: t.notesOccupied } })),
-    }));
   }
 
   /** The anchor owns timing and spacing. Its visible glyph is a native TextNote. */
