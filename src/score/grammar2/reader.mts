@@ -1,5 +1,5 @@
 // Parse written v2 notation into a bounded syntax tree before expanding any pattern.
-import type { EventMark, Head, HeadMark, PartKind, PartSettings, WrittenMeter, StaffName, TextStyle, LaneStyle, TextBoundary, TextRange, ExpansionFrame } from './model.js';
+import type { EventMark, Head, HeadMark, PartKind, PartSettings, WrittenMeter, StaffName, TextStyle, LaneStyle, TextBoundary, TextRange, ExpansionFrame, InstrumentIdentity } from './model.js';
 
 /** One compilation shares these budgets across all parts, voices and pattern calls. */
 export const limits = Object.freeze({
@@ -23,8 +23,8 @@ export type Node = TimedNode | { range: TextRange } & (
   { kind: 'fragment' | 'slur' | 'beam' | 'palmMute' | 'transpose' | 'octave'; body: Node[]; strings?: number[]; semitones?: number }
 );
 export interface VoiceSyntax { settings?: import('./model.js').VoiceSettings; name: string; range: TextRange; body: Node[] }
-export interface StaffSyntax { name: StaffName; range: TextRange; voices: VoiceSyntax[] }
-export interface PartSyntax extends PartSettings { lanes?: { voice: VoiceSyntax; style: LaneStyle }[]; kind: PartKind; range: TextRange; staves: StaffSyntax[] }
+export interface StaffSyntax extends Omit<InstrumentIdentity, 'name'> { displayName?: string; name: StaffName; range: TextRange; voices: VoiceSyntax[] }
+export interface PartSyntax extends PartSettings, InstrumentIdentity { lanes?: { voice: VoiceSyntax; style: LaneStyle }[]; kind: PartKind; range: TextRange; staves: StaffSyntax[] }
 
 /** Comments consume the rest of the line. Punctuation has the same meaning across line breaks. */
 function tokenize(source: string, fail: Fail): Token[] {
@@ -162,6 +162,27 @@ export function readScore(source: string, fail: Fail) {
     if (!token.text.startsWith('"')) return error('Expected quoted text', token);
     try { return JSON.parse(token.text); }
     catch { return error('Invalid quoted text', token); }
+  }
+
+  /** Display and playback metadata are shared by instrument and staff declarations. */
+  function identityFields(id?: string): InstrumentIdentity {
+    const fields: InstrumentIdentity = id ? { id } : {};
+    while (peek() === 'name' || peek() === 'shortName' || peek() === 'sounds') {
+      const field = take();
+      if (Object.prototype.hasOwnProperty.call(fields, field.text)) error('Duplicate instrument field', field);
+      if (field.text === 'sounds') {
+        const value = take();
+        if (!/^[+-]?\d{1,3}$/.test(value.text) || Math.abs(Number(value.text)) > 127)
+          error('Expected a sounding interval from -127 to +127 semitones', value);
+        fields.sounds = Number(value.text);
+      } else fields[field.text as 'name' | 'shortName'] = literal();
+    }
+    return fields;
+  }
+
+  function staffFields(identity: InstrumentIdentity) {
+    const { name, ...fields } = identity;
+    return { ...fields, ...(name !== undefined && { displayName: name }) };
   }
 
   /** Text labels and timed lanes share their font and ink properties. */
@@ -717,29 +738,47 @@ export function readScore(source: string, fail: Fail) {
       if (patterns.has(name)) error('Duplicate pattern ' + name, nameToken);
       patterns.set(name, block(sequence));
     } else if (isPartKind(token.text)) {
+      const idToken = tokens[cursor];
+      const id = peek() === '{' ? undefined : identifier();
+      if (id && parts.some(part => part.id === id)) error('Duplicate part ID ' + id, idToken);
+      let identity: InstrumentIdentity;
       const staves: StaffSyntax[] = [];
       let options: PartSettings = {};
       let lanes: PartSyntax['lanes'];
       if (token.text === 'piano') {
         block(() => {
+          identity = identityFields(id);
           options = settings('piano');
           for (const hand of ['upper', 'lower'] as const) {
             const handToken = expect(hand);
-            staves.push({ name: hand, range: handToken.range, voices: block(voices) });
+            const key = tokens[cursor];
+            const staffId = peek() === '{' ? undefined : identifier();
+            if (staves.some(staff => (staff.id ?? staff.name) === (staffId ?? hand)))
+              error('Duplicate staff ID ' + (staffId ?? hand), staffId ? key : handToken);
+            let fields: InstrumentIdentity;
+            const music = block(() => { fields = identityFields(staffId); return voices(); });
+            staves.push({ ...staffFields(fields), name: hand, range: handToken.range, voices: music });
           }
           lanes = readLanes();
         });
       } else {
+        let primary: InstrumentIdentity = {};
         const music = block(() => {
+          identity = identityFields(id);
+          if (peek() === 'stave') {
+            take();
+            const staffId = identifier();
+            primary = block(() => identityFields(staffId));
+          }
           options = settings(token.text as PartKind);
           const unmeteredGuitar = token.text === 'guitar' && !options.meters && !Object.keys(scoreMeters).length && !pickup;
           const partsVoices = voices(unmeteredGuitar);
           lanes = readLanes();
           return partsVoices;
         });
-        staves.push({ name: 'main', range: token.range, voices: music });
+        staves.push({ ...staffFields(primary), name: 'main', range: token.range, voices: music });
       }
-      parts.push({ ...options, ...(lanes?.length && { lanes }), kind: token.text, range: token.range, staves });
+      parts.push({ ...identity, ...options, ...(lanes?.length && { lanes }), kind: token.text, range: token.range, staves });
     } else error('Expected a score setting, alias, pattern or part', token);
   }
   if (!parts.length) error('Expected a part');

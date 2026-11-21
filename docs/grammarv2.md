@@ -69,7 +69,7 @@ Fences labelled `vextab2` in this document are executable and exercised by the t
 
 Use `source.slice(...event.range)` to find an authored attack. Heads, marks, barlines and explicit duration tokens also have source ranges. Expanded copies have distinct IDs. Their `trace` lists enclosing invocations from the outside in. The same input and language produce the same IDs; keep the source revision with any selection.
 
-Catch `ScoreV2Error` for v2 syntax, time, alignment or resource errors. Its `range` contains half-open UTF-16 offsets ready for `setSelectionRange`. Its `line` and `column` start at one, and its `trace` points back to a failing pattern invocation. Pass the same parsed score to the screen, printer and player. An editable `Div` displays each instrument in source order. A direct `renderScore` call draws one instrument and accepts `partIndex` to select it. The player schedules all instruments together unless you select one.
+Catch `ScoreV2Error` for v2 syntax, time, alignment or resource errors. Its `range` contains half-open UTF-16 offsets ready for `setSelectionRange`. Its `line` and `column` start at one, and its `trace` points back to a failing pattern invocation. Pass the same parsed score to the screen, printer and player. An editable `Div` displays each instrument in source order. A direct `renderScore` call draws one instrument and accepts `partId` or `partIndex` to select it. Use `renderConductor` to align instruments on one system. The player schedules all instruments together unless you select one.
 
 ```js
 const score = parseScore('piano { upper { :w G4 | } lower { :w C3 | } }');
@@ -216,6 +216,38 @@ drums { :8 (kick hat) hat (snare hat) hat | }
 staff { tuplet 3:2 { :8 G4 A4 B4 } C5 | }
 ```
 
+### Conductor scores and named parts
+
+Give an instrument a stable ID after its kind. Declare its full name, short name and written-to-sounding interval before the musical settings. VexFlow measures the full label on the opening system and the short label on later systems. IDs start with a lowercase letter and may contain lowercase letters, digits and underscores.
+
+```vextab2
+meter 2/4
+staff clarinet { name "Clarinet in B-flat" shortName "Cl." sounds -2
+  D4 E4 | :h F4 |
+}
+staff cello { name "Violoncello" shortName "Vc." clef bass
+  :h C3 | D3 |
+}
+```
+
+The clarinet reads D4 and plays concert C4. `sounds` counts semitones from written to sounding pitch. Each stave inherits its instrument’s interval and may override it. Guitar retains its tuning and normal octave convention when the source omits an interval.
+
+```js
+import { Div, parseScore, renderConductor, renderScore, renderScorePart } from 'vextab/browser';
+
+const score = parseScore(source);
+const ensemble = renderConductor(screen, score, { width: 800 });
+const clarinet = renderScore(practice, score, { partId: 'clarinet', width: 360 });
+renderScorePart(paper, score, 'notation', { partId: 'clarinet' });
+
+// The embed reads the VexTab source from editorHost and reflows on resize.
+const editor = new Div(editorHost, { view: 'conductor', player: true });
+```
+
+A host may use `data-view="conductor"` or `data-part-id="clarinet"` on a v2 embed. Both the conductor and extracted part show written pitch. The conductor shares one native measure grid across all staves. Each player’s view chooses its own breaks. An incompatible bar span locates the offending meter or barline and the instruments remain independently renderable.
+
+Named piano hands use `upper treble { name "Right hand" … }` and `lower bass { … }`. A single staff can add `stave melody { name "Melody" }` before its musical settings. `navigation.events` identifies each displayed stave and the underlying `source` event. Paired guitar notation and TAB have two display IDs for the same source event and one playback attack. A named event keeps its ID when players change order. Call `rangeFor(event.id, score.source)` on either view to select the original text. [Complete Haydn example](../guide/scores/haydn-emperor-theme.vextab)
+
 ### Different meters in the same score
 
 Two bars of 3/4 take as long as three bars of 2/4. Both instruments below start together. The second guitar attack arrives with the fourth quarter note in the melody.
@@ -276,7 +308,9 @@ piano {
 - A keyboard part can show simultaneous voices with separate stems, cross-staff material and pedalling. A future cross-staff projection would annotate an event's display staff while keeping its voice, written rhythm and source identity intact.
 - Add one public typed feature at a time. For a hairpin, define its name, valid anchor kinds, endpoint and placement rules, drawing adapter, text description, print projection, and any playback effect. Unsupported effects on a chosen backend get a diagnostic at the mark. Hosts keep supplying trusted rendering and playback code through ordinary APIs. Score text consists of data.
 
-VexFlow **5.6.1**, pinned here, already has shared staff groups/barlines, split chords, span fragments across systems, pedal, trill, ottava, hairpin, tuplet and palm-mute spans, percussion maps, navigation and independent publication. For future grace groups, ornaments, tremolos and multimeasure rests, verify each corresponding screen, print and timing adapter before adding the mark to the public catalogue. The current VexTab publication path explicitly rejects some material, including unsupported explicit-sign projections and diagrams. Rendering conformance must be measured per backend. [Continuous layout](https://github.com/vexflow/vexflow/blob/5.6.0/src/continuouslayout.ts) · [Span kinds and fragment drawing](https://github.com/vexflow/vexflow/blob/5.6.0/src/continuousspan.ts) · [Instrument profiles](https://github.com/vexflow/vexflow/blob/5.6.0/src/instrumentprofile.ts) · [Publication](https://github.com/vexflow/vexflow/blob/5.6.0/src/publication.ts) · [VexTab projection](../src/score/layout.ts)
+VexFlow **5.7.0** provides shared staff groups and barlines, split chords, percussion maps and navigation. Pedal, trill, ottava, hairpin, tuplet and palm-mute spans can cross systems. [Continuous layout](https://github.com/vexflow/vexflow/blob/5.7.0/src/continuouslayout.ts) · [Span kinds and fragment drawing](https://github.com/vexflow/vexflow/blob/5.7.0/src/continuousspan.ts) · [Instrument profiles](https://github.com/vexflow/vexflow/blob/5.7.0/src/instrumentprofile.ts)
+
+VexTab's independently printed parts retain forced accidentals and chord diagrams. The M1 audit records which marks work on SVG, Canvas and paper. Future grace groups, ornaments, tremolos and multimeasure rests need coverage across screen, print and playback before entering the public catalogue. [M1 engraving audit](../issues/196/README.md) · [Publication](https://github.com/vexflow/vexflow/blob/5.7.0/src/publication.ts) · [VexTab projection](../src/score/layout.ts)
 
 As an extension example, reserve qualified mark names such as `[ornament.turn above]`. A mark definition specifies its target (head, attack, boundary, or span), argument types, units and legal values. The compiler can then locate an invalid direction, a wrong endpoint or a missing print implementation before drawing. A core descriptor can map a pedal line to `ContinuousSpan`, a tremolo to a stem modifier and a grace passage to a pre-attack group whose written time belongs to the anchor. Implement a typed adapter and editor help together. This route can expose new VexFlow primitives without making their JavaScript constructor signatures part of the language.
 

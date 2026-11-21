@@ -19,7 +19,7 @@ export {
 };
 
 export { parseScore, ScoreError, ScoreV2Error, type ScoreV2, type ParsedScore, type SourceRange } from './score/parse';
-export { renderScore, renderScorePart, type Part } from './score/layout';
+export { renderScore, renderConductor, renderScorePart, type Part } from './score/layout';
 
 export { createWebAudioPlayback } from './playback/web-audio';
 export { createSpessaSynthPlayback, type SpessaSynthHost } from './playback/spessasynth';

@@ -11,8 +11,8 @@ const notation = {
   // Mark hex arguments first so an ink colour is never painted as a comment.
   color: { pattern: /(\bink\s+)#(?:[a-f\d]{8}|[a-f\d]{6}|[a-f\d]{4}|[a-f\d]{3})\b/i, lookbehind: true, alias: 'number' },
   comment: { pattern: /\/\/[^\r\n]*|(^|[\s{}()[\],|])#[^\r\n]*/m, lookbehind: true, greedy: true },
-  keyword: /\b(?:alias|meter|pickup|guitar|staff|drums|piano|upper|lower|voice|fragment|layout|play|pattern|times|use|tuplet|beam|volta|ending|palmMute|strings|transpose|octave|text|mark|sign|bar|break|system|repeatStart)\b/,
-  property: /\b(?:key|tuning|capo|view|stem|tabStems|ink|tempo|instrument|finger|tie|hammer|pull|slide|prebend|bend|lyric|symbol|frame|line|font|size|style)\b/,
+  keyword: /\b(?:alias|meter|pickup|guitar|staff|stave|drums|piano|upper|lower|voice|fragment|layout|play|pattern|times|use|tuplet|beam|volta|ending|palmMute|strings|transpose|octave|text|mark|sign|bar|break|system|repeatStart)\b/,
+  property: /\b(?:name|shortName|sounds|key|tuning|capo|view|stem|tabStems|ink|tempo|instrument|finger|tie|hammer|pull|slide|prebend|bend|lyric|symbol|frame|line|font|size|style)\b/,
   duration: /:(?:\d+|[qwh])\.{0,2}/,
   pitch: /\b(?:[A-G](?:bb|##|[#bn])?[0-8]|(?:x|\d+)(?:-(?:x|\d+))*\/[1-8]|kick|snare|hat|rest|skip|slash)\b/,
   operator: /[{}|()[\],]/,
@@ -20,7 +20,7 @@ const notation = {
 };
 Prism.languages.vextab = notation;
 const markup = Prism.languages.extend('markup', {
-  score: { pattern: /(?:guitar|staff|piano|drums)\s*\{[^<>]+?\}/, inside: notation },
+  score: { pattern: /(?:guitar|staff|piano|drums)(?:\s+[a-z][a-z0-9_]*)?\s*\{[^<>]+?\}/, inside: notation },
 });
 
 type Language = 'vextab' | 'javascript' | 'html' | 'bash';

@@ -77,7 +77,9 @@ export interface ScoreVoice {
   boundaries?: TextBoundary[];
   name: string; range: TextRange; events: ScoreEvent[]; measures: VoiceMeasure[]; spans: VoiceSpan[]; repeats?: WrittenRepeat[];
 }
-export interface ScoreStaff { name: StaffName; range: TextRange; voices: ScoreVoice[] }
+/** Stable authored key, display labels and semitone distance from written to sounding pitch. */
+export interface InstrumentIdentity { id?: string; name?: string; shortName?: string; sounds?: number }
+export interface ScoreStaff extends Omit<InstrumentIdentity, 'name'> { displayName?: string; name: StaffName; range: TextRange; voices: ScoreVoice[] }
 /** Instrument declarations apply to every voice of the part. */
 export interface ScoreLayout { width?: number; scale?: number; rowGap?: number; staffDistance?: number; top?: number }
 export interface PartSettings {
@@ -88,7 +90,7 @@ export interface PartSettings {
   tuning?: string; capo?: number; key?: string; clef?: 'treble' | 'bass' | 'alto' | 'tenor' | 'none' | 'soprano' | 'mezzo-soprano' | 'baritone-c' | 'baritone-f' | 'subbass' | 'french' | 'percussion';
   view?: 'tab' | 'notation' | 'both';
 }
-export interface ScorePart extends PartSettings { measureCount?: number; text?: TextLane[]; kind: PartKind; range: TextRange; staves: ScoreStaff[] }
+export interface ScorePart extends PartSettings, InstrumentIdentity { measureCount?: number; text?: TextLane[]; kind: PartKind; range: TextRange; staves: ScoreStaff[] }
 
 /** V2 parts share a playback origin. measureCount is the largest local bar count. */
 export interface ScoreV2 {

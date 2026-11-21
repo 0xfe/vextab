@@ -106,7 +106,7 @@ export function compile(source: string): ScoreV2 {
       const length = rational(duration[0] * scale[0], duration[1] * scale[1], fail, node.range, trace);
       const duplicate = duplicateMark(node.marks ?? []);
       if (duplicate) fail('syntax', duplicate.reason, duplicate.range, trace);
-      const id = [partIndex + 1, staff.name, voice.name, events.length + 1].join('.');
+      const id = [part.id ?? partIndex + 1, staff.id ?? staff.name, voice.name, events.length + 1].join('.');
       const heads = node.kind === 'attack' ? node.heads.map((head, index) => {
         if ((part.kind === 'drums') !== ('drum' in head) || ('string' in head && part.kind !== 'guitar'))
           fail('instrument', 'This head does not belong to ' + part.kind, head.range, trace);
@@ -291,7 +291,7 @@ export function compile(source: string): ScoreV2 {
     const { lanes, ...instrument } = part;
     const clock: PartClock = { bars: [], meters: { ...part.meters } };
     const staves = part.staves.map(staff => ({
-      name: staff.name, range: staff.range, voices: staff.voices.map(voice => lower(part, staff, voice, index, clock)),
+      ...staff, voices: staff.voices.map(voice => lower(part, staff, voice, index, clock)),
     }));
     const text = lanes?.map(lane => ({
       name: lane.voice.name, style: lane.style,

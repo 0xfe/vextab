@@ -1,5 +1,6 @@
 // Public playback controller for parsed scores and fixed-layout Artist embeds.
 import Artist from './artist';
+import { selectedPart } from './score/conductor';
 import { projectScoreV2 } from './score/grammar2/project';
 import type { ScoreV2 } from './score/grammar2/model';
 import type { ParsedScore } from './score/model';
@@ -27,6 +28,7 @@ function programNumber(instrument: string | number) {
 export interface PlayerOptions {
   /** Zero-based v2 instrument to play. Omit to play all instruments together. */
   partIndex?: number;
+  partId?: string;
   playback?: PlaybackPlugin;
   /** Place transport buttons here while keeping the cursor on the score. */
   controls?: HTMLElement;
@@ -47,6 +49,7 @@ export default class Player {
   private ensemble?: ParsedScore[];
   private generation = 0;
   private performanceTempo = 120;
+  private sharedSurface = false;
   private geometry?: () => Geometry;
   private companions: { overlay: PlayerOverlay; read: () => Geometry; score: ParsedScore }[] = [];
   private animations: PlaybackAnimation[] = [];
@@ -59,10 +62,10 @@ export default class Player {
       soundfont_url: '/soundfont/', overlay_class: 'vextab-player', ...options };
     if ('parts' in source) {
       const model = source;
-      if (options.partIndex === undefined && model.parts.length > 1) {
+      if (options.partId === undefined && options.partIndex === undefined && model.parts.length > 1) {
         this.ensemble = model.parts.map((_, i) => projectScoreV2(model, i));
       }
-      source = projectScoreV2(model, options.partIndex);
+      source = projectScoreV2(model, selectedPart(model, options));
     }
     if ('measures' in source) {
       this.score = source;
@@ -123,6 +126,7 @@ export default class Player {
     this.removeControls();
     this.mark = mark;
     const layout = surface && scoreSurfaces.get(surface);
+    this.sharedSurface = !!this.ensemble && !!layout?.ensemble && this.ensemble.every((score, i) => layout.ensemble[i] === score);
     this.geometry = layout && layout.score === this.score ? layout.read : undefined;
     const ctx = this.artist?.getPlayerData().context;
     const element = surface ?? ctx?.canvas ?? ctx?.svg;
@@ -167,7 +171,7 @@ export default class Player {
     this.overlay?.setStatus('Loading instruments...');
     try {
       const geometry = this.geometry?.() ?? (this.artist && this.overlay ? artistGeometry(this.artist) : undefined);
-      if (geometry?.size) this.animations.push(new PlaybackAnimation(this.overlay?.surface, first, geometry));
+      if (geometry?.size) this.animations.push(new PlaybackAnimation(this.overlay?.surface, this.sharedSurface ? music : first, geometry));
       for (const view of this.companions) {
         const part = performances.get(view.score);
         if (part) this.animations.push(new PlaybackAnimation(view.overlay.surface, part, view.read()));
