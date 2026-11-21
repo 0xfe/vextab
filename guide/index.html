@@ -39,6 +39,7 @@
       <p class="chapter-label" id="lesson-section"></p>
       <label id="picker-label" hidden>Playground score <select id="picker"></select></label>
       <h1 id="title"></h1><p class="goal" id="goal"></p>
+      <p id="edition-credit" hidden></p>
       <div class="bench">
       <div class="toolbar" id="view-controls"><label>View <select id="view"></select></label><label id="narrow-control"><input id="narrow" type="checkbox"> Narrow score</label></div>
       <div id="score"></div>
@@ -50,9 +51,10 @@
         <div class="actions"><button id="previous">Previous event</button><button id="next">Next event</button><button id="select">Select source</button></div>
       </section>
       <section id="workbench" hidden><h2>Second editor</h2><div id="second"></div></section>
-      <section id="printing" hidden><h2>Engrave the duet</h2><div class="toolbar" id="edition-controls">
-        <label>Edition <select id="player"><option value="1">Guitar 1</option><option value="2">Guitar 2</option><option value="score">Full score</option></select></label>
+      <section id="printing" hidden><h2 id="print-heading">Engrave the duet</h2><div class="toolbar" id="edition-controls">
+        <label id="duet-player">Edition <select id="player"><option value="1">Guitar 1</option><option value="2">Guitar 2</option><option value="score">Full score</option></select></label>
         <label>Paper <select id="paper"><option>A4</option><option>Letter</option></select></label>
+        <button id="prepare-print" hidden>Prepare print edition</button>
         <button id="print" disabled>Print</button><button id="save-print" disabled>Save print HTML</button>
         <label id="svg-page-label" hidden>Page <select id="svg-page"></select></label><button id="save-svg" disabled>Save SVG</button></div><p id="print-status" role="status"></p><div id="part"></div>
       </section>

@@ -3,7 +3,9 @@ import Div from '../src/div';
 import Player from '../src/player';
 import { previousDraft } from './drafts';
 import { scoreOptions } from './audio';
-import { renderScorePart, type Part } from '../src/score/layout';
+import { renderEdition, renderScorePart, type Part } from '../src/score/layout';
+import type { PartSelector } from '../src/score/conductor';
+import type { ScoreV2 } from '../src/score/grammar2/model';
 import { lessons, type Lesson } from './catalog';
 import { highlightEditor } from './highlight';
 import { chapterBooks, tutorial, quickstart, features, groups, link, node, showCover, showChapter, showFeatures, showReference } from './book';
@@ -48,37 +50,73 @@ function read(step = 0): void {
   button('select').disabled = !event;
 }
 
-/** Prepare a portable edition. A late font load cannot restore an obsolete preview. */
-async function printPart(): Promise<void> {
-  const revision = ++printRevision;
+/** Use stable instrument IDs when available and offer guitar's two independent printed staves. */
+function repertoireViews(score: ScoreV2) {
+  const options = [new Option('Conductor', 'conductor')];
+  score.parts.forEach((part, i) => {
+    const label = part.name ?? ({ guitar: 'Guitar', piano: 'Piano', staff: 'Staff' }[part.kind] ?? part.kind);
+    const key = 'part-' + (part.id ?? String(i));
+    options.push(new Option(label, key));
+    if (part.kind === 'guitar') options.push(new Option(label + ' · notation', key + '/notation'), new Option(label + ' · TAB', key + '/tab'));
+  });
+  return options;
+}
+
+/** The same selection controls the screen, the player and the downloadable edition. */
+function selectedEdition(): { target: 'conductor' | PartSelector; staff?: 'notation' | 'tab' } {
+  const value = choice('view').value;
+  if (value === 'conductor') return { target: 'conductor' };
+  const [key, staff] = value.slice('part-'.length).split('/');
+  return { target: /^\d+$/.test(key) ? { partIndex: Number(key) } : { partId: key }, staff: staff as 'notation' | 'tab' };
+}
+
+/** Invalidate exports on edits. A late outline-font load cannot restore an obsolete edition. */
+function clearPrint() {
+  printRevision++;
   partPlayer?.dispose();
   printEdition = undefined;
   for (const id of ['print', 'save-print', 'save-svg']) button(id).disabled = true;
   el('svg-page-label').hidden = true;
-  const part = el('part');
-  part.replaceChildren();
+  el('part').replaceChildren();
   el('print-status').textContent = '';
-  if (lesson.id !== 'guitar-duet') return;
+}
+
+async function printPart(): Promise<void> {
+  clearPrint();
+  const revision = printRevision;
   const score = editor?.getScore();
-  if (!score) return;
+  if (!score || (!lesson.edition && lesson.id !== 'guitar-duet')) return;
+  const part = el('part');
+  const paper = choice('paper').value as 'A4' | 'Letter' | '';
   const voice = choice('player').value === 'score' ? undefined : Number(choice('player').value);
-  const paper = choice('paper').value as 'A4' | 'Letter';
   try {
-    const title = voice ? 'Guitar duet · Guitar ' + voice : 'Guitar duet · Full score';
-    const { publication, score: music } = renderScorePart(part, score, 'notation', { voice, title, paper });
-    if (publication.diagnostics.length) {
-      el('print-status').textContent = publication.diagnostics.map(d => d.detail).join(' ');
+    const paperOptions = paper ? { paper } : {};
+    const doc = editor.getScoreDocument();
+    let result: ReturnType<typeof renderEdition>;
+    if (lesson.edition) {
+      const { target, staff } = selectedEdition();
+      result = staff && target !== 'conductor'
+        ? renderScorePart(part, doc, staff, { ...target, ...paperOptions })
+        : renderEdition(part, doc, target, paperOptions);
+    } else {
+      const title = voice ? 'Guitar duet · Guitar ' + voice : 'Guitar duet · Full score';
+      result = renderScorePart(part, score, 'notation', { voice, title, ...paperOptions });
+    }
+    const { publication } = result;
+    if (result.diagnostics.length) {
+      el('print-status').textContent = result.diagnostics.map(d => d.detail).join(' ');
       return;
     }
-    const options = scoreOptions(part);
-    partPlayer = new Player(music, { playback: options.playback });
-    partPlayer.render(publication.pages[0].svg);
+    if (!lesson.edition) {
+      partPlayer = new Player(result.score, { playback: scoreOptions(part).playback });
+      partPlayer.render(publication.pages[0].svg);
+    }
     const { faces } = await import(/* webpackChunkName: "print-outlines" */ './outlines');
     if (revision !== printRevision) return;
     const html = publication.toPrintHTML(faces);
     const document = new DOMParser().parseFromString(html, 'text/html');
     const pages = Array.from(document.querySelectorAll('body > svg'), svg => new XMLSerializer().serializeToString(svg));
-    printEdition = { html, pages, filename: 'guitar-duet-' + (voice ?? 'score') + '-' + paper };
+    printEdition = { html, pages, filename: lesson.id + '-' + (lesson.edition ? choice('view').value.replace('/', '-') : voice ?? 'score') + '-' + (paper || 'authored') };
     choice('svg-page').replaceChildren(...pages.map((_, i) => new Option(String(i + 1), String(i))));
     el('svg-page-label').hidden = pages.length < 2;
     for (const id of ['print', 'save-print', 'save-svg']) button(id).disabled = false;
@@ -91,11 +129,20 @@ function refresh(): void {
   if (!editor) return;
   button('error').disabled = !editor.getDiagnosticRange();
   read();
-  printPart();
+  if (lesson.edition) {
+    const doc = editor.getScoreDocument();
+    button('prepare-print').disabled = !editor.getScore();
+    if (doc) {
+      const select = choice('view'), previous = select.value;
+      select.replaceChildren(...repertoireViews(doc));
+      if ([...select.options].some(o => o.value === previous)) select.value = previous;
+      else if (previous.startsWith('part-')) editor.setInstrumentView('conductor');
+    }
+  } else printPart();
 }
 
 /** Replace editors only when navigating to a different score. Controls within a lesson keep the same source. */
-function mount(host: HTMLElement, source: string, fixed = false): Div {
+function mount(host: HTMLElement, source: string, fixed = false, repertoire = false): Div {
   host.textContent = source;
   host.setAttribute('editor', 'true');
   host.setAttribute('editor-height', '125');
@@ -107,7 +154,7 @@ function mount(host: HTMLElement, source: string, fixed = false): Div {
     host.setAttribute('layout','flow');
     host.removeAttribute('width');
   }
-  const instance = new Div(host, scoreOptions(host));
+  const instance = new Div(host, { ...scoreOptions(host), ...(repertoire && { view: 'conductor', order: 'performed' }) });
   highlightEditor(host.querySelector('textarea'));
   return instance;
 }
@@ -130,13 +177,25 @@ function showLesson(current: Lesson, section: string): void {
   el('goal').textContent = lesson.goal;
   el('exercise').textContent = lesson.edit;
   el('reader').hidden = !!lesson.fixed;
-  el('printing').hidden = lesson.id !== 'guitar-duet';
+  clearPrint();
+  el('printing').hidden = !lesson.edition && lesson.id !== 'guitar-duet';
+  el('print-heading').textContent = lesson.edition ? 'Print the selected view' : 'Engrave the duet';
+  el('duet-player').hidden = !!lesson.edition;
+  button('prepare-print').hidden = !lesson.edition;
+  const papers = [new Option('A4'), new Option('Letter')];
+  if (lesson.edition) papers.unshift(new Option('As authored', ''));
+  choice('paper').replaceChildren(...papers);
+  choice('player').value = '1';
+  const credit = el('edition-credit');
+  credit.hidden = !lesson.edition;
+  credit.replaceChildren();
+  if (lesson.edition) credit.append(lesson.edition.credit + ' ', link('Source edition', lesson.edition.url));
   el('workbench').hidden = lesson.id !== 'embed-workbench';
   el('narrow-control').hidden = !!lesson.fixed;
   el<HTMLInputElement>('narrow').checked = false;
   el('score').classList.remove('narrow');
   choice('view').replaceChildren(...lesson.views.map(value => new Option(views[value], value)));
-  choice('view').disabled = lesson.views.length === 1;
+  choice('view').disabled = !lesson.edition && lesson.views.length === 1;
   el<HTMLAnchorElement>('original').href = '#original/' + lesson.id;
   const play = el<HTMLAnchorElement>('play');
   play.href = (playground ? '#lesson/' : '#playground/') + lesson.id;
@@ -144,13 +203,14 @@ function showLesson(current: Lesson, section: string): void {
   el('notice').replaceChildren();
   const oldDraft = previousDraft(lesson.id);
   if (oldDraft) el('notice').append(oldDraft);
-  editor = mount(el('score'), section === 'original' ? lesson.source : draft(lesson.id) ?? lesson.source, lesson.fixed);
+  editor = mount(el('score'), section === 'original' ? lesson.source : draft(lesson.id) ?? lesson.source, lesson.fixed, !!lesson.edition);
   input = el('score').querySelector('textarea');
   input.addEventListener('input', () => {
     draft(lesson.id, input.value);
     readId = undefined;
     read();
-    printPart();
+    clearPrint();
+    button('prepare-print').disabled = true;
   });
   if (!el('workbench').hidden) partner = mount(el('second'), lesson.source);
   refresh();
@@ -269,7 +329,12 @@ el('contents').onclick = event => {
 };
 choice('picker').onchange = () => { location.hash = '#playground/' + choice('picker').value; };
 el('score').addEventListener('vextab-render', refresh);
-choice('view').addEventListener('change', () => editor.setPart(choice('view').value as Part));
+choice('view').addEventListener('change', () => {
+  if (!lesson.edition) { editor.setPart(choice('view').value as Part); return; }
+  clearPrint();
+  const { target, staff } = selectedEdition();
+  editor.setInstrumentView(target, staff);
+});
 el('narrow').addEventListener('change', () => el('score').classList.toggle('narrow', el<HTMLInputElement>('narrow').checked));
 button('run').onclick = () => editor.run();
 button('reset').onclick = () => { setSource(lesson.source); el('notice').textContent = 'Original source restored.'; };
@@ -309,12 +374,14 @@ el<HTMLInputElement>('open').onchange = async event => {
   catch { if (revision === routeRevision) el('notice').textContent = 'The file could not be read.'; }
   picker.value = '';
 };
-choice('player').onchange = choice('paper').onchange = printPart;
+button('prepare-print').onclick = printPart;
+choice('player').onchange = printPart;
+choice('paper').onchange = () => lesson.edition && !printEdition ? clearPrint() : printPart();
 // Print the same outlined pages that the reader can download and reopen offline.
 button('print').onclick = () => {
   if (!printEdition) return;
   const frame = document.createElement('iframe');
-  frame.title = 'Print guitar duet';
+  frame.title = 'Print ' + lesson.title;
   frame.style.cssText = 'position:fixed;width:0;height:0;border:0';
   frame.onload = () => {
     const child = frame.contentWindow;

@@ -100,7 +100,7 @@ export async function testGuide(page, dist) {
     assert.equal(await chapter.locator('svg').count(), editors + extraStaff, hash);
   }
   await go('#demos');
-  assert.equal(await page.locator('#entries a').count(), 8);
+  assert.equal(await page.locator('#entries a').count(), 12);
   const routes = await page.locator('#picker option').evaluateAll(options => options.map(o => '#lesson/' + o.value));
   for (const hash of routes) {
     await go(hash);
@@ -108,6 +108,44 @@ export async function testGuide(page, dist) {
     assert.equal(await status.textContent(), '', hash);
     assert.equal(await svg.count(), 1, hash);
   }
+
+  // Rehearse and export the same source revision, including a single player's part.
+  for (const [id, view] of [['sor-op35-no22', '0/tab'], ['joplin-maple-leaf', 'keys'],
+    ['handy-st-louis-blues', 'singer'], ['haydn-emperor-variation', 'cello']]) {
+    await go('#lesson/' + id);
+    assert.equal(await page.locator('#view').inputValue(), 'conductor');
+    if (id === 'sor-op35-no22') assert.match(await page.locator('#reading').innerText(), /Guitar, notation, voice 1/);
+    await page.locator('#view').selectOption('part-' + view);
+    assert.equal(await status.textContent(), '');
+    await page.getByRole('button', { name:'Next event' }).focus();
+    await page.keyboard.press('Enter');
+    await page.getByRole('button', { name:'Select source' }).press('Enter');
+    assert.ok(await source.evaluate(s => s === document.activeElement && s.selectionEnd > s.selectionStart));
+    await page.locator('#prepare-print').click();
+    await page.waitForFunction(() => !document.getElementById('save-svg').disabled);
+    const pages = page.locator('#part svg:has(metadata)');
+    assert.ok(await pages.count() > 0);
+    const edited = (await source.inputValue()) + '\n# rehearsal draft';
+    await source.fill(edited);
+    assert.equal(await page.locator('#save-svg').isDisabled(), true);
+    await source.press('Control+Enter');
+    await page.locator('#view').selectOption('conductor');
+    assert.equal(await source.inputValue(), edited);
+    await page.locator('#reset').click();
+  }
+
+  // An edited conductor with incompatible bars still offers both independent instruments.
+  await go('#lesson/handy-st-louis-blues');
+  await source.fill('staff a { meter 3/4 :h. C4 | } staff b { meter 2/4 :h G4 | }');
+  await source.press('Control+Enter');
+  assert.match(await status.textContent(), /share a span/);
+  await page.locator('#view').selectOption('part-b');
+  assert.equal(await status.textContent(), '');
+  await source.fill('staff renamed { :w C4 | }');
+  await source.press('Control+Enter');
+  assert.equal(await page.locator('#view').inputValue(), 'conductor');
+  assert.equal(await status.textContent(), '');
+  await page.locator('#reset').click();
 
   // Saved v1 text stays recoverable while the new editor opens a valid v2 score.
   const v1Draft = 'tabstave\nnotes 7/3';

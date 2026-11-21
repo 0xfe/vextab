@@ -6,7 +6,7 @@
     <pre>import { parseScore } from 'vextab/parse';
 const score = parseScore('meter 1/4 staff { C4 | }');</pre></article>
   <article id="browser-module"><h3>vextab/browser</h3>
-    <p>Use this entry for explicit mounting in a browser application. It exports the parser, <code>Div</code>, <code>renderScore</code>, <code>renderScorePart</code>, the <code>Part</code> type, the playback adapters <code>createWebAudioPlayback</code> and <code>createSpessaSynthPlayback</code>, and <code>Artist</code>, <code>VexTab</code>, <code>Player</code> and <code>Vex</code> objects.</p>
+    <p>Use this entry for explicit mounting in a browser application. It exports the parser, <code>Div</code>, <code>renderScore</code>, <code>renderScorePart</code>, <code>renderConductor</code>, <code>renderEdition</code>, the <code>Part</code> type, the playback adapters <code>createWebAudioPlayback</code> and <code>createSpessaSynthPlayback</code>, and <code>Artist</code>, <code>VexTab</code>, <code>Player</code> and <code>Vex</code> objects.</p>
     <pre>import { Div, parseScore, renderScore } from 'vextab/browser';</pre></article>
   <article id="auto-module"><h3>vextab/auto and script tags</h3>
     <p>The auto entry mounts each <code>div.vextab-auto</code> on DOM ready. Load <code>dist/div.prod.js</code> for a plain HTML page. The package root and <code>dist/main.prod.js</code> retain the legacy browser API. The old <code>dist/vextab-div.js</code> adapter supports <code>.vex-tabdiv</code>, underscore editor attributes and the original Canvas default.</p>
@@ -62,18 +62,28 @@ host.textContent = 'meter 1/4 staff { C4 | }';
 const editor = new Div(host);</pre></article>
   <article id="attributes"><h3>Host attributes and defaults</h3>
     <p>Each setting accepts a <code>data-</code> prefix. For example, set <code>data-layout="flow" data-editor="true" data-width="auto"</code> for a responsive editor. A nonempty prefixed value takes precedence over the plain attribute.</p>
-    <dl><dt>layout, renderer, scale</dt><dd>Fixed layout defaults to SVG at scale 1 and also supports Canvas. Flow uses <code>layout="flow"</code> with SVG at scale 1.</dd><dt>width</dt><dd>Fixed defaults to 400 px. A flow host with an omitted width or <code>width="auto"</code> follows its container.</dd><dt>editor, show-errors</dt><dd>Set <code>editor="true"</code> to expose the source textarea. <code>show-errors="true"</code> displays diagnostics without the editor.</dd><dt>editor-width, editor-height</dt><dd>Pixel dimensions. Defaults are the score width and 200 px high. The historical adapter also accepts <code>editor_width</code> and <code>editor_height</code>.</dd></dl></article>
+    <dl><dt>layout, renderer, scale</dt><dd>Fixed layout defaults to SVG at scale 1 and also supports Canvas. Grammar v2 flow supports SVG and Canvas. Use <code>data-view="conductor"</code> to align all instruments.</dd><dt>width</dt><dd>Fixed defaults to 400 px. A flow host with an omitted width or <code>width="auto"</code> follows its container.</dd><dt>editor, show-errors</dt><dd>Set <code>editor="true"</code> to expose the source textarea. <code>show-errors="true"</code> displays diagnostics without the editor.</dd><dt>editor-width, editor-height</dt><dd>Pixel dimensions. Defaults are the score width and 200 px high. The historical adapter also accepts <code>editor_width</code> and <code>editor_height</code>.</dd></dl></article>
   <article id="run"><h3>run(), redraw(), parse() and draw()</h3><p><code>run()</code> flushes the pending edit and draws the current textarea value. Keyboard users can press Ctrl+Enter or Command+Enter. <code>redraw()</code> reparses the stored source and draws it. <code>parse()</code> and <code>draw()</code> expose the two stages. These methods return the instance. A failing edit keeps the last valid picture and displays the error.</p></article>
   <article id="editor-view"><h3>setPart(part) and setWidth(pixels)</h3><p>Flow-only methods that return the editor. Select a staff or reflow the same parsed revision without rewriting the source. Setting a width explicitly takes over from automatic container observation.</p></article>
   <article id="editor-reading"><h3>getScore(), getReadingEvents() and selectSource()</h3><p><code>getScore()</code> returns the current valid flow revision or <code>undefined</code>. <code>getReadingEvents()</code> returns the current reading order, or an empty array when unavailable. <code>selectSource(id, revision)</code> focuses the editor and selects the matching token. It returns false for a stale revision or missing selection.</p>
     <pre>const revision = editor.getScore();
 const [first] = editor.getReadingEvents();
 if (revision &amp;&amp; first) editor.selectSource(first.id, revision);</pre></article>
+  <article id="instrument-view"><h3>setInstrumentView(target, staff?) and getScoreDocument()</h3>
+    <p>Choose <code>'conductor'</code> or a selector such as <code>{ partId: 'cello' }</code> on a v2 editor. The optional staff selects notation, TAB or a piano hand. The editor keeps the current source. <code>getScoreDocument()</code> returns the complete current parsed document, including when the selected layout cannot share a bar grid.</p>
+    <pre>const editor = new Div(host, { view: 'conductor', player: true, order: 'performed' });
+editor.setInstrumentView({ partId: 'cello' });</pre></article>
   <article id="editor-errors"><h3>getDiagnosticRange() and selectError()</h3><p>Read the located error in the current edit or select its characters. <code>getDiagnosticRange()</code> returns <code>undefined</code> for a valid score or an obsolete diagnostic. <code>selectError()</code> returns whether the editor could select the range.</p></article>
   <article id="dispose"><h3>vextab-render and dispose()</h3><p>Listen for <code>vextab-render</code> on the host to refresh controls after an engraving attempt. Call <code>editor.dispose()</code> before unmounting. It disconnects resize observation and cancels pending editor work. The host application owns its DOM and its own event listeners.</p></article>
 </section>
 <section id="publication">
   <h2>Publication and export</h2>
+  <article id="conductor-editions"><h3>renderConductor() and renderEdition()</h3>
+    <p>Render a shared screen score in written pitch. Prepare its conductor edition or a named instrument from the same document. Source editions set breaks, turns and cues. Explicit paper options override the source for one export. Read <code>result.diagnostics</code> for the affected measure and source range.</p>
+    <pre>const score = parseScore(source);
+renderConductor(preview, score, { width: 800 });
+const result = renderEdition(paperHost, score, { partId: 'cello' }, { paper: 'Letter' });</pre>
+    <p><a href="#features/editions">Read the edition example</a></p></article>
   <article id="render-part"><h3>renderScorePart(host, score, staff, options?)</h3><p>Independently engrave <code>'notation'</code> or <code>'tab'</code> from the same parsed score. Omit <code>voice</code> to retain every voice on that staff, or pass a one-based voice number. Choose <code>paper: 'A4'</code> or <code>'Letter'</code> and set a title. The result includes the selected <code>score</code>, its <code>publication</code>, <code>sourceFor</code> and <code>rangeFor</code>.</p>
     <pre>const { publication } = renderScorePart(paperHost, score, 'notation', {
   voice: 2, title: 'Guitar 2', paper: 'Letter'
@@ -84,7 +94,7 @@ if (revision &amp;&amp; first) editor.selectSource(first.id, revision);</pre></a
     <p>Use <code>layout="flow"</code> for an SVG embed. Modern and legacy embeds initially containing a piano declaration also select flow automatically. For a programmatic score, pass <code>parseScore(source)</code> to <code>renderScore</code> or <code>Player</code>. Pass <code>part: 'left'</code> or <code>'right'</code> to show one hand. The reader and playback follow the visible hand in an embed.</p>
     <p><code>renderScorePart(host, score, 'notation')</code> prints both staves. Use <code>'right'</code> or <code>'left'</code> for a practice part. The optional <code>voice</code> number selects one voice within that hand. Native part <a href="#reference/publication-scope">engraving limits</a> also apply to piano. <a href="#features/piano">Try two-hand and four-voice examples</a>.</p>
   </article>
-  <article id="publication-scope"><h3>Independent part coverage</h3><p>Printed parts preserve explicit beams, silent beats, chord diagrams, forced accidentals and head fingerings. Lyrics in a voice share a baseline across a system. A second lyric on one attack produces a diagnostic at that mark. TAB retains fingerings beside the selected fret. Selecting a voice missing from a bar also produces an error.</p></article>
+  <article id="publication-scope"><h3>Independent part coverage</h3><p>Printed parts preserve explicit beams, silent beats, chord diagrams, forced accidentals and head fingerings. Lyrics in a voice share a baseline across a system. Use distinct named verses for two underlays. A duplicate lyric in the same lane produces a diagnostic at the second mark. TAB retains fingerings beside the selected fret. Selecting a voice missing from a bar also produces an error.</p></article>
 </section>
 <section id="fixed-api">
   <h2>Rendering a fragment</h2>

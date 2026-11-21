@@ -15,7 +15,7 @@ import type { SourceRange } from './score/source';
 import type { ScoreReadingEvent } from 'vexflow';
 import { projectScoreV2 } from './score/grammar2/project';
 import { parseScore, ScoreV2Error } from './score/parse';
-import { selectedPart } from './score/conductor';
+import { selectedPart, type PartSelector } from './score/conductor';
 import { renderScore, renderConductor, type Part } from './score/layout';
 import type { ParsedScore } from './score/model';
 import type { ScoreV2 } from './score/grammar2/model';
@@ -46,6 +46,8 @@ export interface DivOptions {
   partId?: string;
   view?: 'parts' | 'conductor';
   playback?: PlaybackPlugin;
+  /** Choose performed order to follow repeat signs and endings. */
+  order?: 'written' | 'performed';
   /** Enable sheet playback even when the source omits player=true. */
   player?: boolean;
   /** Always offer playback for this embed and place its controls in this host. */
@@ -65,9 +67,10 @@ class Div {
   private rendererBackend: string;
   private flow: boolean;
   private readonly grammar2: boolean;
-  private readonly partIndex?: number;
-  private readonly partId?: string;
-  private readonly conductor: boolean;
+  private partIndex?: number;
+  private partId?: string;
+  private conductor: boolean;
+  private readonly order: DivOptions['order'];
   private part: Part = 'score';
   private observer?: ResizeObserver;
   private resizeFrame?: number;
@@ -97,6 +100,7 @@ class Div {
    * Design note: we read once from the DOM and then manage our own state.
    */
   constructor(sel: string | HTMLElement, options: DivOptions = {}) {
+    this.order = options.order;
     this.enablePlayer = options.player || !!options.playbackControls;
     this.playbackControls = options.playbackControls;
     this.playback = options.playback ?? createWebAudioPlayback();
@@ -235,6 +239,21 @@ class Div {
     return true;
   }
 
+  /** Return the current parsed v2 document, including when just its conductor layout fails. */
+  getScoreDocument(): ScoreV2 | undefined {
+    return !this.disposed && this.document?.source === (this.text_area?.val() ?? this.code) ? this.document : undefined;
+  }
+
+  /** Switch between the conductor and an instrument while retaining the live editor contents. */
+  setInstrumentView(target: 'conductor' | PartSelector, part: Part = 'score'): this {
+    if (!this.grammar2) throw new Error('Instrument selection requires a v2 score');
+    this.conductor = target === 'conductor';
+    this.partIndex = target === 'conductor' ? undefined : target.partIndex;
+    this.partId = target === 'conductor' ? undefined : target.partId;
+    this.part = target === 'conductor' ? 'score' : part;
+    return this.run();
+  }
+
   /** Change the projection without rewriting the score or losing the current editor revision. */
   setPart(part: Part): this {
     if (!this.flow) throw new Error('setPart requires layout="flow"');
@@ -338,7 +357,7 @@ class Div {
     this.player = undefined;
     if (this.enablePlayer || score.playback?.enabled) {
       const player = this.player = new Player(ensemble ? documentScore : mounted[0].layout.score, {
-        playback: this.playback, controls: this.playbackControls,
+        playback: this.playback, controls: this.playbackControls, order: this.order,
       });
       player.render(mounted[0].surface, undefined, mounted.slice(1).map(d => d.surface));
     }

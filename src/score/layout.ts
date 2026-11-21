@@ -623,7 +623,15 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
     extraRegions.push(...drawTabEndings(view, local, ctx, composition));
   }
   const sources = Object.assign(Object.create(null), ...views.map(view => view.sources.ids));
-  const navigation = new ScoreNavigation(composition, spec.staves, sources);
+  // Native stave IDs distinguish projections. Give the reader an instrument and a spoken staff name.
+  const staffNames = instruments.flatMap(({ score, view }, i) => view.staves.map(staff => {
+    const kind = score.measures[0].state;
+    const owner = score.instrument?.name ?? (kind.piano ? 'Piano' : kind.tab ? 'Guitar' : 'Part ' + (i + 1));
+    const name = { right: 'right hand', left: 'left hand', tab: 'tablature', notation: 'notation' }[staff];
+    return owner + ', ' + name;
+  }));
+  const readingStaves = conductor ? spec.staves.map((staff, i) => ({ ...staff, name: staffNames[i] })) : spec.staves;
+  const navigation = new ScoreNavigation(composition, readingStaves, sources);
   // Keep all fragments of a tie together in written order, including connections crossing systems.
   const tabTies = new Map(instruments.flatMap(({ score, view }) =>
     score.ties.map(t => [view.eventId('tab', t.id), [] as ScoreHitRegion[]] as const)));

@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+/** Sample the browser output downstream of the SoundFont synth. */
+function audible() {
+  if (!window.guideMeter) return false;
+  const samples = new Float32Array(1024);
+  window.guideMeter.getFloatTimeDomainData(samples);
+  return samples.some(value => Math.abs(value) > 0.0001);
+}
+
 /** A sounding sample catches missing banks, disconnected synths and broken worklet URLs. */
 export async function testGuideAudio(browser, dist) {
   const page = await browser.newPage();
@@ -57,12 +65,7 @@ export async function testGuideAudio(browser, dist) {
     await control(0).evaluate(button => { button.click(); button.click(); });
     assert.equal(await control(0).getAttribute('aria-label'), 'Play');
     await control(0).click();
-    await page.waitForFunction(() => {
-      if (!window.guideMeter) return false;
-      const samples = new Float32Array(1024);
-      window.guideMeter.getFloatTimeDomainData(samples);
-      return samples.some(value => Math.abs(value) > 0.0001);
-    }).catch(async cause => {
+    await page.waitForFunction(audible).catch(async cause => {
       const detail = await examples.first().evaluate(host => ({
         audio: window.guideMeter?.context.state ?? 'output disconnected',
         status: [...host.querySelectorAll('[role="status"]')].map(node => node.textContent),
@@ -91,6 +94,14 @@ export async function testGuideAudio(browser, dist) {
     await page.locator('#part .vextab-stop').click();
     assert.equal(await page.locator('#part .vextab-playback-paper').count(), 0);
     assert.equal(await part.first().evaluate(svg => svg.outerHTML), whilePlaying, 'Stop preserves the printable music');
+    // Each repertoire page opens a fresh synth, so a previous release tail cannot pass this check.
+    for (const id of ['sor-op35-no22', 'joplin-maple-leaf', 'handy-st-louis-blues', 'haydn-emperor-variation']) {
+      await page.goto('about:blank');
+      await page.goto(url + '#lesson/' + id);
+      await page.locator('#score .vextab-play').click();
+      await page.waitForFunction(audible);
+      await page.locator('#score .vextab-stop').click();
+    }
     assert.ok(!requests.some(url => /^https?:/.test(url)), 'Offline playback requested a network resource');
   } finally { await page.close(); }
 }

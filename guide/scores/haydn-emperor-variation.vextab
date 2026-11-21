@@ -18,7 +18,7 @@ edition part violin_ii { paper Letter page at 22 }
 edition part viola { paper Letter compressRests on page at 22 cue violin_ii at 23 "Vln. II" }
 edition part cello { paper Letter compressRests on page at 23 prefer after 22 cue violin_ii at 23 "Vln. II" }
 
-staff violin_i { name "Violin I" shortName "Vln. I"
+staff violin_i { name "Violin I" shortName "Vln. I" program 40
   key G clef treble
   slur { :q. G4 :8 A4 |
   :q B4 :q A4 :q C5 :q B4 } |
@@ -64,7 +64,7 @@ staff violin_i { name "Violin I" shortName "Vln. I"
   fragment { :16 B4 :16 G5 :16 D5 :16 B4 :8 G4 :8 rest bar final }
 }
 
-staff violin_ii { name "Violin II" shortName "Vln. II"
+staff violin_ii { name "Violin II" shortName "Vln. II" program 40
   key G clef treble
   slur { :q. B3 :8 D4 |
   :q G4 :q F#4 :q A4 :q G4 } |
@@ -110,7 +110,7 @@ staff violin_ii { name "Violin II" shortName "Vln. II"
   fragment { :q G4 :q rest bar final }
 }
 
-staff viola { name "Viola" shortName "Vla."
+staff viola { name "Viola" shortName "Vla." program 41
   key G clef alto
   :q G3 :q rest |
   :h rest slur { :q D4[staccato] :q D4[staccato] } |
@@ -156,7 +156,7 @@ staff viola { name "Viola" shortName "Vla."
   fragment { :h rest bar final }
 }
 
-staff cello { name "Violoncello" shortName "Vc."
+staff cello { name "Violoncello" shortName "Vc." program 42
   key G clef bass
   :q G3 :q rest |
   :h rest slur { :q F#3 :q G3 } |

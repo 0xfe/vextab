@@ -3,7 +3,7 @@ import { Accidental, Annotation, Articulation, FretHandFinger, StaveNote, String
 import { renderScore, renderScorePart } from '../src/score/layout';
 import { parseScore } from '../src/score/parse';
 import river from '../guide/scores/slow-river.vextab';
-import sor from '../issues/196/sor-op35-no22.vextab';
+import sor from '../guide/scores/sor-op35-no22.vextab';
 
 /** Font metrics and pagination need a connected host. */
 function host() {

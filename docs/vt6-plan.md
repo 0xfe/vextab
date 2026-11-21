@@ -68,6 +68,8 @@ The [M4 evidence and scores](../issues/199/README.md) link the public regression
 
 ## M5 · Qualify the repertoire, guide and package
 
+Completed on `uplevel` with published VexFlow 5.8.0. The packaged guide includes the four editable studies, extracted parts and offline print exports. [Repertoire, access, print and performance qualification](../issues/200/README.md)
+
 1. Finish the four editable demos. Give each one canonical source, exact edition and bar range, attribution, editorial changes, a listening or reading task, and downloadable print. Use those same sources in the guide and tests. [Repertoire and editions](vt6-baseline.md#repertoire-for-the-first-demos)
 2. Update the guide with conductor and part selection, concert and written pitch, edition syntax, feature limits and diagnostics. Check keyboard selection, touch at device scale 2, readable staff size on a phone, and a screen-reader walkthrough.
 3. Run semantic and geometry checks on each feature change. For qualification, exercise Chromium, Firefox and WebKit, SVG and Canvas, and A4/Letter print exports. Review changed crops at reading size and log the musical reason for each accepted reference. Compare parse, draw, edit, reflow and print timings against M0 on the same generated scores and hardware.

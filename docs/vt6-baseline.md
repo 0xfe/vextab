@@ -1,5 +1,7 @@
 # VexTab 6 engraving and language baseline
 
+The baseline below describes the original release. M0–M5 have since landed on `uplevel`. The guide ships four repertoire studies on VexFlow 5.8.0. For current results and remaining grammar limits, see the [M5 qualification](../issues/200/README.md).
+
 **20 November 2026 · VexTab 6.0.0 · grammar v2 · VexFlow 5.6.1 in the released bundle**
 
 Start with three scores. An eighth-note melody over a sustained bass needs one shared system. A singer needs one legible lyric baseline across the system. A guitarist who can read an explicitly beamed phrase on screen should be able to print it. All three expose gaps in the released VexTab. The first already works in a direct VexFlow control on the **same dependency**.

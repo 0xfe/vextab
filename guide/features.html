@@ -196,3 +196,11 @@ staff {
   <p>In the duet study, choose <strong>Full score</strong>, <strong>Guitar 1</strong> or <strong>Guitar 2</strong>. Switch between Letter and A4. <strong>Save print HTML</strong> keeps the whole edition together. <strong>Save SVG</strong> exports the selected page. Both carry outlined fonts and the score’s event metadata for offline use.</p>
   <p><a href="#lesson/guitar-duet">Open the printable duet →</a></p>
 </section>
+
+<section id="editions">
+  <h2>Rehearse a conductor score and print a part</h2>
+  <p>Open the Haydn quartet and choose Conductor to read all four staves on a shared measure grid. Choose Violoncello to rehearse its line, then prepare the print edition. The paper menu can override the source for this export.</p>
+  <p>Scores display written pitch. For a B-flat instrument, <code>sounds -2</code> makes a written D4 sound as concert C4. Incompatible measure lengths prevent a shared conductor system. Read the diagnostic and select a single instrument to rehearse it independently.</p>
+  <p>In the source, <code>edition conductor { page at 22 }</code> starts a page at the variation. <code>edition part cello { paper Letter page at 23 prefer after 22 }</code> gives the cellist a later turn. Pickups count as measures. Cues quote one measure and stay silent. Use Find error to select an invalid source location.</p>
+  <p><a href="#lesson/haydn-emperor-variation">Open the quartet</a> · <a href="#lesson/handy-st-louis-blues">Rehearse the vocal part</a></p>
+</section>

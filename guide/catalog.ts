@@ -14,6 +14,10 @@ import river from './scores/slow-river.vextab';
 import repeats from './scores/repeat-endings.vextab';
 import duet from './scores/guitar-duet.vextab';
 import workbench from './scores/embed-workbench.vextab';
+import sor from './scores/sor-op35-no22.vextab';
+import joplin from './scores/joplin-maple-leaf.vextab';
+import handy from './scores/handy-st-louis-blues.vextab';
+import haydn from './scores/haydn-emperor-variation.vextab';
 import type { Part } from '../src/score/layout';
 
 export interface Lesson {
@@ -23,6 +27,7 @@ export interface Lesson {
   goal: string;
   edit: string;
   views: Part[];
+  edition?: { credit: string; url: string };
   fixed?: boolean;
   demo?: boolean;
 }
@@ -53,6 +58,22 @@ export const lessons: Lesson[] = [
   { id:'diagnostics', title:'Find a missing beat', source:errors, views:staff,
     goal:'A complete 3/4 measure has three quarter notes. The editor keeps the last complete drawing while you fix a bar.',
     edit:'Delete E4 and run the score. Use Find error, restore the quarter, and run again.' },
+  { id:'sor-op35-no22', title:'Sor · Study in B minor', source:sor, views:guitar, demo:true,
+    goal:'Bars 1–8 of Op. 35 No. 22. Sustain the half-note melody over the moving eighths and hold the bass across the first barline.',
+    edit:'Choose Guitar · TAB and compare the circled fingering with the fret on string two. Change finger 2 to finger 3 on the opening note.',
+    edition:{ credit:'Glen Larsen’s Mutopia engraving after N. Simrock (CC BY-SA 3.0). This adaptation uses editorial string choices and the original three voices. The adaptation shares the same license.', url:'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1850' } },
+  { id:'joplin-maple-leaf', title:'Joplin · Maple Leaf Rag', source:joplin, views:staff, demo:true,
+    goal:'Play the pickup and first strain, including both endings. In written measure 8 the right hand crosses onto the bass staff.',
+    edit:'Lower the tempo from 92 to 72 and follow the two groups of three sixteenths. Listen for the return after the first ending.',
+    edition:{ credit:'John Stark’s 1899 edition, via Chris Sawer’s public-domain Mutopia transcription. Fixed clefs and selected expression marks are editorial.', url:'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=23' } },
+  { id:'handy-st-louis-blues', title:'Handy · The St. Louis Blues', source:handy, views:staff, demo:true,
+    goal:'The first twelve sung bars of the 1914 edition carry two verses. Compare the syllables under the held notes, then rehearse the voice alone.',
+    edit:'Choose Voice and change the opening lyric “I” to “We”. Prepare the vocal part and find the edit under the same attack.',
+    edition:{ credit:'Pace & Handy, 1914. The public-domain facsimile supplies the melody, grace and two underlays. The chord symbols and piano reduction are editorial.', url:'https://commons.wikimedia.org/wiki/File:W._C._Handy_-_St._Louis_Blues_(1914,_Pace_and_Handy).pdf' } },
+  { id:'haydn-emperor-variation', title:'Haydn · Emperor Quartet', source:haydn, views:staff, demo:true,
+    goal:'Play the theme and Variation I of Op. 76 No. 3, movement II, from the pickup through bar 40. Violin II takes over the theme in the variation.',
+    edit:'Choose Violoncello. Prepare the part and find the violin cue above the rest. Compare its page turn with the conductor’s turn at measure 22.',
+    edition:{ credit:'OpenScore String Quartets, CC0, transcription 20428156. Principal notes, rhythms and measured-note slurs are retained. Grace notes, ornaments, dynamics and expressive text are omitted.', url:'https://github.com/OpenScore/StringQuartets/tree/2614b0b2958dd1ce3f52e172a43e5f4d0e29570f/scores/Haydn%2C_Joseph/String_Quartet_in_C_major%2C_Hob.III77%2C_Op.76_No.3' } },
   { id:'compound-picking', title:'Compound-time picking', source:picking, views:guitar, demo:true,
     goal:'A triplet plus one eighth fills the first dotted-quarter beat. Three ordinary eighths fill the second.',
     edit:'Move the tuplet block from the three frets on string one to the three on string two. The extra eighth now belongs to the other beat. Hide notation and count again.' },

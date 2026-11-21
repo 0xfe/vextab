@@ -9,7 +9,7 @@ import rhythm from '../issues/199/rhythm.vextab';
 import techniques from '../issues/199/techniques.vextab';
 import handy from '../guide/scores/handy-st-louis-blues.vextab';
 import joplin from '../guide/scores/joplin-maple-leaf.vextab';
-import sor from '../issues/196/sor-op35-no22.vextab';
+import sor from '../guide/scores/sor-op35-no22.vextab';
 
 /** Native text metrics need a connected surface. */
 function host() {

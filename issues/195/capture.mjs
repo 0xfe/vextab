@@ -23,7 +23,7 @@ async function fixtures(output) {
 }
 
 /** Keep comparable timings as observations, separate from repeatable geometry assertions. */
-async function benchmark(probe) {
+export async function benchmark(probe) {
   const timings = [];
   for (const [parts, bars] of [[1, 16], [4, 16], [4, 64]]) {
     const bar = ':q C4 D4 E4 F4 | ';

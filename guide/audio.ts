@@ -24,8 +24,9 @@ const playback: PlaybackPlugin = {
       });
     const [, plugin] = await Promise.all([resumed, instrument]);
     signal.throwIfAborted();
-    // The subset stores its acoustic piano at GM 2. Use the guitar for missing presets.
-    return plugin.open(program === 0 ? 2 : presets.has(program) ? program : 24, signal);
+    // The subset stores its acoustic piano at GM 2. The bowed strings share the violin sample. Other missing presets use guitar.
+    const preset = program === 0 ? 2 : program >= 40 && program <= 43 ? 40 : program;
+    return plugin.open(presets.has(preset) ? preset : 24, signal);
   },
 };
 

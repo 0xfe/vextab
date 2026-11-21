@@ -16,7 +16,7 @@ try {
   const previousVoice = 'meter 2/4 transpose 2 staff { :q C4[symbol "Cm7/Bb", lyric "Ky" hyphen] D4[lyric "ri"] | break system :q E4[lyric "e"] F4 | }';
   for (const [name, file] of [
     ['handy', 'guide/scores/handy-st-louis-blues.vextab'], ['joplin', 'guide/scores/joplin-maple-leaf.vextab'],
-    ['sor','issues/196/sor-op35-no22.vextab'], ...['rhythm','techniques','voice'].map(n => [n, 'issues/199/' + n + '.vextab']),
+    ['sor','guide/scores/sor-op35-no22.vextab'], ...['rhythm','techniques','voice'].map(n => [n, 'issues/199/' + n + '.vextab']),
   ]) {
     if (before && !['voice', 'joplin'].includes(name)) continue;
     let source = await readFile(file, 'utf8');

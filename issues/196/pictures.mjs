@@ -7,7 +7,7 @@ const [bundle, directory] = process.argv.slice(2);
 if (!bundle || !directory) throw new Error('Usage: node issues/196/pictures.mjs BUNDLE OUTPUT_DIRECTORY');
 await mkdir(directory, { recursive: true });
 const river = await readFile('guide/scores/slow-river.vextab', 'utf8');
-const sor = await readFile('issues/196/sor-op35-no22.vextab', 'utf8');
+const sor = await readFile('guide/scores/sor-op35-no22.vextab', 'utf8');
 const browser = await chromium.launch(process.env.CHROME_BIN ? { executablePath: process.env.CHROME_BIN } : { channel: 'chrome' });
 try {
   const page = await browser.newPage({ viewport: { width: 1100, height: 1200 }, deviceScaleFactor: 1 });

@@ -5,7 +5,9 @@
 # Unspecified strings are editorial. The two melodic voices share some attacks in the source.
 measureNumbers on
 meter 3/4
+edition { title "Study in B minor" subtitle "Fernando Sor · Op. 35 No. 22, bars 1–8" staffSize 6 }
 guitar {
+  program 24
   key Bm
   voice melody stem up {
     :h 3/2[finger 2] :q 3/2 |

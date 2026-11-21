@@ -66,6 +66,8 @@ VEXTAB_BROWSER=firefox node scripts/test-browser.mjs
 VEXTAB_BROWSER=webkit node scripts/test-browser.mjs
 ```
 
+The four repertoire studies share their source with the guide and engraving tests. See the [VexTab 6 qualification record](../issues/200/README.md) for phone, screen reader, SVG/Canvas, PDF and timing checks.
+
 The browser suite checks real SoundFont output from the offline guide. Keep the SpessaSynth library and worklet on the same pinned version. The guide bank and its provenance live in `guide/audio/`.
 
 Edit tutorial chapters and their fixed-layout examples in `doc/tutorial.html`. The historical page and the guide share this source. Edit feature chapters in `guide/features.html`, API entries in `guide/reference.html`, and study descriptions and the notation glossary in `guide/catalog.ts`. Preserve the chapter and entry IDs for incoming links. Use stable score IDs for guide, playground and original-source links. Edit the study music in `guide/scores/*.vextab`. The guide and engraving tests import the same files. The suite exercises both scores at 360 and 960 CSS pixels, including a return to the starting width after fonts load. [Guitar and lead-sheet coverage](vt5-m3.md)

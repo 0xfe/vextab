@@ -26,7 +26,7 @@ The published `Publication.noteHooks` is an EasyScore string-parser hook. VexFlo
 
 ## Sor acceptance passage
 
-The eight-bar opening of Fernando Sor’s *Op. 35 No. 22* follows Glen Larsen’s Mutopia transcription of the N. Simrock edition, dated 18 August 2013. It retains the three source voices, written durations and opening fingerings. The VexTab adaptation assigns unspecified strings and uses the local renderer’s stem and beam policies. The excerpt and its adaptation are available under CC BY-SA 3.0. [VexTab source](sor-op35-no22.vextab) · [Mutopia score and LilyPond source](https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1850) · [License](https://creativecommons.org/licenses/by-sa/3.0/)
+The eight-bar opening of Fernando Sor’s *Op. 35 No. 22* follows Glen Larsen’s Mutopia transcription of the N. Simrock edition, dated 18 August 2013. It retains the three source voices, written durations and opening fingerings. The VexTab adaptation assigns unspecified strings and uses the local renderer’s stem and beam policies. The excerpt and its adaptation are available under CC BY-SA 3.0. [VexTab source](../../guide/scores/sor-op35-no22.vextab) · [Mutopia score and LilyPond source](https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1850) · [License](https://creativecommons.org/licenses/by-sa/3.0/)
 
 The opening melody D uses finger 2 on string 2, fret 3. Both extracted parts retain that association. A separate reordered-chord case checks accidental, finger and accent ownership on each independently rebuilt note and cue. These fixtures run with the regular browser suite. [Part engraving tests](../../tests/part-engraving.ts)
 
