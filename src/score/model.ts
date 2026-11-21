@@ -19,6 +19,10 @@ export interface Head {
   range: SourceRange;
   written: string;
   marks?: HeadMark[]; // Bracketed fingering or accent attached to this head.
+  tiedBendStart?: boolean;
+  glissFrom?: number;
+  release?: { hold: [number, number]; release: [number, number] };
+  midi?: number;
   drum?: string; // VexFlow kit identity. The written key supplies staff placement only.
   sounding: string | null; // A dead strike has a display position and no pitch.
   position?: { str: number; fret: number | 'X' };
@@ -33,7 +37,20 @@ export interface Head {
   inheritSign?: boolean;
 }
 
+export interface VerseSyllable {
+  text: string; verse?: string; elideWith?: string; hyphen: boolean; extend: number; range: SourceRange;
+  crossConnector?: boolean;
+}
 export interface Attack {
+  verses?: VerseSyllable[];
+  harmony?: import('vexflow').ChordHarmony;
+  dynamic?: import('./grammar2/model').Dynamic;
+  displayHand?: PianoHand;
+  sharedStem?: string;
+  grace?: { side: 'before' | 'after'; pitches: string[] };
+  ornament?: string;
+  continuousBeam?: boolean;
+  tremolo?: number;
   id: string;
   range: SourceRange;
   heads: Head[]; // Empty for a rest.
@@ -49,7 +66,7 @@ export interface Attack {
   bend?: { spec: TimedStringBend; range: SourceRange };
   chord?: { text: string; color?: string; range: SourceRange };
   frame?: { spec: FretDiagramSpec; range: SourceRange };
-  lyric?: { text: string; hyphen: boolean; extend: number; range: SourceRange };
+  lyric?: VerseSyllable;
   duration: string;
   onset: string; // Relative to the start of this bar.
 }
@@ -70,7 +87,7 @@ export interface MeasureVoice {
   span: string;
   stem?: 'up' | 'down';
   beams: boolean;
-  beamGroups?: { start: number; end: number; range: SourceRange }[];
+  beamGroups?: { feather?: 'left' | 'right'; start: number; end: number; range: SourceRange }[];
   tabStems: boolean;
   tabDirection: number;
   beatGroups?: number[];
@@ -86,6 +103,7 @@ export interface MeasureVoice {
 }
 
 export interface StaffState {
+  kit?: import('vexflow').PercussionMap;
   piano?: boolean;
   color?: string; // Foreground for this stave declaration and its wrapped rows.
   declaration: SourceRange;
@@ -123,6 +141,8 @@ export interface Measure {
 
 /** Endpoints identify particular chord members, even across a measure boundary. */
 export interface Tie {
+  bend?: import('vexflow').TiedBend;
+  string?: number;
   id: string;
   from: string;
   to: string;
@@ -133,6 +153,9 @@ export interface Tie {
 
 /** Endings cover whole bars. A palm mute follows the selected physical strings in one voice. */
 export type ScoreSpan = { id: string; from: string; to: string; range: SourceRange } & (
+  { kind: 'glissando'; fromHead: number; toHead: number } |
+  { kind: 'lyric' | 'hyphen'; lane: string } |
+  { kind: 'crescendo' | 'diminuendo' | 'continuousBeam' | 'tremolo'; niente?: boolean; strokes?: number } |
   { kind: 'volta'; label: string; firstBar: number; lastBar: number } |
   { kind: 'palmMute'; strings: number[] } | { kind: 'slur' } | { kind: 'hammer' | 'pull' | 'slide'; fromHead: number; toHead: number }
 );
@@ -144,8 +167,10 @@ export interface ParsedScore {
   };
   layout?: import('./grammar2/model').ScoreLayout;
   /** Playback directives, when authored before the first flow stave. */
-  playback?: { enabled: boolean; tempo?: number; instrument?: string };
+  playback?: { enabled: boolean; tempos?: Record<number, number>; tempo?: number; instrument?: string };
   source: string;
+  repeats?: import('./grammar2/model').WrittenRepeat[];
+  program?: number;
   measures: Measure[];
   ties: Tie[];
   spans: ScoreSpan[];

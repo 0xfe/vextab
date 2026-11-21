@@ -1,0 +1,55 @@
+// W. C. Handy, The St. Louis Blues (Pace & Handy, 1914), first sung twelve bars.
+// Vocal line and two printed underlays. Piano is an editorial reduction, chord symbols are editorial.
+meter 2/4
+play { tempo 76 }
+edition { title "The St. Louis Blues" subtitle "First sung chorus" staffSize 6 }
+staff singer { name "Voice" shortName "V." key G
+  :16 B4[grace before (A#4), verse first "I", verse second "Been", harmony G "7"] D5[verse first "hate", verse second "to"]
+  B4[verse first "to", verse second "de"] G4[verse first "see", verse second "Gyp" hyphen] :q G4[tie, verse second "sy"] |
+  :16 rest D#4[verse first "de", verse second "to", harmony C ""] E4[verse first "eve" hyphen, verse second "get"]
+  G4[verse first "ning", verse second "ma"] Bb4[verse first "sun", verse second "for" hyphen] :8. A4[verse first "go", verse second "tune"] |
+  :h G4[verse first "down" extend=1, verse second "tole" extend=1, harmony G ""] |
+  :q. G4[tie] :8 rest |
+  :16 rest E4[verse first "Hate", verse second "To", harmony C ""] G4[verse first "to", verse second "de"]
+  A4[verse first "see", verse second "Gyp" hyphen] :q A4[tie, verse second "sy"] |
+  :16 rest E4[verse first "de", verse second "done"] G4[verse first "even" hyphen, verse second "got"]
+  A4[verse first "in’", verse second "ma"] Bb4[verse first "sun", verse second "for" hyphen] :8. A4[verse first "go", verse second "tune"] |
+  :h G4[verse first "down" extend=1, verse second "tole" extend=1, harmony G ""] |
+  :q. G4[tie] :8 rest |
+  slur { :16 F#4[verse first "Cause", verse second "Cause", harmony D "7"] A4 } :16 F#4[verse first "ma", verse second "I’m"]
+  D4[verse first "ba" hyphen, verse second "is"] :q D4[verse first "by", verse second "wile"] |
+  :8 rest :16 Bb4[verse first "he", verse second "bout", harmony C "7" bass G] Bb4[verse first "done", verse second "ma"]
+  Bb4[verse first "lef", verse second "Jel" hyphen] :8. A4[verse first "dis", verse second "ly"] |
+  :h G4[verse first "town" extend=1, verse second "Roll" extend=1, harmony G ""] |
+  :q. G4[tie] :8 rest bar final
+}
+piano accompaniment { name "Piano" shortName "Pno." program 0 key G
+  upper {
+    :16 B4 D5 B4 G4 :q G4[tie] |
+    :16 rest D#4 E4 G4 (E4 G4 Bb4) :8. (E4 G4 A4) |
+    :8 B3 :16 A#3 B3 :q (B3 D4) |
+    :16 rest A#4 B4 (G4 B4 D5) :q (G4 B4 D5)[accent] |
+    :16 rest E4 G4 (E4 G4 A4) :q (E4 G4 A4) |
+    :16 rest E4 G4 A4 (E4 G4 Bb4) :8. (E4 G4 A4) |
+    :16 G4 G#4 A4 (G4 B4 D5) :q (G4 B4 D5) |
+    :16 rest G#4 A4 (B4 D5 G5) :q (B4 D5 G5) |
+    :16 F#4 A4 F#4 D4 :q D4 |
+    :8 rest :16 (C4 Bb4) (C4 Bb4) (C4 Bb4) :8. (C4 A4) |
+    :8 B3 :16 A#3 B3 :16 (B3 G4) A#4 :8 B4 |
+    :16 (A4 C5 G5) G#5 A5 (G5 B5 F#6) :16 (G5 B5 F#6) C5 C5 C5 bar final
+  }
+  lower {
+    :q. (G3 B3 D4) :8 (G3 B3 D4) |
+    :q. (C3 E3 G3 C4) :8 (C3 E3 G3 C4) |
+    :q (G2 D3) :16 D3 D#3 E3 Fn3 |
+    :q. (G2 F3) :8 (G2 F3) |
+    :q (C3 E3 G3 C4) :16 (C3 E3 G3 C4) D#3 E3 G3 |
+    :h C4 |
+    :q. B3 :8 D3 |
+    :q. (G2 D3 G3) :8 B2 |
+    :q (D2 D3) :16 D3 D#3 E3 E#3 |
+    :q F#3 D3 |
+    :q. (G2 D3 G3) :8 D3 |
+    :8 (G2 G3) D3 (G2 D3 G3) rest bar final
+  }
+}

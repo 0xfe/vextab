@@ -1,0 +1,56 @@
+// Scott Joplin, Maple Leaf Rag. Pickup, first strain and both endings.
+// John Stark (1899), via Chris Sawer’s public-domain Mutopia transcription, ID 23.
+meter 2/4
+pickup 1/8
+play { tempo 92 }
+edition { title "Maple Leaf Rag" subtitle "First strain" staffSize 6 }
+piano keys { key Ab
+  upper {
+      :8 rest |
+    volta 2 {
+      :16 rest :16 Ab4[dynamic f] :16 (Eb5 Eb4) :16 Ab4 :16 C5 :8 (Eb5 Eb4) :16 G4 |
+      :16 (Eb5 Eb4) :16 G4 :16 Bb4 :16 (Eb5 Eb4) :q (Eb5[tie] Eb4[tie]) |
+      :16 rest :16 Ab4 :16 (Eb5 Eb4) :16 Ab4 :16 C5 :8 (Eb5 Eb4) :16 G4 |
+      :16 (Eb5 Eb4) :16 G4 :16 Bb4 :16 (Eb5 Eb4) :8 (Eb5[tie] Eb4[tie]) :16 rest :16 (Eb5 Eb4) |
+      :16 rest :16 Ab4 :16 Cb5 :16 (Fb5 Fb4) :16 rest :16 (Eb5 Eb4) :16 rest :16 (Eb5 Eb4) |
+      :16 rest :16 Ab4 :16 Cb5 :16 (Fb5 Fb4) :16 rest :16 (Eb5 Eb4) :8 rest |
+      :16 rest :16 Ab2[onStaff lower, dynamic p] :16 Cb3[onStaff lower] :16 Ab3[onStaff lower] :16 rest :16 Ab3[onStaff lower] :16 Cb4[onStaff lower] :16 Ab4[onStaff lower] |
+      :16 rest :16 Ab4 :16 Cb5 :16 Ab5 :16 rest :16 Ab5 :16 Cb6 :16 Ab6 |
+      :8 (Ab6 Ab5)[dynamic mf] :8 (Ab6 Ab5) :8 (Ab6 Ab5) :16 (Ab6 Ab5) :16 (Ab6 Ab5) |
+      :16 (Ab6[tie] Ab5[tie]) :16 Eb6 :16 F6 :16 C6 :16 Eb6 :8 (F6 Ab5) :16 (Ab5 Fb5) |
+      :16 (Ab5[tie] Fb5[tie]) :16 Bb5 :16 (Cb6 Fb5) :16 Ab5 :16 Bb5 :8 (C6 Eb5) :16 Ab5 |
+      :16 (C6 Eb5) :16 Ab5 :8 (Bb5 Eb5) :8 (Ab5 Eb5) :16 rest :16 (Ab5 Ab4) |
+      :8 (Ab5[tie] Ab4[tie]) :8 (Ab5 Ab4) :8 (Ab5 Ab4) :16 (Ab5 Ab4) :16 (Ab5 Ab4) |
+      :16 (Ab5[tie] Ab4[tie]) :16 Eb5 :16 (F5 Ab4) :16 C5 :16 Eb5 :8 (F5 Ab4) :16 (Ab4 Fb4) |
+      :16 (Ab4[tie] Fb4[tie]) :16 Bb4 :16 (Cb5 Fb4) :16 Ab4 :16 Bb4 :8 (C5 Eb4) :16 Ab4 |
+    } ending 1 {
+      :16 (C5 Eb4) :16 Ab4 :8 (Bb4 Eb4) :8 (Ab4 Eb4) :8 rest |
+    } ending 2 {
+      :16 (C5 Eb4) :16 Ab4 :8 (Bb4 Eb4) :8 (Ab4 Eb4) :8 rest |
+    }
+  }
+  lower {
+      :8 (Eb3 Eb2) |
+    volta 2 {
+      :8 (Ab3 Ab2) :8 (C4 Ab3 Eb3) :8 (C4 Ab3 Eb3) :8 (An3 An2) |
+      :8 (Bb3 Bb2) :8 (Db4 G3 Eb3) :8 (Db4 G3 Eb3) :8 (Eb3 Eb2) |
+      :8 (Ab3 Ab2) :8 (C4 Ab3 Eb3) :8 (C4 Ab3 Eb3) :8 (An3 An2) |
+      :8 (Bb3 Bb2) :8 (Db4 G3 Eb3) :8 (Db4 G3 Eb3) :8 (Eb3 Eb2) |
+      :q (Fb3 Fb2) :8 (Eb3 Eb2) :8 (Eb3 Eb2) |
+      :q (Fb3 Fb2) :8 (Eb3 Eb2) :8 rest |
+      :8 Ab1 :8 rest :8 Ab2 :8 rest |
+      :8 Ab3 :8 rest :8 Ab4 :8 rest |
+      :8 (Bn4 Ab4 F4 Dn4) :8 (Bn4 Ab4 F4 Dn4) :8 (Bn4 Ab4 F4 Dn4) :8 (Bn4 Ab4 F4 Dn4) |
+      :8 (C5 Ab4 Eb4) :8 (C5 Ab4 Eb4) :8 (C5 Ab4 Eb4) :8 (C5 Ab4 Eb4) |
+      :8 (Cb5 Ab4 Fb4) :8 (Cb5 Ab4 Fb4) :8 (C5 Ab4 Eb4) :8 (C5 Ab4 Eb4) |
+      :8 (C5 Ab4 Eb4) :8 (Db5 G4 Eb4) :8 (C5 Ab4) :8 rest |
+      :8 (Bn3 Ab3 F3 Dn3) :8 (Bn3 Ab3 F3 Dn3) :8 (Bn3 Ab3 F3 Dn3) :8 (Bn3 Ab3 F3 Dn3) |
+      :8 (C4 Ab3 Eb3) :8 (C4 Ab3 Eb3) :8 (C4 Ab3 Eb3) :8 (C4 Ab3 Eb3) |
+      :8 (Cb4 Ab3 Fb3) :8 (Cb4 Ab3 Fb3) :8 (C4 Ab3 Eb3) :8 (C4 Ab3 Eb3) |
+    } ending 1 {
+      :8 (C4 Ab3 Eb3) :8 (Db4 G3 Eb3) :8 (C4 Ab3) :8 (Eb3 Eb2) |
+    } ending 2 {
+      :8 (C4 Ab3 Eb3) :8 (Db4 G3 Eb3) :8 (C4 Ab3) :8 (An3 An2) |
+    }
+  }
+}

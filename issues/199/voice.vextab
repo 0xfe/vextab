@@ -1,0 +1,6 @@
+// Slash harmony transposes both pitches; the two verses and hairpin share a system break.
+meter 2/4
+transpose 2
+staff { crescendo niente {
+  :q C4[harmony C "m7" bass Bb, verse first "Ky" hyphen, verse second "two" elide "on", dynamic p] D4[verse first "ri" hyphen] |
+  break system :q E4[verse first "e", verse second "one", grace before (D4 Eb4)] F4[ornament turn, dynamic f] | } }

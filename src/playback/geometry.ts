@@ -84,7 +84,8 @@ export function printedGeometry(publication: PublicationResult, attacks: Map<str
         const box = text.getBBox();
         const point = { x: box.x + box.width / 2, y: Number(text.getAttribute('y')) };
         if (!i) x = point.x;
-        if (attack.heads[i]?.sounding && !attack.silent) heads.push(point);
+        const head = attack.heads[i];
+        if (head && (head.sounding || head.midi !== undefined) && !attack.silent) heads.push(point);
       });
       if (elements.length) result.set(attack.id, { x, row, heads });
     }

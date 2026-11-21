@@ -7,6 +7,8 @@ import type { ParsedScore } from './score/model';
 import { PlaybackAnimation, anticipation } from './playback/animation';
 import { artistGeometry, scoreSurfaces, type Geometry } from './playback/geometry';
 import { PlayerOverlay } from './player-overlay';
+import { routedPlayback } from './playback/routing';
+import { ensembleVisits } from './playback/visits';
 import { artistPerformance, scorePerformance } from './playback/performance';
 import { PlaybackTransport, type PlaybackPlugin, type Performance } from './playback/transport';
 import { createWebAudioPlayback } from './playback/web-audio';
@@ -33,6 +35,7 @@ export interface PlayerOptions {
   /** Place transport buttons here while keeping the cursor on the score. */
   controls?: HTMLElement;
   tempo?: number;
+  order?: 'written' | 'performed';
   instrument?: string | number;
   show_controls?: boolean;
   overlay_class?: string;
@@ -152,10 +155,12 @@ export default class Player {
     const generation = ++this.generation;
     const { tempo, instrument, playback, soundfont_url } = this.options;
     this.performanceTempo = tempo;
-    const first = this.score ? scorePerformance(this.score, tempo, this.mark)
+    const ensemble = this.ensemble ?? (this.score ? [this.score] : []);
+    const visits = ensembleVisits(ensemble, this.options.order === 'performed');
+    const first = this.score ? scorePerformance(this.score, tempo, this.mark, visits.get(this.score))
       : artistPerformance(this.artist, tempo);
     const performances = new Map<ParsedScore, Performance>();
-    for (const score of this.ensemble?.slice(1) ?? []) performances.set(score, scorePerformance(score, tempo, this.mark));
+    for (const score of this.ensemble?.slice(1) ?? []) performances.set(score, scorePerformance(score, tempo, this.mark, visits.get(score)));
     const parts = [first, ...performances.values()];
     const music = parts.length === 1 ? first : {
       events: parts.flatMap(p => p.events).sort((a,b) => a.time - b.time),
@@ -176,7 +181,10 @@ export default class Player {
         const part = performances.get(view.score);
         if (part) this.animations.push(new PlaybackAnimation(view.overlay.surface, part, view.read()));
       }
-      await this.transport.play(plugin, programNumber(instrument), music, elapsed => {
+      const fallback = programNumber(instrument);
+      const programs = [...new Set(music.events.flatMap(e => e.notes.map(n => n.program ?? fallback)))];
+      const routed = programs.some(p => p !== fallback) ? routedPlayback(plugin, programs) : plugin;
+      await this.transport.play(routed, fallback, music, elapsed => {
         for (const animation of this.animations) animation.start(elapsed);
         this.overlay?.setStatus('');
         this.overlay?.setPlaying(true);

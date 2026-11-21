@@ -64,6 +64,8 @@ Each slice adds an authoring example, typed model fields, a native rendering con
 
 **Done when** the Sor, Joplin and Handy passages pass musician review. Each delivered operation has evidence for its applicable outputs. Keep specialist work such as multi-bar ossias, figured bass and general polymetric pagination in the inventory with its native dependency and smallest acceptance case. [Grammar coverage](vt6-baseline.md#grammar-coverage-and-design-priorities)
 
+The [M4 evidence and scores](../issues/199/README.md) link the public regressions, independent MIDI comparison and full passages for musician review.
+
 ## M5 · Qualify the repertoire, guide and package
 
 1. Finish the four editable demos. Give each one canonical source, exact edition and bar range, attribution, editorial changes, a listening or reading task, and downloadable print. Use those same sources in the guide and tests. [Repertoire and editions](vt6-baseline.md#repertoire-for-the-first-demos)

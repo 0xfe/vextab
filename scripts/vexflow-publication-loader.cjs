@@ -10,6 +10,11 @@ function replaceOnce(source, original, replacement) {
 
 /** Use the same typed-note preparation in a fresh part or cue as in the interactive score. */
 module.exports = function publicationHooks(source) {
+  // VexFlow already positions and draws a hyphen from the verse annotation. Its
+  // 5.7 validator only admits this anchor on an extender, leaving a hyphen in a separate lane.
+  if (path.basename(this.resourcePath) === 'continuouslayout.js') {
+    return replaceOnce(source, "span.kind !== 'lyric' ||", "(span.kind !== 'lyric' && span.kind !== 'hyphen') ||");
+  }
   if (path.basename(this.resourcePath) === 'factory.js') {
     const point = 'const defaults = ctx.getDefaultStyle();';
     return replaceOnce(source, point, 'options.afterFormat?.();\n        ' + point);

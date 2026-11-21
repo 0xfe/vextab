@@ -75,11 +75,13 @@ export function conductorSpec(scores: ParsedScore[], specs: EasyScoreComposition
     const owner = (score.instrument?.id ?? part + 1) + '.' + (staff?.id ?? role);
     return role === 'main' && score.measures[0].state.tab ? owner + '.' + stave : owner;
   }
-  const staves = specs.flatMap((spec, p) => spec.staves.map(stave => ({ ...stave, id: staveId(p, stave.id) })));
+  const staves = specs.flatMap((spec, p) => spec.staves.map(stave => ({ ...stave, id: staveId(p, stave.id),
+    measures: stave.measures.map(m => ({ ...m, voices: m.voices.map(v => ({ ...v, notes: typeof v.notes === 'string' ? v.notes :
+      v.notes.map(n => typeof n === 'object' && 'stave' in n && typeof n.stave === 'string' ? { ...n, stave: staveId(p, n.stave) } : n) })) })) })));
   const groups = specs.flatMap((spec, p) => spec.continuous.groups.map(g => ({ ...g, first: staveId(p, g.first), last: staveId(p, g.last) })));
   if (scores.length > 1) groups.push({ first: staves[0].id, last: staves[staves.length - 1].id, type: 'bracket', barlines: groups.length === 0 });
   return { ...specs[0], staves, continuous: { ...specs[0].continuous, groups, boundaries: boundaries(scores, specs),
-    spans: specs.flatMap(spec => spec.continuous.spans) } };
+    splitChords: specs.flatMap(spec => spec.continuous.splitChords ?? []), spans: specs.flatMap(spec => spec.continuous.spans) } };
 }
 
 /** Per-part decoration uses local stave indices; the underlying notes, systems and shared sheet are identical. */

@@ -15,7 +15,7 @@ export type Fraction = [bigint, bigint];
 export type TimedNode = { range: TextRange } & (
   { kind: 'rest' | 'skip' | 'slash'; marks?: EventMark[] } | { kind: 'attack'; heads: Head[]; marks: EventMark[] }
 );
-export type Node = TimedNode | { range: TextRange } & (
+export type Node = TimedNode | { kind: import('./model.js').ExpressiveSpan; body: Node[]; niente?: boolean; feather?: 'left' | 'right'; strokes?: number; range: TextRange } | { range: TextRange } & (
   { kind: 'meter'; signature: WrittenMeter } | { kind: 'duration'; value: Fraction } | { kind: 'use'; name: string } |
   { kind: 'times'; count: number; body: Node[] } | { kind: 'tuplet'; scale: Fraction; body: Node[] } |
   { kind: 'volta'; body: Node[]; endings: Node[][] } | { kind: '|'; closing?: string } |
@@ -81,15 +81,17 @@ const positionPattern = /^(x|0|[1-9]\d?)\/([1-8])$/;
 const builtInMarks = new Set([
   'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'line', 'ink', 'label',
   'tap', 'vibrato', 'brush', 'roll', 'stroke', 'rasgueado', 'symbol', 'write', 'staccato', 'fermata',
-  'articulation', 'lyric', 'bend', 'prebend', 'finger',
+  'dynamic', 'harmony', 'onStaff', 'sharedStem', 'grace', 'ornament', 'verse', 'gliss', 'release', 'articulation', 'lyric', 'bend', 'prebend', 'finger',
 ]);
-const drums = new Set(['kick', 'snare', 'hat']);
+const standardDrums = ['kick', 'snare', 'hat'];
 function isPartKind(name: string): name is PartKind {
   return name === 'guitar' || name === 'piano' || name === 'drums' || name === 'staff';
 }
 
 /** Parse a bounded syntax tree. A pattern may refer only to already completed definitions. */
 export function readScore(source: string, fail: Fail) {
+  let drums = new Set(standardDrums);
+  const tempoRanges = new Map<number, TextRange>();
   let tokens = tokenize(source, fail);
   let cursor = 0, depth = 0;
   const peek = (): string => tokens[Math.min(cursor, tokens.length - 1)].text;
@@ -154,7 +156,7 @@ export function readScore(source: string, fail: Fail) {
   }
 
   function isEventMark(mark: HeadMark | EventMark): mark is EventMark {
-    return ['slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
+    return ['dynamic','harmony','onStaff','sharedStem','grace','ornament','slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
   }
 
   /** JSON quoting handles embedded punctuation and escaped quotes in musical text. */
@@ -331,22 +333,68 @@ export function readScore(source: string, fail: Fail) {
       if (peek() === 'below' || peek() === 'above') take();
       return { kind: 'sign', code, position, range: range() };
     }
-    if (mark.text === 'lyric') {
+    if (mark.text === 'dynamic') {
+      const value = take();
+      if (!/^(ppp|pp|p|mp|mf|f|ff|fff)$/.test(value.text)) error('Expected a dynamic from ppp to fff', value);
+      return { kind: 'dynamic', value: value.text as import('./model.js').Dynamic, range: range() };
+    }
+    if (mark.text === 'onStaff') {
+      const hand = take();
+      if (hand.text !== 'upper' && hand.text !== 'lower') error('Expected upper or lower', hand);
+      return { kind: 'onStaff', hand: hand.text, range: range() };
+    }
+    if (mark.text === 'sharedStem') return { kind: 'sharedStem', name: identifier(), range: range() };
+    if (mark.text === 'ornament') {
+      const value = take();
+      if (!['tr','turn','turn_inverted','mordent','mordent_inverted'].includes(value.text)) error('Unknown ornament', value);
+      return { kind: 'ornament', value: value.text, range: range() };
+    }
+    if (mark.text === 'grace') {
+      const side = take(), pitches: string[] = [];
+      if (side.text !== 'before' && side.text !== 'after') error('Expected before or after', side);
+      expect('(');
+      while (peek() !== ')') {
+        const pitch = take();
+        if (!notePattern.test(pitch.text) || pitches.length >= 16) error('Expected up to 16 grace pitches', pitch);
+        pitches.push(pitch.text);
+      }
+      expect(')');
+      if (!pitches.length) error('Expected a grace pitch', side);
+      return { kind: 'grace', side: side.text, pitches, range: range() };
+    }
+    if (mark.text === 'harmony') {
+      function chordPitch() {
+        const t = take();
+        if (!/^[A-G](?:b|#)?$/.test(t.text)) error('Expected a chord root or bass pitch', t);
+        return t.text;
+      }
+      const root = chordPitch(), quality = literal();
+      let bass: string;
+      if (peek() === 'bass') { take(); bass = chordPitch(); }
+      return { kind: 'harmony', root, quality, ...(bass && { bass }), range: range() };
+    }
+    if (mark.text === 'lyric' || mark.text === 'verse') {
+      const verse = mark.text === 'verse' ? identifier() : undefined;
       const text = literal();
+      let elideWith: string;
+      if (peek() === 'elide') { take(); elideWith = literal(); }
       const hyphen = peek() === 'hyphen';
       if (hyphen) take();
       const extension = /^extend=([1-9]\d?)$/.exec(peek());
       if (extension) take();
-      return { kind: 'lyric', text, hyphen, extend: extension ? Number(extension[1]) : 0, range: range() };
+      return { kind: 'lyric', ...(verse && { verse }), ...(elideWith !== undefined && { elideWith }), text, hyphen, extend: extension ? Number(extension[1]) : 0, range: range() };
     }
     if (mark.text === 'slideIn' || mark.text === 'slideOut') {
       const side = take();
       if (side.text !== 'above' && side.text !== 'below') return error('Expected above or below', side);
       return { kind: mark.text, side: side.text, range: range() };
     }
-    if (mark.text === 'bend') {
-      const amount = take();
-      if (!/^\+(?:[1-9]\d?(?:\.5)?|0\.5)$/.test(amount.text)) error('Expected a positive bend in semitones', amount);
+    if (mark.text === 'gliss') {
+      const head = take();
+      if (!/^(?:[1-9]|1[0-6])$/.test(head.text)) error('Expected the previous chord head number, 1 through 16', head);
+      return { kind: 'gliss', fromHead: Number(head.text) - 1, range: range() };
+    }
+    if (mark.text === 'release' || mark.text === 'bend') {
       function phase(name: string): [number, number] {
         const token = take();
         const match = /^(\w+)=(\d{1,4})(?:\/(\d{1,4}))?$/.exec(token.text);
@@ -355,6 +403,13 @@ export function readScore(source: string, fail: Fail) {
         if (d < 1 || n < 1 || n > d) return error('Bend phase must lie within the note', token);
         return [n, d];
       }
+      if (mark.text === 'release') {
+        const hold = phase('hold'), release = phase('release');
+        if (release[0] * hold[1] <= hold[0] * release[1]) error('Release must follow the hold', mark);
+        return { kind: 'release', hold, release, range: range() };
+      }
+      const amount = take();
+      if (!/^\+(?:[1-9]\d?(?:\.5)?|0\.5)$/.test(amount.text)) error('Expected a positive bend in semitones', amount);
       const rise = phase('rise');
       const hold = peek().startsWith('hold=') ? phase('hold') : undefined;
       const release = peek().startsWith('release=') ? phase('release') : undefined;
@@ -505,6 +560,20 @@ export function readScore(source: string, fail: Fail) {
         node = { kind: 'break', range: token.range };
       } else if (token.text === 'mark') {
         take(); node = { kind: 'mark', text: literal(), range: token.range };
+      } else if (token.text === 'crescendo' || token.text === 'diminuendo' || token.text === 'continuousBeam' || token.text === 'feather' || token.text === 'tremolo') {
+        const kind = token.text;
+        take();
+        let strokes: number, feather: 'left' | 'right', niente: boolean;
+        if (kind === 'tremolo') {
+          const count = take();
+          if (!/^[1-4]$/.test(count.text)) error('Expected one to four tremolo strokes', count);
+          strokes = Number(count.text);
+        } else if (kind === 'feather') {
+          const direction = take();
+          if (direction.text !== 'left' && direction.text !== 'right') error('Expected left or right', direction);
+          feather = direction.text;
+        } else if (kind !== 'continuousBeam' && peek() === 'niente') { take(); niente = true; }
+        node = { kind, strokes, feather, niente, body: block(sequence), range: token.range };
       } else if (token.text === 'fragment' || token.text === 'slur' || token.text === 'beam') {
         take(); node = { kind: token.text, body: block(sequence), range: token.range };
       } else if (token.text === 'palmMute') {
@@ -660,10 +729,27 @@ export function readScore(source: string, fail: Fail) {
       const changes = result.changes ??= {};
       changes[at] = { ...changes[at], ...values };
     }
-    const names = voiceOnly ? ['stem', 'beams', 'beamRests', 'stemlets', 'middleRests', 'tabStems', 'tabDirection'] : ['meter', 'key', 'clef', 'view', 'capo', 'tuning', 'ink', 'stem', 'beams', 'beamRests', 'tabStems', 'stemlets', 'middleRests', 'tabDirection', 'accidentals', 'display', 'groupBeats'];
+    const names = voiceOnly ? ['stem', 'beams', 'beamRests', 'stemlets', 'middleRests', 'tabStems', 'tabDirection'] : ['program', 'map', 'meter', 'key', 'clef', 'view', 'capo', 'tuning', 'ink', 'stem', 'beams', 'beamRests', 'tabStems', 'stemlets', 'middleRests', 'tabDirection', 'accidentals', 'display', 'groupBeats'];
     while (names.includes(peek())) {
       const option = take(), value = take();
-      if (option.text === 'meter') {
+      if (option.text === 'program') {
+        if (!/^\d{1,3}$/.test(value.text) || Number(value.text) > 127) error('Expected a MIDI program from 0 to 127', value);
+        result.program = Number(value.text);
+      } else if (option.text === 'map') {
+        if (kind !== 'drums' || !/^[a-z][a-z0-9_]*$/.test(value.text) || drums.has(value.text)) error('Expected a new percussion ID', value);
+        const label = literal();
+        if (!label.trim()) error('Expected a percussion label', value);
+        expect('line'); const line = take();
+        expect('head'); const head = take();
+        expect('stem'); const stem = take();
+        expect('midi'); const midi = take();
+        if (!/^-?\d(?:\.5)?$/.test(line.text)) error('Expected a staff line or space', line);
+        if (!['normal','cross','circle-cross','triangle'].includes(head.text)) error('Unknown percussion head', head);
+        if (stem.text !== 'up' && stem.text !== 'down') error('Expected up or down', stem);
+        if (!/^\d{1,3}$/.test(midi.text) || Number(midi.text) > 127) error('Expected a MIDI pitch from 0 to 127', midi);
+        (result.drums ??= []).push({ id: value.text, label, line: Number(line.text), head: head.text as 'normal' | 'cross' | 'circle-cross' | 'triangle', stem: stem.text, midi: Number(midi.text) });
+        drums.add(value.text);
+      } else if (option.text === 'meter') {
         declareMeter(result.meters ??= {}, value);
       } else if (option.text === 'accidentals') {
         if (value.text !== 'standard' && value.text !== 'cautionary') error('Expected standard or cautionary', value);
@@ -768,7 +854,13 @@ export function readScore(source: string, fail: Fail) {
           } else if (field.text === 'tempo') {
             const tempo = take();
             if (!/^[1-9]\d{0,2}$/.test(tempo.text)) error('Expected a positive tempo', tempo);
-            playback!.tempo = Number(tempo.text);
+            if (peek() === 'at') {
+              take(); const bar = take();
+              if (!/^[1-9]\d{0,3}$/.test(bar.text)) error('Expected a written bar number', bar);
+              if (tempoRanges.has(Number(bar.text))) error('Duplicate tempo change at this bar', bar);
+              tempoRanges.set(Number(bar.text), bar.range);
+              (playback!.tempos ??= {})[Number(bar.text)] = Number(tempo.text);
+            } else playback!.tempo = Number(tempo.text);
           } else if (field.text === 'instrument') {
             const instrument = take();
             if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(instrument.text) && !/^(?:0|[1-9]\d?|1[01]\d|12[0-7])$/.test(instrument.text)) error('Expected an instrument name or MIDI program', instrument);
@@ -796,6 +888,7 @@ export function readScore(source: string, fail: Fail) {
       if (patterns.has(name)) error('Duplicate pattern ' + name, nameToken);
       patterns.set(name, block(sequence));
     } else if (isPartKind(token.text)) {
+      drums = new Set(standardDrums);
       const idToken = tokens[cursor];
       const id = peek() === '{' ? undefined : identifier();
       if (id && parts.some(part => part.id === id)) error('Duplicate part ID ' + id, idToken);
@@ -840,5 +933,5 @@ export function readScore(source: string, fail: Fail) {
     } else error('Expected a score setting, alias, pattern or part', token);
   }
   if (!parts.length) error('Expected a part');
-  return { editions, patterns, parts, scoreMeters, pickup, pickupRange: pickupToken?.range, playback, measureNumbers, layout, transpose };
+  return { tempoRanges, editions, patterns, parts, scoreMeters, pickup, pickupRange: pickupToken?.range, playback, measureNumbers, layout, transpose };
 }

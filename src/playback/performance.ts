@@ -1,5 +1,7 @@
 // Translate parsed scores and legacy fixed rows into sounding notes on one timeline.
-import { VexFlow } from 'vexflow';
+import { measureVisits } from './visits';
+import { decorateAttack } from './decorations';
+import { KeyManager, VexFlow } from 'vexflow';
 import { midiPitch } from '../score/music';
 import type { SourceRange } from '../score/source';
 import type Artist from '../artist';
@@ -22,6 +24,7 @@ function seconds(value: string, whole: number) {
 
 /** Map a measured bend's phase ends to seconds relative to this attack. */
 function scoreNote(event: Attack, head: Head, duration: number) {
+  if (head.midi !== undefined && !event.silent) return { pitch: head.midi, duration, velocity: 100 } as PlaybackNote;
   if (!head.sounding || event.silent) return;
   const note = soundingNote(head.sounding, duration, head.prebend?.release && head.prebend.semitones);
   const spec = head.bend ?? event.bend?.spec;
@@ -34,36 +37,123 @@ function scoreNote(event: Attack, head: Head, duration: number) {
   return note;
 }
 
-/** Traverse written measures once, carrying sounding heads through ties across voices and bars. */
-export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: string) => void): Performance {
+/** Resolve tempo and attack velocities on the written clock so a repeat restores its own expression. */
+function expression(score: ParsedScore, tempo: number) {
+  const tempi: number[] = [];
+  const velocities = new Map<string, number>();
+  type Position = { id: string; time: number; explicit: boolean; index: number; voice: number };
+  const positions = new Map<string, Position>();
+  const lanes: Position[][] = [];
+  const levels = { ppp: 28, pp: 40, p: 52, mp: 66, mf: 82, f: 98, ff: 112, fff: 124 };
+  let bpm = tempo, velocity = 100, time = 0;
+  for (const m of score.measures) {
+    const change = score.playback?.tempos?.[m.number];
+    if (change) bpm = change * tempo / (score.playback.tempo ?? 120);
+    tempi.push(bpm);
+    const byTime = m.voices.flatMap((voice, index) => voice.events.map(attack => ({
+      attack, voice: index, onset: seconds(attack.onset, 1),
+    }))).sort((a, b) => a.onset - b.onset || Number(!!b.attack.dynamic) - Number(!!a.attack.dynamic));
+    for (const { attack, voice, onset } of byTime) {
+      if (attack.dynamic) velocity = levels[attack.dynamic];
+      velocities.set(attack.id, velocity);
+      const lane = lanes[voice] ??= [];
+      const point = { id: attack.id, time: time + onset, voice, explicit: !!attack.dynamic, index: lane.length };
+      positions.set(attack.id, point);
+      lane.push(point);
+    }
+    time += seconds(m.span, 1);
+  }
+  for (const span of score.spans ?? []) {
+    if (span.kind !== 'crescendo' && span.kind !== 'diminuendo') continue;
+    const first = positions.get(span.from), last = positions.get(span.to);
+    if (!first || !last || last.time <= first.time) continue;
+    const rising = span.kind === 'crescendo';
+    const start = rising && span.niente ? 1 : velocities.get(span.from);
+    const end = !rising && span.niente ? 1 : last.explicit ? velocities.get(span.to) : Math.min(127, Math.max(1, start + (rising ? 24 : -24)));
+    for (let i = first.index; i <= last.index; i++) {
+      const point = lanes[first.voice][i];
+      velocities.set(point.id, Math.round(start + (end - start) * (point.time - first.time) / (last.time - first.time)));
+    }
+  }
+  return { tempi, velocities };
+}
+
+/** Traverse the chosen written measures, carrying sounding heads through adjacent ties. */
+export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: string) => void, visits = measureVisits(score, false)): Performance {
   const events: PlaybackEvent[] = [];
-  const prior = new Map(score.ties.map(tie => [tie.to + ':' + tie.toHead, tie.from + ':' + tie.fromHead]));
+  const prior = new Map(score.ties.map(tie => [tie.to + ':' + tie.toHead, tie]));
   const sounding = new Map<string, { note: PlaybackNote; start: number }>();
-  const whole = 240 / tempo;
+  const { tempi, velocities } = expression(score, tempo);
+  const tremolos = new Map((score.spans ?? []).filter(span => span.kind === 'tremolo').map(span => [span.from, span]));
+  const glissandi = new Map((score.spans ?? []).flatMap(span => span.kind === 'glissando' ? [[span.to + ':' + span.toHead, span] as const] : []));
+  const decorations = new Map<string, { attack: Attack; key: KeyManager }>();
+  const keys = new Map<string, KeyManager>();
+  let previousBar = 0;
   let bar = 0;
-  for (const measure of score.measures) {
+  for (const number of visits) {
+    const measure = score.measures[number - 1];
+    if (number !== previousBar + 1) sounding.clear();
+    previousBar = number;
+    const whole = 240 / tempi[number - 1];
     // Process by onset so an earlier attack in a later-written voice can start a named tie.
     const attacks = measure.voices.flatMap(v => v.events).map(attack => ({ attack, time: bar + seconds(attack.onset, whole) }));
     attacks.sort((a, b) => a.time - b.time);
+    const inBar = new Map<string, PlaybackEvent>();
     for (const { attack, time } of attacks) {
       const duration = seconds(attack.duration, whole);
       const notes: PlaybackNote[] = [];
+      if (attack.grace || attack.ornament) {
+        const key = measure.state.key ?? 'C';
+        if (!keys.has(key)) keys.set(key, new KeyManager(key));
+        decorations.set(attack.id, { attack, key: keys.get(key) });
+      }
       attack.heads.forEach((head, i) => {
         const id = attack.id + ':' + i;
-        const tied = sounding.get(prior.get(id));
+        const tie = prior.get(id);
+        const tied = tie && sounding.get(tie.from + ':' + tie.fromHead);
         if (tied) {
           tied.note.duration = Math.max(tied.note.duration, time + duration - tied.start);
+          if (tie.bend) {
+            const { semitones, hold, release } = tie.bend;
+            tied.note.bend = [...(tied.note.bend ?? []),
+              { time: time - tied.start + duration * hold[0] / hold[1], semitones },
+              { time: time - tied.start + duration * release[0] / release[1], semitones: 0 }];
+          }
           sounding.set(id, tied);
         } else {
           const note = scoreNote(attack, head, duration);
-          if (note) { notes.push(note); sounding.set(id, { note, start: time }); }
+          if (note) {
+            const gliss = glissandi.get(id);
+            const source = gliss && sounding.get(gliss.from + ':' + gliss.fromHead);
+            if (source) source.note.bend = [...(source.note.bend ?? []),
+              { time: time - source.start, semitones: note.pitch - source.note.pitch }];
+            note.velocity = velocities.get(attack.id);
+            if (score.program !== undefined) note.program = score.program;
+            notes.push(note); sounding.set(id, { note, start: time });
+          }
         }
       });
-      events.push({ time, duration, source: attack.id, notes, mark: mark && (() => mark(attack.id)) });
+      inBar.set(attack.id, { time, duration, source: attack.id, notes, mark: mark && (() => mark(attack.id)) });
+    }
+    for (const [id, first] of inBar) {
+      const span = tremolos.get(id);
+      if (span?.kind !== 'tremolo') { events.push(first); continue; }
+      const last = inBar.get(span.to);
+      const length = first.duration + last.duration, pulse = whole / 2 ** (2 + span.strokes);
+      // Alternate source IDs so the cursor returns to the correct written head on every pulse.
+      for (let i = 0; i * pulse < length - 1e-9; i++) {
+        const event = i % 2 ? last : first, duration = Math.min(pulse, length - i * pulse);
+        events.push({ ...event, time: first.time + i * pulse, duration, notes: event.notes.map(n => ({ ...n, duration })) });
+      }
+      inBar.delete(span.to);
     }
     bar += seconds(measure.span, whole);
   }
-  return { events, duration: bar };
+  const sounded = decorations.size ? events.flatMap(event => {
+    const word = decorations.get(String(event.source));
+    return word ? decorateAttack(event, word.attack, word.key) : [event];
+  }) : events;
+  return { events: sounded.sort((a,b) => a.time - b.time), duration: bar };
 }
 
 /** Fixed scores may contain fragments and text voices outside the shared parser's grammar. */

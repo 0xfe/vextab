@@ -1,0 +1,8 @@
+// Tied bend and head-to-head glissando, with an independently routed percussion hit.
+meter 2/4
+play { tempo 96 tempo 72 at 2 }
+guitar lead { program 26 view both tabStems on
+  :q 5/1[bend +2 rise=1/2] 5/1[tie, release hold=1/4 release=3/4] |
+  :q (5/2 5/1) (7/2 8/1[gliss 2]) | }
+drums percussion { program 118 map bell "Ride bell" line 4.5 head triangle stem up midi 53
+  :q bell[dynamic p] rest | :q bell[dynamic ff] rest | }

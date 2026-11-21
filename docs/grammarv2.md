@@ -305,12 +305,12 @@ piano {
 
 - A tie matches the same written pitch and string where known. It joins the sounding duration. A slur shapes a phrase. All independently picked notes underneath it keep their attacks. A chord-head tie uses explicit head IDs when unison or reordering makes the match ambiguous.
 - A span written inside a pattern binds to endpoints in that invocation. Named endpoints inside two uses of the same pattern have different instance IDs. An outer score can name a use and qualify an endpoint, e.g. `answer.crest`. An unqualified ambiguous name is a diagnosis at the reference.
-- A keyboard part can show simultaneous voices with separate stems, cross-staff material and pedalling. A future cross-staff projection would annotate an event's display staff while keeping its voice, written rhythm and source identity intact.
+- A keyboard part can show simultaneous voices with separate stems, cross-staff material and pedalling. The cross-staff projection annotates an event's display staff while keeping its voice, written rhythm and source identity intact.
 - Add one public typed feature at a time. For a hairpin, define its name, valid anchor kinds, endpoint and placement rules, drawing adapter, text description, print projection, and any playback effect. Unsupported effects on a chosen backend get a diagnostic at the mark. Hosts keep supplying trusted rendering and playback code through ordinary APIs. Score text consists of data.
 
 VexFlow **5.7.0** provides shared staff groups and barlines, split chords, percussion maps and navigation. Pedal, trill, ottava, hairpin, tuplet and palm-mute spans can cross systems. [Continuous layout](https://github.com/vexflow/vexflow/blob/5.7.0/src/continuouslayout.ts) · [Span kinds and fragment drawing](https://github.com/vexflow/vexflow/blob/5.7.0/src/continuousspan.ts) · [Instrument profiles](https://github.com/vexflow/vexflow/blob/5.7.0/src/instrumentprofile.ts)
 
-VexTab's independently printed parts retain forced accidentals and chord diagrams. The M1 audit records which marks work on SVG, Canvas and paper. Future grace groups, ornaments, tremolos and multimeasure rests need coverage across screen, print and playback before entering the public catalogue. [M1 engraving audit](../issues/196/README.md) · [Publication](https://github.com/vexflow/vexflow/blob/5.7.0/src/publication.ts) · [VexTab projection](../src/score/layout.ts)
+VexTab's independently printed parts retain forced accidentals and chord diagrams. The M1 audit records which marks work on SVG, Canvas and paper. The M4 expressive commands below cover grace groups, ornaments and alternating tremolos. Edition settings control multimeasure rests. [M1 engraving audit](../issues/196/README.md) · [Publication](https://github.com/vexflow/vexflow/blob/5.7.0/src/publication.ts) · [VexTab projection](../src/score/layout.ts)
 
 As an extension example, reserve qualified mark names such as `[ornament.turn above]`. A mark definition specifies its target (head, attack, boundary, or span), argument types, units and legal values. The compiler can then locate an invalid direction, a wrong endpoint or a missing print implementation before drawing. A core descriptor can map a pedal line to `ContinuousSpan`, a tremolo to a stem modifier and a grace passage to a pre-attack group whose written time belongs to the anchor. Implement a typed adapter and editor help together. This route can expose new VexFlow primitives without making their JavaScript constructor signatures part of the language.
 
@@ -390,3 +390,32 @@ const letterScore = renderEdition(otherHost, score, 'conductor', { paper: 'Lette
 Settings apply in order from shared defaults to the selected edition to explicit API options. Authored break and turn lists accumulate. An explicit list replaces that category, including an empty list. Explicit margins override individual sides. An explicit `regions` list replaces the authored cues. `renderScorePart` uses the same edition with its existing staff and voice selection. Screen layout and playback read the musical source independently.
 
 Read `result.diagnostics` for source ranges and `result.publication.pages` for systems and written measure numbers. `publication.toSVG(page, fonts)` and `publication.toPrintHTML(fonts)` accept outline faces for the fonts used in the score. The Haydn inspection script shows the complete export. [Editable quartet](../guide/scores/haydn-emperor-variation.vextab) · [Edition evidence](../issues/198/README.md)
+
+## Expressive score commands
+
+| Write | Meaning |
+| --- | --- |
+| `C4[verse one "ev" hyphen, verse two "I" elide "am"]` | Attach independent named underlays to one attack. A hyphen finds the next syllable of its verse. `extend=2` carries a word through two following events in the same voice, including across a bar. |
+| `C4[harmony C "m7" bass Bb]` | Specify root, quality and optional slash bass. Score transposition spells both pitches. |
+| `crescendo niente { :q C4[dynamic p] D4 E4 F4[dynamic f] }` | Draw a native hairpin. `niente` marks the closed end. Dynamics range from ppp through fff. Diminuendos use the same syntax. |
+| `Ab3[onStaff lower]` and `C5[sharedStem opening]` | In a piano part, move the written note to the named hand’s stave. A shared stem joins simultaneously marked upper and lower notes with the same name. The original hand retains playback and source ownership. |
+| `continuousBeam { :8 C5 D5 E5 F5 }` and `feather right { :16 C5 D5 E5 F5 }` | Carry a beam across bars or systems, or fan a single-bar group toward the specified end. A feathered beam preserves the authored durations. |
+| `tuplet 3:2 { :q C5 tuplet 3:2 { :8 D5 E5 F5 } :q G5 }` | Multiply each nested ratio on the voice clock. The example occupies one half note. |
+| `tremolo 2 { :h C5 E5 }` | Alternate two equal whole, half or quarter notes in one bar. Their combined time is the value of one written endpoint. Supply one to four strokes. Use explicit beams for any separate beamed group in the same voice and bar. |
+| `5/1[bend +2 rise=1/2] 5/1[tie, release hold=1/4 release=3/4]` | Bend the first attack and release during the tied note on that string. Fractions on the continuation are relative to its own duration. |
+| `(5/2 5/1) (7/2 8/1[gliss 2])` | Slide from head 2 of the preceding attack to the marked destination head. Head numbers start at one in authored chord order. |
+| `E4[grace before (D4 Eb4), ornament turn]` | Attach up to sixteen grace pitches before or after the principal. Supported signs are `tr`, `turn`, `turn_inverted`, `mordent` and `mordent_inverted`. |
+| `map bell "Ride bell" line 4.5 head triangle stem up midi 53` | Declare a named hit inside a drums part. Use its ID as a note or chord head. Available shapes are normal, cross, circle-cross and triangle. |
+
+### Playing expression
+
+Set `program 26` inside an instrument for a zero-based General MIDI program. Write `play { tempo 96 tempo 72 at 2 }` to change speed at written bar 2. Each distinct program gets a playback-plugin session on the shared transport.
+
+```js
+const player = new Player(parseScore(source), { order: 'performed' });
+await player.play();
+```
+
+Written order is the default. Performed order revisits repeat bodies and selects successive endings. Equal bar grids share an authored repeat across instruments. Repeated attacks retain their written source IDs. A display staff, printed cue or paired guitar TAB adds no playback voice.
+
+Dynamics set attack velocity. Hairpins interpolate between endpoint velocities in their own voice. An unmarked open end uses a 24-step change and niente uses the softest sounding velocity. Glissandi and tied bends supply timed pitch ramps to the playback plugin. Grace pitches share a quarter of the principal attack’s time. The five ornamental signs use short diatonic figures in the written key and resolve to the principal. These are playback interpretations of unmeasured signs. [Complete musical examples and controls](../issues/199/README.md)

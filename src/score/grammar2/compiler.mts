@@ -64,7 +64,7 @@ function hammerSource(head: Head, previous: ScoreEvent | undefined, kind: 'hamme
 /** Every invocation has fresh budgets and IDs. No parsing or expansion state survives an edit. */
 export function compile(source: string): ScoreV2 {
   const fail: Fail = (code, reason, range, trace = []) => { throw new ScoreV2Error(code, reason, source, range, trace); };
-  const { editions, patterns, parts, scoreMeters, pickup, pickupRange, playback, measureNumbers, layout, transpose: scoreTranspose } = readScore(source, fail);
+  const { tempoRanges, editions, patterns, parts, scoreMeters, pickup, pickupRange, playback, measureNumbers, layout, transpose: scoreTranspose } = readScore(source, fail);
   const meterText = scoreMeters[1]?.value ?? '4/4';
   const firstLength = pickup && fractionText(rational(...pickup, fail, pickupRange, []));
   const quarter: Fraction = [BigInt(1), BigInt(4)];
@@ -184,6 +184,22 @@ export function compile(source: string): ScoreV2 {
             if (Math.abs(transpose) > 127) fail('instrument', 'Transposition exceeds the MIDI range', node.range, trace);
             walk(node.body, duration, rhythmRange, scale, trace);
             transpose = outer;
+            break;
+          }
+          case 'crescendo': case 'diminuendo': case 'continuousBeam': case 'feather': case 'tremolo': {
+            const start = events.length;
+            const clock = node.kind === 'tremolo' ? rational(scale[0], scale[1] * BigInt(2), fail, node.range, trace) : scale;
+            walk(node.body, duration, rhythmRange, clock, trace);
+            const members = events.slice(start), first = members[0], last = members[members.length - 1];
+            if (members.length < 2) fail('syntax', 'This span needs two endpoints', node.range, trace);
+            if (node.kind === 'feather' || node.kind === 'continuousBeam') {
+              if (members.some(e => !e.heads.length || Number(e.writtenDuration.split('/')[1]) < (node.kind === 'feather' ? 16 : 8)) ||
+                  (node.kind === 'feather' && first.bar !== last.bar)) fail('syntax', 'Invalid pitches or durations for this beam', node.range, trace);
+            }
+            if (node.kind === 'tremolo' && (members.length !== 2 || first.bar !== last.bar || !first.heads.length || !last.heads.length ||
+                first.writtenDuration !== last.writtenDuration || !['1/1','1/2','1/4'].includes(first.writtenDuration)))
+              fail('syntax', 'Tremolo needs two equal whole, half or quarter attacks in one measure', node.range, trace);
+            spans.push({ kind: node.kind, first: first.id, last: last.id, niente: node.niente, feather: node.feather, strokes: node.strokes, range: node.range });
             break;
           }
           case 'palmMute': case 'slur': case 'beam': {
@@ -313,6 +329,9 @@ export function compile(source: string): ScoreV2 {
   const measureCount = Math.max(...compiled.map(part => part.measureCount));
   for (const [n, change] of Object.entries(scoreMeters)) {
     if (Number(n) > measureCount) fail('alignment', 'Meter change lies beyond the score', change.range);
+  }
+  for (const [bar, range] of tempoRanges) {
+    if (bar > measureCount) fail('alignment', 'Tempo change lies beyond the score', range);
   }
   for (const edition of editions) {
     const target = compiled.find(p => p.id === edition.part);

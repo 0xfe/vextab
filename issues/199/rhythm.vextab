@@ -1,0 +1,6 @@
+// Exact-time companion to the Joplin strain. Both hands share the first stem.
+meter 4/4
+piano { upper { :q C5[sharedStem opening] feather right { :16 C5 D5 E5 F5 } tremolo 2 { :h C5 E5 } |
+  continuousBeam { :8 C5 D5 E5 F5 G5 A5 B5 C6 | break system D6 E6 } :q. F5 G5 |
+  tuplet 3:2 { :q C5 tuplet 3:2 { :8 D5 E5 F5 } :q G5 } :h C5 | }
+ lower { :q C4[sharedStem opening] :h. rest | times 3 { :w rest | } } }

@@ -177,8 +177,8 @@ export function resolveMarks(measures: Measure[], spans: ScoreSpan[]): void {
     }
     for (const v of measure.voices) v.events.forEach((event, i) => {
       const lyric = event.lyric;
-      if (lyric?.hyphen && !v.events.slice(i + 1).some(e => e.lyric)) fail(lyric.range, 'Hyphen needs a following syllable in this bar and voice');
-      if (lyric?.extend && !v.events[i + lyric.extend]) fail(lyric.range, 'Lyric extender must end in this bar and voice');
+      if (!lyric?.crossConnector && lyric?.hyphen && !v.events.slice(i + 1).some(e => e.lyric)) fail(lyric.range, 'Hyphen needs a following syllable in this bar and voice');
+      if (!lyric?.crossConnector && lyric?.extend && !v.events[i + lyric.extend]) fail(lyric.range, 'Lyric extender must end in this bar and voice');
     });
   }
 }

@@ -137,7 +137,7 @@ QUnit.module('Responsive studies', () => {
       [guitar.replace('ending 1 {','ending 3 {'), '3'],
       [lead.replace('barre=2/4..3','barre=2/4..2'), 'frame'],
       [lead.replace('x 0 2 2 1 0','x 0 2 3 1 0'), 'frame'],
-      [lead.replace('extend=2','extend=20'), 'lyric'],
+      [lead.replace('extend=2','extend=99'), 'lyric'],
       ['meter 1/4 staff { C4 mark "Coda" | }','mark'],
     ]) {
       const text = source.replace(/\n/g, '\r\n');

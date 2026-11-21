@@ -9,6 +9,7 @@ import './grammar2';
 import './grammar2-views';
 import './conductor';
 import './editions';
+import './expression';
 import './grammar2-parity';
 import './piano';
 import './transpose';

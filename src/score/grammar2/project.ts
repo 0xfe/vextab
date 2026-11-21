@@ -1,6 +1,7 @@
 // Translate one v2 instrument into the measured score used by engraving, printing, navigation and playback.
+import { resolveVerseLinks } from '../verses';
 import { duplicateMark } from './marks.mts';
-import { Fraction, FrettedInstrument, KeyManager, Music, Tuning } from 'vexflow';
+import { NotationSpelling, PercussionMap, Fraction, FrettedInstrument, KeyManager, Music, Tuning } from 'vexflow';
 import type { Attack, Head, Measure, MeasureVoice, ParsedScore, StaffState } from '../model';
 import { midiPitch, soundingGuitarPitch, spellFret } from '../music';
 import { Interval, transposeChord } from '../transpose';
@@ -78,6 +79,9 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   };
   const measures: Measure[] = [];
   const projected: ParsedScore = { ...(instrument && { instrument }), source: score.source, measures, ties: [], spans: [], playback: score.playback, layout: score.layout, measureNumbers: score.measureNumbers ?? false };
+  projected.program = part.program;
+  const kit = part.drums?.length ? new PercussionMap([...PercussionMap.kit, ...part.drums]) : drumKit;
+  if (part.kind === 'drums') state.kit = kit;
   const fullBar = new Fraction().parse(initialMeter).simplify().toString();
   const intervals = new Map<string, Interval>();
   function intervalFor(amount: number): Interval | undefined {
@@ -92,7 +96,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     const range = locate(head.range);
     const marks: Head['marks'] = [];
     let result: Head;
-    if ('drum' in head) result = { drum: head.drum, written: drumKit.note([head.drum], 'q').keys[0], sounding: null, range };
+    if ('drum' in head) result = { drum: head.drum, midi: part.drums?.find(d => d.id === head.drum)?.midi, written: kit.note([head.drum], 'q').keys[0], sounding: null, range };
     else if ('pitch' in head) {
       const letter = head.pitch[0].toLowerCase(), sign = head.pitch.slice(1, -1);
       manager.reset();
@@ -125,6 +129,8 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         const name = sign ? letter + (sign === 'n' ? '' : sign) : manager.getAccidental(letter).note;
         result.written = interval ? interval.pitch(name, Number(mark.pitch.slice(-1))) : name + '/' + mark.pitch.slice(-1);
       }
+      if (mark.kind === 'gliss') result.glissFrom = mark.fromHead;
+      if (mark.kind === 'release') result.release = mark;
       if (mark.kind === 'sign') marks.push({ articulation: mark.code, position: mark.position });
       if (mark.kind === 'finger' || mark.kind === 'stringNumber') marks.push({ finger: String(mark.value), stringNumber: mark.kind === 'stringNumber', position: mark.side });
     }
@@ -187,7 +193,27 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         if (!heads.length) throw new ScoreError('measure', 'A slash needs a written head', locate(mark.range));
         result.slash = true;
       }
-      if (mark.kind === 'lyric') result.lyric = { text: mark.text, extend: mark.extend, hyphen: mark.hyphen, range: locate(mark.range) };
+      if (mark.kind === 'lyric') {
+        const syllable = { ...mark, range: locate(mark.range) };
+        if (mark.verse) (result.verses ??= []).push(syllable);
+        else result.lyric = syllable;
+      }
+      if (mark.kind === 'harmony') {
+        const { root, bass, quality } = mark;
+        result.harmony = NotationSpelling.transposeChord({ root, quality, bass }, interval?.semitones ?? 0, interval?.steps ?? 0);
+        result.chord = { text: NotationSpelling.chordText(result.harmony), range: locate(mark.range) };
+      }
+      if (mark.kind === 'dynamic') result.dynamic = mark.value;
+      if ((mark.kind === 'ornament' || mark.kind === 'grace') && (!heads.length || !state.notation || heads.some(h => !!h.drum)))
+        throw new ScoreError('measure', 'A grace group or ornament needs a pitched notation anchor', locate(mark.range));
+      if (mark.kind === 'ornament') result.ornament = mark.value;
+      if (mark.kind === 'onStaff' || mark.kind === 'sharedStem') {
+        if (!state.piano || !heads.length) throw new ScoreError('measure', 'This assignment needs a pitched piano note', locate(mark.range));
+        if (mark.kind === 'onStaff') result.displayHand = mark.hand === 'upper' ? 'right' : 'left';
+        else result.sharedStem = mark.name;
+      }
+      if (mark.kind === 'grace') result.grace = { side: mark.side, pitches: mark.pitches.map(pitch =>
+        projectHead({ pitch, range: mark.range, marks: [] }, interval).written) };
       if (mark.kind === 'symbol') result.chord = { text: interval ? transposeChord(mark.text, interval) : mark.text, color: mark.ink && ink(mark.ink, locate(mark.range)), range: locate(mark.range) };
       if (mark.kind === 'line') {
         if (event.kind !== 'rest') throw new ScoreError('measure', 'Only a rest takes a staff line', locate(mark.range));
@@ -248,6 +274,12 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
           const points = mark.kind === 'tieStart' ? starts : ends;
           if (points.has(mark.name)) throw new ScoreError('measure', 'Duplicate tie endpoint ' + mark.name, locate(mark.range));
           points.set(mark.name, { event: next, index: i, bar: event.bar, hand, range: locate(mark.range) });
+        }
+        const gliss = next.heads[i].glissFrom;
+        if (gliss !== undefined) {
+          if (!previous?.heads[gliss]) throw new ScoreError('measure', 'Missing previous glissando head', next.heads[i].range);
+          projected.spans.push({ kind: 'glissando', id: 'gliss-' + next.id + '-' + i,
+            from: previous.id, fromHead: gliss, to: next.id, toHead: i, range: next.heads[i].range });
         }
         const tie = head.marks.find(m => m.kind === 'tie');
         if (!tie) return;
@@ -310,6 +342,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       m.voices.push(value);
       voices.push(value);
     }
+    resolveVerseLinks(voices, projected.spans);
     addEndings(voice);
     addSpans(voice, voices);
   }
@@ -317,6 +350,8 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   /** Endings describe shared bar boundaries even when only one voice declares the repeat. */
   function addEndings(voice: ScoreVoice) {
     for (const repeat of voice.repeats ?? []) {
+      if (!projected.repeats?.some(r => r.first === repeat.first && r.bodyEnd === repeat.bodyEnd &&
+        r.endings.length === repeat.endings.length && r.endings.every((e, i) => e.last === repeat.endings[i].last))) (projected.repeats ??= []).push(repeat);
       const range = locate(repeat.range);
       if (measures.slice(repeat.first - 1, repeat.endings[repeat.endings.length - 1].last).some(m => !m.voices[0].events.length))
         throw new ScoreError('measure', 'An ending needs sounding or resting measures', range);
@@ -342,14 +377,23 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     const indices = new Map(voice.events.map((event, i) => [event.id, i]));
     for (const mark of voice.spans) {
       const range = locate(mark.range);
-      if (mark.kind === 'slur' || mark.kind === 'palmMute') {
+      if (mark.kind === 'continuousBeam' || mark.kind === 'crescendo' || mark.kind === 'diminuendo' || mark.kind === 'tremolo') {
+        if (!state.notation) throw new ScoreError('measure', 'This expression span needs a notation staff', range);
+        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, niente: mark.niente, strokes: mark.strokes, range, id: mark.kind + '-' + mark.first });
+        if (mark.kind === 'tremolo' || mark.kind === 'continuousBeam') {
+          for (const v of voices) for (const event of v.events) if (indices.get(event.id) >= indices.get(mark.first) && indices.get(event.id) <= indices.get(mark.last)) {
+            if (mark.kind === 'tremolo') event.tremolo = mark.strokes;
+            else event.continuousBeam = true;
+          }
+        }
+      } else if (mark.kind === 'slur' || mark.kind === 'palmMute') {
         if (mark.kind === 'palmMute' && mark.strings.some(n => n > state.strings))
           throw new ScoreError('measure', 'Mute outside the instrument tuning', range);
         projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, strings: mark.strings, range, id: mark.kind + '-' + mark.first });
-      } else if (mark.kind === 'beam') {
+      } else if (mark.kind === 'beam' || mark.kind === 'feather') {
         const first = indices.get(mark.first), last = indices.get(mark.last);
         const bar = voice.measures[voice.events[first].bar - 1];
-        (voices[bar.number - 1].beamGroups ??= []).push({ start: first - bar.start, end: last - bar.start, range });
+        (voices[bar.number - 1].beamGroups ??= []).push({ start: first - bar.start, end: last - bar.start, feather: mark.kind === 'feather' ? mark.feather : undefined, range });
       } else if ('to' in mark) {
         projected.spans.push({
           kind: mark.kind, id: mark.kind + '-' + mark.to.event + '-' + mark.to.head, range,
@@ -370,6 +414,19 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     addVoice(voice, staff.sounds ?? part.sounds, staff.name === 'upper' ? 'right' : staff.name === 'lower' ? 'left' : undefined);
   }
   connectNamedTies();
+  const attacks = new Map(measures.flatMap(m => m.voices.flatMap(v => v.events.map(e => [e.id, e] as const))));
+  for (const tie of projected.ties) {
+    const from = attacks.get(tie.from).heads[tie.fromHead], to = attacks.get(tie.to).heads[tie.toHead];
+    if (!to.release) continue;
+    if (!from.bend || from.bend.release || !to.position || from.position.str !== to.position.str)
+      throw new ScoreError('measure', 'A tied release needs a bent source on the same string', to.range);
+    from.tiedBendStart = true;
+    tie.bend = { semitones: from.bend.semitones, rise: from.bend.rise, hold: to.release.hold, release: to.release.release };
+    tie.string = to.position.str;
+  }
+  for (const event of attacks.values()) for (const [i, head] of event.heads.entries())
+    if (head.release && !projected.ties.some(t => t.to === event.id && t.toHead === i && t.bend))
+      throw new ScoreError('measure', 'A release needs a tied continuation', head.range);
   resolveMarks(measures, projected.spans);
   for (const [i, lane] of (part.text ?? []).entries()) {
     const style = { line: -i * 2, ...lane.style };

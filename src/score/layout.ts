@@ -1,5 +1,6 @@
 // Project the shared score into fresh VexFlow objects for each screen or publication view.
 import { position, staveRow, printedGeometry, scoreSurfaces, type Geometry } from '../playback/geometry';
+import { lyrics } from './verses';
 import { editionSettings, type EditionOptions } from './editions';
 import { locations, projectScoreV2 } from './grammar2/project';
 import type { ScoreV2 } from './grammar2/model';
@@ -12,7 +13,7 @@ import { drawPrepared, spansForInset, type PartDrawingOptions } from './publicat
 import { conductorSpec, instrumentComposition, instrumentLabel, selectedPart, type PartSelector } from './conductor';
 import { scoreFont } from './engraving';
 import {
-  Clef, Fraction, Accidental, Annotation, Stroke, Vibrato, Articulation, Modifier, TabSlide, Barline, StaveNote, TabNote, TabTie, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, CanvasContext,
+  AlternatingTremolo, Ornament, TextDynamics, Clef, Fraction, Accidental, Annotation, Stroke, Vibrato, Articulation, Modifier, TabSlide, Barline, StaveNote, TabNote, TabTie, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, CanvasContext,
   type Beam, type StemmableNote, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
   type EasyScoreVoiceSpec, type NotationIdentity, type PublicationOptions, type RenderContext, type ScoreHitRegion,
 } from 'vexflow';
@@ -73,8 +74,9 @@ function guitarNotation(event: Attack, instrument: FrettedInstrument) {
   if (event.bend) {
     const pitched = physical.map(p => ({ str: p.str, fret: Number(p.fret) }));
     labels.push(...instrument.attack(physical, event.base).note.notation);
-    const contours = event.heads.flatMap(h => h.bend ? [h.bend] : []);
-    for (const contour of contours.length ? contours : [event.bend.spec]) {
+    const contours = event.heads.some(h => h.bend)
+      ? event.heads.flatMap(h => h.bend && !h.tiedBendStart ? [h.bend] : []) : [event.bend.spec];
+    for (const contour of contours) {
       labels.push(...instrument.bentAttack(pitched, event.base, contour).note.notation.filter(mark => mark.bend));
     }
   } else if (physical.length) {
@@ -96,6 +98,7 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
   const stemDirection = direction ? (direction === 'up' ? 1 : -1) : staff === 'tab' ? voice.tabDirection : undefined;
   const instrument = new FrettedInstrument(measure.state.tuning, measure.state.capo);
   const clef = staff === 'left' ? 'bass' : measure.state.clef;
+  let pairStem: number;
   const notes: EasyScoreContent[] = voice.events.map(event => {
     const id = sources.project(staff, event.id, event.range);
     const rhythm = { duration: event.base, dots: event.dots, stemDirection };
@@ -106,7 +109,7 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
       return { id, note: { ...rhythm, keys: ['r/4'], clef: 'treble', type: 'r', restLine } };
     }
     if (event.heads[0].drum) {
-      const hit = drumKit.note(event.heads.map(head => head.drum), event.base, direction);
+      const hit = (measure.state.kit ?? drumKit).note(event.heads.map(head => head.drum), event.base, direction);
       return { id, note: { ...hit, dots: event.dots } };
     }
     const notation = guitarNotation(event, instrument);
@@ -114,11 +117,29 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     if (staff === 'tab') {
       return { id, tab: { ...rhythm, keys, notation, positions: event.heads.map(h => ({ ...h.position! })) }, drawStem: voice.tabStems && !['w', '1'].includes(event.base) };
     }
-    return { id, note: { ...rhythm, keys, notation, clef, type: event.slash ? 's' : 'n', autoStem: !direction } };
+    const destination = measure.state.piano ? event.displayHand : undefined;
+    const writtenClef = destination === 'left' ? 'bass' : destination === 'right' ? 'treble' : clef;
+    const note = { ...rhythm, keys, notation, clef: writtenClef, type: event.slash ? 's' : 'n', autoStem: !direction };
+    if (event.tremolo) {
+      // Decide once before layout. An automatic second endpoint can otherwise flip across the middle line.
+      if (pairStem === undefined) {
+        pairStem = stemDirection ?? new StaveNote({ ...note, autoStem: true }).getStemDirection();
+        note.stemDirection = pairStem;
+      } else {
+        note.stemDirection = pairStem;
+        pairStem = undefined;
+      }
+      note.autoStem = false;
+    }
+    return { id, ...(destination && { stave: destination }), note: event.tremolo ? AlternatingTremolo.endpoint(note, event.tremolo) : note,
+      ...(event.grace && { grace: { side: event.grace.side, slur: true, beam: event.grace.pitches.length > 1,
+        notes: event.grace.pitches.map(key => ({ keys: [key], duration: '16', clef: writtenClef })) } }) };
   });
   return {
     notes, stem: direction ?? 'auto',
-    autoBeam: !voice.beamGroups?.length && voice.beams && (staff !== 'tab' || voice.tabStems) && {
+    // The native auto-beamer reads divided tremolo ticks as shorter beamable notes.
+    // Explicit beams in this voice/bar own their stems alongside the alternating strokes.
+    autoBeam: !voice.events.some(e => e.continuousBeam || e.tremolo) && !voice.beamGroups?.length && voice.beams && (staff !== 'tab' || voice.tabStems) && {
       groups: voice.beatGroups?.map(n => new Fraction(n, Number(measure.state.meter.split('/')[1]))),
       stemDirection, beamRests: voice.beamRests, showStemlets: voice.stemlets, beamMiddleOnly: voice.middleRests },
     tuplets: voice.tuplets.map(t => ({ start: t.start, count: t.count, options: { numNotes: t.numNotes, notesOccupied: t.notesOccupied } })),
@@ -150,7 +171,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
   const rests = new Set(parsed.measures.flatMap(m => m.voices.flatMap(v => v.events.filter(e => !e.heads.length).map(e => e.id))));
   const mixedEndings: ScoreSpan[] = [];
   const spec: EasyScoreCompositionSpec = {
-    accidentals: 'key-aware', sheet: { width, x: 10, y: parsed.layout?.top ?? 14, rowGap: parsed.layout?.rowGap ?? 36 }, system: { spaceBetweenStaves: parsed.layout?.staffDistance ?? 9 },
+    accidentals: 'key-aware', graceAccidentals: 'ordered', sheet: { width, x: 10, y: parsed.layout?.top ?? 14, rowGap: parsed.layout?.rowGap ?? 36 }, system: { spaceBetweenStaves: parsed.layout?.staffDistance ?? 9 },
     staves: staves.map(staff => ({
       id: staff, kind: staff === 'tab' ? 'tab' : 'stave',
       // Native instrument labels reserve horizontal room for the brace on every printed system.
@@ -199,16 +220,27 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       const from = eventId(staff, tie.from);
       if (!sources.ids[from]) continue;
       spans.push({ kind: 'tie', id: sources.project(staff, tie.id, tie.range), from,
-        to: eventId(staff, tie.to), fromHead: tie.fromHead, toHead: tie.toHead });
+        to: eventId(staff, tie.to), ...(staff === 'tab' && tie.bend && { bend: tie.bend, string: tie.string }), fromHead: tie.fromHead, toHead: tie.toHead });
     }
   }
   for (const mark of parsed.spans ?? []) {
+    if (mark.kind === 'tremolo') continue; // The paired native element uses final stem positions.
+    if (mark.kind === 'continuousBeam' || mark.kind === 'crescendo' || mark.kind === 'diminuendo' || mark.kind === 'lyric' || mark.kind === 'hyphen') {
+      for (const staff of staves) {
+        const from = eventId(staff, mark.from), to = eventId(staff, mark.to);
+        if (!sources.ids[from] || !sources.ids[to] || staff === 'tab') continue;
+        spans.push({ kind: mark.kind === 'continuousBeam' ? 'beam' : mark.kind, from, to,
+          ...('niente' in mark && { niente: mark.niente }), ...('lane' in mark && { syllableId: eventId(staff, 'lyric' + mark.range.start + '-' + mark.from) }),
+          id: sources.project(staff, mark.id, mark.range) });
+      }
+      continue;
+    }
     if ('fromHead' in mark) {
       for (const staff of staves) {
         if (staff === 'tab') continue; // Native tab ties require equal frets. Draw the guitar gesture after layout.
         const from = eventId(staff, mark.from);
         if (!sources.ids[from]) continue;
-        spans.push({ kind: 'tie', id: sources.project(staff, mark.id, mark.range), from, to: eventId(staff, mark.to),
+        spans.push({ kind: mark.kind === 'glissando' ? 'glissando' : 'tie', id: sources.project(staff, mark.id, mark.range), from, to: eventId(staff, mark.to),
           fromHead: mark.fromHead, toHead: mark.toHead });
       }
       continue;
@@ -223,6 +255,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
     if (mark.kind === 'palmMute' && !staves.includes('tab')) {
       throw new ScoreError('fixed-layout', 'A string-specific palm mute needs a tab staff', mark.range);
     }
+    if (mark.kind !== 'palmMute' && mark.kind !== 'volta') continue;
     const staff = mark.kind === 'palmMute' ? 'tab' : staves[0];
     const id = sources.project(staff, mark.id, mark.range);
     const endpoints = { id, from: eventId(staff, mark.from), to: eventId(staff, mark.to) };
@@ -237,6 +270,25 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       else mixedEndings.push(mark);
     }
     else spans.push({ ...endpoints, kind: mark.kind, text: mark.label });
+  }
+  if (staves.includes('left') && staves.includes('right')) {
+    const pairs: { id: string; upper: string; lower: string }[] = [];
+    for (const measure of parsed.measures) {
+      const named = new Map<string, { upper?: string; lower?: string }>();
+      for (const voice of measure.voices) for (const event of voice.events) if (event.sharedStem) {
+        const name = event.sharedStem + ':' + event.onset;
+        const pair = named.get(name) ?? {};
+        const side = voice.hand === 'right' ? 'upper' : 'lower';
+        if (pair[side]) throw new ScoreError('measure', 'Duplicate shared stem endpoint', event.range);
+        pair[side] = eventId(voice.hand, event.id);
+        named.set(name, pair);
+      }
+      for (const pair of named.values()) {
+        if (!pair.upper || !pair.lower) throw new ScoreError('measure', 'Shared stems need simultaneous notes on both staves', measure.range);
+        pairs.push({ id: pair.upper + '-shared', upper: pair.upper, lower: pair.lower });
+      }
+    }
+    spec.continuous.splitChords = pairs;
   }
   return { spec, staves, sources, eventId, mixedEndings, textLanes };
 }
@@ -282,6 +334,16 @@ function attachPerformanceMarks(note: StaveNote | TabNote, event: Attack, tab: b
   }
 }
 
+/** Native alternating tremolos use a pair of prepared stems and draw after their final layout. */
+function tremoloPairs(score: ParsedScore, view: Projection, composition: EasyScoreComposition) {
+  return (score.spans ?? []).flatMap(span => span.kind === 'tremolo' ? view.staves.flatMap(staff => {
+    const id = view.eventId(staff, span.from);
+    if (staff === 'tab' || !view.sources.ids[id]) return [];
+    return [{ first: composition.getNote(id) as StaveNote, last: composition.getNote(view.eventId(staff, span.to)) as StaveNote,
+      strokes: span.strokes }];
+  }) : []);
+}
+
 /** Decorate the fresh native objects of this part before the formatter measures their ink. */
 function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, factory: Factory) {
   const silent = new Set<string>();
@@ -298,11 +360,25 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
         if (staff === 'tab' && !voice.tabStems) continue;
         for (const group of voice.beamGroups ?? []) {
           const notes = voice.events.slice(group.start, group.end + 1).map(e => composition.getNote(view.eventId(staff, e.id)));
-          factory.Beam({ notes: notes as StemmableNote[] });
+          factory.Beam({ notes: notes as StemmableNote[], options: { feathered: group.feather } });
         }
       }
       for (const voice of voicesFor(m, staff)) for (const event of voice.events) {
         const note = composition.getNote(view.eventId(staff, event.id));
+        if (event.lyric || event.verses?.length) {
+          const marks = note.getModifiers().filter((m): m is Annotation => m instanceof Annotation &&
+            m.phraseManaged && m.getVerticalJustification() === Annotation.VerticalJustify.BOTTOM);
+          const lanes = lyrics(event).sort((a, b) => (a.verse ?? '').localeCompare(b.verse ?? ''));
+          marks.forEach((m, i) => {
+            const range = lanes[i].range;
+            m.setAttribute('id', view.sources.project(staff, 'lyric' + range.start, range, event.id));
+          });
+        }
+        if (event.ornament && staff !== 'tab') note.addModifier(new Ornament(event.ornament.replace('_inverted', 'Inverted')), 0);
+        if (event.dynamic && (voice.hand || staff === view.staves[0])) {
+          const glyphs = [...event.dynamic].map(letter => TextDynamics.GLYPHS[letter]).join('');
+          note.addModifier(new Annotation(glyphs).setFont('Bravura', 15).setVerticalJustification(Annotation.VerticalJustify.BOTTOM), 0);
+        }
         attachPerformanceMarks(note as StaveNote | TabNote, event, staff === 'tab');
         if (event.color) {
           note.setStyle(inkStyle(event.color));
@@ -338,7 +414,7 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
             if (!mark.phraseManaged && !tabChord) continue;
             const kind = mark.getVerticalJustification() === Annotation.VerticalJustify.TOP ? 'chord' : 'lyric';
             if (kind === 'chord' && event.chord?.color) mark.setStyle(inkStyle(event.chord.color));
-            const range = event[kind]?.range;
+            const range = kind === 'chord' && event.chord?.range;
             if (range) mark.setAttribute('id', view.sources.project(staff, kind + range.start, range, event.id));
           }
         }
@@ -388,8 +464,11 @@ function drawTabEndings(view: Projection, composition: EasyScoreComposition, ctx
   return regions;
 }
 
-/** Attach native guitar ties and slides to their physical string endpoints after row breaks are known. */
-function drawTabConnections(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, ctx: RenderContext) {
+/** Attach alternating tremolos and guitar connections after their native stem and string positions settle. */
+function drawPairedMarks(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, ctx: RenderContext) {
+  for (const { first, last, strokes } of tremoloPairs(parsed, view, composition)) {
+    new AlternatingTremolo(first, last, strokes).setContext(ctx).draw();
+  }
   if (view.staves.includes('tab')) for (const span of parsed.spans) {
     if (!('fromHead' in span)) continue;
     const from = composition.getNote(view.eventId('tab', span.from)) as TabNote;
@@ -398,7 +477,7 @@ function drawTabConnections(parsed: ParsedScore, view: Projection, composition: 
     const up = Number(to.getPositions()[span.toHead].fret) > Number(from.getPositions()[span.fromHead].fret);
     const draw = (firstNote?: TabNote, lastNote?: TabNote) => {
       const ends = { firstNote, lastNote, ...indexes };
-      const mark = span.kind === 'slide' ? new TabSlide(ends, up ? TabSlide.SLIDE_UP : TabSlide.SLIDE_DOWN)
+      const mark = span.kind === 'slide' || span.kind === 'glissando' ? new TabSlide(ends, up ? TabSlide.SLIDE_UP : TabSlide.SLIDE_DOWN)
         : !firstNote ? new TabTie(ends)
           : span.kind === 'pull' ? TabTie.createPulloff(ends) : TabTie.createHammeron(ends);
       mark.setContext(ctx).draw();
@@ -444,7 +523,7 @@ function playbackGeometry(composition: EasyScoreComposition, instruments: Screen
         for (const attack of voice.events) {
           const stavesForVoice = voice.hand ? [voice.hand] : view.staves;
           const glyphs = stavesForVoice.map(staff => composition.getNote(view.eventId(staff, attack.id)));
-          geometry.set(attack.id, position(row, glyphs, attack.heads.map(h => !!h.sounding && !attack.silent)));
+          geometry.set(attack.id, position(row, glyphs, attack.heads.map(h => (!!h.sounding || h.midi !== undefined) && !attack.silent)));
         }
       }
     }
@@ -519,7 +598,7 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
   const labels = views.flatMap(view => [...view.textLanes.regions.values()]);
   const extraRegions = [...labels, ...frames.regions];
   for (const { score, view, local } of instruments) {
-    drawTabConnections(score, view, local, ctx);
+    drawPairedMarks(score, view, local, ctx);
     extraRegions.push(...drawTabEndings(view, local, ctx, composition));
   }
   const sources = Object.assign(Object.create(null), ...views.map(view => view.sources.ids));
@@ -587,7 +666,8 @@ function selectVoices(score: ParsedScore, part: Part, number?: number): ParsedSc
       voices = [{ ...voice, stem: undefined }];
     }
     for (const voice of voices) for (const event of voice.events) events.add(event.id);
-    return { ...m, voices: voices.map((v,i) => i ? v : { ...v, rehearsal: m.voices[0].rehearsal }) };
+    return { ...m, voices: voices.map((v,i) => ({ ...v, rehearsal: i ? v.rehearsal : m.voices[0].rehearsal,
+      events: hand ? v.events.map(e => e.displayHand ? { ...e, displayHand: undefined } : e) : v.events })) };
   });
   const ties = score.ties.filter(t => events.has(t.from) && events.has(t.to));
   const spans = (score.spans ?? []).filter(s => s.kind === 'volta' || events.has(s.from)).map(s => {
@@ -621,9 +701,13 @@ function publicationDrawing(scores: ParsedScore[], views: Projection[], source: 
       const local = instrumentComposition(composition, start, staves.length);
       start += staves.length;
       const parsed = scores[index], view = views[index];
-      const selected = insetMeasure === undefined ? parsed : {
-        ...parsed, measures: [{ ...parsed.measures[insetMeasure - 1], number: 1 }], spans: [], ties: [],
-      };
+      let selected = parsed;
+      if (insetMeasure !== undefined) {
+        const measure = parsed.measures[insetMeasure - 1];
+        const ids = new Set(measure.voices.flatMap(voice => voice.events.map(e => e.id)));
+        selected = { ...parsed, measures: [{ ...measure, number: 1 }], ties: [],
+          spans: parsed.spans.filter(span => ids.has(span.from) && ids.has(span.to)) };
+      }
       const partView = { ...view, staves, mixedEndings: insetMeasure === undefined ? view.mixedEndings : [] };
       prepareScreen(selected, partView, local, factory);
       if (hooks?.length) {
@@ -639,7 +723,7 @@ function publicationDrawing(scores: ParsedScore[], views: Projection[], source: 
     }
     drawPrepared(factory, () => finishLayout(composition, instruments));
     for (const { score, view, local } of instruments) {
-      drawTabConnections(score, view, local, ctx);
+      drawPairedMarks(score, view, local, ctx);
       drawTabEndings(view, local, ctx, composition);
       if (!score.measures.some(m => m.voices.some(v => v.events.some(e => e.frame)))) continue;
       const top = Math.min(0, ctx.svg.getBBox().y);

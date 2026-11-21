@@ -5,6 +5,7 @@ export interface PitchPoint { time: number; semitones: number }
 
 /** One sounding head. MIDI pitch 60 is middle C. Durations are in seconds. */
 export interface PlaybackNote {
+  program?: number;
   pitch: number;
   duration: number;
   velocity: number;
