@@ -6,9 +6,14 @@ const positions = { left: Modifier.Position.LEFT, right: Modifier.Position.RIGHT
   above: Modifier.Position.ABOVE, below: Modifier.Position.BELOW };
 
 /** Let the native modifier context reserve the side column alongside accidentals. */
-export function fingerNumber(label: string, position: ModifierPosition, stringNumber = false) {
+export function fingerNumber(label: string, position: ModifierPosition, stringNumber = false, tab = false) {
   const modifier = stringNumber ? new StringNumber(label) : new FretHandFinger(label);
   modifier.setPosition(position);
+  if (!tab && !stringNumber && position === Modifier.Position.LEFT) {
+    // Reserve the padding before VexFlow places accidentals. Moving ink alone can overlap their column.
+    const padding = 4;
+    modifier.setWidth(modifier.getWidth() + 2 * padding).setOffsetX(padding);
+  }
   return modifier;
 }
 
@@ -24,7 +29,7 @@ export function attachHeadMarks(note: Note, index: number, marks: HeadMark[], ta
         }));
       }
       // Use the bundled SMuFL circled digits on TAB. Letter fingerings retain their text face.
-      const finger = fingerNumber(mark.finger, pos, !tab && mark.stringNumber);
+      const finger = fingerNumber(mark.finger, pos, !tab && mark.stringNumber, tab);
       if (tab && /^\d$/.test(mark.finger)) {
         const glyph = VexFlow.Glyphs['guitarString' + mark.finger];
         finger.setFont('Bravura', 16).setText(glyph);

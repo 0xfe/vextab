@@ -156,9 +156,19 @@ QUnit.module('Independent part engraving', () => {
     assert.strictEqual(tie.above, false);
     const check = (group: Element, digit: string) => {
       const texts = [...group.querySelectorAll('text')];
-      const sharp = texts.find(t => t.textContent === '\ue262').getBBox();
-      const finger = texts.find(t => t.textContent === digit).getBBox();
-      assert.ok(finger.x >= sharp.x + sharp.width + 1, 'finger clears the sharp by at least one layout unit');
+      // Firefox inflates SVG text bounds as the print page scales. Measure the painted glyph ink.
+      const ctx = document.createElement('canvas').getContext('2d');
+      const ink = (el: SVGTextElement) => {
+        const font = getComputedStyle(el);
+        ctx.font = [font.fontStyle, font.fontWeight, font.fontSize, font.fontFamily].join(' ');
+        const metrics = ctx.measureText(el.textContent), x = Number(el.getAttribute('x'));
+        return { left: x - metrics.actualBoundingBoxLeft, right: x + metrics.actualBoundingBoxRight };
+      };
+      const sharp = ink(texts.find(t => t.textContent === '\ue262'));
+      const finger = ink(texts.find(t => t.textContent === digit));
+      const head = ink(group.querySelector('.vf-notehead text'));
+      assert.ok(finger.left >= sharp.right + 1, 'finger clears the sharp by at least one layout unit');
+      assert.ok(head.left >= finger.right + 1, 'finger clears the notehead by at least one layout unit');
     };
     const visible = (id: string) => root.querySelector('[id="vf-' + view.navigation.events.find(e => e.source === id && !e.id.includes('-tab-')).id + '"]');
     check(visible('1.main.melody.14'), '1');
