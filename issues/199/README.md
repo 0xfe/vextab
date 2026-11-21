@@ -12,25 +12,25 @@ The acceptance passages use the same score text for the conductor, extracted par
 
 ## Native controls
 
-| Source | VexFlow 5.7 controls | Checks |
+| Source | Native VexFlow controls | Checks |
 | --- | --- | --- |
 | [Voice and harmony](voice.vextab) | Verse annotations, elision, anchored lyric and hyphen fragments, structured chord spelling, dynamic glyphs and continuous hairpins | Both C and B-flat transpose in Cm7/B♭. The result reads Dm7/C. One niente circle survives a forced break. The closing hyphen aligns to the destination syllable. |
 | [Piano and rhythm](rhythm.vextab) | Per-note stave assignment, split chord, continuous and feathered beams, stacked tuplets, paired alternating tremolo | Compare the stem x coordinates. Count two beam fragments. The inner tuplet eighth occupies 1/18 of a whole note. Two written half-note tremolo endpoints share a half note of elapsed time. |
 | [Guitar and percussion](techniques.vextab) | Continuous tied bend and glissando, TAB slide and named percussion map | The release belongs to the original attack on string 1. Only the chosen chord head slides. The triangular ride bell plays MIDI 53 on its part’s route. |
 | [Public API regressions](../../tests/expression.ts) | Native grace groups, ornaments, editions, cue insets, two playback sessions | Principal, grace and ornamental notes stay within written time. A cue and a second view of the guitar add no sounding attacks. Both sessions stop at the end. |
 
-The bundled 5.7.0 validator accepts a syllable anchor on an extender. VexTab also admits it on a hyphen, then supplies the final destination syllable’s measured coordinates to the native fragment. VexFlow draws the marks in SVG, Canvas and publication. The adapter checks its insertion point at build time. [Adapter](../../scripts/vexflow-publication-loader.cjs) · [Verse positioning](../../src/score/lead.ts)
+The bundled validator accepts a syllable anchor on an extender. VexTab also admits it on a hyphen, then supplies the final destination syllable’s measured coordinates to the native fragment. VexFlow draws the marks in SVG, Canvas and publication. The adapter checks its insertion point at build time. [Adapter](../../scripts/vexflow-publication-loader.cjs) · [Verse positioning](../../src/score/lead.ts)
 
 ## Follow-up engraving review
 
 | Passage | Correction and verification |
 | --- | --- |
 | Joplin, third system, first bar | The source moves the complete upper voice, including both sixteenth rests, to the bass stave. The right hand stems up, the bass stems down, and each sixteenth beam contains three notes. The dynamic sits above the shared staff. The source MIDI check still covers both endings. |
-| Sor, TAB fingerings | Numeric fingerings use enclosed Bravura glyphs on native fret-hand modifiers. Open-string zero remains distinct from the fret. Letter fingerings retain their text face. Direct attachment to an unadapted TabNote currently throws in the native formatter. [VexFlow #446](https://github.com/vexflow/vexflow/issues/446) |
-| Sor, notation bars 7–8 | VexTab now uses the native side spacing. The former four-pixel finger offset intruded into the sharp’s column. Two voices sharing the same altered fret show one automatic sharp. Printing either voice preserves its own sharp. [VexFlow #447](https://github.com/vexflow/vexflow/issues/447) |
-| Sor, opening TAB tie | Polyphonic TAB ties follow the written voice side. The bass tie runs below string 5 and clears the accompaniment on string 4. The native collision fitter currently overlooks TAB fret ink. [VexFlow #448](https://github.com/vexflow/vexflow/issues/448) |
+| Sor, TAB fingerings | VexTab attaches a native fret-hand modifier to the authored string and requests a circle for digits, including open-string zero. Letter fingerings stay plain. Explicit string numbers use the native string-number modifier. [VexFlow #446](https://github.com/vexflow/vexflow/issues/446) |
+| Sor, notation bars 7–8 | VexTab reserves four pixels in the left fingering column before VexFlow positions accidentals. VexFlow draws one automatic sharp when the voices share a head. Each part retains its own sharp when printed alone. [VexFlow #447](https://github.com/vexflow/vexflow/issues/447) |
+| Sor, opening TAB tie | VexFlow checks fret ink when choosing the tie direction. It routes the bass tie below string 5, clear of the accompaniment on string 4. [VexFlow #448](https://github.com/vexflow/vexflow/issues/448) |
 
-The [stock VexFlow controls](review-controls.mjs) draw into a separate page using the published bundle. The [Joplin regression](../../tests/expression.ts) checks stems, both beams, rests and the displaced dynamic. The [Sor regressions](../../tests/part-engraving.ts) check actual glyph clearance, side selection and single-voice publication.
+The [stock VexFlow controls](review-controls.mjs) draw into a separate page using the installed dependency’s browser bundle. The [Joplin regression](../../tests/expression.ts) checks stems, both beams, rests and the displaced dynamic. The [Sor regressions](../../tests/part-engraving.ts) check actual glyph clearance, side selection and single-voice publication.
 
 ## Reproduce
 

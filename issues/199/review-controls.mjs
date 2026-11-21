@@ -1,4 +1,5 @@
-// Isolate the M4 review findings using only the published VexFlow browser bundle.
+// Isolate the M4 review findings using only the installed VexFlow browser bundle.
+import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright-core';
@@ -9,7 +10,7 @@ const browser = await chromium.launch(process.env.CHROME_BIN ? { executablePath:
 try {
   const page = await browser.newPage({ viewport: { width: 600, height: 620 } });
   await page.setContent('<style>body{margin:0;background:white}div{width:520px}</style>' +
-    '<div id="sharp"></div><div id="tab"></div><div id="unison"></div><div id="above"></div><div id="below"></div><div id="mixed"></div><div id="moved"></div>');
+    '<div id="sharp"></div><div id="tab"></div><div id="unison"></div><div id="auto"></div><div id="above"></div><div id="below"></div><div id="mixed"></div><div id="moved"></div>');
   await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
   const results = await page.evaluate(async () => {
     const VF = window.VexFlow;
@@ -24,13 +25,12 @@ try {
       .addModifier(new VF.Accidental('#')));
     VF.Formatter.FormatAndDraw(sharp.getContext(), stave, notes);
     stave.draw();
-    let tabError;
-    try {
-      const f = factory('tab'), staff = f.TabStave();
-      const note = f.TabNote({ positions: [{ str: 2, fret: 3 }], duration: 'q' });
-      note.addModifier(new VF.FretHandFinger('2'), 0);
-      VF.Formatter.FormatAndDraw(f.getContext(), staff, [note]);
-    } catch (error) { tabError = String(error); }
+    const tabFactory = factory('tab'), tabStaff = tabFactory.TabStave();
+    const note = tabFactory.TabNote({ positions: [{ str: 2, fret: 3 }], duration: 'q' });
+    note.addModifier(new VF.FretHandFinger('2').setDrawCircle(true), 0);
+    VF.Formatter.FormatAndDraw(tabFactory.getContext(), tabStaff, [note]);
+    const circles = [...document.querySelectorAll('#tab .vf-tabnote path')].filter(path =>
+      (path.getAttribute('d').match(/A/g) ?? []).length === 2).length;
 
     const f = factory('unison');
     const c = f.EasyScore().compose({ accidentals: 'key-aware', continuous: {}, staves: [{
@@ -39,7 +39,9 @@ try {
       })) }],
     }] });
     f.draw();
-    const unisonSigns = [0,1].map(i => c.getNote('e'+i).getModifiersByType(VF.Accidental.CATEGORY).length);
+    const voiceSigns = [0,1].map(i => c.getNote('e'+i).getModifiersByType(VF.Accidental.CATEGORY).length);
+
+    const printedSharps = [...document.querySelectorAll('#unison .vf-stavenote text')].filter(text => text.textContent === '\ue262').length;
 
     function tabTie(side) {
       const f = factory(side);
@@ -48,7 +50,7 @@ try {
         measures:[0,1].map(i => ({voices:[
           { notes: [tab('b'+i,5,2,'h'),tab('b-end'+i,5,2,'q')] },
           { notes: Array.from({length:6}, (_,j) => tab('v'+i+'-'+j, j===2 ? 4 : 2, 3,'8')) },
-        ]})) }], continuous:{spans:[{kind:'tie',id:'hold',from:'b0',to:'b-end0',side}]} });
+        ]})) }], continuous:{spans:[{kind:'tie',id:'hold',from:'b0',to:'b-end0',...(side !== 'auto' && {side})}]} });
       f.draw();
       const fragment=c.sheet.getContinuousLayout().fragments[0];
       return { side, rise:fragment.rise, above:fragment.above, diagnostics:c.sheet.getContinuousLayout().diagnostics };
@@ -71,11 +73,15 @@ try {
       f.draw();
       return comp.sheet.getContinuousLayout().diagnostics;
     }
-    return {tabError,unisonSigns,ties:['above','below'].map(tabTie),piano:[piano(false),piano(true)]};
+    return {circles,voiceSigns,printedSharps,ties:['auto','above','below'].map(tabTie),piano:[piano(false),piano(true)]};
   });
-  for (const id of ['sharp','unison','above','below','mixed','moved']) {
+  for (const id of ['sharp','tab','unison','auto','above','below','mixed','moved']) {
     await page.locator('#'+id).screenshot({path:resolve(output,id+'.png')});
   }
   await writeFile(resolve(output,'native.json'),JSON.stringify(results,null,2));
   console.log(results);
+  assert.equal(results.circles, 1);
+  assert.deepEqual(results.voiceSigns, [1, 1]);
+  assert.equal(results.printedSharps, 1);
+  assert.equal(results.ties[0].above, false);
 } finally { await browser.close(); }

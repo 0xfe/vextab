@@ -1,4 +1,4 @@
-// Expose scoped publication and draw callbacks in the bundled VexFlow 5.7 ESM build.
+// Expose scoped publication and draw callbacks in the bundled VexFlow ESM build.
 // Native Publication still measures the ink, paginates it and owns all page output.
 const path = require('node:path');
 
@@ -21,10 +21,15 @@ module.exports = function publicationHooks(source) {
   }
   const part = 'const { ctx, factory, score } = compose(host, spec, options.noteHooks);';
   source = replaceOnce(source, 'return { ctx, factory, score };', 'return { ctx, factory, score, builder: easyScore.builder };');
-  const inset = 'const inset = compose(host, insetSpec, o.noteHooks);';
-  source = replaceOnce(source, part + '\n            factory.draw();', part.replace('ctx, factory, score', 'ctx, factory, score, builder') +
+  source = replaceOnce(source, part, part.replace('ctx, factory, score', 'ctx, factory, score, builder'));
+  source = replaceOnce(source, '\n            factory.draw();',
     '\n            if (options.drawComposition) options.drawComposition(spec, score, factory, builder); else factory.draw();');
-  return replaceOnce(source, inset + '\n        inset.factory.draw();',
-    'if (o.insetSpans) insetSpec.continuous.spans = o.insetSpans(insetSpec);\n        ' + inset +
-    '\n        if (o.drawComposition) o.drawComposition(insetSpec, inset.score, inset.factory, inset.builder, r.measure); else inset.factory.draw();');
+  // VexTab authors one-bar cues. Leave native ranged insets on their own alignment and drawing path.
+  source = replaceOnce(source, 'addInsetFragment(host, spec, hooks,', 'addInsetFragment(host, spec, options,');
+  source = replaceOnce(source, 'addInsetFragment(host, spec, o.noteHooks,', 'addInsetFragment(host, spec, o,');
+  const inset = 'const inset = compose(host, insetSpec, hooks, region.transpose);';
+  source = replaceOnce(source, inset, 'if (hosts.length === 1 && options.insetSpans) insetSpec.continuous.spans = options.insetSpans(insetSpec);\n    ' +
+    inset.replace('insetSpec, hooks', 'insetSpec, options.noteHooks'));
+  return replaceOnce(source, '    inset.factory.draw();',
+    '    if (hosts.length === 1 && options.drawComposition) options.drawComposition(insetSpec, inset.score, inset.factory, inset.builder, first); else inset.factory.draw();');
 };

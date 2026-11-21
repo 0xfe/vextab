@@ -232,21 +232,12 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       })),
     },
   };
-  // Match TAB ties in polyphony to the voice's side, including unstemmed display TAB.
-  const tabTieSides = new Map<string, 'above' | 'below'>();
-  if (staves.includes('tab') && parsed.ties.length) for (const m of parsed.measures) {
-    if (m.voices.length < 2) continue;
-    m.voices.forEach((v, index) => {
-      const up = v.stem ? v.stem === 'up' : index === 0;
-      for (const e of v.events) tabTieSides.set(e.id, up ? 'above' : 'below');
-    });
-  }
   for (const tie of parsed.ties) {
     for (const staff of staves) {
       const from = eventId(staff, tie.from);
       if (!sources.ids[from]) continue;
       spans.push({ kind: 'tie', id: sources.project(staff, tie.id, tie.range), from,
-        to: eventId(staff, tie.to), ...(staff === 'tab' && !tie.bend && { side: tabTieSides.get(tie.from) }),
+        to: eventId(staff, tie.to),
         ...(staff === 'tab' && tie.bend && { bend: tie.bend, string: tie.string }), fromHead: tie.fromHead, toHead: tie.toHead });
     }
   }
@@ -377,8 +368,6 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
   const split = new Set<Beam>();
   for (const m of parsed.measures) {
     for (const staff of view.staves) {
-      // A single fretted unison can carry two rhythms. Each extracted voice still owns its sign.
-      const automaticFretSigns = new Set<string>();
       const staveColor = m.state.color;
       if (staveColor) {
         const index = view.staves.indexOf(staff);
@@ -451,19 +440,13 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
         }
         if (staff === 'tab') continue;
         event.heads.forEach((head, i) => {
-          let mark = note.getModifiers().find((m): m is Accidental => m instanceof Accidental && m.getIndex() === i);
-          if (!head.accidental) {
-            if (mark && head.position && !event.silent && !mark.isCautionary()) {
-              const unison = [event.onset, head.position.str, head.position.fret, head.written].join(':');
-              if (automaticFretSigns.has(unison)) note.getModifiers().splice(note.getModifiers().indexOf(mark), 1);
-              else automaticFretSigns.add(unison);
-            }
-            return;
-          }
-          if (!mark) {
-            mark = new Accidental(head.accidental);
-            note.addModifier(mark, i);
-          }
+          if (!head.accidental) return;
+          // An authored sign belongs to this voice even if another voice shares its head.
+          const modifiers = note.getModifiers();
+          const generated = modifiers.findIndex(mark => mark instanceof Accidental && mark.getIndex() === i);
+          if (generated >= 0) modifiers.splice(generated, 1);
+          const mark = new Accidental(head.accidental);
+          note.addModifier(mark, i);
           if (head.cautionary) mark.setAsCautionary();
         });
       }

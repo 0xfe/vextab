@@ -1,4 +1,4 @@
-// Typed callbacks used by the bundled VexFlow 5.7 publication adapter.
+// Typed callbacks used by the bundled VexFlow publication adapter.
 import type { ContinuousSpan, EasyScoreComposition, EasyScoreCompositionSpec, Factory, EasyScore, PublicationOptions } from 'vexflow';
 
 /** A publication owns fresh notes and a factory for the complete part and each optional inset. */

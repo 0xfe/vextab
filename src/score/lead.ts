@@ -7,6 +7,9 @@ import { Annotation, FretDiagram, type EasyScoreComposition, type EasyScoreMeasu
 import type { Measure, ParsedScore } from './model';
 import { ScoreError, type SourceRange } from './source';
 
+/** VexTab supplies each verse as an ordered sequence of syllables. */
+type VerseSyllable = Extract<EasyScoreMeasureSpec['verses'][number], readonly unknown[]>[number];
+
 type Register = (id: string, range: SourceRange, event: string) => string;
 
 /** Use note IDs so Publication can recreate the same marks in a fresh composition. */
@@ -15,7 +18,7 @@ export function leadMarks(measure: Measure, staff: 'notation' | 'tab', noteId: (
   const chords: EasyScoreMeasureSpec['chords'][number][] = [];
   const verses: EasyScoreMeasureSpec['verses'][number][] = [];
   for (const voice of measure.voices) {
-    const lanes = new Map<string, EasyScoreMeasureSpec['verses'][number][number][]>();
+    const lanes = new Map<string, VerseSyllable[]>();
     for (const [i, event] of voice.events.entries()) {
       const note = noteId(event.id);
       // Publication accepts plain descriptors. String techniques travel as playing instructions.

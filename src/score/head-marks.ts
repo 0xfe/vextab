@@ -1,5 +1,5 @@
 // Attach native fingering and accent modifiers to screen and publication notes.
-import { Articulation, FretHandFinger, Modifier, StringNumber, TabNote, VexFlow, type ModifierPosition, type Note } from 'vexflow';
+import { Articulation, FretHandFinger, Modifier, StringNumber, type ModifierPosition, type Note } from 'vexflow';
 import type { HeadMark } from './shorthand';
 
 const positions = { left: Modifier.Position.LEFT, right: Modifier.Position.RIGHT,
@@ -7,7 +7,7 @@ const positions = { left: Modifier.Position.LEFT, right: Modifier.Position.RIGHT
 
 /** Let the native modifier context reserve the side column alongside accidentals. */
 export function fingerNumber(label: string, position: ModifierPosition, stringNumber = false, tab = false) {
-  const modifier = stringNumber ? new StringNumber(label) : new FretHandFinger(label);
+  const modifier = stringNumber ? new StringNumber(label) : new FretHandFinger(label).setDrawCircle(tab && /^\d$/.test(label));
   modifier.setPosition(position);
   if (!tab && !stringNumber && position === Modifier.Position.LEFT) {
     // Reserve the padding before VexFlow places accidentals. Moving ink alone can overlap their column.
@@ -17,25 +17,13 @@ export function fingerNumber(label: string, position: ModifierPosition, stringNu
   return modifier;
 }
 
-/** Native finger and string modifiers sort by head line. Give TAB its physical string lines. */
+/** Attach the authored label and head index. VexFlow resolves its stave line or TAB string. */
 export function attachHeadMarks(note: Note, index: number, marks: HeadMark[], tab: boolean, showTabFingers = false): void {
   for (const mark of marks) {
     const pos = positions[mark.position];
     if (mark.finger !== undefined) {
       if (tab && !showTabFingers) continue;
-      if (tab && note instanceof TabNote && !note.getKeyProps().length) {
-        note.keyProps = note.getPositions().map(({ str }, i) => ({
-          ...VexFlow.keyProperties(note.getKeys()[i]), line: -str,
-        }));
-      }
-      // Use the bundled SMuFL circled digits on TAB. Letter fingerings retain their text face.
-      const finger = fingerNumber(mark.finger, pos, !tab && mark.stringNumber, tab);
-      if (tab && /^\d$/.test(mark.finger)) {
-        const glyph = VexFlow.Glyphs['guitarString' + mark.finger];
-        finger.setFont('Bravura', 16).setText(glyph);
-        if (pos === Modifier.Position.LEFT || pos === Modifier.Position.RIGHT) finger.setOffsetY(-5);
-      }
-      note.addModifier(finger, index);
+      note.addModifier(fingerNumber(mark.finger, pos, mark.stringNumber, tab), index);
     } else {
       note.addModifier(new Articulation(mark.articulation ?? 'a>').setPosition(pos), index);
     }

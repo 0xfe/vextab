@@ -1,5 +1,5 @@
 // Verify that authored notes, marks and verse lanes survive each fresh screen, part and cue.
-import { Accidental, Annotation, Articulation, FretHandFinger, StaveNote, TabNote, type StemmableNote } from 'vexflow';
+import { Accidental, Annotation, Articulation, FretHandFinger, StaveNote, StringNumber, TabNote, type StemmableNote } from 'vexflow';
 import { renderScore, renderScorePart } from '../src/score/layout';
 import { parseScore } from '../src/score/parse';
 import river from '../guide/scores/slow-river.vextab';
@@ -110,7 +110,7 @@ QUnit.module('Independent part engraving', () => {
         for (const n of notes) {
           assert.equal(printed.sourceFor(n.getAttribute('id')), '1.main.main.1');
           const mods = n.getModifiers();
-          assert.deepEqual(mods.filter(m => m instanceof FretHandFinger).map(m => [m.getIndex(), m.getFretHandFinger()]), [[index, n instanceof TabNote ? '\ue835' : '2']]);
+          assert.deepEqual(mods.filter(m => m instanceof FretHandFinger).map(m => [m.getIndex(), m.getFretHandFinger()]), [[index, '2']]);
           assert.deepEqual(mods.filter(m => m instanceof Articulation).map(m => m.getIndex()), [index]);
           if (n instanceof TabNote) assert.deepEqual(n.getPositions()[index], { str: 2, fret: 3 });
           if (n instanceof StaveNote) {
@@ -183,11 +183,34 @@ QUnit.module('Independent part engraving', () => {
     }
   });
 
-  QUnit.test('a letter fingering retains its text on TAB beside an enclosed open-string zero', assert => {
+  QUnit.test('an explicit accidental belongs to its authored voice at a shared unison', assert => {
+    for (const [upper, lower, expected] of [['', '[showSign]', [0, 1]], ['[showSign]', '[showSign]', [1, 1]]] as const) {
+      const score = parseScore('meter 1/4 staff { voice a stem up { C#4' + upper + ' | } voice b stem down { C#4' + lower + ' | } }');
+      const root = host();
+      renderScore(root, score);
+      for (const output of [root, renderScorePart(host(), score, 'notation').publication.pages[0].svg]) {
+        const signs = [...output.querySelectorAll('.vf-stavenote')].map(group =>
+          [...group.querySelectorAll('text')].filter(text => text.textContent === '\ue262').length);
+        assert.deepEqual(signs, expected);
+      }
+    }
+  });
+
+  QUnit.test('TAB encloses digit fingerings and string numbers but leaves letter fingerings plain', assert => {
+    const score = parseScore('meter 3/4 guitar { :q 0/1[finger 0] 3/2[finger T] (0/1 3/2[stringNumber 2 right]) | }');
     const root = host();
-    const view = renderScore(root,parseScore('meter 2/4 guitar { :q 0/1[finger 0] 3/2[finger T] | }'),{part:'tab'});
+    const view = renderScore(root, score, { part: 'tab' });
     const notes = view.navigation.events.map(e => view.composition.getNote(e.id));
-    assert.deepEqual(notes.map(n => n.getModifiers().find(m => m instanceof FretHandFinger).getText()), ['\ue833','T']);
+    assert.deepEqual(notes.slice(0, 2).map(n => n.getModifiers().find(m => m instanceof FretHandFinger).getText()), ['0', 'T']);
+    const string = notes[2].getModifiers().find(m => m instanceof StringNumber);
+    assert.equal(string.getIndex(), 1);
+    assert.deepEqual((notes[2] as TabNote).getPositions()[string.getIndex()], { str: 2, fret: 3 });
+    for (const output of [root, renderScorePart(host(), score, 'tab').publication.pages[0].svg]) {
+      // VexFlow draws a full circle in SVG as two semicircular arcs.
+      const circles = [...output.querySelectorAll('.vf-tabnote')].map(group =>
+        [...group.querySelectorAll('path')].filter(path => (path.getAttribute('d').match(/A/g) ?? []).length === 2).length);
+      assert.deepEqual(circles, [1, 0, 1]);
+    }
   });
 
   QUnit.test('Sor’s eight-bar opening prints its three independent voices and the opening finger on string two', assert => {
@@ -202,7 +225,7 @@ QUnit.module('Independent part engraving', () => {
       assert.deepEqual(print.diagnostics, []);
       assert.equal(print.pages.length, 1);
       assert.equal(first.length, 1);
-      assert.deepEqual(first[0].getModifiers().filter(m => m instanceof FretHandFinger).map(m => [m.getIndex(), m.getFretHandFinger()]), [[0, part === 'tab' ? '\ue835' : '2']]);
+      assert.deepEqual(first[0].getModifiers().filter(m => m instanceof FretHandFinger).map(m => [m.getIndex(), m.getFretHandFinger()]), [[0, '2']]);
       if (first[0] instanceof TabNote) assert.deepEqual(first[0].getPositions(), [{ str: 2, fret: 3 }]);
     }
   });
