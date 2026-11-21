@@ -138,6 +138,10 @@ export type ScoreSpan = { id: string; from: string; to: string; range: SourceRan
 );
 
 export interface ParsedScore {
+  /** Authored part and staff identity used by the conductor and extracted editions. */
+  instrument?: import('./grammar2/model').InstrumentIdentity & {
+    staves: Partial<Record<import('./grammar2/model').StaffName, import('./grammar2/model').InstrumentIdentity>>;
+  };
   layout?: import('./grammar2/model').ScoreLayout;
   /** Playback directives, when authored before the first flow stave. */
   playback?: { enabled: boolean; tempo?: number; instrument?: string };

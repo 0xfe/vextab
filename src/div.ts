@@ -15,7 +15,8 @@ import type { SourceRange } from './score/source';
 import type { ScoreReadingEvent } from 'vexflow';
 import { projectScoreV2 } from './score/grammar2/project';
 import { parseScore, ScoreV2Error } from './score/parse';
-import { renderScore, type Part } from './score/layout';
+import { selectedPart } from './score/conductor';
+import { renderScore, renderConductor, type Part } from './score/layout';
 import type { ParsedScore } from './score/model';
 import type { ScoreV2 } from './score/grammar2/model';
 
@@ -42,6 +43,8 @@ export function usesFlowLayout(host: HTMLElement, source: string): boolean {
 export interface DivOptions {
   language?: 1 | 2;
   partIndex?: number;
+  partId?: string;
+  view?: 'parts' | 'conductor';
   playback?: PlaybackPlugin;
   /** Enable sheet playback even when the source omits player=true. */
   player?: boolean;
@@ -63,6 +66,8 @@ class Div {
   private flow: boolean;
   private readonly grammar2: boolean;
   private readonly partIndex?: number;
+  private readonly partId?: string;
+  private readonly conductor: boolean;
   private part: Part = 'score';
   private observer?: ResizeObserver;
   private resizeFrame?: number;
@@ -117,6 +122,10 @@ class Div {
     if (language !== 1 && language !== 2) throw new RangeError('Expected VexTab language 1 or 2');
     this.grammar2 = language === 2;
     this.partIndex = options.partIndex;
+    this.partId = options.partId ?? embedAttribute(host, 'part-id') ?? undefined;
+    this.conductor = (options.view ?? embedAttribute(host, 'view')) === 'conductor';
+    if (this.conductor && (!this.grammar2 || this.partIndex !== undefined || this.partId !== undefined))
+      throw new Error('The conductor view requires a complete v2 score');
     this.flow = this.grammar2 || usesFlowLayout(host, this.code);
     host.classList.toggle('vextab-flow', this.flow);
 
@@ -283,10 +292,12 @@ class Div {
     return true;
   }
 
-  /** Every instrument gets an independent engraving and hit-test coordinate system. */
-  private drawInstrument(host: HTMLElement, score: ParsedScore, revision: ParsedScore) {
+  /** Bind editor selection to this surface and its current instrument or conductor geometry. */
+  private drawView(host: HTMLElement, score: ParsedScore | ScoreV2, revision: ParsedScore) {
     const renderer = this.rendererBackend.toLowerCase() === 'canvas' ? 'canvas' : 'svg';
-    const layout = renderScore(host, score, { width: this.width, part: this.part, renderer });
+    const layout = 'parts' in score
+      ? renderConductor(host, score, { width: this.width, renderer })
+      : renderScore(host, score, { width: this.width, part: this.part, renderer });
     const surface = host.querySelector<HTMLCanvasElement | SVGSVGElement>('svg, canvas');
     if (this.text_area) surface.addEventListener('click', (event: MouseEvent) => {
       let point: DOMPoint;
@@ -306,28 +317,32 @@ class Div {
     return { layout, surface };
   }
 
-  /** Mount all instruments in source order, or only the requested partIndex. */
+  /** Mount the conductor, the selected part, or independent parts in source order. */
   private drawFlow(next: HTMLElement): void {
     if (!this.grammar2 && (this.rendererBackend.toLowerCase() !== 'svg' || this.scale !== 1)) {
       throw new Error('Flow layout requires SVG at scale 1. Use width to reflow.');
     }
     const score = this.candidate, documentScore = this.document;
-    const ensemble = documentScore && this.part === 'score' && this.partIndex === undefined && documentScore.parts.length > 1;
-    const instruments = ensemble ? documentScore.parts.map((_,i) => projectScoreV2(documentScore, i)) : [score];
-    const drawings = instruments.map(instrument => {
-      const host = ensemble ? next.appendChild(document.createElement('div')) : next;
-      return this.drawInstrument(host, instrument, score);
-    });
+    const ensemble = documentScore && this.part === 'score' && this.partId === undefined && this.partIndex === undefined && documentScore.parts.length > 1;
+    const drawings = () => {
+      if (this.conductor && this.part === 'score') return [this.drawView(next, documentScore, score)];
+      if (!ensemble) return [this.drawView(next, score, score)];
+      return documentScore.parts.map((_, i) => {
+        const host = next.appendChild(document.createElement('div'));
+        return this.drawView(host, projectScoreV2(documentScore, i), score);
+      });
+    };
+    const mounted = drawings();
     if (this.grammar2 && this.scale !== 1) next.style.zoom = String(this.scale);
     this.player?.dispose();
     this.player = undefined;
     if (this.enablePlayer || score.playback?.enabled) {
-      const player = this.player = new Player(ensemble ? documentScore : drawings[0].layout.score, {
+      const player = this.player = new Player(ensemble ? documentScore : mounted[0].layout.score, {
         playback: this.playback, controls: this.playbackControls,
       });
-      player.render(drawings[0].surface, undefined, drawings.slice(1).map(d => d.surface));
+      player.render(mounted[0].surface, undefined, mounted.slice(1).map(d => d.surface));
     }
-    this.current = { score, layouts: drawings.map(d => d.layout) };
+    this.current = { score, layouts: mounted.map(d => d.layout) };
   }
 
   /** Commit a new surface only after engraving succeeds, including Canvas pixels. */
@@ -391,7 +406,7 @@ class Div {
       if (this.flow) {
         this.candidate = undefined;
         this.document = this.grammar2 ? parseScore(this.code) : undefined;
-        this.candidate = this.document ? projectScoreV2(this.document, this.partIndex) : parseScore(this.code, { language: 1 });
+        this.candidate = this.document ? projectScoreV2(this.document, selectedPart(this.document, { partId: this.partId, partIndex: this.partIndex })) : parseScore(this.code, { language: 1 });
       } else {
         this.artist.reset();
         this.parser.parse(this.code);

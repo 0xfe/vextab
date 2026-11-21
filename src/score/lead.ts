@@ -45,9 +45,9 @@ export function leadMarks(measure: Measure, staff: 'notation' | 'tab', noteId: (
 }
 
 /** Draw native diagrams in source order above the music, wrapping the key with the score. */
-export function drawFrames(score: ParsedScore, width: number, ctx: RenderContext, register: Register) {
+export function drawFrames(score: ParsedScore, width: number, ctx: RenderContext, register: Register, top = 0) {
   const regions: ScoreHitRegion[] = [];
-  let x = 10, y = 6, bottom = 0, right = 0;
+  let x = 10, y = top + 6, bottom = top, right = 0;
   ctx.save();
   ctx.setFont(scoreFont, 12);
   for (const measure of score.measures) for (const voice of measure.voices) for (const event of voice.events) {
@@ -66,5 +66,5 @@ export function drawFrames(score: ParsedScore, width: number, ctx: RenderContext
     x += cellWidth + 12;
   }
   ctx.restore();
-  return { height: bottom, width: right, regions };
+  return { height: bottom - top, width: right, regions };
 }

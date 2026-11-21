@@ -17,8 +17,11 @@ const sources = [...proposal.matchAll(/^```vextab2\n(.*?)^```$/gms)].map(match =
 
 test('the examples printed in the proposal compile with the expected music', () => {
   const examples = sources.map(compile);
-  assert.equal(examples.length, 6);
-  const [frets, fingering, duet, keyboard, band, polymeter] = examples;
+  assert.equal(examples.length, 7);
+  const [frets, fingering, duet, keyboard, band, ensemble, polymeter] = examples;
+  assert.deepEqual(ensemble.parts.map(p => p.id), ['clarinet','cello']);
+  assert.equal(ensemble.parts[0].sounds, -2);
+  assert.equal(events(ensemble)[0].id, 'clarinet.main.main.1');
   assert.deepEqual(polymeter.parts.map(part => part.measureCount), [3, 2]);
   assert.deepEqual(events(frets).map(e => e.heads[0].fret), [0, 2, 3, 2]);
   assert.deepEqual(events(fingering).map(e => e.heads[0].marks.find(x => x.kind === 'finger').side), ['left', 'left', 'right']);

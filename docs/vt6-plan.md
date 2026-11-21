@@ -33,6 +33,8 @@ Completed 21 November 2026. The release fixtures reproduce on a clean checkout. 
 
 ## M2 · Align instruments in one conductor score
 
+Implemented on 21 November 2026. The full Haydn theme uses four named parts and one native system. [Repertoire, checks and visual evidence](../issues/197/README.md)
+
 1. Give parts and staves optional stable IDs, names and written-to-sounding intervals. Preserve the existing single-instrument and `partIndex` calls. Keep rhythmic ownership, displayed staff and playback instrument distinct.
 2. Add an explicit conductor view that builds one native composition for parts with matching measure spans. Include a grand staff and paired guitar notation/TAB within a group. Extracted parts use the same source IDs and choose their own breaks.
 3. Start Haydn’s quartet theme. Add a B-flat clarinet control and a negative case with two bars of 3/4 against three of 2/4. Locate an unsupported conductor grid in the source and keep the independently renderable parts usable. [Ensemble design](vt6-baseline.md#an-ensemble-and-a-printed-edition)

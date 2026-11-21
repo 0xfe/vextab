@@ -45,6 +45,11 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   if (prior) return prior;
   const part = score.parts[index], locate = locations(score.source);
   const declaration = locate(part.range);
+  const { id, name, shortName, sounds } = part;
+  const hasIdentity = id !== undefined || name !== undefined || shortName !== undefined || sounds !== undefined
+    || part.staves.some(staff => staff.id !== undefined || staff.displayName !== undefined || staff.shortName !== undefined || staff.sounds !== undefined);
+  const instrument = hasIdentity && { id, name, shortName, sounds, staves: Object.fromEntries(part.staves.map(staff =>
+    [staff.name, { id: staff.id, name: staff.displayName, shortName: staff.shortName, sounds: staff.sounds }])) };
   let tuning = new Tuning(part.tuning ?? 'standard');
   const music = new Music();
   let writtenKey = part.key ?? 'C';
@@ -71,7 +76,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     hideClef: part.clef === 'none', clef: part.kind === 'drums' ? 'percussion' : part.clef === 'none' ? 'treble' : part.clef ?? 'treble', pickup: score.pickup, fragment: false,
   };
   const measures: Measure[] = [];
-  const projected: ParsedScore = { source: score.source, measures, ties: [], spans: [], playback: score.playback, layout: score.layout, measureNumbers: score.measureNumbers ?? false };
+  const projected: ParsedScore = { ...(instrument && { instrument }), source: score.source, measures, ties: [], spans: [], playback: score.playback, layout: score.layout, measureNumbers: score.measureNumbers ?? false };
   const fullBar = new Fraction().parse(initialMeter).simplify().toString();
   const intervals = new Map<string, Interval>();
   function intervalFor(amount: number): Interval | undefined {
@@ -134,14 +139,18 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   }
 
   /** Place one expanded event on the measure clock and resolve its annotations. */
-  function attack(event: ScoreEvent): Attack {
+  function attack(event: ScoreEvent, sounds: number): Attack {
     const interval = intervalFor((score.transpose ?? 0) + (event.transpose ?? 0));
     const heads = event.heads.map(head => projectHead(head, interval));
-    if (event.soundingOctaves) for (const head of heads) {
+    // An explicit instrument interval is measured from the written pitch. An ordinary guitar
+    // otherwise keeps its native tuning and octave convention, including display-only overrides.
+    const shift = intervalFor((sounds ?? 0) + 12 * (event.soundingOctaves ?? 0));
+    if (sounds !== undefined || event.soundingOctaves) for (const head of heads) {
       if (!head.sounding) continue;
-      const [pitch, octave] = head.sounding.split('/');
-      head.sounding = pitch + '/' + (Number(octave) + event.soundingOctaves);
-      if (midiPitch(head.sounding) === undefined) throw new ScoreError('measure', 'Octave shift exceeds the MIDI range', head.range);
+      const origin = sounds === undefined ? head.sounding : head.written;
+      const [pitch, octave] = origin.split('/');
+      head.sounding = shift ? shift.pitch(pitch, Number(octave)) : origin;
+      if (midiPitch(head.sounding) === undefined) throw new ScoreError('measure', 'Sounding pitch exceeds the MIDI range after the octave or instrument shift', head.range);
     }
     if (event.kind === 'slash') {
       if (state.tab) throw new ScoreError('measure', 'Give a slash a notation-only staff', locate(event.range));
@@ -217,12 +226,12 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   }
 
   /** Build one measure voice at a time. Ties follow the preceding attack of this voice. */
-  function addVoice(voice: ScoreVoice, hand?: 'right' | 'left') {
+  function addVoice(voice: ScoreVoice, staffSounds: number, hand?: 'right' | 'left') {
     const voices: MeasureVoice[] = [];
     const engraving = { ...part, ...voice.settings };
     let previous: Attack | undefined;
     function voiceAttack(event: ScoreEvent) {
-      const next = attack(event);
+      const next = attack(event, staffSounds);
       const used = new Set<number>();
       event.heads.forEach((head, i) => {
         for (const mark of head.marks) {
@@ -349,7 +358,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     }
   }
   for (const staff of part.staves) for (const voice of staff.voices) {
-    addVoice(voice, staff.name === 'upper' ? 'right' : staff.name === 'lower' ? 'left' : undefined);
+    addVoice(voice, staff.sounds ?? part.sounds, staff.name === 'upper' ? 'right' : staff.name === 'lower' ? 'left' : undefined);
   }
   connectNamedTies();
   resolveMarks(measures, projected.spans);

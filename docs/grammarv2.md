@@ -69,7 +69,7 @@ Fences labelled `vextab2` in this document are executable and exercised by the t
 
 Use `source.slice(...event.range)` to find an authored attack. Heads, marks, barlines and explicit duration tokens also have source ranges. Expanded copies have distinct IDs. Their `trace` lists enclosing invocations from the outside in. The same input and language produce the same IDs; keep the source revision with any selection.
 
-Catch `ScoreV2Error` for v2 syntax, time, alignment or resource errors. Its `range` contains half-open UTF-16 offsets ready for `setSelectionRange`. Its `line` and `column` start at one, and its `trace` points back to a failing pattern invocation. Pass the same parsed score to the screen, printer and player. An editable `Div` displays each instrument in source order. A direct `renderScore` call draws one instrument and accepts `partIndex` to select it. The player schedules all instruments together unless you select one.
+Catch `ScoreV2Error` for v2 syntax, time, alignment or resource errors. Its `range` contains half-open UTF-16 offsets ready for `setSelectionRange`. Its `line` and `column` start at one, and its `trace` points back to a failing pattern invocation. Pass the same parsed score to the screen, printer and player. An editable `Div` displays each instrument in source order. A direct `renderScore` call draws one instrument and accepts `partId` or `partIndex` to select it. Use `renderConductor` to align instruments on one system. The player schedules all instruments together unless you select one.
 
 ```js
 const score = parseScore('piano { upper { :w G4 | } lower { :w C3 | } }');
@@ -215,6 +215,38 @@ meter 2/4
 drums { :8 (kick hat) hat (snare hat) hat | }
 staff { tuplet 3:2 { :8 G4 A4 B4 } C5 | }
 ```
+
+### Conductor scores and named parts
+
+Give an instrument a stable ID after its kind. Declare its full name, short name and written-to-sounding interval before the musical settings. VexFlow measures the full label on the opening system and the short label on later systems. IDs start with a lowercase letter and may contain lowercase letters, digits and underscores.
+
+```vextab2
+meter 2/4
+staff clarinet { name "Clarinet in B-flat" shortName "Cl." sounds -2
+  D4 E4 | :h F4 |
+}
+staff cello { name "Violoncello" shortName "Vc." clef bass
+  :h C3 | D3 |
+}
+```
+
+The clarinet reads D4 and plays concert C4. `sounds` counts semitones from written to sounding pitch. Each stave inherits its instrument’s interval and may override it. Guitar retains its tuning and normal octave convention when the source omits an interval.
+
+```js
+import { Div, parseScore, renderConductor, renderScore, renderScorePart } from 'vextab/browser';
+
+const score = parseScore(source);
+const ensemble = renderConductor(screen, score, { width: 800 });
+const clarinet = renderScore(practice, score, { partId: 'clarinet', width: 360 });
+renderScorePart(paper, score, 'notation', { partId: 'clarinet' });
+
+// The embed reads the VexTab source from editorHost and reflows on resize.
+const editor = new Div(editorHost, { view: 'conductor', player: true });
+```
+
+A host may use `data-view="conductor"` or `data-part-id="clarinet"` on a v2 embed. Both the conductor and extracted part show written pitch. The conductor shares one native measure grid across all staves. Each player’s view chooses its own breaks. An incompatible bar span locates the offending meter or barline and the instruments remain independently renderable.
+
+Named piano hands use `upper treble { name "Right hand" … }` and `lower bass { … }`. A single staff can add `stave melody { name "Melody" }` before its musical settings. `navigation.events` identifies each displayed stave and the underlying `source` event. Paired guitar notation and TAB have two display IDs for the same source event and one playback attack. A named event keeps its ID when players change order. Call `rangeFor(event.id, score.source)` on either view to select the original text. [Complete Haydn example](../guide/scores/haydn-emperor-theme.vextab)
 
 ### Different meters in the same score
 

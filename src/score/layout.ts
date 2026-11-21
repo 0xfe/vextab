@@ -7,6 +7,7 @@ import { TextLanes } from './text-lanes';
 import { drumKit } from './drums';
 import { attachOpenSlide, describeOpenSlide, drawPrintedOpenSlides } from './open-slide';
 import { inkStyle, setFretPaper } from './color';
+import { conductorSpec, instrumentComposition, instrumentLabel, selectedPart, type PartSelector } from './conductor';
 import { colorPublication } from './publication-color';
 import { scoreFont } from './engraving';
 import {
@@ -157,6 +158,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       // Native instrument labels reserve horizontal room for the brace on every printed system.
       ...(staff === 'right' && { name: 'R.H.', shortName: 'R.H.' }),
       ...(staff === 'left' && { name: 'L.H.', shortName: 'L.H.' }),
+      ...instrumentLabel(parsed, staff, staff === staves[0]),
       options: staff === 'tab' ? { numLines: parsed.measures[0].state.strings } : {},
       measures: parsed.measures.map(m => {
         const voices = voicesFor(m, staff);
@@ -349,7 +351,7 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
 }
 
 /** Draw mixed rest/fret endings that the native tab span cannot yet anchor. */
-function drawTabEndings(view: Projection, composition: EasyScoreComposition, ctx: RenderContext) {
+function drawTabEndings(view: Projection, composition: EasyScoreComposition, ctx: RenderContext, full: EasyScoreComposition) {
   const regions: ScoreHitRegion[] = [];
   for (const mark of view.mixedEndings) {
     if (mark.kind !== 'volta') continue;
@@ -360,7 +362,8 @@ function drawTabEndings(view: Projection, composition: EasyScoreComposition, ctx
       const first = bars[0], last = bars[bars.length - 1];
       const x = composition.staves[first - 1][0].getX() + 1;
       const right = composition.staves[last - 1][0].getNoteEndX();
-      const y = row.y - 15;
+      const staffOffset = composition.staves[first - 1][0].getY() - full.staves[first - 1][0].getY();
+      const y = row.y + staffOffset - 15;
       ctx.save();
       ctx.openGroup('tab-ending', id + '-' + i);
       ctx.fillRect(x, y, right - x, 1);
@@ -377,44 +380,8 @@ function drawTabEndings(view: Projection, composition: EasyScoreComposition, ctx
   return regions;
 }
 
-/** Recompose off-screen, then replace the host after all layout, drawing and indexing succeeds. */
-export function renderScore(host: HTMLElement, source: ParsedScore | ScoreV2,
-  options: { width?: number; part?: Part; partIndex?: number; renderer?: 'svg' | 'canvas' } = {}) {
-  let parsed = 'parts' in source ? projectScoreV2(source, options.partIndex) : source;
-  const width = options.width ?? parsed.layout?.width ?? (host.clientWidth || 640);
-  if (!Number.isFinite(width) || width <= 20) throw new RangeError('Score width must exceed 20 pixels');
-  const part = options.part ?? 'score';
-  parsed = selectVoices(parsed, part);
-  const view = project(parsed, part, width - 20);
-  const surface = document.createElement('div');
-  const canvas = options.renderer === 'canvas' ? surface.appendChild(document.createElement('canvas')) : undefined;
-  const ctx = canvas ? new CanvasContext(canvas.getContext('2d')) : new SVGContext(surface);
-  if (!canvas) setFretPaper(ctx, host);
-  const frames = drawFrames(parsed, width, ctx, (id, range) => view.sources.project(view.staves[0], id, range));
-  view.spec.sheet.y += frames.height + (view.mixedEndings.length ? 20 : 0);
-  const factory = new Factory({ renderer: { elementId: null, width, height: 1 } }).setContext(ctx);
-  const easy = factory.EasyScore();
-  easy.addCommitHook(view.textLanes.hook);
-  const composition = easy.compose(view.spec);
-  prepareScreen(parsed, view, composition, factory);
-  // Resizing a canvas clears its pixels. Measure first and paint at the final size.
-  function resize() {
-    const rows = composition.sheet.getRows();
-    const extent = Math.max(width, frames.width, ...rows.map(r => r.x + r.width + 10));
-    ctx.resize(extent, Math.ceil(composition.sheet.getHeight() + 20));
-  }
-  if (canvas) {
-    composition.sheet.format();
-    resize();
-    if (frames.height) drawFrames(parsed, width, ctx, (id, range) => view.sources.project(view.staves[0], id, range));
-  }
-  if (parsed.measures[0].state.hideClef) {
-    composition.sheet.format();
-    for (const row of composition.staves) for (const stave of row) {
-      for (const clef of stave.getModifiers(undefined, Clef.CATEGORY)) clef.setText('');
-    }
-  }
-  factory.draw();
+/** Draw any tablature connections and ending fragments that need the final native row geometry. */
+function tabDetails(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, ctx: RenderContext, full: EasyScoreComposition) {
   if (view.staves.includes('tab')) for (const span of parsed.spans) {
     if (!('fromHead' in span)) continue;
     const from = composition.getNote(view.eventId('tab', span.from)) as TabNote;
@@ -431,24 +398,132 @@ export function renderScore(host: HTMLElement, source: ParsedScore | ScoreV2,
     if (from.getStave().getY() === to.getStave().getY()) draw(from, to);
     else { draw(from); draw(undefined, to); }
   }
-  const extraRegions = [...view.textLanes.regions.values(), ...frames.regions, ...drawTabEndings(view, composition, ctx)];
-  const navigation = new ScoreNavigation(composition, view.spec.staves, view.sources.ids);
-  // Expose the fragments of each written tie together, in source order.
-  const tabTies = new Map(parsed.ties.map(t => [view.eventId('tab', t.id), [] as ScoreHitRegion[]]));
-  for (const region of navigation.regions) tabTies.get(region.id)?.push(region);
-  const tabRegions = Array.from(tabTies.values()).flat();
-  // Silent tab rests still advance the reader's clock, but have no visible pointer target.
+  return drawTabEndings(view, composition, ctx, full);
+}
+
+/** Invisible timed events still advance the reader's clock but have no pointer target. */
+function hiddenNotes(parsed: ParsedScore, view: Projection) {
   const hidden = new Set(parsed.measures.flatMap(m => m.voices.filter(v => !v.tabStems)
     .flatMap(v => v.events.filter(e => !e.heads.length).map(e => view.eventId('tab', e.id)))));
   for (const m of parsed.measures) for (const v of m.voices) for (const e of v.events) {
     if (e.silent) for (const staff of view.staves) hidden.add(view.eventId(staff, e.id));
   }
+  return hidden;
+}
+
+type ScreenOptions = { width?: number; renderer?: 'svg' | 'canvas' };
+
+/** A native part view borrows the conductor's systems and owns just its stave columns. */
+type ScreenInstrument = { score: ParsedScore; view: Projection; local: EasyScoreComposition };
+
+/** All voices use one row clock, including paired notation/TAB which references one attack twice. */
+function playbackGeometry(composition: EasyScoreComposition, instruments: ScreenInstrument[]): Geometry {
+  const geometry: Geometry = new Map();
+  for (const band of composition.sheet.getContinuousLayout().rows) {
+    const row = staveRow(band.measures.flatMap(n => composition.staves[n - 1]));
+    for (const { score, view } of instruments) {
+      for (const number of band.measures) for (const voice of score.measures[number - 1].voices) {
+        for (const attack of voice.events) {
+          const stavesForVoice = voice.hand ? [voice.hand] : view.staves;
+          const glyphs = stavesForVoice.map(staff => composition.getNote(view.eventId(staff, attack.id)));
+          geometry.set(attack.id, position(row, glyphs, attack.heads.map(h => !!h.sounding && !attack.silent)));
+        }
+      }
+    }
+  }
+  return geometry;
+}
+
+/** Independently reflow one selected instrument or one of its existing score/hand/TAB projections. */
+export function renderScore(host: HTMLElement, source: ParsedScore | ScoreV2,
+  options: ScreenOptions & PartSelector & { part?: Part } = {}) {
+  const part = options.part ?? 'score';
+  const selected = 'parts' in source ? projectScoreV2(source, selectedPart(source, options)) : source;
+  return renderParts(host, [selectVoices(selected, part)], part, options);
+}
+
+/** Build one native conductor composition and retain each source instrument for independent extraction. */
+export function renderConductor(host: HTMLElement, document: ScoreV2, options: ScreenOptions = {}) {
+  return renderParts(host, document.parts.map((_, i) => projectScoreV2(document, i)), 'score', options, true);
+}
+
+/** Prepare fresh native objects for the requested surface. Commit the DOM only after successful layout. */
+function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, options: ScreenOptions, conductor = false) {
+  const parsed = scores[0];
+  const width = options.width ?? parsed.layout?.width ?? (host.clientWidth || 640);
+  if (!Number.isFinite(width) || width <= 20) throw new RangeError('Score width must exceed 20 pixels');
+  const views = scores.map(score => project(score, part, width - 20));
+  const specs = views.map(view => view.spec);
+  const spec = conductor ? conductorSpec(scores, specs) : specs[0];
+  const surface = document.createElement('div');
+  const canvas = options.renderer === 'canvas' ? surface.appendChild(document.createElement('canvas')) : undefined;
+  const ctx = canvas ? new CanvasContext(canvas.getContext('2d')) : new SVGContext(surface);
+  if (!canvas) setFretPaper(ctx, host);
+
+  function frameKeys() {
+    const regions: ScoreHitRegion[] = [];
+    let height = 0, extent = 0;
+    scores.forEach((score, i) => {
+      const view = views[i];
+      const key = drawFrames(score, width, ctx, (id, range) => view.sources.project(view.staves[0], id, range), height);
+      height += key.height;
+      extent = Math.max(extent, key.width);
+      regions.push(...key.regions);
+    });
+    return { height, extent, regions };
+  }
+  const frames = frameKeys();
+  spec.sheet.y += frames.height + (views.some(view => view.mixedEndings.length) ? 20 : 0);
+  const factory = new Factory({ renderer: { elementId: null, width, height: 1 } }).setContext(ctx);
+  const easy = factory.EasyScore();
+  for (const view of views) easy.addCommitHook(view.textLanes.hook);
+  const composition = easy.compose(spec);
+  let offset = 0;
+  const instruments = views.map((view, i) => {
+    const local = views.length === 1 ? composition : instrumentComposition(composition, offset, view.staves.length);
+    offset += view.staves.length;
+    const score = scores[i];
+    prepareScreen(score, view, local, factory);
+    return { score, view, local };
+  });
+
+  function resize() {
+    const rows = composition.sheet.getRows();
+    const extent = Math.max(width, frames.extent, ...rows.map(r => r.x + r.width + 10));
+    ctx.resize(extent, Math.ceil(composition.sheet.getHeight() + 20));
+  }
+  if (canvas) {
+    composition.sheet.format();
+    resize();
+    if (frames.height) frameKeys();
+  }
+  for (const { score, local } of instruments) {
+    if (!score.measures[0].state.hideClef) continue;
+    composition.sheet.format();
+    for (const row of local.staves) for (const stave of row) {
+      for (const clef of stave.getModifiers(undefined, Clef.CATEGORY)) clef.setText('');
+    }
+  }
+  factory.draw();
+  const labels = views.flatMap(view => [...view.textLanes.regions.values()]);
+  const extraRegions = [...labels, ...frames.regions,
+    ...instruments.flatMap(({ score, view, local }) => tabDetails(score, view, local, ctx, composition))];
+  const sources = Object.assign(Object.create(null), ...views.map(view => view.sources.ids));
+  const navigation = new ScoreNavigation(composition, spec.staves, sources);
+  // Keep all fragments of a tie together in written order, including connections crossing systems.
+  const tabTies = new Map(instruments.flatMap(({ score, view }) =>
+    score.ties.map(t => [view.eventId('tab', t.id), [] as ScoreHitRegion[]] as const)));
+  for (const region of navigation.regions) tabTies.get(region.id)?.push(region);
+  const tabRegions = [...tabTies.values()].flat();
+  const hidden = new Set(instruments.flatMap(({ score, view }) => [...hiddenNotes(score, view)]));
+
   function hitTest(x: number, y: number): ScoreHitRegion | undefined {
-    const label = [...view.textLanes.regions.values()].find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+    const contains = (r: ScoreHitRegion) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    const label = labels.find(contains);
     if (label) return label;
     const hit = navigation.hitTest(x, y);
     if (hit && !hidden.has(hit.id)) return hit;
-    return extraRegions.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+    return extraRegions.find(contains);
   }
   if (!canvas) resize();
   else {
@@ -457,36 +532,28 @@ export function renderScore(host: HTMLElement, source: ParsedScore | ScoreV2,
   }
   if (parsed.layout?.scale) surface.style.zoom = String(parsed.layout.scale);
   host.replaceChildren(surface);
+
+  function rangeFor(id: string, revision: string) {
+    for (const view of views) {
+      const range = view.sources.rangeFor(id, revision);
+      if (range) return range;
+    }
+  }
   const diagnostics: { code: string; measures: number[]; range: SourceRange; source?: string }[] =
     composition.sheet.getContinuousLayout().diagnostics.map(d => ({
-    ...d, range: (d.source && view.sources.rangeFor(d.source, parsed.source)) || parsed.measures[d.measures[0] - 1]?.range,
-  }));
+      ...d, range: (d.source && rangeFor(d.source, parsed.source)) || parsed.measures[d.measures[0] - 1]?.range,
+    }));
   for (const m of parsed.measures) {
-    if (!m.voices.some(v => v.events.some(e => e.chord || e.lyric))) continue;
+    if (!scores.some(score => score.measures[m.number - 1].voices.some(v => v.events.some(e => e.chord || e.lyric)))) continue;
     for (const d of composition.systems[m.number - 1].getPhraseLayout().diagnostics) {
-      const source = d.sources.find(id => view.sources.rangeFor(id, parsed.source));
-      diagnostics.push({ code: d.code, measures: [m.number], source, range: view.sources.rangeFor(source, parsed.source) ?? m.range });
+      const source = d.sources.find(id => rangeFor(id, parsed.source));
+      diagnostics.push({ code: d.code, measures: [m.number], source, range: rangeFor(source, parsed.source) ?? m.range });
     }
   }
-  // Row membership and head coordinates belong to this particular engraving width.
-  function playbackGeometry(): Geometry {
-    const geometry: Geometry = new Map();
-    for (const band of composition.sheet.getContinuousLayout().rows) {
-      const staves = band.measures.flatMap(n => composition.staves[n - 1]);
-      const row = staveRow(staves);
-      for (const number of band.measures) for (const voice of parsed.measures[number - 1].voices) {
-        for (const attack of voice.events) {
-          const stavesForVoice = voice.hand ? [voice.hand] : view.staves;
-          const glyphs = stavesForVoice.map(staff => composition.getNote(view.eventId(staff, attack.id)));
-          geometry.set(attack.id, position(row, glyphs, attack.heads.map(h => !!h.sounding && !attack.silent)));
-        }
-      }
-    }
-    return geometry;
-  }
-  scoreSurfaces.set(canvas ?? (ctx as SVGContext).svg, { score: parsed, read: playbackGeometry });
-  return { score: parsed, composition, navigation, hitTest, tabRegions, extraRegions, diagnostics,
-    rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };
+
+  scoreSurfaces.set(canvas ?? (ctx as SVGContext).svg, { score: parsed, ensemble: conductor ? scores : undefined, read: () => playbackGeometry(composition, instruments) });
+  return { score: parsed, parts: scores, composition, navigation, hitTest, tabRegions, extraRegions, diagnostics, rangeFor,
+    sourceFor: (id: string): string | undefined => sources[id] };
 }
 
 /** Independent hands and parts retain their boundaries, source IDs and shared endings. */
@@ -519,9 +586,9 @@ function selectVoices(score: ParsedScore, part: Part, number?: number): ParsedSc
 
 /** Publication recomposes from descriptors. Reject any selected mark that needs the screen pass. */
 export function renderScorePart(host: HTMLElement, source: ParsedScore | ScoreV2, part: Staff,
-  options: Omit<PublicationOptions, 'staves'> & { voice?: number; partIndex?: number } = {}) {
-  const { voice, partIndex, ...paper } = options;
-  let parsed = 'parts' in source ? projectScoreV2(source, partIndex) : source;
+  options: Omit<PublicationOptions, 'staves'> & PartSelector & { voice?: number } = {}) {
+  const { voice, partId, partIndex, ...paper } = options;
+  let parsed = 'parts' in source ? projectScoreV2(source, selectedPart(source, { partId, partIndex })) : source;
   parsed = selectVoices(parsed, part, voice);
   const view = project(parsed, part, 600, true);
   const unsupported = (feature: string, range: SourceRange): never => {
