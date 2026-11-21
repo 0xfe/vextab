@@ -64,7 +64,7 @@ function hammerSource(head: Head, previous: ScoreEvent | undefined, kind: 'hamme
 /** Every invocation has fresh budgets and IDs. No parsing or expansion state survives an edit. */
 export function compile(source: string): ScoreV2 {
   const fail: Fail = (code, reason, range, trace = []) => { throw new ScoreV2Error(code, reason, source, range, trace); };
-  const { patterns, parts, scoreMeters, pickup, pickupRange, playback, measureNumbers, layout, transpose: scoreTranspose } = readScore(source, fail);
+  const { editions, patterns, parts, scoreMeters, pickup, pickupRange, playback, measureNumbers, layout, transpose: scoreTranspose } = readScore(source, fail);
   const meterText = scoreMeters[1]?.value ?? '4/4';
   const firstLength = pickup && fractionText(rational(...pickup, fail, pickupRange, []));
   const quarter: Fraction = [BigInt(1), BigInt(4)];
@@ -314,5 +314,19 @@ export function compile(source: string): ScoreV2 {
   for (const [n, change] of Object.entries(scoreMeters)) {
     if (Number(n) > measureCount) fail('alignment', 'Meter change lies beyond the score', change.range);
   }
-  return { language: 2, ...(scoreTranspose && { transpose: scoreTranspose }), ...(layout && { layout }), ...(playback && { playback }), ...(measureNumbers !== undefined && { measureNumbers }), source, meter: meterText, meterRange: scoreMeters[1]?.range, ...(pickup && { pickup: firstLength }), measureCount, parts: compiled };
+  for (const edition of editions) {
+    const target = compiled.find(p => p.id === edition.part);
+    if (edition.part && !target) fail('alignment', 'Unknown edition part ' + edition.part, edition.range);
+    const limit = target?.measureCount ?? Math.min(...compiled.map(p => p.measureCount));
+    for (const anchor of edition.anchors) {
+      if (anchor.measure > limit || (anchor.field.endsWith('Turns') && anchor.measure === limit))
+        fail('alignment', 'Edition measure or turn outside the music', anchor.range);
+    }
+    for (const cue of edition.cues) {
+      const donor = compiled.find(p => p.id === cue.part);
+      if (!donor || cue.measure > donor.measureCount || cue.measure > limit)
+        fail('alignment', 'Missing cue instrument or measure', cue.range);
+    }
+  }
+  return { language: 2, ...(editions.length && { editions }), ...(scoreTranspose && { transpose: scoreTranspose }), ...(layout && { layout }), ...(playback && { playback }), ...(measureNumbers !== undefined && { measureNumbers }), source, meter: meterText, meterRange: scoreMeters[1]?.range, ...(pickup && { pickup: firstLength }), measureCount, parts: compiled };
 }

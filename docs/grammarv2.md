@@ -357,3 +357,36 @@ A parser with no general loop can still expand exponentially. The compiler spend
 4. **Select the major version explicitly.** Offer a versioned parser entry or `parseScore(source, { language: 2 })` during previews. A new major may choose v2 as its default. Versioning belongs to the host or document header. Guessing from the first symbol makes a broken v2 edit accidentally parse as another language.
 5. **Migrate authored scores with an explicit tool.** Parse v1 using its own semantics, then emit canonical v2 and a change report with source ranges. Preserve literal signs, derive the real attack order of grouped legacy frets, name the target of each backward annotation, and resolve timed text positions. Flag malformed-but-accepted fragments, unsupported output effects and ambiguous defaults for review. Provide a per-score diff before replacing user text. A v1-to-v2 migration of this library's source format is separate from importing music files.
 6. **Set the release gate.** Publish a capability table for fixed SVG/Canvas, responsive SVG, printed parts, navigation and playback. Every currently documented feature needs a translated fixture and either matching observable behavior or an explicit, reviewed major-version change. Grow the syntax for new VexFlow features only after their real scores work. Keep the prototype available for comparison while qualifying the replacement compiler.
+
+## Print editions
+
+One score can supply shared print defaults, a conductor edition and an edition for each named instrument. Dimensions are millimeters. Staff size measures the height of four staff spaces. Margins follow top, right, bottom, left order.
+
+```vextab
+edition {
+  paper A4 margins 15 16 15 16 staffSize 6
+  title "Quartet" subtitle "Theme and Variation I"
+  header "Haydn · Op. 76 No. 3" footer "Rehearsal edition" pageNumbers on
+}
+edition conductor { system at 5 page at 9 }
+edition part cello {
+  paper Letter compressRests on
+  page at 13 prefer after 12 forbid after 15
+  cue violin_ii at 13 "Vln. II"
+}
+```
+
+Measure references follow written order starting at 1. A pickup or written fragment counts as a measure. A system or page starts **at** the named measure. The player turns **after** the named measure. Preferred and forbidden turns guide the native paginator at system ends. Pair a preference with a system break if the player needs that location available. A forced page break can make a forbidden turn unavoidable. The result then includes a located `ForbiddenTurn` diagnostic.
+
+Cues quote one written measure from the first display staff of a named part on the same measure grid. The label, written notes and source selections belong to the donor. The cue carries note decorations and spans with both endpoints inside the quoted measure. The timeline and printed rests belong to the player. Rest compression uses VexFlow's numbered multimeasure rest. A cue keeps its measure visible.
+
+```ts
+const score = parseScore(source);
+const conductor = renderEdition(conductorHost, score);
+const cello = renderEdition(celloHost, score, { partId: 'cello' });
+const letterScore = renderEdition(otherHost, score, 'conductor', { paper: 'Letter' });
+```
+
+Settings apply in order from shared defaults to the selected edition to explicit API options. Authored break and turn lists accumulate. An explicit list replaces that category, including an empty list. Explicit margins override individual sides. An explicit `regions` list replaces the authored cues. `renderScorePart` uses the same edition with its existing staff and voice selection. Screen layout and playback read the musical source independently.
+
+Read `result.diagnostics` for source ranges and `result.publication.pages` for systems and written measure numbers. `publication.toSVG(page, fonts)` and `publication.toPrintHTML(fonts)` accept outline faces for the fonts used in the score. The Haydn inspection script shows the complete export. [Editable quartet](../guide/scores/haydn-emperor-variation.vextab) · [Edition evidence](../issues/198/README.md)

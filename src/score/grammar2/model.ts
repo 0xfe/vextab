@@ -92,8 +92,27 @@ export interface PartSettings {
 }
 export interface ScorePart extends PartSettings, InstrumentIdentity { measureCount?: number; text?: TextLane[]; kind: PartKind; range: TextRange; staves: ScoreStaff[] }
 
+/** Printed measure references are one-based, including pickups and written fragments. */
+export type BreakField = 'systemBreaks' | 'pageBreaks' | 'preferredTurns' | 'forbiddenTurns';
+export interface EditionPaper {
+  paper?: 'A4' | 'Letter';
+  margins?: { top: number; right: number; bottom: number; left: number };
+  staffSize?: number;
+  title?: string; subtitle?: string; header?: string; footer?: string;
+  pageNumbers?: boolean; compressRests?: boolean;
+}
+export interface Edition {
+  part?: string;
+  conductor?: boolean;
+  range: TextRange;
+  settings: EditionPaper;
+  anchors: { field: BreakField; measure: number; range: TextRange }[];
+  cues: { part: string; measure: number; label: string; range: TextRange }[];
+}
+
 /** V2 parts share a playback origin. measureCount is the largest local bar count. */
 export interface ScoreV2 {
+  editions?: Edition[];
   playback?: { enabled: boolean; tempo?: number; instrument?: string };
   transpose?: number; measureNumbers?: boolean; layout?: ScoreLayout;
   language: 2; source: string; meter: string; meterRange?: TextRange; pickup?: string; measureCount: number; parts: ScorePart[];

@@ -11,7 +11,7 @@ import { ScoreError, type SourceRange } from '../source';
 import type { ScoreV2, Head as WrittenHead, ScoreVoice, ScoreEvent, TextRange } from './model';
 
 /** Index the original revision once. CRLF and non-BMP characters keep their DOM selection offsets. */
-function locations(source: string) {
+export function locations(source: string) {
   const lines = [0];
   const breaks = /\r\n|\r|\n/g;
   while (breaks.exec(source)) lines.push(breaks.lastIndex);

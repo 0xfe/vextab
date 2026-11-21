@@ -123,6 +123,7 @@ export function readScore(source: string, fail: Fail) {
   let playback: import('./model.js').ScoreV2['playback'];
   let transpose: number | undefined;
   let measureNumbers: boolean | undefined;
+  const editions: import('./model.js').Edition[] = [];
   let layout: import('./model.js').ScoreLayout | undefined;
   let pickup: Fraction | undefined, pickupToken: Token | undefined;
 
@@ -162,6 +163,61 @@ export function readScore(source: string, fail: Fail) {
     if (!token.text.startsWith('"')) return error('Expected quoted text', token);
     try { return JSON.parse(token.text); }
     catch { return error('Invalid quoted text', token); }
+  }
+
+  /** Physical dimensions use millimeters. Turn references follow a bar, breaks start one. */
+  function readEdition(opening: Token) {
+    const edition: import('./model.js').Edition = { range: opening.range, settings: {}, anchors: [], cues: [] };
+    if (peek() === 'part') { take(); edition.part = identifier(); }
+    else if (peek() === 'conductor') { take(); edition.conductor = true; }
+    if (editions.some(e => e.part === edition.part && e.conductor === edition.conductor))
+      error('Duplicate edition for this target', opening);
+    function dimension() {
+      const t = take();
+      if (!/^\d{1,3}(?:\.\d{1,3})?$/.test(t.text)) error('Expected millimeters', t);
+      return Number(t.text);
+    }
+    function measure() {
+      const t = take();
+      if (!/^[1-9]\d{0,3}$/.test(t.text)) error('Expected a positive measure number', t);
+      return Number(t.text);
+    }
+    block(() => {
+      while (peek() !== '}') {
+        const field = take(), key = field.text;
+        if (Object.prototype.hasOwnProperty.call(edition.settings, key)) error('Duplicate edition setting', field);
+        if (key === 'paper') {
+          const t = take();
+          if (t.text !== 'A4' && t.text !== 'Letter') error('Expected A4 or Letter', t);
+          edition.settings.paper = t.text;
+        } else if (key === 'margins') {
+          edition.settings.margins = { top: dimension(), right: dimension(), bottom: dimension(), left: dimension() };
+        } else if (key === 'staffSize') {
+          edition.settings.staffSize = dimension();
+          if (!edition.settings.staffSize) error('Expected a positive staff size', field);
+        } else if (key === 'title' || key === 'subtitle' || key === 'header' || key === 'footer') {
+          edition.settings[key] = literal();
+        } else if (key === 'pageNumbers' || key === 'compressRests') {
+          const t = take();
+          if (t.text !== 'on' && t.text !== 'off') error('Expected on or off', t);
+          edition.settings[key] = t.text === 'on';
+        } else if (key === 'system' || key === 'page' || key === 'prefer' || key === 'forbid') {
+          expect(key === 'system' || key === 'page' ? 'at' : 'after');
+          const bar = measure();
+          edition.anchors.push({ field: ({ system: 'systemBreaks', page: 'pageBreaks', prefer: 'preferredTurns', forbid: 'forbiddenTurns' } as const)[key],
+            measure: bar, range: [field.range[0], tokens[cursor - 1].range[1]] });
+        } else if (key === 'cue') {
+          if (!edition.part) error('Declare a cue in a player edition', field);
+          const part = identifier();
+          expect('at');
+          const bar = measure(), label = literal();
+          if (!label.trim()) error('Expected a cue label', field);
+          edition.cues.push({ part, measure: bar, label, range: [field.range[0], tokens[cursor - 1].range[1]] });
+        } else error('Unknown edition setting', field);
+      }
+    });
+    edition.range = [opening.range[0], tokens[cursor - 1].range[1]];
+    editions.push(edition);
   }
 
   /** Display and playback metadata are shared by instrument and staff declarations. */
@@ -684,6 +740,8 @@ export function readScore(source: string, fail: Fail) {
       const match = /^([1-9]\d{0,2})\/(1|2|4|8|16|32|64)$/.exec(pickupToken.text);
       if (!match) error('Expected a pickup duration such as 1/8', pickupToken);
       pickup = [BigInt(match[1]), BigInt(match[2])];
+    } else if (token.text === 'edition') {
+      readEdition(token);
     } else if (token.text === 'layout') {
       if (layout || parts.length) error('Declare layout once before the first part', token);
       layout = {};
@@ -782,5 +840,5 @@ export function readScore(source: string, fail: Fail) {
     } else error('Expected a score setting, alias, pattern or part', token);
   }
   if (!parts.length) error('Expected a part');
-  return { patterns, parts, scoreMeters, pickup, pickupRange: pickupToken?.range, playback, measureNumbers, layout, transpose };
+  return { editions, patterns, parts, scoreMeters, pickup, pickupRange: pickupToken?.range, playback, measureNumbers, layout, transpose };
 }

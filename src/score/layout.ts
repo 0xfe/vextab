@@ -1,13 +1,14 @@
 // Project the shared score into fresh VexFlow objects for each screen or publication view.
 import { position, staveRow, printedGeometry, scoreSurfaces, type Geometry } from '../playback/geometry';
-import { projectScoreV2 } from './grammar2/project';
+import { editionSettings, type EditionOptions } from './editions';
+import { locations, projectScoreV2 } from './grammar2/project';
 import type { ScoreV2 } from './grammar2/model';
 import { attachHeadMarks } from './head-marks';
 import { TextLanes } from './text-lanes';
 import { drumKit } from './drums';
 import { attachOpenSlide, describeOpenSlide } from './open-slide';
 import { inkStyle, setFretPaper } from './color';
-import { drawPrepared, type PartDrawingOptions } from './publication-draw';
+import { drawPrepared, spansForInset, type PartDrawingOptions } from './publication-draw';
 import { conductorSpec, instrumentComposition, instrumentLabel, selectedPart, type PartSelector } from './conductor';
 import { scoreFont } from './engraving';
 import {
@@ -598,57 +599,140 @@ function selectVoices(score: ParsedScore, part: Part, number?: number): ParsedSc
 }
 
 /** Prepare every native publication and cue before VexFlow measures its ink and breaks pages. */
-function drawPart(parsed: ParsedScore, view: Projection, hooks: PublicationOptions['noteHooks']): PartDrawingOptions['drawComposition'] {
+function publicationDrawing(scores: ParsedScore[], views: Projection[], source: EasyScoreCompositionSpec,
+  hooks: PublicationOptions['noteHooks']): PartDrawingOptions['drawComposition'] {
+  const owners = new Map<string, { index: number; staff: Staff }>();
+  let offset = 0;
+  views.forEach((view, index) => {
+    for (const staff of view.staves) owners.set(source.staves[offset++].id, { index, staff });
+  });
   return (spec, composition, factory, builder, insetMeasure) => {
-    const staves = spec.staves.map(staff => staff.id as Staff);
+    const instruments: ScreenInstrument[] = [];
     const ctx = factory.getContext() as SVGContext;
-    // An inset has its original event IDs but a single local measure on one selected staff.
-    const selected = insetMeasure === undefined ? parsed : {
-      ...parsed, measures: [{ ...parsed.measures[insetMeasure - 1], number: 1 }], spans: [],
-    };
-    const partView = { ...view, staves, mixedEndings: insetMeasure === undefined ? view.mixedEndings : [] };
-    prepareScreen(selected, partView, composition, factory);
-    if (hooks?.length) {
-      for (const measure of selected.measures) for (const staff of staves) {
-        for (const voice of voicesFor(measure, staff)) for (const event of voice.events) {
-          const id = view.eventId(staff, event.id);
-          const note = composition.getNote(id) as StemmableNote;
-          for (const hook of hooks) hook({ id, clef: staff === 'tab' ? 'tab' : staff === 'left' ? 'bass' : measure.state.clef, stem: voice.stem ?? 'auto' }, note, builder);
+    let start = 0;
+    while (start < spec.staves.length) {
+      const { index } = owners.get(spec.staves[start].id);
+      const staves: Staff[] = [];
+      while (start + staves.length < spec.staves.length) {
+        const owner = owners.get(spec.staves[start + staves.length].id);
+        if (owner.index !== index) break;
+        staves.push(owner.staff);
+      }
+      const local = instrumentComposition(composition, start, staves.length);
+      start += staves.length;
+      const parsed = scores[index], view = views[index];
+      const selected = insetMeasure === undefined ? parsed : {
+        ...parsed, measures: [{ ...parsed.measures[insetMeasure - 1], number: 1 }], spans: [], ties: [],
+      };
+      const partView = { ...view, staves, mixedEndings: insetMeasure === undefined ? view.mixedEndings : [] };
+      prepareScreen(selected, partView, local, factory);
+      if (hooks?.length) {
+        for (const measure of selected.measures) for (const staff of staves) {
+          for (const voice of voicesFor(measure, staff)) for (const event of voice.events) {
+            const id = view.eventId(staff, event.id);
+            const note = local.getNote(id) as StemmableNote;
+            for (const hook of hooks) hook({ id, clef: staff === 'tab' ? 'tab' : staff === 'left' ? 'bass' : measure.state.clef, stem: voice.stem ?? 'auto' }, note, builder);
+          }
         }
       }
+      instruments.push({ score: selected, view: partView, local });
     }
-    drawPrepared(factory, () => finishLayout(composition, [{ score: selected, view: partView, local: composition }]));
-    drawTabConnections(selected, partView, composition, ctx);
-    drawTabEndings(partView, composition, ctx, composition);
-
-    if (!selected.measures.some(m => m.voices.some(v => v.events.some(e => e.frame)))) return;
-    // The page planner measures this native diagram key as first-system ink, including on a short page.
-    const top = Math.min(0, ctx.svg.getBBox().y);
-    const key = ctx.openGroup('chord-frames');
-    drawFrames(selected, spec.sheet.width, ctx, (id, range, event) => view.sources.project(staves[0], id, range, event));
-    ctx.closeGroup();
-    const box = key.getBBox();
-    key.setAttribute('transform', 'translate(0,' + (top - box.y - box.height - 8) + ')');
+    drawPrepared(factory, () => finishLayout(composition, instruments));
+    for (const { score, view, local } of instruments) {
+      drawTabConnections(score, view, local, ctx);
+      drawTabEndings(view, local, ctx, composition);
+      if (!score.measures.some(m => m.voices.some(v => v.events.some(e => e.frame)))) continue;
+      const top = Math.min(0, ctx.svg.getBBox().y);
+      const key = ctx.openGroup('chord-frames');
+      drawFrames(score, spec.sheet.width, ctx, (id, range, event) => view.sources.project(view.staves[0], id, range, event));
+      ctx.closeGroup();
+      const box = key.getBBox();
+      key.setAttribute('transform', 'translate(0,' + (top - box.y - box.height - 8) + ')');
+    }
   };
 }
 
 /** Rebuild an independent part with the same descriptors and native decorations as the screen. */
 export function renderScorePart(host: HTMLElement, source: ParsedScore | ScoreV2, part: Staff,
-  options: Omit<PublicationOptions, 'staves'> & PartSelector & { voice?: number } = {}) {
+  options: EditionOptions & PartSelector & { voice?: number } = {}) {
   const { voice, partId, partIndex, ...paper } = options;
-  let parsed = 'parts' in source ? projectScoreV2(source, selectedPart(source, { partId, partIndex })) : source;
-  parsed = selectVoices(parsed, part, voice);
-  const view = project(parsed, part, 600, true);
-  const settings: PartDrawingOptions = { ...paper, noteHooks: [view.textLanes.hook, ...(paper.noteHooks ?? [])],
-    drawComposition: drawPart(parsed, view, paper.noteHooks) };
-  const publication = new Publication(view.spec).render(host, settings);
-  function playbackGeometry(): Geometry {
-    const attacks = new Map<string, Attack>();
-    for (const m of parsed.measures) for (const voice of m.voices) for (const event of voice.events) {
-      attacks.set('vf-' + view.eventId(voice.hand ?? part, event.id), event);
-    }
-    return printedGeometry(publication, attacks);
+  if ('parts' in source) return publishEdition(host, source, selectedPart(source, { partId, partIndex }), paper, part, voice);
+  return publish(host, [selectVoices(source, part, voice)], [part], paper, undefined);
+}
+
+/** Print a complete conductor edition or an independent named instrument with its authored cues. */
+export function renderEdition(host: HTMLElement, document: ScoreV2, target: 'conductor' | PartSelector = 'conductor', options: EditionOptions = {}) {
+  return publishEdition(host, document, target === 'conductor' ? target : selectedPart(document, target), options, 'score');
+}
+
+/** Include only the requested music and the staves supplying cue references. */
+function publishEdition(host: HTMLElement, document: ScoreV2, target: number | 'conductor', overrides: EditionOptions, part: Part, voice?: number) {
+  const conductor = target === 'conductor';
+  const edition = editionSettings(document, target, overrides);
+  const donors = overrides.regions === undefined ? edition.cues.map(c => selectedPart(document, { partId: c.part })) : [];
+  const indices = conductor ? document.parts.map((_, i) => i) : [...new Set([target, ...donors])];
+  const scores = indices.map((id, i) => {
+    const parsed = projectScoreV2(document, id);
+    return i === 0 && !conductor ? selectVoices(parsed, part, voice) : parsed;
+  });
+  const parts = scores.map((_, i) => i === 0 ? part : 'score' as Part);
+  return publish(host, scores, parts, edition.settings, { conductor, donors: donors.map(id => indices.indexOf(id)), edition, document });
+}
+
+/** Draw, paginate and map each native diagnostic back to the requesting source revision. */
+function publish(host: HTMLElement, scores: ParsedScore[], parts: Part[], options: EditionOptions, context?: {
+  conductor: boolean; donors: number[]; edition: ReturnType<typeof editionSettings>; document: ScoreV2;
+}) {
+  const parsed = scores[0];
+  const views = scores.map((score, i) => project(score, parts[i], 600, true));
+  const spec = views.length > 1 ? conductorSpec(scores, views.map(v => v.spec)) : views[0].spec;
+  if (!context?.conductor) spec.continuous.boundaries = views[0].spec.continuous.boundaries;
+  const { compressRests, ...paper } = options;
+  if (compressRests) {
+    // An empty boundary prevents VexFlow from grouping adjacent plain rests. Retain
+    // real score changes and pickups, including the first bar after a requested turn.
+    const turns = new Set([...(paper.preferredTurns ?? []), ...(paper.forbiddenTurns ?? [])].map(n => n + 1));
+    spec.continuous.compressRests = true;
+    spec.continuous.boundaries = spec.continuous.boundaries.flatMap(b => {
+      if (turns.has(b.measure) || parsed.measures[b.measure - 1].state.fragment)
+        return [{ ...b, keepRest: true }];
+      return b.rehearsal || b.breakBefore || b.repeatStart || b.repeatEnd ? [b] : [];
+    });
   }
-  for (const page of publication.pages) scoreSurfaces.set(page.svg, { score: parsed, read: playbackGeometry });
-  return { publication, score: parsed, rangeFor: view.sources.rangeFor, sourceFor: view.sources.sourceFor };
+  const settings: PartDrawingOptions = { ...paper, noteHooks: [...views.map(v => v.textLanes.hook), ...(paper.noteHooks ?? [])],
+    insetSpans: inset => spansForInset(inset, spec.continuous.spans),
+    drawComposition: publicationDrawing(scores, views, spec, paper.noteHooks) };
+  if (context && !context.conductor) settings.staves = spec.staves.slice(0, views[0].staves.length).map(s => s.id);
+  if (context?.donors.length) settings.regions = context.edition.cues.map((cue, i) => {
+    const start = views.slice(0, context.donors[i]).reduce((n, v) => n + v.staves.length, 0);
+    return { kind: 'cue', staff: spec.staves[start].id, label: cue.label, measure: cue.measure };
+  });
+  const locate = locations(parsed.source);
+  let publication: ReturnType<Publication['render']>;
+  try {
+    publication = new Publication(spec).render(host, settings);
+  } catch (error) {
+    if (context?.edition.range && error.code === 'BadPublication')
+      throw new ScoreError('fixed-layout', error.message, locate(context.edition.range));
+    throw error;
+  }
+  const rangeFor = (id: string, revision: string) => views.map(v => v.sources.rangeFor(id, revision)).find(Boolean);
+  const diagnostics = publication.diagnostics.map(d => {
+    const measure = d.measures[0];
+    const anchor = d.code === 'ForbiddenTurn' && context?.edition.anchors.find(a => a.field === 'forbiddenTurns' && a.measure === measure);
+    const cue = d.detail.startsWith('cue exceeds') && context?.edition.cues.find(c => c.measure === measure);
+    const directive = anchor || cue;
+    const source = d.code === 'ExcludedAnchor' ? d.detail : d.detail.split(' ')[1];
+    const range = directive ? locate(directive.range) : rangeFor(source, parsed.source) ||
+      (d.code === 'TextOverflow' && context?.edition.range && locate(context.edition.range)) ||
+      parsed.measures[measure - 1]?.range;
+    return { ...d, range };
+  });
+  const attacks = new Map<string, Attack>();
+  const performing = context?.conductor ? scores : [parsed];
+  for (const [i, score] of performing.entries()) for (const m of score.measures) for (const voice of m.voices)
+    for (const event of voice.events) for (const staff of views[i].staves) attacks.set('vf-' + views[i].eventId(staff, event.id), event);
+  for (const page of publication.pages) scoreSurfaces.set(page.svg, { score: parsed, ensemble: context?.conductor ? scores : undefined, read: () => printedGeometry(publication, attacks) });
+  return { publication, diagnostics, score: parsed, rangeFor,
+    sourceFor: (id: string) => views.map(v => v.sources.sourceFor(id)).find(Boolean) };
 }

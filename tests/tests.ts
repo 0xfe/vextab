@@ -8,6 +8,7 @@ import './shared-score';
 import './grammar2';
 import './grammar2-views';
 import './conductor';
+import './editions';
 import './grammar2-parity';
 import './piano';
 import './transpose';

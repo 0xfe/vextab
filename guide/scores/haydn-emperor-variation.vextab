@@ -1,0 +1,203 @@
+// Joseph Haydn, Op. 76 No. 3, II. Theme and Variation I, pickup through bar 40.
+// OpenScore CC0 edition 20428156. Editorial details and source check in issues/198.
+meter cut
+pickup 1/2
+play { tempo 80 }
+edition {
+  paper A4 margins 15 16 16 16 staffSize 6
+  title "Emperor Quartet" subtitle "II. Poco adagio, cantabile"
+  header "Haydn · Op. 76 No. 3" footer "Theme and Variation I" pageNumbers on
+}
+edition conductor { system at 10 page at 22 }
+edition part violin_i {
+  paper Letter page at 22
+  system at 23 system at 25 system at 27 system at 29 system at 31
+  system at 33 system at 35 system at 37 system at 39 system at 41
+}
+edition part violin_ii { paper Letter page at 22 }
+edition part viola { paper Letter compressRests on page at 22 cue violin_ii at 23 "Vln. II" }
+edition part cello { paper Letter compressRests on page at 23 prefer after 22 cue violin_ii at 23 "Vln. II" }
+
+staff violin_i { name "Violin I" shortName "Vln. I"
+  key G clef treble
+  slur { :q. G4 :8 A4 |
+  :q B4 :q A4 :q C5 :q B4 } |
+  slur { :8 A4 :8 F#4 :q G4 } slur { :q E5 :q D5 |
+  :q C5 :q B4 } slur { :q A4 :8 B4 :8 G4 } |
+  :h D5 slur { :q. G4 :8 A4 |
+  :q B4 :q A4 :q C5 :q B4 } |
+  slur { :8 A4 :8 F#4 :q G4 } slur { :q E5 :q D5 |
+  :q C5 :q B4 } slur { :q A4 :8 B4 :8 G4 } |
+  :h D5 slur { :q A4 :q B4 |
+  :8 A4 :8 F#4 :q D4 } slur { :q C5 :q B4 |
+  :8 A4 :8 F#4 :q D4 } slur { :q D5 :q C5 |
+  :q. B4 } :8 B4 :q C#5 slur { :8 C#5 :8 D5 } |
+  :h D5[fermata] slur { :q. G5 :8 F#5 |
+  :8 F#5 :8 E5 :q D5 } slur { :q. E5 :8 D5 |
+  :8 D5 :8 C5 :q B4 } slur { :q. A4 :16 B4 :16 C5 } |
+  slur { :8 D5 :8 E5 :8 C5 :8 A4 } :q G4 slur { :8 A4 :8 G4 } |
+  :h G4 slur { :q. G5 :8 F#5 |
+  :8 F#5 :8 E5 :q D5 } slur { :q. E5 :8 D5 |
+  :8 D5 :8 C5 :q B4 } slur { :q. A4 :16 B4 :16 C5 } |
+  slur { :8 D5 :8 E5 :8 C5 :8 A4 } slur { :q G4 :8 A4 :8 G4 } |
+  fragment { :h G4 bar double }
+  fragment { mark "Var. I" :16 B3[staccato] :16 D4[staccato] :16 G4[staccato] :16 B4[staccato] :16 D5[staccato] :16 G5[staccato] :16 F#5[staccato] :16 E5[staccato] | }
+  :16 D5[staccato] :16 G5[staccato] :16 B5[staccato] :16 G5[staccato] :16 F#5[staccato] :16 D4[staccato] :16 F#5[staccato] :16 G5[staccato] slur { :16 G#5 :16 A5 :16 C6 :16 F#5 } slur { :16 A5 :16 G5 :16 B5 :16 D5 } |
+  slur { :16 D5 :16 C5 :16 E5 :16 C5 } slur { :16 A#4 :16 B4 :16 F#4 :16 G4 } :16 rest slur { :16 G5 :16 D6 :16 C6 } slur { :16 F#5 :16 C6 :16 A#5 :16 B5 } |
+  :16 rest slur { :16 E5 :16 B5 :16 A5 } slur { :16 D5 :16 A5 :16 F#5 :16 G5 } :16 rest slur { :16 C5 :16 G5 :16 F#5 } slur { :16 A5 :16 G5 :16 B5 :16 G5 } |
+  :16 F#5 :16 A5 :16 C#6 :16 D6 :16 D4 :16 E4 :16 C4 :16 D4 :16 B3[staccato] :16 D4[staccato] :16 G4[staccato] :16 B4[staccato] :16 D5[staccato] :16 G5[staccato] :16 F#5[staccato] :16 E5[staccato] |
+  :16 D5[staccato] :16 G5[staccato] :16 B5[staccato] :16 G5[staccato] :16 F#5[staccato] :16 D4[staccato] :16 F#5[staccato] :16 G5[staccato] slur { :16 G#5 :16 A5 :16 C6 :16 F#5 } slur { :16 A5 :16 G5 :16 B5 :16 D5 } |
+  slur { :16 D5 :16 C5 :16 E5 :16 C5 } slur { :16 A#4 :16 B4 :16 F#4 :16 G4 } :16 rest slur { :16 G5 :16 D6 :16 C6 } slur { :16 F#5 :16 C6 :16 A#5 :16 B5 } |
+  :16 rest slur { :16 E5 :16 B5 :16 A5 } slur { :16 D5 :16 A5 :16 F#5 :16 G5 } :16 rest slur { :16 C5 :16 G5 :16 F#5 } slur { :16 A5 :16 G5 :16 B5 :16 G5 } |
+  :16 F#5 :16 A5 :16 C#6 :16 D6 :q D5 slur { :16 D4 :16 F#4 :16 D5 :16 F#4 } slur { :16 D4 :16 G4 :16 D5 :16 G4 } |
+  :16 D4[staccato] :16 F#4[staccato] :16 A4[staccato] :16 C#5[staccato] :16 D5[staccato] :16 F#5[staccato] :16 A5[staccato] :16 D6[staccato] :16 A5 :16 F#5 :16 D5 :16 F#5 :16 G5 :16 D5 :16 B4 :16 G4 |
+  :16 D4 :16 F#4 :16 A4 :16 C#5 :16 D5 :16 F#5 :16 A5 :16 D6 :16 B4 :16 D5 :16 G5 :16 B5 :16 D4 :16 A5 :16 F#5 :16 D4 |
+  :16 E4 :16 G4 :16 B4 :16 E5 :16 G5 :16 B5 :16 G5 :16 E5 :16 A3 :16 C#4 :16 E4 :16 G4 :16 C#5 :16 E5 :16 G5 :16 G4 |
+  :16 F#4 :16 D5 :16 A4 :16 F#4 :16 D4 :16 E4 :16 C4 :16 D4 :16 B3 :16 D4 :16 G4 :16 B4 :16 D5 :16 G5 :16 B3 :16 G4 |
+  :16 C4 :16 G4 :16 E5 :16 G4 :16 B3 :16 G4 :16 D5 :16 G4 :16 C4 :16 E4 :16 G4 :16 C5 :16 E5 :16 G5 :16 B3 :16 G4 |
+  :16 A3 :16 C4 :16 D4 :16 F#4 :16 G4 :16 B4 :16 D5 :16 G5 :16 C4 :16 D4 :16 F#4 :16 A4 :16 C5 :16 F#5 :16 G5 :16 A5 |
+  :16 B4 :16 G5 :16 C5 :16 G5 :16 E4 :16 G5 :16 C#4 :16 E5 :16 D4 :16 G4 :16 B4 :16 D5 :16 D4 :16 C5 :16 F#5 :16 C5 |
+  :16 B4 :16 G5 :16 D5 :16 B4 :16 G4 :16 D4 :16 B3 :16 D4 slur { tuplet 3:2 { :16 G3 :16 B3 :16 D4 } tuplet 3:2 { :16 G4 :16 B4 :16 D5 } } :16 G5 :16 B4 :16 B3 :16 G4 |
+  :16 C4 :16 G4 :16 E5 :16 G4 :16 B3 :16 G4 :16 D5 :16 G4 :16 C4 :16 E4 :16 G4 :16 C5 :16 E5 :16 G5 :16 B3 :16 G4 |
+  :16 A3 :16 C4 :16 D4 :16 F#4 :16 G4 :16 B4 :16 D5 :16 G5 :16 C4 :16 D4 :16 F#4 :16 A4 :16 C5 :16 F#5 :16 G5 :16 A5 |
+  :16 B4 :16 G5 :16 C5 :16 G5 :16 E4 :16 G5 :16 C#4 :16 E5 :16 D4 :16 G4 :16 B4 :16 D5 :16 D4 :16 C5 :16 F#5 :16 C5 |
+  fragment { :16 B4 :16 G5 :16 D5 :16 B4 :8 G4 :8 rest bar final }
+}
+
+staff violin_ii { name "Violin II" shortName "Vln. II"
+  key G clef treble
+  slur { :q. B3 :8 D4 |
+  :q G4 :q F#4 :q A4 :q G4 } |
+  slur { :q C4 :q B3 } slur { :q C5 :q B4 |
+  :q F#4 :q G4 } slur { :h E4 |
+  :h D4 } slur { :q. B3 :8 D4 |
+  :q G4 :q F#4 :q A4 :q G4 } |
+  slur { :q C4 :q B3 } slur { :q C5 :q B4 |
+  :q F#4 :q G4 } slur { :h E4 |
+  :h D4 } slur { :q F#4 :q G4 |
+  :q F#4 } :q rest slur { :q F#4 :q G4 |
+  :q F#4 } :q rest slur { :q B4 :q A4 |
+  :h. G4 } slur { :8 G4 :8 F#4 } |
+  :h F#4[fermata] :q. (G3 G4) :8 G4 |
+  slur { :8. G4 :16 A4 } :q B4 slur { :q. C5 :8 B4 } |
+  slur { :q F#4 :q G4 } :q. F#4 slur { :16 G4 :16 A4 } |
+  slur { :q G4 :8 E4 :8 A4 } slur { :q G4 :q F#4 } |
+  :h G4 :q. (G3 G4) :8 G4 |
+  slur { :8. G4 :16 A4 } :q B4 slur { :q. C5 :8 B4 } |
+  slur { :q F#4 :q G4 } slur { :q. F#4 :16 G4 :16 A4 } |
+  slur { :q G4 :8 E4 :8 A4 } slur { :q G4 :q F#4 } |
+  fragment { :h G4 bar double }
+  fragment { mark "Var. I" slur { :q. G4 :8 A4 } | }
+  slur { :q B4 :q A4 :q C5 :q B4 } |
+  slur { :8 A4 :8 F#4 :q G4 } slur { :q E5 :q D5 |
+  :q C5 :q B4 } slur { :q A4 :8 B4 :8 G4 } |
+  :h D5 slur { :q. G4 :8 A4 } |
+  slur { :q B4 :q A4 :q C5 :q B4 } |
+  slur { :8 A4 :8 F#4 :q G4 } slur { :q E5 :q D5 |
+  :q C5 :q B4 } slur { :q A4 :8 B4 :8 G4 } |
+  :h D5 slur { :q A4 :q B4 } |
+  slur { :8 A4 :8 F#4 :q D4 } slur { :q C5 :q B4 } |
+  slur { :8 A4 :8 F#4 :q D4 } slur { :q D5 :q C5 } |
+  :q. B4 :8 B4 :q C#5 slur { :8 C#5 :8 D5 } |
+  :h D5 slur { :q. G5 :8 F#5 } |
+  slur { :8 F#5 :8 E5 :q D5 } slur { :q. E5 :8 D5 } |
+  slur { :8 D5 :8 C5 :q B4 } slur { :q. A4 :16 B4 :16 C5 } |
+  slur { :8 D5 :8 E5 :8 C5 :8 A4 } slur { :q G4 :8 A4 } :8 G4 |
+  :q G4 :q rest slur { :q. G5 :8 F#5 |
+  :8 F#5 :8 E5 :q D5 } slur { :q. E5 :8 D5 |
+  :8 D5 :8 C5 :q B4 } slur { :q. A4 :16 B4 :16 C5 } |
+  slur { :8 D5 :8 E5 :8 C5 :8 A4 } slur { :q G4 :8. A4 } :16 G4 |
+  fragment { :q G4 :q rest bar final }
+}
+
+staff viola { name "Viola" shortName "Vla."
+  key G clef alto
+  :q G3 :q rest |
+  :h rest slur { :q D4[staccato] :q D4[staccato] } |
+  slur { :8 F#3 :8 A3 :q G3 } :h rest |
+  slur { :q A3 :q B3 :q E4 :q G3 } |
+  slur { :h F#3 :q G3 } :q rest |
+  :h rest slur { :q D4[staccato] :q D4[staccato] } |
+  slur { :8 F#3 :8 A3 :q G3 } :h rest |
+  slur { :q A3 :q B3 :q E4 :q G3 } |
+  :h F#3 :q D4 :q D4 |
+  :q D4 :q rest slur { :q A3 :8 G3 :8 B3 } |
+  :q D4 :q rest slur { :q D4 :8 E4 :8 F#4 |
+  :q G4 } :q G3 :q E4 slur { :8 E4 :8 D4 } |
+  :h D4[fermata] :h (G3 D4) |
+  slur { :8. E4 :16 F#4 } :q G4 :q. G4 :8 G4 |
+  :q (D4[staccato] A4) :q (D4[staccato] B4) :h D4 |
+  slur { :q G3 :8 E4 :8 C4 } slur { :q B3 :q C4 } |
+  :h B3 :h (G3 D4) |
+  slur { :8. E4 :16 F#4 } :q G4 :q. G4 :8 G4 |
+  :q (D4[staccato] A4) :q (D4[staccato] B4) :h D4 |
+  slur { :q G3 :8 E4 :8 C4 } slur { :q B3 :q C4 } |
+  fragment { :h B3 bar double }
+  fragment { mark "Var. I" :h rest | }
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  fragment { :h rest bar final }
+}
+
+staff cello { name "Violoncello" shortName "Vc."
+  key G clef bass
+  :q G3 :q rest |
+  :h rest slur { :q F#3 :q G3 } |
+  :q D3 :q G2 :h rest |
+  slur { :q D3 :q G3 :q C3 :q C#3 } |
+  slur { :h D3 :q G3 } :q rest |
+  :h rest slur { :q F#3 :q G3 } |
+  :q D3 :q G2 :h rest |
+  slur { :q D3 :q G3 :q C3 :q C#3 } |
+  :h D3 :q D3 :q D3 |
+  :q D3 :q rest :q D3 :q D3 |
+  :q D3 :q rest slur { :q B2 :8 C3 :8 D3 } |
+  :h E3 :q A2 :q A2 |
+  :h D3[fermata] :q. B3 :8 B3 |
+  :q C4 :q G3 :q. C3 :8 G3 |
+  :q D3 :q G3 :h C3 |
+  slur { :q B2 :q C3 :q D3 } :q D3[staccato] |
+  :h G2 :q. B3 :8 B3 |
+  :q C4 :q G3 :q. C3 :8 G3 |
+  :q D3 :q G3 :h C3 |
+  slur { :q B2 :q C3 :q D3 } :q D3[staccato] |
+  fragment { :h G2 bar double }
+  fragment { mark "Var. I" :h rest | }
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  :w rest |
+  fragment { :h rest bar final }
+}

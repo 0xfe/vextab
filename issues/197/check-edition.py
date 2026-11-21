@@ -3,10 +3,10 @@
 from fractions import Fraction
 from hashlib import sha256
 from io import BytesIO
+import argparse
 import json
 from pathlib import Path
 import subprocess
-import sys
 from urllib.request import urlopen
 from xml.etree import ElementTree
 from zipfile import ZipFile
@@ -21,10 +21,13 @@ DIGEST = "3bd97417c8e7a5b80fba5821ec4d80d8bde19f030f169ac3cfba17f3a70492dd"
 SOURCE = "guide/scores/haydn-emperor-theme.vextab"
 
 
-def edition_bars(part):
-    """Take the pickup and twenty numbered bars preceding Variation I."""
-    measures = part.findall("measure")[128:149]
-    assert [bar.get("number") for bar in measures] == list(map(str, range(21)))
+def edition_bars(part, variation):
+    """Select the theme, optionally including the second pickup and Variation I."""
+    measures = part.findall("measure")[128:170 if variation else 149]
+    numbers = list(map(str, range(21)))
+    if variation:
+        numbers += ["X1", *map(str, range(21, 41))]
+    assert [bar.get("number") for bar in measures] == numbers
     ticks_per_whole = 4 * int(measures[0].findtext("attributes/divisions"))
     for measure in measures:
         attacks = []
@@ -42,7 +45,11 @@ def edition_bars(part):
 
 def main():
     """Check each attack in score order and report the first differing instrument and written measure."""
-    archive = Path(sys.argv[1]).read_bytes() if len(sys.argv) > 1 else urlopen(EDITION, timeout=30).read()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("archive", nargs="?", type=Path)
+    parser.add_argument("--variation", action="store_true")
+    args = parser.parse_args()
+    archive = args.archive.read_bytes() if args.archive else urlopen(EDITION, timeout=30).read()
     if sha256(archive).hexdigest() != DIGEST:
         raise ValueError("The archive differs from the pinned OpenScore edition")
     edition = ElementTree.fromstring(ZipFile(BytesIO(archive)).read("score.xml"))
@@ -50,13 +57,13 @@ def main():
         const { parseScore } = require('./dist/score.cjs');
         console.log(JSON.stringify(parseScore(require('node:fs').readFileSync(process.argv[1], 'utf8'))));
     """
-    score = json.loads(subprocess.check_output(["node", "-e", compiler, SOURCE], text=True))
+    score = json.loads(subprocess.check_output(["node", "-e", compiler, SOURCE.replace("-theme.", "-variation.") if args.variation else SOURCE], text=True))
     parts = edition.findall("part")
     assert len(parts) == len(score["parts"]) == 4
     for original, instrument in zip(parts, score["parts"]):
         voice = instrument["staves"][0]["voices"][0]
-        assert len(voice["measures"]) == 21
-        for bar, expected in enumerate(edition_bars(original)):
+        assert len(voice["measures"]) == (42 if args.variation else 21)
+        for bar, expected in enumerate(edition_bars(original, args.variation)):
             m = voice["measures"][bar]
             actual = [(Fraction(e["duration"]), [h["pitch"] for h in e["heads"]])
                       for e in voice["events"][m["start"]:m["end"]]]

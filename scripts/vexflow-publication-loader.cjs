@@ -1,4 +1,4 @@
-// Expose two scoped draw callbacks in the bundled VexFlow 5.7 ESM build.
+// Expose scoped publication and draw callbacks in the bundled VexFlow 5.7 ESM build.
 // Native Publication still measures the ink, paginates it and owns all page output.
 const path = require('node:path');
 
@@ -19,6 +19,7 @@ module.exports = function publicationHooks(source) {
   const inset = 'const inset = compose(host, insetSpec, o.noteHooks);';
   source = replaceOnce(source, part + '\n            factory.draw();', part.replace('ctx, factory, score', 'ctx, factory, score, builder') +
     '\n            if (options.drawComposition) options.drawComposition(spec, score, factory, builder); else factory.draw();');
-  return replaceOnce(source, inset + '\n        inset.factory.draw();', inset +
+  return replaceOnce(source, inset + '\n        inset.factory.draw();',
+    'if (o.insetSpans) insetSpec.continuous.spans = o.insetSpans(insetSpec);\n        ' + inset +
     '\n        if (o.drawComposition) o.drawComposition(insetSpec, inset.score, inset.factory, inset.builder, r.measure); else inset.factory.draw();');
 };
