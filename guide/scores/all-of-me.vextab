@@ -4,7 +4,7 @@
 // The printed cross in bar 12 has no fret. String two places the mute at its written B.
 // The steel-string sound, swing feel and practice tempo are editorial.
 layout {
-  width 1230 scale 0.73 spacing optical rowGap 18
+  scale 0.73 spacing optical rowGap 18
   heading { title "All of Me" composer "Django Reinhardt · Transcription by Miguel Mateu" }
 }
 meter 4/4
