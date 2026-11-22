@@ -10,7 +10,7 @@ Open [Your first notes](https://vexflow.com/vextab/guide/#tutorial) or edit this
 guitar { 0-2-3-2/1 | }
 ```
 
-VexTab 6 reads **grammar v2** by default. Guitar, staff, piano and drum parts use blocks. Each voice can have its own rhythm. Use aliases for repeated markings and named patterns for repeated phrases. [Language reference](https://vexflow.com/vextab/guide/#reference/grammar-v2) · [Interactive guide](https://vexflow.com/vextab/guide/) · [6.1 release notes](https://github.com/0xfe/vextab/releases/tag/6.1.0)
+VexTab 6 reads **grammar v2** by default. Guitar, staff, piano and drum parts use blocks. Each voice can have its own rhythm. Use aliases for repeated markings and named patterns for repeated phrases. [Language reference](https://vexflow.com/vextab/guide/#reference/grammar-v2) · [Interactive guide](https://vexflow.com/vextab/guide/) · [6.2 release notes](https://github.com/0xfe/vextab/releases/tag/6.2.0)
 
 ## Open an existing score
 
@@ -26,7 +26,7 @@ Use the Node.js version in `.nvmrc`, then run `npm ci` and `npm start`. Open the
 
 The [developer quickstart](https://vexflow.com/vextab/guide/#quickstart) covers installing VexTab, embedding it in an application and configuring playback.
 
-Download [div.prod.js](https://github.com/0xfe/vextab/releases/download/6.1.0/div.prod.js), save this HTML beside it and open it in a browser. The script includes VexFlow and the engraving fonts.
+Download [div.prod.js](https://github.com/0xfe/vextab/releases/download/6.2.0/div.prod.js), save this HTML beside it and open it in a browser. The script includes VexFlow and the engraving fonts.
 
 ```html
 <!doctype html>
