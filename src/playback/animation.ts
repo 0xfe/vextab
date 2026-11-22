@@ -31,9 +31,11 @@ export class PlaybackAnimation {
   private readonly printedRows = new Map<PlaybackRow, SVGGElement>();
   private row?: PlaybackRow;
 
-  constructor(private surface: SVGElement | undefined, private music: Performance, geometry: Geometry) {
+  constructor(private surface: SVGElement | undefined, private music: Performance, geometry: Geometry,
+    private follow?: (bar: SVGLineElement, newSystem: boolean) => void) {
     const gradient = svg('radialGradient', { id: this.gradient });
-    for (const [offset, opacity] of [[0, .72], [.4, .58], [.75, .23], [1, 0]]) {
+    // Let the engraved ink show through the center. Peak just outside it, then feather into the paper.
+    for (const [offset, opacity] of [[0, .50], [.32, .72], [.52, .60], [.76, .22], [1, 0]]) {
       gradient.append(svg('stop', { offset, 'stop-color': 'currentColor', 'stop-opacity': opacity }));
     }
     const defs = svg('defs');
@@ -110,8 +112,10 @@ export class PlaybackAnimation {
       const time = elapsed();
       while (this.anchor + 1 < this.anchors.length && this.anchors[this.anchor + 1].time <= time) this.anchor++;
       const here = this.anchors[this.anchor];
-      if (here.row !== this.row) this.moveToRow(here.row);
+      const newSystem = here.row !== this.row;
+      if (newSystem) this.moveToRow(here.row);
       this.drawBar(time, here, this.anchors[this.anchor + 1]);
+      this.follow?.(this.bar, newSystem);
       this.drawHeads(time);
       this.frame = requestAnimationFrame(draw);
     };
@@ -157,7 +161,7 @@ export class PlaybackAnimation {
   private drawDot(index: number, point: Point, opacity: number, row: PlaybackRow) {
     let dot = this.dots[index];
     if (!dot) {
-      dot = { node: svg('ellipse', { rx: 11, ry: 9, fill: 'url(#' + this.gradient + ')', stroke: 'none' }) };
+      dot = { node: svg('ellipse', { rx: 17, ry: 13, fill: 'url(#' + this.gradient + ')', stroke: 'none' }) };
       this.dots.push(dot);
     }
     if (dot.point !== point) {

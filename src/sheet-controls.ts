@@ -1,4 +1,8 @@
 // Keep sheet-mounted controls inside the portion of the score visible to the reader.
+import type { SheetControls } from './playback/control-options.mts';
+
+// A score approaching a full screen of music gets the larger transport.
+const largeHeightFraction = 0.8;
 
 /** Only intersect axes an ancestor actually clips. Its client area excludes borders and scrollbars. */
 function clippingParents(sheet: HTMLElement) {
@@ -13,8 +17,10 @@ function clippingParents(sheet: HTMLElement) {
 
 /** Compute the visible edges in viewport pixels, then convert to local overlay coordinates.
  * Reading both rectangles handles scaled SVGs, high-DPI canvases and zoomed parents. */
-export function followVisibleSheet(sheet: HTMLElement, surface: Element, overlay: HTMLElement, controls: HTMLElement, inset: number) {
+export function followVisibleSheet(sheet: HTMLElement, surface: Element, overlay: HTMLElement, controls: HTMLElement,
+  { size, inset }: Required<SheetControls>) {
   const parents = clippingParents(sheet);
+  const panel = controls.querySelector<HTMLElement>('.vextab-control-panel');
   const viewport = window.visualViewport;
   let frame = 0;
   function place() {
@@ -24,12 +30,16 @@ export function followVisibleSheet(sheet: HTMLElement, surface: Element, overlay
     const sx = overlay.offsetWidth / origin.width, sy = overlay.offsetHeight / origin.height;
     const vx = viewport?.offsetLeft ?? 0, vy = viewport?.offsetTop ?? 0;
     let left = Math.max(rect.left, vx), top = Math.max(rect.top, vy);
-    let right = Math.min(rect.right, vx + (viewport?.width ?? document.documentElement.clientWidth));
-    let bottom = Math.min(rect.bottom, vy + (viewport?.height ?? document.documentElement.clientHeight));
+    const width = viewport?.width ?? document.documentElement.clientWidth;
+    const height = viewport?.height ?? document.documentElement.clientHeight;
+    let right = Math.min(rect.right, vx + width), bottom = Math.min(rect.bottom, vy + height);
+    // Compare full dimensions. Scrolling a short example partly off-screen must not change its style.
+    let large = rect.height >= height * largeHeightFraction || rect.width > width + 1;
     for (const { element, x, y } of parents) {
       const box = element.getBoundingClientRect();
       const scaleX = box.width / (element.offsetWidth || 1), scaleY = box.height / (element.offsetHeight || 1);
       const startX = box.left + element.clientLeft * scaleX, startY = box.top + element.clientTop * scaleY;
+      if ((x && rect.width > element.clientWidth * scaleX + 1) || (y && rect.height > element.clientHeight * scaleY + 1)) large = true;
       if (x) { left = Math.max(left, startX); right = Math.min(right, startX + element.clientWidth * scaleX); }
       if (y) { top = Math.max(top, startY); bottom = Math.min(bottom, startY + element.clientHeight * scaleY); }
     }
@@ -38,9 +48,11 @@ export function followVisibleSheet(sheet: HTMLElement, surface: Element, overlay
       controls.style.inset = '0';
       return;
     }
-    // A large requested margin yields to the two 32px buttons on a small visible slice.
-    const padX = Math.min(inset, Math.max(0, ((right - left) * sx - 70) / 2));
-    const padY = Math.min(inset, Math.max(0, ((bottom - top) * sy - 32) / 2));
+    const resolvedSize = size === 'auto' ? (large ? 'large' : 'mini') : size;
+    if (controls.dataset.size !== resolvedSize) controls.dataset.size = resolvedSize;
+    // On a narrow slice, give the panel room before applying the requested margin.
+    const padX = Math.min(inset, Math.max(0, ((right - left) * sx - panel.offsetWidth) / 2));
+    const padY = Math.min(inset, Math.max(0, ((bottom - top) * sy - panel.offsetHeight) / 2));
     controls.style.padding = padY + 'px ' + padX + 'px';
     controls.style.setProperty('--control-y-inset', padY + 'px');
     controls.style.inset = [

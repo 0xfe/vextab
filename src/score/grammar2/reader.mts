@@ -1,5 +1,5 @@
 // Parse written v2 notation into a bounded syntax tree before expanding any pattern.
-import { isControlPosition } from '../../playback/control-options.mts';
+import { isControlPosition, isControlSize } from '../../playback/control-options.mts';
 import { isPerformerName } from '../../playback/profiles.mts';
 import type { GraceFingering, GracePitch, EventMark, Head, HeadMark, PartKind, PartSettings, WrittenMeter, StaffName, TextStyle, LaneStyle, TextBoundary, TextRange, ExpansionFrame, InstrumentIdentity } from './model.js';
 
@@ -948,11 +948,14 @@ export function readScore(source: string, fail: Fail) {
               tempoRanges.set(Number(bar.text), bar.range);
               (playback!.tempos ??= {})[Number(bar.text)] = Number(tempo.text);
             } else playback!.tempo = Number(tempo.text);
-          } else if (field.text === 'controls' || field.text === 'position' || field.text === 'inset') {
+          } else if (field.text === 'controls' || field.text === 'controlSize' || field.text === 'position' || field.text === 'inset') {
             const value = take(), controls = playback!.controls ??= {};
             if (field.text === 'controls') {
               if (value.text === 'off' || value.text === 'hover' || value.text === 'always') controls.visibility = value.text;
               else error('Expected controls off, hover or always', value);
+            } else if (field.text === 'controlSize') {
+              if (!isControlSize(value.text)) error('Expected controlSize auto, mini or large', value);
+              else controls.size = value.text;
             } else if (field.text === 'position') {
               if (!isControlPosition(value.text)) error('Unknown control position', value);
               else controls.position = value.text;

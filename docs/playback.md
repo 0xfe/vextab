@@ -2,7 +2,7 @@
 
 Add `play { tempo 100 }` before the first stave of an embed to show playback controls on the sheet. This works with the fixed SVG and Canvas renderers, responsive SVG and the legacy `.vex-tabdiv` class. The default embed uses native Web Audio and needs no samples. The first Play gesture opens audio. [Runnable bass chords and guitar pre-bend](../demos/player.html)
 
-The buttons sit 12 CSS pixels inside the bottom center of the visible music. They follow the page and any scrolling score container. The controls fade after three seconds. Hover over the sheet, tap it, or tab to a control to reveal them. Hover over the metronome beside Play, or activate it with a tap or keyboard, to adjust the tempo in steps of 5 BPM. Changes apply to upcoming notes during playback and leave the written tempo in the source intact.
+The buttons are centered 12 CSS pixels above the bottom of the visible music. They follow the page and any scrolling score container. The controls fade after three seconds without pointer movement, even when the pointer rests over the music. Move over the sheet, tap it, or tab to a control to reveal them. Hover over the metronome beside Play, or activate it with a tap or keyboard, to adjust the tempo in steps of 5 BPM. Changes apply to upcoming notes during playback and leave the written tempo in the source intact.
 
 Each Play creates a fresh human performance. Choose a style in the score with `play { performer chopin }`, or use `performer robot` for literal playback. Hosts can specify a profile and seed. [Performer examples, API and research](performers.md)
 
@@ -10,7 +10,7 @@ Each Play creates a fresh human performance. Choose a style in the score with `p
 
 Press **Play** at the bottom center of a tutorial example, study or playground score. The button becomes **Stop** and can cancel the first instrument load. Changing an edit or starting a different score ends playback. The duet edition has its own button for the selected voice. An empty stave or an example containing only rests has no pitches to play.
 
-A soft blue dot appears just before each sounding head or fret, reaches full strength on the beat and fades at the end of its written duration. The vertical playhead spans the system and continues through rests. It follows the spacing of the selected layout, including printed parts.
+A neon-yellow halo spreads around each sounding notehead or fret number just before its attack, reaches full strength on the beat and fades at the end of its written duration. The vertical playhead spans the system and continues through rests. It follows the spacing of the selected layout, including printed parts.
 
 The guide loads its bundled SpessaSynth worklet and Florestan SoundFont on demand. Program 24 is nylon guitar, 40 is violin and 12 is marimba. The bank supplies a piano for program 0 and a nylon guitar for unavailable programs. Use HTTPS, localhost or the offline guide in a browser with AudioWorklet support. [Editable example](../demos/spessasynth.html) · [SoundFont source](../guide/audio/README.md)
 
@@ -43,6 +43,10 @@ async function mountScore() {
 ```
 
 Use a plain host element for manual mounting. The adapter resumes the context on Play and waits for the synth's readiness. Reserve the supplied MIDI channels for VexTab. Straight notes share channels. A bent string or an overlapping unison needs a separate channel. The default pool uses the 15 melodic channels of the first MIDI port. Stop releases only notes owned by the session. Dispose the returned embed when removing it and close the audio context when the host has finished using it.
+
+The default large panel includes Play, tempo and **Auto-scroll**. Auto-scroll starts on and keeps the active stave or system visible, including inside a scrolling embed. Select the three horizontal lines to turn it off. Select the three downward chevrons to resume. It follows repeats and uses immediate scrolling when the reader prefers reduced motion.
+
+The optional `controlSize auto` uses two small round buttons for short examples. A score that reaches 80% of the viewport height or overflows its viewport or scroll container gets a single translucent green panel showing Play and the current tempo. Resizing the window can switch styles. Force either with `play { controlSize mini }` or `play { controlSize large }`, JavaScript `size`, or `data-playback-size` on the embed.
 
 A score can choose its presentation in its `play` block. Use `controls hover` for pointer, keyboard and touch reveal, `controls always` for persistent buttons, or `controls off` for a score with no built-in buttons. Set `position` to `top-left`, `top-center`, `top-right`, `bottom-left`, `bottom-center` or `bottom-right`. Set `inset` in CSS pixels.
 

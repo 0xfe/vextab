@@ -38,11 +38,12 @@ function embedAttribute(host: HTMLElement, name: string, legacyName?: string): s
 /** Markup configures the same controls as JavaScript. A supplied options object takes precedence. */
 function embedControls(host: HTMLElement): SheetControls | boolean | undefined {
   const mode = embedAttribute(host, 'playback-controls'), position = embedAttribute(host, 'playback-position');
-  const inset = embedAttribute(host, 'playback-inset');
-  if (mode === null && position === null && inset === null) return;
+  const inset = embedAttribute(host, 'playback-inset'), size = embedAttribute(host, 'playback-size');
+  if (mode === null && position === null && inset === null && size === null) return;
   if (mode === 'off' || mode === 'false') return false;
   const settings: SheetControls = {};
   if (mode && mode !== 'on' && mode !== 'true') settings.visibility = mode as SheetControls['visibility'];
+  if (size) settings.size = size as SheetControls['size'];
   if (position) settings.position = position as SheetControls['position'];
   if (inset !== null) settings.inset = Number(inset);
   sheetControlSettings(settings);

@@ -193,7 +193,8 @@ export default class Player {
     this.overlay?.setStatus('Loading instruments...');
     try {
       const geometry = this.geometry?.() ?? (this.artist && this.overlay ? artistGeometry(this.artist) : undefined);
-      if (geometry?.size) this.animations.push(new PlaybackAnimation(this.overlay?.surface, this.sharedSurface ? music : first, geometry));
+      if (geometry?.size) this.animations.push(new PlaybackAnimation(this.overlay?.surface, this.sharedSurface ? music : first, geometry,
+        (bar, newSystem) => this.overlay?.followSystem(bar, newSystem)));
       for (const view of this.companions) {
         const part = performances.get(view.score);
         if (part) this.animations.push(new PlaybackAnimation(view.overlay.surface, part, view.read()));

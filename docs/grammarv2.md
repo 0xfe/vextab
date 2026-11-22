@@ -420,7 +420,7 @@ Read `result.diagnostics` for source ranges and `result.publication.pages` for s
 
 ### Playing expression
 
-Use `play { controls always position top-right inset 16 }` to place persistent playback buttons near the score’s visible top-right edge. The default is `controls hover position bottom-center inset 12`. Use `controls off` to hide the buttons. [Sheet controls and embed settings](playback.md)
+Use `play { controls always position top-right inset 16 }` to place persistent playback buttons near the score’s visible top-right edge. The default is `controls hover controlSize large position bottom-center inset 12`. Use `controls off` to hide the buttons. [Sheet controls and embed settings](playback.md)
 
 Set `program 26` inside an instrument for a zero-based General MIDI program. Write `play { tempo 96 tempo 72 at 2 }` to change speed at written bar 2. Each distinct program gets a playback-plugin session on the shared transport.
 

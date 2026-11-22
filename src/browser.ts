@@ -27,4 +27,4 @@ export { createSpessaSynthPlayback, type SpessaSynthHost } from './playback/spes
 export type { PlaybackPlugin, PlaybackSession, PlaybackNote, PitchPoint } from './playback/transport';
 export type { PlayerOptions } from './player';
 export type { DivOptions } from './div';
-export type { SheetControls, ControlPosition } from './playback/control-options.mts';
+export type { SheetControls, ControlPosition, ControlSize } from './playback/control-options.mts';

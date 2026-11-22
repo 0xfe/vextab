@@ -38,9 +38,18 @@ export async function testGuideAudio(browser, dist) {
     await page.mouse.move(0, 0);
     assert.equal(await opacity(), '1', 'the controls are visible on first render');
     await page.waitForFunction(() => getComputedStyle(document.querySelector('.vextab-sheet-controls')).opacity === '0');
-    await sheet.hover();
+    await sheet.hover({ position: { x: 8, y: 8 } });
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('.vextab-sheet-controls')).opacity === '1');
+    // A stationary pointer inside the sheet lets the music clear. Movement reveals it without re-entering.
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('.vextab-sheet-controls')).opacity === '0');
+    await sheet.hover({ position: { x: 24, y: 8 } });
     await page.waitForFunction(() => getComputedStyle(document.querySelector('.vextab-sheet-controls')).opacity === '1');
     await metro.hover();
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('.vextab-sheet-controls')).opacity === '0');
+    assert.equal(await metro.getAttribute('aria-expanded'), 'false');
+    await sheet.hover({ position: { x: 24, y: 8 } });
+    await metro.hover();
+    await readout.waitFor({ state: 'visible' });
     assert.equal(await readout.innerText(), '96 BPM');
     await sheet.getByRole('button', { name: 'Increase tempo' }).click();
     assert.equal(await readout.innerText(), '101 BPM');
@@ -58,7 +67,7 @@ export async function testGuideAudio(browser, dist) {
     await page.goto(url + '#tutorial/notes');
     await page.evaluate(() => document.fonts.ready);
     const examples = page.locator('.chapter-example');
-    const control = index => examples.nth(index).locator('.vextab-sheet-controls > button');
+    const control = index => examples.nth(index).locator('.vextab-control-panel > :is(.vextab-play, .vextab-stop)');
     assert.equal(await examples.count(), 4);
     assert.ok(!requests.some(url => url.includes('guide-instrument')));
     // Cancel while the async chunk is still loading. Its late completion must stay silent.
