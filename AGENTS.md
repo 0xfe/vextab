@@ -4,11 +4,7 @@
 
 Whenever you make a comment (to an issue or PR or any such), start the comment with a line like so:
 
-Beep Boop. This is __MODEL__ (__REASONING__) on (__HARNESS__) speaking.
-
-For example:
-
-Beep Boop. This is Astra 6.0 (xhigh) on Codex speaking.
+Beep Boop. I'm a bot.
 
 ## GitHub Issues
 
@@ -55,6 +51,7 @@ If I ask you to triage issues, then go through all open issues and assign a prio
 ## Documentation
 
 - Keep documentation clean and human readable. The README.md should remain high-level, with pointers to docs/ as needed.
-- Use short sentences, bullets, tables, code blocks, and concrete examples.
+- Use bullets, tables, code blocks, and concrete examples.
 - Put detailed setup, architecture, testing, security, and deployment notes in `docs/`.
 - Avoid long prose paragraphs and duplicated instructions.
+- Avoid overly cutesy, poetic, or clever phrases. Keep it clear and technical.
