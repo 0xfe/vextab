@@ -1,16 +1,20 @@
 # Soleá · traditional flamenco, arranged by Eugen Sedko. Opening page, bars 1–16.
 # https://www.sheetmusicplus.com/en/product/traditional-solea-soleares-flamenco-guitar-notes-tabs-21752865.html
 # Standard tuning. The two voices share a guitar: keep the bass ringing under the treble.
-# The small repeated grace pitches are four open first-string strokes (i a m i).
+# Each rasgueado repeats the open first string with index, ring, middle and index (i a m i).
+# The chord key shows the three strings to fret or leave open for the E and F grips.
+# The later arpeggios outline Am, C and Fmaj7 before the open low E returns.
 # A brush runs from the bass strings toward the treble. Asterisks reproduce the player's marks.
 layout {
-  scale 0.69 spacing optical rowGap 16
-  heading { title "Soleá" dedication "Traditional flamenco · Arranged by Eugen Sedko" tempo "♩ = 100" }
+  scale 0.69 spacing optical rowGap 10 staffDistance 5
+  heading { align center title "Soleá" composer "Traditional · Arr. Eugen Sedko" tempo "♩ = 100" }
 }
 meter 3/4
+measureNumbers on
 play { tempo 100 }
-edition { paper Letter margins 10 8 10 8 staffSize 4.5 }
+edition { paper Letter margins 10 8 10 8 staffSize 5.2 }
 alias sweep="brush down"
+alias rasgueo="grace before (0/1[finger i above] 0/1[finger a above] 0/1[finger m above] 0/1[finger i above])"
 
 # Fourth-string ligados and treble arpeggios recur across the four-bar compás.
 pattern longligado {
@@ -27,32 +31,32 @@ pattern amtreble { :8 skip tuplet 3:2 { :16 2/3 1/2 0/1 } }
 pattern ctreble  { :8 skip tuplet 3:2 { :16 0/3 1/2 0/1 } }
 pattern etreble  { :8 skip tuplet 3:2 { :16 1/3 0/2 0/1 } }
 pattern cadence {
-  use etreble :q. rest :8 0/1[label "i" below]
+  use etreble :q. rest :8 0/1[finger i below]
 }
 pattern cadencebass {
-  :q 0/6[sweep, accent] :8 2/4[sweep] 1/3[sweep] :q 0/2[accent, label "*" above]
+  :q 0/6[sweep, accent, symbol "E"] :8 2/4[sweep] 1/3[sweep] :q 0/2[accent, label "*" above]
 }
 
 guitar guitarra {
   program 24
   voice treble stem up {
     # The bass moves beneath the sustained G-sharp, B and open E.
-    :h. (1/3 0/2 0/1)[grace before (0/1 0/1 0/1 0/1), sweep, label "i a m i" below] |
-    :h. (1/3 0/2 0/1)[grace before (0/1 0/1 0/1 0/1), sweep] |
-    :q (1/3 0/2 0/1)[grace before (0/1 0/1 0/1 0/1), sweep]
-    tuplet 3:2 { :q rest :8 0/1[label "i" below] } tuplet 3:2 { :q 0/1 :8 0/1[label "i" below] } |
-    :h. (1/3 0/2 0/1)[sweep] |
+    :h. (1/3 0/2 0/1)[rasgueo, sweep, symbol "E", frame (x x x 1 0 0)] |
+    :h. (1/3 0/2 0/1)[rasgueo, sweep] |
+    :q (1/3 0/2 0/1)[rasgueo, sweep]
+    tuplet 3:2 { :q rest :8 0/1[finger i below] } tuplet 3:2 { :q 0/1 :8 0/1[finger i below] } |
+    :h. (1/3 0/2 0/1)[sweep, symbol "E"] |
     break system
 
-    :q (1/3 0/2 0/1)[grace before (0/1 0/1 0/1 0/1), sweep]
-    tuplet 3:2 { :q rest :8 0/1[label "i" below] } tuplet 3:2 { :q 0/1 :8 0/1[label "i" below] } |
+    :q (1/3 0/2 0/1)[rasgueo, sweep]
+    tuplet 3:2 { :q rest :8 0/1[finger i below] } tuplet 3:2 { :q 0/1 :8 0/1[finger i below] } |
     tuplet 3:2 { :q 0/1 :8 0/1 } tuplet 3:2 { :q 0/1 :8 0/1 } :q 0/1 |
     :q 0/1[tie] use flicks |
-    :h. (1/3 0/2 0/1)[sweep] |
+    :h. (1/3 0/2 0/1)[sweep, symbol "E"] |
     break system
 
-    :8 skip tuplet 3:2 { :16 2/3[label "i" below] 1/2[label "m" below] 0/1[label "a" below] }
-    :8 skip 0/1[label "i" below] skip 0/1[label "i" below] |
+    :8 skip tuplet 3:2 { :16 2/3[finger i below] 1/2[finger m below] 0/1[finger a below] }
+    :8 skip 0/1[finger i below] skip 0/1[finger i below] |
     use ctreble :q rest :8 rest 0/1 |
     use amtreble :8 skip 0/1 use amtreble |
     use cadence |
@@ -68,25 +72,25 @@ guitar guitarra {
   voice bass stem down {
     use longligado |
     use longligado |
-    use shortligado :q (3/4 2/3 1/2)[sweep, label "*" above, label "p" below] |
+    use shortligado :q (3/4[finger p below] 2/3 1/2)[sweep, symbol "F", frame (x x 3 2 1 x), label "*" above] |
     :h. 2/4[accent, label "*" above] |
 
-    use shortligado :q (3/4 2/3 1/2)[sweep, label "*" above] |
-    :q (2/4 1/3 0/2)[sweep, label "*" above] (3/4 2/3 1/2)[sweep, label "*" above] (2/4 1/3 0/2)[sweep, label "*" above] |
+    use shortligado :q (3/4 2/3 1/2)[sweep, symbol "F", label "*" above] |
+    :q (2/4 1/3 0/2)[sweep, symbol "E", label "*" above] (3/4 2/3 1/2)[sweep, symbol "F", label "*" above] (2/4 1/3 0/2)[sweep, symbol "E", label "*" above] |
     slur { :8 (2/4[tie] 1/3[tie] 0/2[tie]) tuplet 3:2 { :16 3/4 2/4 0/4 } :q 2/4[accent] }
-    :q (3/4 2/3 1/2)[sweep, label "*" above] |
+    :q (3/4 2/3 1/2)[sweep, symbol "F", label "*" above] |
     :h. 2/4[label "*" above] |
 
-    :q 0/5[sweep] 2/5[sweep] (0/4 2/3 1/2)[sweep, accent, label "*" above] |
-    :q 3/5[sweep] slur { :8 2/4 3/4 } :q (0/3 1/2)[sweep, accent, label "*" above] |
-    :q 3/4 2/4[sweep, accent] 3/4 |
+    :q 0/5[sweep, symbol "Am"] 2/5[sweep] (0/4 2/3 1/2)[sweep, accent, label "*" above] |
+    :q 3/5[sweep, symbol "C"] slur { :8 2/4 3/4 } :q (0/3 1/2)[sweep, accent, label "*" above] |
+    :q 3/4[symbol "Fmaj7"] 2/4[sweep, accent] 3/4 |
     use cadencebass |
 
-    :q 0/5[sweep] slur { :8 2/5[finger 2] 3/5[finger 3] }
+    :q 0/5[sweep, symbol "Am"] slur { :8 2/5[finger 2] 3/5[finger 3] }
     slur { tuplet 3:2 { :8 0/4[label "*" above] :16 2/4 } tuplet 3:2 { :16 3/4 2/4 0/4 } } |
-    :q 3/5[sweep] slur { :8 2/4 3/4 }
+    :q 3/5[sweep, symbol "C"] slur { :8 2/4 3/4 }
     slur { tuplet 3:2 { :8 0/3[label "*" above] :16 2/3[finger 2] } tuplet 3:2 { :16 4/3 2/3 0/3 } } |
-    :q 3/4 2/4 3/4 |
+    :q 3/4[symbol "Fmaj7"] 2/4 3/4 |
     use cadencebass |
   }
   # The second tap in bars 4 and 8 occurs while the chord still rings.
