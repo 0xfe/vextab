@@ -1,37 +1,75 @@
-// All of Me · Django Reinhardt's guitar solo, transcribed by Miguel Mateu.
-// Page 1, bars 1–17. Chord labels appear above both the notation and the tablature as in the source.
-// https://musescore.com/static/musescore/scoredata/g/a137b36c3a51e331b58d6906a476a34d8b8941c0/score_0.svg?no-cache=1715710756
-// The printed cross in bar 12 has no fret. String two places the mute at its written B.
-// The steel-string sound, swing feel and practice tempo are editorial.
+// All of Me · Solo guitar chord melody in standard tuning.
+// Gerald Marks and Seymour Simons. The melody follows the first 17 bars of
+// Django Reinhardt's solo as transcribed by Miguel Mateu. The accompaniment is new.
+// https://cdn.ustatik.com/musescore/scoredata/g/a137b36c3a51e331b58d6906a476a34d8b8941c0/score_0.svg?no-cache=1715710756
+// Pinch each diagrammed chord together. Release its lower notes when the melody moves.
+// The unfretted cross in bar 12 is a muted second string in this arrangement.
 layout {
-  scale 0.73 spacing optical rowGap 18
-  heading { title "All of Me" composer "Django Reinhardt · Transcription by Miguel Mateu" }
+  scale 0.75 spacing optical rowGap 16 staffDistance 7
+  heading { align center title "All of Me" composer "Gerald Marks and Seymour Simons" tempo "Chord melody · Medium swing" }
 }
 meter 4/4
 measureNumbers on
-play { performer human swing eighths tempo 160 }
-edition { paper Letter margins 12 10 12 10 staffSize 5.5 }
+play { performer human swing eighths tempo 126 }
+edition { paper Letter margins 12 10 12 10 staffSize 5 }
 guitar guitar {
-  key C tuning standard program 25 view both tabStems on tabDirection down beamRests off groupBeats (2 2)
-  // Four-bar opening. The double bar brings the Dm7–G7 lead-in home to C6.
-  :8 rest[label "D-7" above] beam { 9/3 10/3 9/2[write Ab5] } beam { 12/1[label "G7" above] 7/1 10/1 8/1 } bar double
-  :8 beam { 9/3[label "C6" above] 8/2 7/1 10/2 } beam { 8/2 9/3 } :q 10/4 |
-  :q 7/4 :8 rest 7/4 :q 7/4[tie] tuplet 3:2 { beam { :8 7/4 9/4[hammer] 7/4[pull] } } |
-  :8 6/4[write G#4, label "E7" above] 9/4 7/3 9/3 10/3 9/2[write G#5] 12/2 10/1 |
-  break system
-  :q 13/1 :8 rest 12/1 12/1[tie] :q. 10/1 |
-  tuplet 3:2 { beam { :8 10/1[label "A7" above] 12/1[hammer] 10/1[pull] } } :q 9/1[write C#6] :8 9/3 :q. 11/2[write Bb5] |
-  :q. 11/2[write Bb5] :8 10/2 :q 10/2[tie] :8 beam { 6/3[write C#5] 8/2 } |
-  :q 8/2[tie, label "D-7" above] :8 beam { 6/2 7/4 } :q 7/4[tie] :8 beam { 9/3 7/3 } |
-  :q 7/3[tie] :8 beam { 8/5 9/4 } :q 9/4[tie] :8 beam { 7/4 6/4[write G#4] } |
-  break system
-  :8 6/4[write G#4, tie, label "E7" above] 9/4 7/3 9/3 10/3 9/2[write G#5] 12/2 10/1 |
-  :q 13/1 :8 beam { 12/2 10/1 } :q 10/1[tie] tuplet 3:2 { beam { :8 8/1 10/1[hammer] 8/1[pull] } } |
-  :8 10/2[label "A-7" above] x/2[write B4] 9/3 10/4 9/4 12/5 9/4 10/4 |
-  :8 9/3 :q 12/2 :8 9/3 :h 10/2 |
-  break system
-  :q rest[label "D7" above] tuplet 3:2 { beam { :8 9/3 11/3[write F#5] 10/2 } } :8 beam { 8/1 12/1 } :q 12/1[tie] |
-  :q. 7/1 :16 beam { 8/1 7/1[pull] } :8 beam { 10/2 9/3 } :q rest |
-  :q 7/3[label "D-7" above] rest :8 rest beam { 7/3 6/2 5/1 } |
-  :q 8/1[label "G7" above] :8 beam { 8/3[write D#5] 7/2[write F#5] } beam { 10/2 7/1 8/1 10/1 } |
+  key C tuning standard program 25 view both tabStems off beamRests off groupBeats (2 2)
+  voice melody stem up {
+    // First strain. The opening G13 and C6 fit under the same lead line.
+    :8 rest beam { 9/3[dynamic mf] 10/3 9/2[write Ab5] }
+      beam { (10/5 9/4 10/3 12/1)[harmony G "13", frame (x 10 9 10 x 12)] 7/1 10/1 8/1 } bar double
+    :8 beam { (8/6 10/5 7/4 9/3)[harmony C "6", frame (8 10 7 9 x x)] 8/2 7/1 10/2 }
+      beam { 8/2 9/3 } :q 10/4 |
+    :q 7/4 :8 rest 7/4 :q 7/4[tie] tuplet 3:2 { beam { :8 7/4 9/4[hammer] 7/4[pull] } } |
+    :8 (0/6 5/5 6/4[write G#4])[harmony E "7"] 9/4 7/3 9/3 10/3 9/2[write G#5] 12/2 10/1 |
+
+    break system
+    // Let the open sixth string ring under the altered dominant at bar 5.
+    :q (0/6 11/5 12/4 13/1)[harmony E "7b9", frame (0 11 12 x x 13)]
+      :8 rest 12/1 12/1[tie] :q. 10/1 |
+    tuplet 3:2 { beam { :8 10/1[harmony A "7"] 12/1[hammer] 10/1[pull] } }
+      :q (0/5 9/4 12/3 9/1[write C#6])[harmony A "9", frame (x 0 9 12 x 9)]
+      :8 9/3 :q. 11/2[write Bb5] |
+    :q. 11/2[write Bb5] :8 10/2 :q 10/2[tie] :8 beam { 6/3[write C#5] 8/2 } |
+    :q 8/2[tie, harmony D "m11"] :8 beam { 6/2 7/4 } :q 7/4[tie] :8 beam { 9/3 7/3 } |
+    :q 7/3[tie] :8 beam { 8/5 9/4 } :q 9/4[tie] :8 beam { 7/4 6/4[write G#4] } |
+
+    break system
+    // Keep the upper voice connected while the bass rearticulates the chord.
+    :8 6/4[write G#4, tie] 9/4 7/3 9/3 10/3 9/2[write G#5] 12/2 10/1 |
+    :q 13/1 :8 beam { 12/2 10/1 } :q 10/1[tie] tuplet 3:2 { beam { :8 8/1 10/1[hammer] 8/1[pull] } } |
+    :8 (0/5 10/4 0/3 10/2)[harmony A "m7", frame (x 0 10 0 10 x)] x/2[write B4] 9/3 10/4 9/4 12/5 9/4 10/4 |
+    :8 9/3 :q 12/2 :8 9/3 :h 10/2 |
+
+    break system
+    :q rest tuplet 3:2 { beam { :8 9/3 11/3[write F#5] 10/2 } } :8 beam { 8/1 12/1 } :q 12/1[tie] |
+    :q. 7/1 :16 beam { 8/1 7/1[pull] } :8 beam { 10/2 9/3 } :q rest |
+    :q 7/3 rest :8 rest beam { 7/3 6/2 5/1 } |
+    :q 8/1 :8 beam { 8/3[write D#5] 7/2[write F#5] } beam { 10/2 7/1 8/1 10/1 } |
+  }
+
+  voice bass stem down {
+    // Dm7 in tenth position. Leave beat three to the four-note G13 in the melody.
+    :q (10/6 8/5 10/4)[harmony D "m7", frame (10 8 10 x x x), dynamic mp] skip skip 10/5 bar double
+    :h skip :q 7/5 (8/6 7/5) |
+    :h (8/6 7/5) :q 10/5 7/5 |
+    :q skip (7/5 6/4) skip (0/6 11/5 12/4) |
+
+    :q. skip :8 12/6 :q (12/6 11/5) 0/5 |
+    :q 0/5 skip :8 skip :q. (0/5 11/4 12/3) |
+    :q (0/5 11/4 12/3) 12/6 (0/5 11/4) 5/6 |
+    :q (10/6 8/5 10/4) 8/5 (8/6 8/5) 10/6 |
+    :q (10/6 8/5 10/4) 10/6 7/6 0/6 |
+
+    :8 (0/6 5/5)[harmony E "7"] skip :h 0/6 :q (11/5 12/4) |
+    :q (0/6 11/5 12/4) 0/6 (0/6 11/5) 0/5 |
+    :h skip :q 0/6 10/5 |
+    :q (0/5 10/4) 8/6 (0/5 10/4 0/3) :8 7/6 9/6 |
+
+    // Slide the third of D7 down one fret to change the chord to Dm7.
+    :q (10/6 9/5[write F#4] 10/4)[harmony D "7", frame (10 9 10 x x x)] skip (10/6 10/4) (9/5 10/4) |
+    :q (10/6 9/5 10/4) 10/6 9/5 :8 (10/6 9/5 10/4) (10/6 8/5 10/4) |
+    :q (10/6 8/5 10/4)[harmony D "m7"] 8/5 9/5 5/4 |
+    :q (10/5 9/4 10/3)[harmony G "7"] (10/5 9/4) (10/5 9/4) (10/5 9/4 10/3) |
+  }
 }
