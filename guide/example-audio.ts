@@ -3,7 +3,8 @@ import type Div from '../src/div';
 import { scoreOptions } from './audio';
 export { scoreOptions } from './audio';
 
-const mode = (document.currentScript as HTMLScriptElement)?.dataset.mount;
+const settings = (document.currentScript as HTMLScriptElement)?.dataset;
+const mode = settings?.mount;
 if (mode) {
   const globals = window as typeof window & {
     VexTabDiv: { Div: typeof Div & { SEL: string } };
@@ -17,7 +18,7 @@ if (mode) {
   else globals.VEXTAB_SEL_V3 = '';
   document.addEventListener('DOMContentLoaded', () => {
     for (const host of document.querySelectorAll<HTMLElement>(legacy ? '.vex-tabdiv' : '.vextab-auto')) {
-      new Embed(host, scoreOptions(host));
+      new Embed(host, scoreOptions(host, settings.player === 'score' ? 'score' : 'always'));
     }
   });
 }

@@ -13,7 +13,7 @@
     VEXTAB_USE_SVG = true
   </script>
   <script src="../dist/vextab-div.js"></script>
-  <script src="../dist/example-audio.dev.js" data-mount="legacy"></script>
+  <script src="../dist/example-audio.dev.js" data-mount="legacy" data-player="score"></script>
   <script>
     VexTabDiv.Artist.DEBUG = false
   </script>
@@ -29,66 +29,165 @@
   <div class="header">
     <h1>The VexTab Tutorial</h1>
     <div class="main">
-      <b>Fourteen steps to writing notation and guitar tablature with VexTab</b>
+      <b>Sixteen steps to writing notation and guitar tablature with VexTab</b>
     </div>
   </div>
 
   <div class="content">
     <h2>What is VexTab?</h2>
     <div class="description">
-      <p>With VexTab you can write the same guitar phrase as notes on a staff or as fret numbers on strings. You enter the music as text, and VexTab draws the score.</p>
-      <p>Each example has its own editor. Change a pitch in the first bar, then use the later lessons to give the phrase rhythm, chords and expression. The <a href="../dist/guide/index.html#tutorial">interactive user guide</a> also lets you play each example.</p>
+      <p>If you know a tune by its pitches, you can write it in VexTab using note names. If you know it by where your fingers go on the guitar, you can enter the strings and frets instead. VexTab can draw both parts from the same music, so a guitarist reading tab can follow along with someone reading the staff.</p>
+      <p>You can edit the music directly below each score. The first six lessons take you from a single pitch to reading rhythm in tablature, and in lesson seven you’ll add a player so you can hear the phrases you write. You can also follow the tutorial in the <a href="../dist/guide/index.html#tutorial">interactive user guide</a>.</p>
     </div>
 
     <section id="notes" data-step="1">
     <h2>Step 1: Your first notes</h2>
-    <p>Start on middle C and play one note per beat. In <code>Cn4</code>, the letter names the note, <code>n</code> asks for a natural, and <code>4</code> gives its octave. The voice starts in quarter notes, so these four pitches fill one bar. Change the last <code>F#5</code> to <code>F#4</code> and listen for the same ending an octave lower.</p>
+    <p>The first bar begins on middle C, which VexTab writes as <code>C4</code>. Here the author has written <code>Cn4</code> to show a natural sign beside C. Each pitch gets one beat because a new voice starts in quarter notes, and the vertical bar after <code>F#5</code> marks the end of the measure.</p>
     <div class="vex-tabdiv" width="400" scale="1" editor="true" editor_height="80">staff { Cn4 D4 E4 F#5 | }</div>
-    <p>A guitarist can enter the same kind of phrase by specifying where to put each finger. In <code>4/3</code>, the 4 is the fret and the 3 is the string, counting from the high E. Replace the first three positions with <code>4-5-6/3</code>. You should still hear three separate attacks before the move to string four.</p>
+    <p>Try bringing the last note closer to the first three by changing <code>F#5</code> to <code>F#4</code>. The sharp stays beside F as the note moves down an octave. You can spell other accidentals the same way, putting the sign between the letter and the octave as in <code>Gb4</code>, <code>Gbb4</code>, <code>G#4</code> or <code>G##4</code>.</p>
+    <p>On guitar, you can describe where to play each note by giving its fret and string. The next phrase starts at <code>4/3</code>, the fourth fret of the third string, counting the strings from the high E. Since the first three notes all lie on that string, you can replace <code>4/3 5/3 6/3</code> with <code>4-5-6/3</code> and still see a separate fret for each beat.</p>
     <div class="vex-tabdiv" width="400" scale="1" editor="true" editor_height="80">guitar { 4/3 5/3 6/3 10/4 | }</div>
-    <p>By default a guitar part shows the pitches above the fret numbers. The example below uses <code>view tab</code> to show the strings alone. Change it to <code>view notation</code> to read the pitches, then to <code>view both</code> to match each pitch to its fret.</p>
+    <p>Look at the notes above those frets and you’ll see how VexTab presents a guitar part by default. The next example uses <code>view tab</code> to show the same phrase as tablature alone. Change it to <code>view notation</code> to read the pitches on the staff, then to <code>view both</code> to match each note to the fret beneath it.</p>
     <div class="vex-tabdiv" width="400" scale="1" editor="true" editor_height="80">guitar { view tab 4-5-6/3 10/4 | }</div>
-    <p id="the-stave">When you have only the beginning of a phrase, put it inside <code>fragment {}</code>. Type <code>4/3</code> between the inner braces. The sketch can end there even though the measure has beats left.</p>
+    <p id="the-stave">When you’re sketching a tune, you may know where to put your first finger before you know how the bar will end. Type <code>4/3</code> between the inner braces below. The <code>fragment</code> block lets VexTab draw that single fret while you work out the rest of the phrase.</p>
     <div class="vex-tabdiv" data-draft-key="tutorial/the-stave/0" width="400" scale="1" editor="true" editor_height="80">guitar { view tab fragment {} }</div>
-    <p>To spell a pitch on the staff, put the accidental before the octave. Try <code>Gb4</code> and <code>G#4</code> in the first example and compare the signs beside G. A double flat is <code>Gbb4</code>, a double sharp is <code>G##4</code>, and an explicit natural is <code>Gn4</code>.</p>
     </section>
 
-    <section id="stave-keywords" data-step="2">
-    <h2>Step 2: Stave keywords</h2>
-    <p>This phrase stays on the low sixth string. The bass clef makes its pitches easy to read, while the four flats and the cut-time sign come from <code>key Ab</code> and <code>meter cut</code>. Change the clef to <code>treble</code> and compare where the notes sit. The frets stay at four and five.</p>
-    <p>Choose the tuning before entering frets because it determines which pitch each fret produces. Alongside <code>standard</code>, <code>dropD</code> and <code>eb</code>, you can list the open strings from highest to lowest with <code>tuning (E5 B4 G4 D4 A3 E3)</code>. Other clefs include alto and tenor. A key can be minor, as in <code>key F#m</code>, and the meter can be a fraction or a sign such as <code>meter common</code>.</p>
+    <section id="durations" data-step="2">
+    <h2>Step 2: Note durations</h2>
+    <p>Both bars below take four beats to play, but the melody moves at a different pace in each. Count one beat each for C, D, E and F in the first bar, then hold C for two beats and E for two in the second. You only need to write <code>:q</code> once for the four quarter notes because each pitch takes the current duration until <code>:h</code> changes it to a half note.</p>
+    <div class="vex-tabdiv" width="520" scale="1" editor="true" editor_height="80">meter 4/4
+staff { :q C4 D4 E4 F4 | :h C4 E4 | }</div>
+    <p>To hear where the second note would enter, tap four beats while reading <code>:h C4 E4</code> and say “E” on beat three. Now change the second bar to <code>:h. C4 :q E4</code>. The dot adds half the value of the half note, so C lasts three beats and E enters on beat four.</p>
+    <p>You can also give the whole bar to C with <code>:w C4</code>, or divide a single beat into two eighth notes with <code>:8 C4 D4</code>. Four sixteenths, written <code>:16 C4 D4 E4 F4</code>, fit into that same beat.</p>
+    </section>
+
+    <section id="chords" data-step="3">
+    <h2>Step 3: Add some chords</h2>
+    <p>The opening chord and the three notes that follow it use the same pitches, C, E and G. Putting the first three pitches in parentheses tells the player to sound them together on beat one. You can see the difference on the staff, where the three noteheads of the chord share a stem and the following notes each have a stem of their own.</p>
     <div class="vex-tabdiv"
-      width=400 scale=1.0 editor="true"
-      editor_height=80>guitar { meter cut clef bass key Ab fragment { 4/6 5/6 } }</div>
+      width=500 scale=1.0 editor="true"
+      editor_height=130>staff { (C4 E4 G4) C4 E4 G4 | }</div>
+    <p>Try changing <code>E4</code> to <code>Eb4</code> inside the parentheses. You’ve changed the opening chord from C major to C minor, while the E on beat three still belongs to the original C-major arpeggio.</p>
+    <p>The same parentheses work when you write the music in frets. In the tab below, the three zeros stacked above one another tell you to pluck the open strings together. Reading from left to right after the chord, you play those same strings one at a time.</p>
+    <div class="vex-tabdiv" data-draft-key="tutorial/chords/open-strings" width="500" scale="1" editor="true" editor_height="80">guitar { (0/3 0/2 0/1) 0/3 0/2 0/1 | }</div>
     </section>
 
-    <section id="rests-and-barlines" data-step="3">
-    <h2>Step 3: Rests and barlines</h2>
-    <p>Count four beats in the opening guitar bar. You play on one, two and three, then leave beat four silent. The word <code>rest</code> takes the current note duration, so the barline <code>|</code> still falls after four beats.</p>
-    <p>In the second score, <code>repeatStart</code> and <code>bar repeatEnd</code> enclose the passage to repeat. The rest has an explicit position, <code>rest[line 0]</code>. On the next row, <code>bar repeatBoth</code> closes one repeat and opens another. Change <code>bar final</code> to <code>bar double</code> and compare the last two lines at the right edge.</p>
+    <section id="rests-and-barlines" data-step="4">
+    <h2>Step 4: Rests and barlines</h2>
+    <p>Count through the first bar as if you were playing it on guitar. Your fingers move up the third string for three beats, then you leave beat four silent before starting the next bar. Since <code>rest</code> takes the same duration as the preceding quarter notes, the bar is complete even though you’ve played only three notes.</p>
     <div class="vex-tabdiv"
       width=500 scale=1.0 editor="true"
       editor_height=110>guitar { 4/3 5/3 6/3 rest | 5/3 4/3 2/3 2/2 | }</div>
+    <p>A barline can also tell a player where to go next. In the score below, <code>repeatStart</code> and <code>bar repeatEnd</code> enclose the first bar, including the rest on beat four. The <code>line 0</code> setting positions that rest on the staff without changing how long the player waits.</p>
     <div class="vex-tabdiv"
       width=500 scale=1.0 editor="true"
       editor_height=110>staff { repeatStart C4 D4 E4 rest[line 0] bar repeatEnd
   break system C4 D4 E4 rest bar repeatBoth C4 D4 E4 F4 bar final }</div>
+    <p>On the second row, the dots on either side of <code>bar repeatBoth</code> mark the end of one repeated passage and the beginning of another. Try replacing <code>bar final</code> with <code>bar double</code> at the end of the piece and compare the thickness of the two lines at the right edge.</p>
     </section>
 
-    <section id="bends" data-step="4">
-    <h2>Step 4: Bend a few notes</h2>
-    <p>On the third beat, pick fret six and bend the string up one semitone. The mark belongs to the last fret in <code>4-5-6/3</code>. Its <code>rise=1/1</code> takes the whole note. Compare the bend on the next row, which rises two semitones by halfway through the note and returns to the fretted pitch by the end.</p>
+    <section id="durations-and-tuplets" data-step="5">
+    <h2>Step 5: Tuplets</h2>
+    <p>Suppose you want to play C, D and E evenly on beat one and arrive at F on beat two. In 4/4 there is room for two ordinary eighth notes per beat, so you need a triplet to fit all three pitches there. The ratio in <code>tuplet 3:2</code> tells VexTab to give the three eighths inside the braces the time that two would usually take.</p>
+    <div class="vex-tabdiv" data-draft-key="tutorial/tuplets/first-triplet" width="500" scale="1" editor="true" editor_height="80">meter 4/4
+staff { tuplet 3:2 { :8 C4 D4 E4 } :q F4 :h G4 | }</div>
+    <p>Count “one-trip-let” under the first beam, then say “two” when you reach F. If you remove <code>tuplet 3:2</code> and its braces but leave the notes in place, the editor reports that the bar is too long. Those three eighths would now take a beat and a half, so restoring the triplet brings F back to beat two.</p>
+    <p>In the guitar phrase below, the slide from fret five through seven to eight fits that same triplet rhythm. Follow it to the two-note chord on beat two, then look at the last beat, where a dotted eighth and a sixteenth fill the space in a different way.</p>
+    <div class="vex-tabdiv" data-draft-key="tutorial/durations-and-tuplets/0"
+      width=500 scale=1.0 editor="true"
+      editor_height=80>meter 4/4
+guitar { key Ab tuning eb
+  :8 tuplet 3:2 { 5/5 7/5[slide] 8/5[slide] } :q (5/2 6/3) 7/3[hammer] :8. 5/4 :16 5/5 |
+}</div>
+    </section>
+
+    <section id="rhythmic-tab" data-step="6">
+    <h2>Step 6: Give tablature stems</h2>
+    <p>When a guitar part shows both notation and tab, you can read the rhythm from the staff and use the frets to find your place on the instrument. If the guitarist will be reading tab alone, add <code>tabStems on</code> alongside <code>view tab</code> so the tab itself shows which notes share a beam and how long to hold them.</p>
+    <div class="vex-tabdiv"
+      width=550 scale=1.0 editor="true"
+      editor_height=100>guitar { view tab tabStems on tabDirection up key A
+  fragment { :8 tuplet 3:2 { 5/5 5/4 5/3 } :16 5/1 6/1 7/1 8/1 :8 9/1 10/1[slide] :h 9/1[slide, vibrato] }
+}</div>
+    <p>Find the triplet beam above the three opening frets, then change <code>tabDirection up</code> to <code>tabDirection down</code>. The beam now runs below the strings, but it still joins the same three frets. Farther along, the four sixteenths on the first string form a quicker run before the slides into the final half note.</p>
+    </section>
+
+    <section id="player" data-step="7">
+    <h2>Step 7: Enable and configure the player</h2>
+    <p>To hear the phrase you’ve written, add <code>play { tempo 96 instrument 24 }</code> on a new line above <code>meter</code> in the editor below. When you move the pointer over the score or reach the controls with the Tab key, you’ll find a <strong>Play</strong> button. Press it and follow the four frets as they sound on nylon-string guitar at 96 quarter notes per minute.</p>
+    <div class="vex-tabdiv" width="480" scale="1" editor="true" editor_height="100">meter 4/4
+guitar { :q 0/1 2/1 3/1 2/1 | }</div>
+    <p>The next example has the same four notes and already includes a player. Compare its controls with the ones you just enabled. The setting <code>controlSize mini</code> selects the small panel, and <code>controls always</code> keeps it in view when you move the pointer away.</p>
+    <div class="vex-tabdiv" width="480" scale="1" editor="true" editor_height="110">play { tempo 96 instrument 24 controls always controlSize mini }
+meter 4/4
+guitar { :q 0/1 2/1 3/1 2/1 | }</div>
+    <p>If the phrase goes by too quickly to follow the frets, change <code>tempo 96</code> to <code>tempo 72</code> and play it again. Once the pace feels comfortable, try <code>instrument 40</code> in place of <code>instrument 24</code> to hear a violin play the same notes at the tempo you chose.</p>
+    <p>For a longer score, you might prefer the larger panel in the upper right, where it can leave the music in view while you read. Try <code>controlSize large position top-right controls hover</code> in place of <code>controls always controlSize mini</code>, then move the pointer away and watch the panel fade. Removing the entire <code>play</code> block takes the controls off this score.</p>
+    </section>
+
+    <section id="hammer-ons-and-slides" data-step="8">
+    <h2>Step 8: Hammer-ons, pull-offs, taps and slides</h2>
+    <p>A guitarist can sound a second note on the same string by hammering a finger onto a higher fret or by pulling a finger off to sound a lower one. In the opening figure, follow <code>5/3</code> to <code>6/3[h]</code>. The mark sits on fret six because that’s where the hammer-on lands.</p>
+    <div class="vex-tabdiv"
+      width=500 scale=1.0 editor="true"
+      editor_height=230>play { tempo 96 instrument 24 }
+alias h="hammer" p="pull" gl="slide" v="vibrato"
+guitar { view tab
+  fragment {
+    :16 (5/2 5/3 7/4) 5/3 6/3[h] 7/4 |
+    12/4[tap] 7/4[p] 5/4[p] 7/4[h] 7/5 5/5 3/5[gl] |
+    break system (8/2 7/3[bend +2 rise=1/2 release=1]) (5/2[bend +1 rise=1] 5/3[bend +1 rise=1])[v] 7/4 0/4[gl] |
+    (5/2 6/3 7/4)[v] |
+    break system (5/4 5/5) (7/4[gl] 7/5[gl]) (5/4[gl] 5/5[gl]) (5/4 5/5) 7/5[h] |
+    (12/5 12/4)[tap] (5/5[gl] 5/4[gl]) 3/5[bend +1 rise=1] 5/6[vibrato wide]
+  }
+}</div>
+    <p>Press <strong>Play</strong> and follow the fourth string just after the first barline. The guitarist taps fret twelve, pulls off to seven and then to five, and hammers back up to seven. The aliases above the part give those gestures short names, so you can read the two <code>[p]</code> marks and the <code>[h]</code> beside their destination frets.</p>
+    <p>The opening <code>:16</code> carries through the fragment, giving you four sixteenths per beat. If the changes pass too quickly, slow <code>tempo 96</code> to <code>tempo 72</code> and listen again, this time following the line onto string five, where <code>3/5[gl]</code> marks the end of the slide from fret five to three.</p>
+    </section>
+
+    <section id="stave-keywords" data-step="9">
+    <h2>Step 9: Stave keywords</h2>
+    <p>Both notes in this phrase lie on the low sixth string, where the bass clef makes their pitches easy to read. At the start of the staff you can also see the four flats of A-flat major and the cut-time sign, which come from <code>key Ab</code> and <code>meter cut</code>. Change <code>clef bass</code> to <code>clef treble</code> and compare the positions of the two notes with their frets in the tab below.</p>
+    <div class="vex-tabdiv"
+      width=400 scale=1.0 editor="true"
+      editor_height=80>guitar { meter cut clef bass key Ab fragment { 4/6 5/6 } }</div>
+    <p>To change what a fret sounds like, choose a tuning for the part. Add <code>tuning dropD</code> before <code>fragment</code> in the guitar block and look at the pitches above frets four and five. Lowering the open sixth string from E to D lowers both notes by a whole tone.</p>
+    <p>Alongside <code>standard</code>, <code>dropD</code> and <code>eb</code>, VexTab accepts a list of open pitches from the highest string to the lowest, such as <code>tuning (E5 B4 G4 D4 A3 E3)</code>. The other staff settings follow the same pattern. You can choose an alto or tenor clef, a minor key such as <code>key F#m</code>, or a meter written as a fraction or a sign such as <code>meter common</code>.</p>
+    </section>
+
+    <section id="bends" data-step="10">
+    <h2>Step 10: Bend a few notes</h2>
+    <p>On the third beat of the opening bar, pick fret six on string three and bend the pitch up one semitone. The bend follows <code>4-5-6/3</code>, so it belongs to the last fret in that run. With <code>rise=1/1</code> you have the whole quarter note to reach the top of the bend.</p>
     <div class="vex-tabdiv"
       width=500 scale=1.0 editor="true"
       editor_height=110>guitar { view tab
   :q 4-5-6/3[bend +1 rise=1/1] 10/4 | 5/3 4/3 2/3 2/2 |
   break system 6/3 7/3[bend +2 rise=1/2 release=1] 7/4 rest | 9-8-7-6/2 |
 }</div>
+    <p>Compare the bend on the second row, where <code>bend +2</code> takes the pitch up a whole tone. This time <code>rise=1/2</code> puts the top of the bend halfway through the note, leaving time to release the string before the next attack.</p>
+    <p>To bend just one string of a chord, put the mark beside its fret inside the parentheses. In the first chord below, the player holds fret eight on string two while the note on string three bends and releases. In the next chord, both frets carry the <code>bendup</code> mark, so both strings rise together.</p>
+    <div class="vex-tabdiv" data-draft-key="tutorial/chords/1" width="650" editor="true" editor_height="95">alias bendup="bend +1 rise=1"
+guitar { tabStems off
+  fragment {
+    (8/2 7/3[bend +2 rise=1/2 release=1]) (5/2[bendup] 5/3[bendup]) 7/4 |
+    (5/2 6/3 7/4)
+  }
+}</div>
+    <p>Here’s how those bends fit into a longer phrase. Count a quarter note for each of the two opening chords, then follow the run on string four. By the time the guitarist taps fret nine, the duration has changed to a sixteenth, leaving room for the slide that follows.</p>
+    <div class="vex-tabdiv" data-draft-key="tutorial/durations-and-tuplets/1"
+      width=650 scale=1.0 editor="true"
+      editor_height=100>alias gl="slide" half="bend +1 rise=1"
+guitar { fragment {
+  :q (8/2 7/3[bend +2 rise=1/2 release=1]) (5/2[half] 5/3[half])[vibrato]
+  :8 7/4 12/4[gl] :16 9/4[tap] :8 3/4[gl] :16 0/4[gl]
+} }</div>
     </section>
 
-    <section id="strokes-and-vibrato" data-step="5">
-    <h2>Step 5: Mutes, strokes and vibrato</h2>
-    <p>In bar two, play a downstroke, an upstroke and a muted downstroke. The <code>x/3</code> gives the third stroke its dead sound. The names <code>sd</code> and <code>su</code> come from the aliases above the guitar part. Change the definition of <code>v</code> to <code>"vibrato wide"</code> and look at the wavy line in both bars. Lines beginning with <code>#</code> are comments.</p>
+    <section id="strokes-and-vibrato" data-step="11">
+    <h2>Step 11: Mutes, strokes and vibrato</h2>
+    <p>Read the second bar as a sequence of picking strokes. After a downstroke and an upstroke on fretted notes, the pick strikes a muted third string, which appears as <code>x/3</code> in the source. The final note rings with vibrato, marked by the wavy line at fret two on the second string.</p>
     <div class="vex-tabdiv"
       width=500 scale=1.0 editor="true"
       editor_height=170># Aliases
@@ -98,82 +197,31 @@ alias su="stroke up" sd="stroke down"
 # Create a guitar stave
 guitar { 4/3 5/3 6/3[bend +1 rise=1, v] 10/1 |
   5/3[sd] 4/3[su] x/3[sd] 2/2[v] | }</div>
+    <p>The <code>alias</code> lines above the part give the strokes and vibrato short names so you can mark a fret without interrupting the run of notes. In <code>x/3[sd]</code>, for example, <code>sd</code> stands for <code>stroke down</code>. Change the definition of <code>v</code> to <code>"vibrato wide"</code> and compare the wavy lines in both bars, since both notes use that alias. The lines beginning with <code>#</code> are comments for the person reading the source.</p>
     </section>
 
-    <section id="chords" data-step="6">
-    <h2>Step 6: Add some chords</h2>
-    <p>Play C, E and G together on beat one, then play the same pitches one at a time. Parentheses make the first three pitches a chord, so they take only one beat together. Change E to E-flat inside the parentheses and listen for the difference between the opening chord and the three notes that follow.</p>
-    <div class="vex-tabdiv"
-      width=500 scale=1.0 editor="true"
-      editor_height=130>staff { (C4 E4 G4) C4 E4 G4 | }</div>
-    <p>On the first guitar chord, hold fret eight on string two while string three bends and releases. The bend sits inside the parentheses next to <code>7/3</code>, so only that string changes pitch. In the next chord, both frets carry a bend.</p>
-    <div class="vex-tabdiv" width="650" editor="true" editor_height="95">alias bendup="bend +1 rise=1"
-guitar { tabStems off
-  fragment {
-    (8/2 7/3[bend +2 rise=1/2 release=1]) (5/2[bendup] 5/3[bendup]) 7/4 |
-    (5/2 6/3 7/4)
-  }
-}</div>
-    </section>
-
-    <section id="hammer-ons-and-slides" data-step="7">
-    <h2>Step 7: Hammer-ons, pull-offs, taps and slides</h2>
-    <p>On string four, tap fret twelve and pull off first to seven, then to five. Each <code>[p]</code> marks the fret you arrive at. A hammer-on or a slide names its destination the same way. Follow the next <code>[h]</code> back up to fret seven, then find the slide from fret five to three on string five.</p>
-    <div class="vex-tabdiv"
-      width=500 scale=1.0 editor="true"
-      editor_height=230>alias h="hammer" p="pull" gl="slide" v="vibrato"
-guitar { view tab
-  fragment {
-    :q (5/2 5/3 7/4) 5/3 6/3[h] 7/4 |
-    12/4[tap] 7/4[p] 5/4[p] 7/4[h] 7/5 5/5 3/5[gl] |
-    break system (8/2 7/3[bend +2 rise=1/2 release=1]) (5/2[bend +1 rise=1] 5/3[bend +1 rise=1])[v] 7/4 0/4[gl] |
-    (5/2 6/3 7/4)[v] |
-    break system (5/4 5/5) (7/4[gl] 7/5[gl]) (5/4[gl] 5/5[gl]) (5/4 5/5) 7/5[h] |
-    (12/5 12/4)[tap] (5/5[gl] 5/4[gl]) 3/5[bend +1 rise=1] 5/6[vibrato wide]
-  }
-}</div>
-    </section>
-
-    <section id="durations-and-tuplets" data-step="8">
-    <h2>Step 8: Durations and tuplets</h2>
-    <p>Count the three opening frets evenly on beat one. The <code>:8</code> selects eighth notes, and <code>tuplet 3:2</code> fits three of them into the time of two. The chord just outside the braces gets a new duration, <code>:q</code>, so it enters on beat two.</p>
-    <p>Once you set a duration, following notes in the same voice inherit it. The last beat divides into a dotted eighth (<code>:8.</code>) and a sixteenth (<code>:16</code>). Move the dot from the eighth to the sixteenth and the bar becomes too short. Put it back to restore four beats. A duration change inside a tuplet lasts only to its closing brace. Other durations include <code>:w</code> for a whole note, <code>:h</code> for a half and <code>:32</code> for a thirty-second.</p>
-    <div class="vex-tabdiv"
-      width=500 scale=1.0 editor="true"
-      editor_height=80>meter 4/4
-guitar { key Ab tuning eb
-  :8 tuplet 3:2 { 5/5 7/5[slide] 8/5[slide] } :q (5/2 6/3) 7/3[hammer] :8. 5/4 :16 5/5 |
-}</div>
-    <div class="vex-tabdiv"
-      width=650 scale=1.0 editor="true"
-      editor_height=100>alias gl="slide" half="bend +1 rise=1"
-guitar { fragment {
-  :q (8/2 7/3[bend +2 rise=1/2 release=1]) (5/2[half] 5/3[half])[vibrato]
-  :8 7/4 12/4[gl] :16 9/4[tap] :8 3/4[gl] :16 0/4[gl]
-} }</div>
-    </section>
-
-    <section id="annotations" data-step="9">
-    <h2>Step 9: Lyrics and annotations</h2>
-    <p>Sing “Fi-Ga-Ro!” with the first three notes. Each note carries its own label in brackets, so the syllables follow the triplet. Change <code>below</code> to <code>above</code> on “Fi” and look for the one syllable that moves.</p>
-    <p>The second phrase uses labels for playing instructions. Replace the italic “sweep” with “dolce” to change the instruction at that attack. For a chord name use <code>symbol</code>. For words that need a hyphen or span several notes, use <code>lyric</code>, as in the <a href="https://vexflow.com/vextab/guide/#lesson/slow-river">Slow river lead sheet</a>.</p>
+    <section id="annotations" data-step="12">
+    <h2>Step 12: Lyrics and annotations</h2>
+    <p>To put a word exactly where a musician needs it, attach a label to the note where it belongs. In the first example, “Fi”, “Ga” and “Ro!” each follow one note of the triplet, so you can sing a syllable with each pitch. Change <code>below</code> to <code>above</code> on “Fi” and look for the syllable that moves across the staff.</p>
     <div class="vex-tabdiv"
       width=550 scale=1.0 editor="true"
       editor_height=100>meter 4/4
 guitar { key Ab tuning eb
   :q tuplet 3:2 { 5/5[label "Fi" below] 5/4[label "Ga" below] 5/3[label "Ro!" below] } :h 4/4[label "Blah!" above] |
 }</div>
+    <p>Labels also work for playing instructions. Look for the italic “sweep” at the start of the run in the next example, then replace the word with “dolce” in the source. The instruction changes at the same point in the phrase because its label is still attached to the same fret.</p>
     <div class="vex-tabdiv"
       width=620 scale=1.0 editor="true"
       editor_height=100>guitar { key A
   (5/2 5/3 7/4)[label "A7#9" above] 5/3 6/3[hammer] 7/4 |
   :8 7/4[label "sweep" style italic] 6/3 5/2 3/1[vibrato] :q 7/5[label "P.H." font "Arial" size 10 style bold] :8 3/5 5/5[slide] |
 }</div>
+    <p>When you need to show a chord change, <code>symbol</code> lets you give the harmony a name. For sung words, <code>lyric</code> can join two syllables with a hyphen or carry one syllable across several notes. You can see both uses under the melody in the <a href="https://vexflow.com/vextab/guide/#lesson/slow-river">Slow river lead sheet</a>.</p>
     </section>
 
-    <section id="articulations" data-step="10">
-    <h2>Step 10: Staccatos, fermatas and more</h2>
-    <p>The dot under the opening C asks for a short attack. On the fourth row, the fermata over E asks the player to linger. Change <code>staccato below</code> to <code>staccato above</code>. The dot moves across the note, while C still occupies one beat. Use the captions under the other notes to match each sign to its name.</p>
+    <section id="articulations" data-step="13">
+    <h2>Step 13: Staccatos, fermatas and more</h2>
+    <p>Two notes of the same written duration can ask quite different things of a player. The staccato dot under the opening C asks you to release it early, while the fermata over E on the fourth row invites you to hold it beyond its written value. The captions under the notes give you the names of the marks as you read down the page.</p>
     <div class="vex-tabdiv"
       width=650 scale=1.0 editor="true"
       editor_height=100>meter 3/4
@@ -189,12 +237,12 @@ staff {
     "Up bow" "Down bow" skip |
   }
 }</div>
+    <p>Try changing <code>staccato below</code> to <code>staccato above</code> on the opening C. The dot moves to the other side of the note, but you still count a quarter-note beat before playing E. Shortening the sound leaves a little silence at the end of that beat.</p>
     </section>
 
-    <section id="timed-text" data-step="11">
-    <h2>Step 11: Timed text and musical symbols</h2>
-    <p>The harmony changes only twice while the guitarist plays four attacks. Give the chord names their own rhythm in <code>text harmony</code>. Each name lasts a half note, so “A Major” lines up with the held note on beat three.</p>
-    <p>In the third example, chord names sit above the staff and a sentence sits below it. Each text lane counts its own beats. Replace the first <code>"Em"</code> with <code>skip</code> to leave that half bar blank without moving “G7”. Higher <code>line</code> values place a lane lower. Choose <code>align left</code>, <code>align center</code> or <code>align right</code> to position words around their beat. In the last example, <code>start</code> and <code>end</code> anchor signs to the edges of the bar.</p>
+    <section id="timed-text" data-step="14">
+    <h2>Step 14: Timed text and musical symbols</h2>
+    <p>The guitar plays four notes in the first bar below, but the harmony changes only once, from G minor to A major. To give the chord names their own rhythm, write them in a separate line of text called a <em>lane</em>. In <code>text harmony</code>, each name lasts a half note, which puts “A Major” on beat three with the sustained guitar note.</p>
     <div class="vex-tabdiv"
       width=550 scale=1.0 editor="true"
       editor_height=100>meter 4/4
@@ -202,17 +250,20 @@ guitar { key Ab tuning eb
   :q tuplet 3:2 { 5/5 5/4 5/3 } :h 4/4 |
   text harmony line 10 { :h "G Minor" "A Major" | }
 }</div>
+    <p>A lane can also move at the same pace as the melody. In the rising scale below, the notes and the syllables are both written in eighths, so “Do” starts on C and “Re” lines up with D.</p>
     <div class="vex-tabdiv"
       width=550 scale=1.0 editor="true"
       editor_height=120>staff { key Ab :8 C4 D4 E4 F4 G4 A4 B4 C5 |
   text syllables line 10 { :8 "Do" "Re" "Mi" "Fa" "Sol" "La" "Ti" "Do" | }
 }</div>
+    <p>When the page needs both chords and words, give each its own lane and use <code>line</code> to set its height. Higher line numbers sit farther down the page, which is why the chord names below sit above the staff while the sentence runs underneath it. Try replacing <code>"Em"</code> with <code>skip</code>. The lane still counts that half bar, so “G7” arrives on the first beat of the next bar.</p>
     <div class="vex-tabdiv"
       width=550 scale=1.0 editor="true"
       editor_height=120>staff { C4 D4 E4 F4 | G4 A4 B4 C5 |
   text chords line -1 { :h "C" "Em" | "G7" "C" | }
   text words line 11 { :w "This is a new text line." | skip | }
 }</div>
+    <p>Use <code>align left</code>, <code>align center</code> or <code>align right</code> when you want to position words around their beat. A sign at a barline needs a different sort of placement. In the last example, <code>start sign coda</code> anchors the coda sign at the opening edge of the bar and <code>end sign segno</code> puts the segno at the closing edge.</p>
     <div class="vex-tabdiv"
       width=550 scale=1.0 editor="true"
       editor_height=120>staff { repeatStart C4 D4 E4 F4 bar repeatEnd G4 A4 B4 C5 |
@@ -222,9 +273,9 @@ guitar { key Ab tuning eb
 }</div>
     </section>
 
-    <section id="slash-notation" data-step="12">
-    <h2>Step 12: Write rhythms with slash notation</h2>
-    <p>A rhythm player can read when to strum from slashes and what to play from the chord name above them. Count a half note, a quarter and a rest under G Maj7. In bar two, the first two eighths have opposite stroke marks. A <code>[slash]</code> on a pitch sets the head at that pitch, while <code>slash</code> writes an unpitched beat.</p>
+    <section id="slash-notation" data-step="15">
+    <h2>Step 15: Write rhythms with slash notation</h2>
+    <p>On a rhythm chart the chord name tells a guitarist what to play, while the slashes underneath tell them when to strum. Under “G Maj7” the first stroke lasts two beats, the next lasts one, and the rest leaves beat four silent. When the chord changes to Am, the first two eighths carry opposite stroke marks so the guitarist can follow the picking direction as well as the rhythm.</p>
     <div class="vex-tabdiv"
       width=550 scale=1.0 editor="true"
       editor_height=120>staff { clef percussion
@@ -232,34 +283,25 @@ guitar { key Ab tuning eb
   :8 B4[slash, stroke down] B4[slash, stroke up] :q tuplet 3:2 { B4[slash] B4[slash] B4[slash] } :q slash |
   text harmony line -2 { :w "G Maj7" | "Am" | }
 }</div>
+    <p>Look at the end of the Am bar, where <code>:q slash</code> supplies an unpitched quarter-note beat. Earlier in the bar, <code>B4[slash]</code> places a slash head at a particular staff position, as in the downstroke and upstroke that open the bar.</p>
     </section>
 
-    <section id="appearance" data-step="13">
-    <h2>Step 13: Customize the appearance</h2>
-    <p>The first example enlarges one note for a lesson. Change <code>scale 2</code> to <code>scale 1</code> and compare the notehead and staff lines. The pitch and its quarter-note duration stay the same.</p>
-    <p>In the last example, increase <code>staffDistance 50</code> to give the low notes more room above the tab. Set the score width in pixels. Use <code>rowGap</code> for space between systems, the rows of staves that a player reads together.</p>
+    <section id="appearance" data-step="16">
+    <h2>Step 16: Customize the appearance</h2>
+    <p>If you’re preparing a lesson about a single note, enlarging the staff gives your reader room to see the head and stem. The first example uses <code>scale 2</code> to draw the whole score at twice its usual size. Change it to <code>scale 1</code> and compare the notehead with the distance between staff lines as both return to their usual size.</p>
     <div class="vex-tabdiv"
       width=420 scale=1.0 editor="true"
       editor_height=100>layout { width 200 scale 2 }
 guitar { view notation fragment { :q 5/5 } }</div>
+    <p>For a phrase that reaches high up the neck, look at the space above the notation as well as the tab below it. In the next example, the chord name sits above the opening chord, while the three high notes need room for their ledger lines. You can follow the same rise in the tab from fret fifteen to fret twenty on the first string.</p>
     <div class="vex-tabdiv"
       width=420 scale=1.0 editor="true"
       editor_height=100>guitar { key A (5/2 5/3 7/4)[label "A7#9" above] 15/1 16/1[hammer] 20/1 | }</div>
+    <p>Low notes need room on the other side of the staff. In the last example, find the open sixth string in the tab and trace it up to the ledger lines below the notation. Try increasing <code>staffDistance 50</code> to give those lines more clearance above the tab. When you want more space between successive rows of music, use <code>rowGap</code> to separate the systems. Set <code>width</code> in pixels to choose how much room each system has across the page.</p>
     <div class="vex-tabdiv"
       width=420 scale=0.8 editor="true"
       editor_width=335 editor_height=100>layout { staffDistance 50 scale 0.8 }
 guitar { key A fragment { (5/2 5/3 7/4) rest 0/6 1/6[hammer] 0/1 } }</div>
-    </section>
-
-    <section id="rhythmic-tab" data-step="14">
-    <h2>Step 14: Give tablature stems</h2>
-    <p>When a guitarist reads tab alone, stems and beams show how long each fret should sound. VexTab normally leaves them off. Here <code>view tab</code> and <code>tabStems on</code> let you count the three opening frets as a triplet without a second staff.</p>
-    <p>Switch the stem direction between <code>tabDirection up</code> and <code>tabDirection down</code>. Find the same triplet beam on the opposite side of the strings, then follow the slides into the final vibrato.</p>
-    <div class="vex-tabdiv"
-      width=550 scale=1.0 editor="true"
-      editor_height=100>guitar { view tab tabStems on tabDirection up key A
-  fragment { :8 tuplet 3:2 { 5/5 5/4 5/3 } :16 5/1 6/1 7/1 8/1 :8 9/1 10/1[slide] :h 9/1[slide, vibrato] }
-}</div>
     </section>
   </div>
 </body>

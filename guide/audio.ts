@@ -30,10 +30,10 @@ const playback: PlaybackPlugin = {
   },
 };
 
-/** Enable the default sheet player with the guide's shared, lazily loaded instrument. */
-export function scoreOptions(host: HTMLElement): DivOptions {
+/** Tutorial scores opt in with a play block. Other guide examples show the player by default. */
+export function scoreOptions(host: HTMLElement, player: 'always' | 'score' = 'always'): DivOptions {
   host.addEventListener('click', stopPrevious, true);
-  return { playback, player: true };
+  return { playback, player: player === 'always' ? true : undefined };
 }
 
 let lastPlay: HTMLButtonElement;

@@ -91,7 +91,7 @@ function examples(host: HTMLElement, chapter: Chapter, section: string, draft: D
     if (oldDraft) controls.append(oldDraft);
     frame.append(embed, controls);
     original.replaceWith(frame);
-    const editor = new Div(embed, scoreOptions(embed));
+    const editor = new Div(embed, scoreOptions(embed, section === 'tutorial' ? 'score' : 'always'));
     const input = embed.querySelector('textarea');
     input.setAttribute('aria-label', chapter.title + ' · example ' + (index + 1));
     highlightEditor(input);
@@ -110,8 +110,8 @@ export function showCover(host: HTMLElement): Div {
   cover.className = 'book-cover';
   const introduction = document.createElement('div');
   heading(introduction, '', 'The VexTab Tutorial',
-    'Write a melody as pitches or guitar frets and see how the two line up. The fourteen lessons take you from a four-note phrase to chords, bends, lyrics and rhythmic tab.');
-  const start = link('Play your first notes →', '#tutorial/' + tutorial[0].id);
+    'Follow a four-note phrase from the staff to the fretboard as you learn to write pitches, shape a rhythm and put several notes together as a chord. Once you can read the rhythm from the tab itself, you’ll add a player and hear how a guitarist can join those notes with hammer-ons, pull-offs and slides.');
+  const start = link('Write your first notes →', '#tutorial/' + tutorial[0].id);
   start.className = 'start-reading';
   const paths = node('nav', '');
   paths.className = 'cover-links';
@@ -130,7 +130,7 @@ export function showCover(host: HTMLElement): Div {
   cover.append(introduction, figure);
   host.append(cover);
   directory(host, tutorial, 'tutorial', 'In this tutorial', true);
-  return new Div(sample, scoreOptions(sample));
+  return new Div(sample);
 }
 
 /** The same table of contents also supplies permanent URLs and chapter order. */

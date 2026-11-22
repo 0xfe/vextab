@@ -64,11 +64,17 @@ export async function testGuideAudio(browser, dist) {
     assert.equal(await metro.getAttribute('aria-expanded'), 'false');
     assert.equal(await metro.evaluate(node => node === document.activeElement), true);
 
-    await page.goto(url + '#tutorial/notes');
+    await page.goto(url + '#tutorial/player');
     await page.evaluate(() => document.fonts.ready);
     const examples = page.locator('.chapter-example');
     const control = index => examples.nth(index).locator('.vextab-control-panel > :is(.vextab-play, .vextab-stop)');
-    assert.equal(await examples.count(), 4);
+    assert.equal(await examples.count(), 2);
+    assert.equal(await control(0).count(), 0);
+    const firstSource = examples.first().locator('textarea');
+    const phrase = await firstSource.inputValue();
+    await firstSource.fill('play { tempo 96 instrument 24 }\n' + phrase);
+    await firstSource.press('Control+Enter');
+    await control(0).waitFor();
     assert.ok(!requests.some(url => url.includes('guide-instrument')));
     // Cancel while the async chunk is still loading. Its late completion must stay silent.
     await control(0).evaluate(button => { button.click(); button.click(); });
@@ -88,6 +94,9 @@ export async function testGuideAudio(browser, dist) {
     await source.fill('?');
     await source.press('Control+Enter');
     assert.equal(await control(1).count(), 0);
+    await examples.first().getByRole('button', { name: 'Reset example' }).click();
+    assert.equal(await firstSource.inputValue(), phrase);
+    assert.equal(await control(0).count(), 0);
     await page.goto(url + '#features/pre-bends');
     const button = page.locator('.chapter-example button.vextab-play');
     await button.click();

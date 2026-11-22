@@ -8,7 +8,9 @@ Each Play creates a fresh human performance. Choose a style in the score with `p
 
 ## Listen in the guide
 
-Press **Play** at the bottom center of a tutorial example, study or playground score. The button becomes **Stop** and can cancel the first instrument load. Changing an edit or starting a different score ends playback. The duet edition has its own button for the selected voice. An empty stave or an example containing only rests has no pitches to play.
+If you’re working through the tutorial, add a `play` block to a score when you want to hear it. The player lesson walks you through this with four quarter notes on guitar, and the hammer-on lesson that follows has playback enabled so you can slow the sixteenths down while you follow the frets. [Enable and configure the player](https://vexflow.com/vextab/guide/#tutorial/player)
+
+Studies and playground scores open with the controls enabled. When you press **Play** at the bottom center of the score, the button becomes **Stop**, which you can use even while the instrument is loading. Playback also stops when you edit the music or start another score. If you’re rehearsing one voice of the duet, use the button on its printed part to hear that voice on its own. An empty staff or a passage consisting entirely of rests has no pitches to play.
 
 A neon-yellow halo spreads around each sounding notehead or fret number just before its attack, reaches full strength on the beat and fades at the end of its written duration. The vertical playhead spans the system and continues through rests. It follows the spacing of the selected layout, including printed parts.
 

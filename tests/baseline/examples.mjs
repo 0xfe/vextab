@@ -39,6 +39,37 @@ const pages = [
   ['doc/playground_svg.html', '.vex-tabdiv svg', [lick]],
 ];
 
+// Numbers identify examples in the 4.0.6 baseline. New examples have descriptive IDs.
+// Match each group to its lesson so moving a chapter preserves the musical comparison.
+const tutorialCases = {
+  notes: [2, 3, '3b', 1],
+  durations: ['half-notes'],
+  chords: [9, 'open-chord'],
+  'rests-and-barlines': [5, 6],
+  'durations-and-tuplets': ['first-triplet', 11],
+  'rhythmic-tab': [24],
+  player: ['enable-player', 'configure-player'],
+  'hammer-ons-and-slides': [10],
+  'stave-keywords': [4],
+  bends: [7, '9b', 12],
+  'strokes-and-vibrato': [8],
+  annotations: [13, 14],
+  articulations: [15],
+  'timed-text': [16, 17, 18, 19],
+  'slash-notation': [20],
+  appearance: [21, 22, 23],
+};
+
+const addedExamples = {
+  '3b': 'Read the same four attacks in tab view.',
+  'half-notes': 'Count four quarters and then two half notes.',
+  'open-chord': 'Find the three open strings sounding together on beat one.',
+  'first-triplet': 'Fit three eighths on beat one and a quarter on beat two.',
+  'enable-player': 'Read the four frets before adding playback.',
+  'configure-player': 'Play the same four frets at 96 BPM.',
+  '9b': 'Hold the chord while two strings bend independently.',
+};
+
 // Capture the API demo's actual input as it executes its own inline example.
 function observeApiSource() {
   const parse = window.vextab.VexTab.prototype.parse;
@@ -78,15 +109,15 @@ export async function runExamples(browser, dist, verifyInk) {
   try {
     await serveExamples(page, dist, verifyInk);
     for (const [path, selector, original] of pages) {
-      const expectations = original.map((text, i) => ({ text, number: String(i + 1) }));
-      // The old chord editor combined notation and bent tablature. Each example now has its own view.
+      await page.goto('https://examples.test/' + path);
+      let expectations = original.map((text, i) => ({ text, number: String(i + 1) }));
       if (verifyInk && path === 'doc/tutorial.html') {
-        expectations.splice(9, 0, { text: 'Hold the chord while two strings bend independently.', number: '9b' });
-        const empty = expectations.shift();
-        expectations.splice(2, 0, { text: 'Read the same four attacks in tab view.', number: '3b' }, empty);
+        const chapters = await page.locator('section[data-step]').evaluateAll(nodes => nodes.map(node => node.id));
+        expectations = chapters.flatMap(chapter => tutorialCases[chapter].map(id => ({
+          number: String(id), text: typeof id === 'number' ? original[id - 1] : addedExamples[id],
+        })));
       }
       const count = expectations.length;
-      await page.goto('https://examples.test/' + path);
       await page.locator(selector).nth(count - 1).waitFor({ state: 'attached' });
       await page.evaluate(() => document.fonts.ready);
       if (verifyInk && path === 'doc/tutorial.html') {

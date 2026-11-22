@@ -21,7 +21,12 @@ export async function testGuide(page, dist) {
     'the offline guide loads its bundled title font');
   assert.equal(await page.locator('#index h1').textContent(), 'The VexTab Tutorial');
   const chapters = await page.locator('.book-cover + h2 + .chapter-list a').evaluateAll(links => links.map(a => a.hash));
-  assert.equal(chapters.length, 14);
+  assert.equal(chapters.length, 16);
+  assert.deepEqual(chapters.slice(0, 8), [
+    'notes', 'durations', 'chords', 'rests-and-barlines', 'durations-and-tuplets',
+    'rhythmic-tab', 'player', 'hammer-ons-and-slides',
+  ].map(id => '#tutorial/' + id));
+  assert.equal(await page.locator('.book-cover .vextab-play').count(), 0);
   const coverLinks = page.getByRole('navigation', { name: 'More ways to use VexTab' });
   assert.deepEqual(await coverLinks.locator('a').evaluateAll(links => links.map(a => a.hash)),
     ['#quickstart', '#features', '#reference']);
@@ -60,11 +65,15 @@ export async function testGuide(page, dist) {
     assert.ok(count > 0, hash);
     assert.equal(await chapter.locator('.syntax-layer').count(), count, hash);
     assert.equal(await chapter.locator('svg').count(), count, hash);
-    assert.equal(await chapter.locator('.vextab-sheet .vextab-play').count(), count, hash);
+    const playable = hash === '#tutorial/player' || hash === '#tutorial/hammer-ons-and-slides';
+    assert.equal(await chapter.locator('.vextab-sheet .vextab-play').count(), playable ? 1 : 0, hash);
+    if (hash === '#tutorial/hammer-ons-and-slides') {
+      assert.match(await editors.first().inputValue(), /fragment\s*\{\s*:16\b/);
+    }
     assert.ok((await chapter.locator('.editor-error').allTextContents()).every(text => !text), hash);
     examples += count;
   }
-  assert.equal(examples, 26);
+  assert.equal(examples, 31);
   await go('#tutorial/notes');
   assert.equal(await page.locator('#index h1').textContent(), 'Your first notes');
   // Both the fixed-width engraved sheet and its controls should fit and center within the panel.
