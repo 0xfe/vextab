@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@typescript-eslint/parser": "8.65.0",
+    "@typescript-eslint/parser": "8.73.0",
     "eslint": "9.39.5",
     "istanbul-lib-coverage": "3.2.2",
     "istanbul-lib-instrument": "6.0.3",
