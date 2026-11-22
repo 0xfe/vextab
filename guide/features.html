@@ -28,7 +28,8 @@ staff { :8 beam { C4 D4 E4 } F4 beam { A4 Bb4[courtesy] } | }</div>
 <section id="playback">
   <h2>Play a phrase with a SoundFont</h2>
   <p>Play this two-bar guitar phrase twice. Listen for the slight variation in an otherwise steady pulse.</p>
-  <pre data-score>play { tempo 96 instrument 24 performer human }
+  <p>Edit <code>controls hover</code> to <code>controls always</code> to keep the player visible, or try <code>position top-right</code> to move it. The player follows the visible area as you scroll a long score.</p>
+  <pre data-score>play { tempo 96 instrument 24 performer human controls hover position bottom-center }
 meter 4/4
 guitar {
   :8 0/1 2/1 3/1 2/1 :q 0/1 3/2 |

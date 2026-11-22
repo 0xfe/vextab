@@ -1,4 +1,5 @@
 // Parse written v2 notation into a bounded syntax tree before expanding any pattern.
+import { isControlPosition } from '../../playback/control-options.mts';
 import { isPerformerName } from '../../playback/profiles.mts';
 import type { GraceFingering, GracePitch, EventMark, Head, HeadMark, PartKind, PartSettings, WrittenMeter, StaffName, TextStyle, LaneStyle, TextBoundary, TextRange, ExpansionFrame, InstrumentIdentity } from './model.js';
 
@@ -947,6 +948,18 @@ export function readScore(source: string, fail: Fail) {
               tempoRanges.set(Number(bar.text), bar.range);
               (playback!.tempos ??= {})[Number(bar.text)] = Number(tempo.text);
             } else playback!.tempo = Number(tempo.text);
+          } else if (field.text === 'controls' || field.text === 'position' || field.text === 'inset') {
+            const value = take(), controls = playback!.controls ??= {};
+            if (field.text === 'controls') {
+              if (value.text === 'off' || value.text === 'hover' || value.text === 'always') controls.visibility = value.text;
+              else error('Expected controls off, hover or always', value);
+            } else if (field.text === 'position') {
+              if (!isControlPosition(value.text)) error('Unknown control position', value);
+              else controls.position = value.text;
+            } else {
+              if (!/^\d{1,4}(?:\.\d{1,2})?$/.test(value.text)) error('Expected a nonnegative control inset in pixels', value);
+              controls.inset = Number(value.text);
+            }
           } else if (field.text === 'swing') {
             const feel = take();
             if (feel.text !== 'eighths' && feel.text !== 'off') error('Expected swing eighths or swing off', feel);
@@ -960,7 +973,7 @@ export function readScore(source: string, fail: Fail) {
             if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(instrument.text) && !/^(?:0|[1-9]\d?|1[01]\d|12[0-7])$/.test(instrument.text)) error('Expected an instrument name or MIDI program', instrument);
             playback!.instrument = instrument.text;
           }
-          else error('Expected enabled, tempo, performer, swing or instrument', field);
+          else error('Expected a playback setting', field);
         }
       });
     } else if (token.text === 'transpose') {

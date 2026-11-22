@@ -63,7 +63,7 @@ guitar {
 }</pre>
   <p><code>tempo</code> sets quarter-note beats per minute. <code>instrument</code> accepts a General MIDI program from 0 to 127 or a name such as <code>acoustic_guitar_nylon</code>. A fresh embed uses native Web Audio for a synthesized tone. This guide uses SpessaSynth and a bundled SoundFont, so you can hear sampled instruments here.</p>
   <h3>Enable the sheet controls from JavaScript</h3>
-  <p>Pass <code>{ player: true }</code> to <code>Div</code> to enable playback for any source. Play and Stop share a button at the bottom center of the sheet. Hover over the metronome beside Play, or activate it with a tap or keyboard, to change the tempo.</p>
+  <p>Pass <code>{ player: true }</code> to <code>Div</code> to enable playback for any source. Play and Stop share a button at the bottom center of the visible sheet. The buttons follow the score as you scroll. Hover over the metronome beside Play, or activate it with a tap or keyboard, to change the tempo.</p>
   <figure class="code-sample"><figcaption>HTML</figcaption><pre data-language="html"><code>&lt;div id="score" layout="flow" editor="true"&gt;
 meter 4/4
 guitar { :q 0/1 2/1 3/1 2/1 | }
@@ -71,8 +71,9 @@ guitar { :q 0/1 2/1 3/1 2/1 | }
   <figure class="code-sample"><figcaption>JavaScript</figcaption><pre data-language="javascript"><code>import { Div } from 'vextab/browser';
 
 const editor = new Div(document.querySelector('#score'), {
-  player: true,
+  playbackControls: { visibility: 'always', position: 'top-right', inset: 16 },
 });</code></pre></figure>
+  <p>This example keeps the buttons visible. Use <code>visibility: 'hover'</code> for the default reveal behavior, or <code>playbackControls: false</code> to hide them. You can also put <code>controls always position top-right inset 16</code> in the score’s <code>play</code> block, or set <code>data-playback-controls="always"</code> and <code>data-playback-position="top-right"</code> on the embed.</p>
   <p>To use your own SoundFont, load it into a connected SpessaSynth synthesizer, then pass <code>playback: createSpessaSynthPlayback(synth)</code> alongside <code>player: true</code>. For custom buttons, call <code>player.play()</code> from a click handler and <code>player.stop()</code> to cancel. See the <a href="#reference/player">Player API</a> and the <a href="#quickstart/spessasynth">SpessaSynth setup and examples</a>.</p>
 </section>
 

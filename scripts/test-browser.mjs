@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import manifest from '../package.json' with { type: 'json' };
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { testSheetControls } from './test-sheet-controls.mjs';
 import { testDisplay } from './test-display.mjs';
 import { testGuideAudio } from './test-guide-audio.mjs';
 import { testGuide } from './test-guide.mjs';
@@ -151,6 +152,7 @@ try {
   await testGuide(page, dist);
   await testGuideAudio(browser, dist);
   await testDisplay(browser, dist, engine);
+  await testSheetControls(browser, dist);
 
   // Older pages load the VexTabDiv global and use a different class and attributes.
   await page.goto('about:blank');

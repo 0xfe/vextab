@@ -9,6 +9,7 @@ import Vex from './vexflow';
 import Artist from './artist';
 import VexTab from './vextab';
 import Player, { type PlayerOptions } from './player';
+import { sheetControlSettings, type SheetControls } from './playback/control-options.mts';
 import { isPerformerName } from './playback/profiles.mts';
 import { createWebAudioPlayback } from './playback/web-audio';
 import type { PlaybackPlugin } from './playback/transport';
@@ -34,6 +35,21 @@ function embedAttribute(host: HTMLElement, name: string, legacyName?: string): s
     || host.getAttribute(name);
 }
 
+/** Markup configures the same controls as JavaScript. A supplied options object takes precedence. */
+function embedControls(host: HTMLElement): SheetControls | boolean | undefined {
+  const mode = embedAttribute(host, 'playback-controls'), position = embedAttribute(host, 'playback-position');
+  const inset = embedAttribute(host, 'playback-inset');
+  if (mode === null && position === null && inset === null) return;
+  if (mode === 'off' || mode === 'false') return false;
+  const settings: SheetControls = {};
+  if (mode && mode !== 'on' && mode !== 'true') settings.visibility = mode as SheetControls['visibility'];
+  if (position) settings.position = position as SheetControls['position'];
+  if (inset !== null) settings.inset = Number(inset);
+  sheetControlSettings(settings);
+  if ((mode === 'on' || mode === 'true') && !settings.visibility) settings.visibility = 'hover';
+  return settings;
+}
+
 /** A grand staff needs the shared measure formatter. An explicit embed layout wins. */
 export function usesFlowLayout(host: HTMLElement, source: string): boolean {
   const layout = embedAttribute(host, 'layout');
@@ -51,17 +67,17 @@ export interface DivOptions {
   order?: 'written' | 'performed';
   performer?: PlayerOptions['performer'];
   seed?: number;
-  /** Enable sheet playback even when the source omits player=true. */
+  /** Force the embed player on or off. Omit to follow its source or configured controls. */
   player?: boolean;
-  /** Always offer playback for this embed and place its controls in this host. */
-  playbackControls?: HTMLElement;
+  /** Enable, hide or place sheet controls. An HTMLElement mounts the buttons in a separate toolbar. */
+  playbackControls?: PlayerOptions['controls'];
 }
 
 class Div {
   private player?: Player;
   private readonly playback: PlaybackPlugin;
-  private readonly enablePlayer: boolean;
-  private readonly playbackControls?: HTMLElement;
+  private readonly enablePlayer?: boolean;
+  private readonly playbackControls?: PlayerOptions['controls'];
   // Host element + renderer state.
   private sel: string | HTMLElement;
   private code: string;
@@ -107,8 +123,6 @@ class Div {
    */
   constructor(sel: string | HTMLElement, options: DivOptions = {}) {
     this.order = options.order;
-    this.enablePlayer = options.player || !!options.playbackControls;
-    this.playbackControls = options.playbackControls;
     this.playback = options.playback ?? createWebAudioPlayback();
     this.sel = sel;
     if (!this.sel) {
@@ -124,6 +138,8 @@ class Div {
     }
 
     const host = $(sel)[0] as HTMLElement;
+    this.playbackControls = options.playbackControls ?? embedControls(host);
+    this.enablePlayer = options.player ?? (this.playbackControls === undefined ? undefined : !!this.playbackControls);
     const name = embedAttribute(host, 'performer');
     if (options.performer !== undefined) this.performer = options.performer;
     else if (name) {
@@ -373,7 +389,7 @@ class Div {
     if (this.grammar2 && this.scale !== 1) next.style.zoom = String(this.scale);
     this.player?.dispose();
     this.player = undefined;
-    if (this.enablePlayer || score.playback?.enabled) {
+    if (this.enablePlayer ?? score.playback?.enabled) {
       const player = this.player = new Player(ensemble ? documentScore : mounted[0].layout.score, {
         playback: this.playback, controls: this.playbackControls, performer: this.performer, seed: this.seed, order: this.order,
       });
@@ -396,7 +412,7 @@ class Div {
         const backend = canvas ? Vex.Flow.Renderer.Backends.CANVAS : Vex.Flow.Renderer.Backends.SVG;
         const renderer = new Vex.Flow.Renderer(next, backend);
         if (!canvas) setFretPaper(renderer.getContext(), next);
-        if (this.enablePlayer) this.artist.customizations.player = 'true';
+        if (this.enablePlayer !== undefined) this.artist.customizations.player = String(this.enablePlayer);
         if (!this.player && this.artist.customizations.player === 'true') {
           this.player = new Player(this.artist, { playback: this.playback, controls: this.playbackControls, performer: this.performer, seed: this.seed });
         }

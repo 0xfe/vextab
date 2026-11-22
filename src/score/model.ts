@@ -168,7 +168,7 @@ export interface ParsedScore {
   };
   layout?: import('./grammar2/model').ScoreLayout;
   /** Playback directives, when authored before the first flow stave. */
-  playback?: { enabled: boolean; tempos?: Record<number, number>; tempo?: number; swing?: import('../playback/profiles.mts').SwingSetting; performer?: import('../playback/profiles.mts').PerformerName; instrument?: string };
+  playback?: { enabled: boolean; controls?: import('../playback/control-options.mts').SheetControls; tempos?: Record<number, number>; tempo?: number; swing?: import('../playback/profiles.mts').SwingSetting; performer?: import('../playback/profiles.mts').PerformerName; instrument?: string };
   source: string;
   repeats?: import('./grammar2/model').WrittenRepeat[];
   program?: number;

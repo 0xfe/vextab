@@ -2,7 +2,7 @@
 
 Add `play { tempo 100 }` before the first stave of an embed to show playback controls on the sheet. This works with the fixed SVG and Canvas renderers, responsive SVG and the legacy `.vex-tabdiv` class. The default embed uses native Web Audio and needs no samples. The first Play gesture opens audio. [Runnable bass chords and guitar pre-bend](../demos/player.html)
 
-The controls fade after three seconds. Hover over the sheet, tap it, or tab to a control to reveal them. Hover over the metronome beside Play, or activate it with a tap or keyboard, to adjust the tempo in steps of 5 BPM. Changes apply to upcoming notes during playback and leave the written tempo in the source intact.
+The buttons sit 12 CSS pixels inside the bottom center of the visible music. They follow the page and any scrolling score container. The controls fade after three seconds. Hover over the sheet, tap it, or tab to a control to reveal them. Hover over the metronome beside Play, or activate it with a tap or keyboard, to adjust the tempo in steps of 5 BPM. Changes apply to upcoming notes during playback and leave the written tempo in the source intact.
 
 Each Play creates a fresh human performance. Choose a style in the score with `play { performer chopin }`, or use `performer robot` for literal playback. Hosts can specify a profile and seed. [Performer examples, API and research](performers.md)
 
@@ -43,6 +43,15 @@ async function mountScore() {
 ```
 
 Use a plain host element for manual mounting. The adapter resumes the context on Play and waits for the synth's readiness. Reserve the supplied MIDI channels for VexTab. Straight notes share channels. A bent string or an overlapping unison needs a separate channel. The default pool uses the 15 melodic channels of the first MIDI port. Stop releases only notes owned by the session. Dispose the returned embed when removing it and close the audio context when the host has finished using it.
+
+A score can choose its presentation in its `play` block. Use `controls hover` for pointer, keyboard and touch reveal, `controls always` for persistent buttons, or `controls off` for a score with no built-in buttons. Set `position` to `top-left`, `top-center`, `top-right`, `bottom-left`, `bottom-center` or `bottom-right`. Set `inset` in CSS pixels.
+
+```vextab2
+play { tempo 96 controls always position top-right inset 16 }
+guitar { :w 0/1 | }
+```
+
+The same settings work on an HTML embed with `data-playback-controls="always"`, `data-playback-position="top-right"` and `data-playback-inset="16"`. Set `data-playback-controls="off"` to hide the buttons. In JavaScript, pass `{ playbackControls: { visibility: 'always', position: 'top-right', inset: 16 } }` to `Div` or use `controls` on `Player`. A JavaScript setting overrides the source, and `Div` uses markup when the JavaScript controls option is omitted. Pass `playbackControls: false` or `controls: false` to hide built-in controls. Standalone `Player.play()` remains available. Pass `player: false` to disable an embed's player, including one requested in the source.
 
 To enable the sheet controls from JavaScript, pass <code>{ player: true }</code> to <code>new Div(host, options)</code>. To put buttons in your own toolbar, pass <code>{ playback, playbackControls: toolbar }</code> as the second argument to <code>new Div</code>. This enables playback for the embed without changing its source text. A standalone <code>Player</code> accepts <code>{ playback, controls: toolbar }</code> and mounts the buttons when you call <code>render()</code>. To animate a score drawn with <code>renderScore</code>, pass its SVG to <code>player.render(svg)</code>. For an extracted part, construct the player with the score returned by <code>renderScorePart</code> and pass its first page SVG.
 

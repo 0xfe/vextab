@@ -134,7 +134,7 @@ export interface Edition {
 /** V2 parts share a playback origin. measureCount is the largest local bar count. */
 export interface ScoreV2 {
   editions?: Edition[];
-  playback?: { enabled: boolean; tempos?: Record<number, number>; tempo?: number; swing?: import('../../playback/profiles.mts').SwingSetting; performer?: import('../../playback/profiles.mts').PerformerName; instrument?: string };
+  playback?: { enabled: boolean; controls?: import('../../playback/control-options.mts').SheetControls; tempos?: Record<number, number>; tempo?: number; swing?: import('../../playback/profiles.mts').SwingSetting; performer?: import('../../playback/profiles.mts').PerformerName; instrument?: string };
   transpose?: number; measureNumbers?: boolean; layout?: ScoreLayout;
   language: 2; source: string; meter: string; meterRange?: TextRange; pickup?: string; measureCount: number; parts: ScorePart[];
 }

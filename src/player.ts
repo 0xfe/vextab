@@ -7,6 +7,7 @@ import type { ParsedScore } from './score/model';
 import { PlaybackAnimation, anticipation } from './playback/animation';
 import { artistGeometry, scoreSurfaces, type Geometry } from './playback/geometry';
 import { createPerformer, type PerformerName, type PerformerProfile, type PerformanceBar, type SwingSetting } from './playback/performer';
+import { sheetControlSettings, type SheetControls } from './playback/control-options.mts';
 import { PlayerOverlay } from './player-overlay';
 import { routedPlayback } from './playback/routing';
 import { ensembleVisits } from './playback/visits';
@@ -33,8 +34,8 @@ export interface PlayerOptions {
   partIndex?: number;
   partId?: string;
   playback?: PlaybackPlugin;
-  /** Place transport buttons here while keeping the cursor on the score. */
-  controls?: HTMLElement;
+  /** Configure or hide the sheet controls, or mount a transport in a separate host. */
+  controls?: HTMLElement | boolean | SheetControls;
   tempo?: number;
   /** Override the written performer. Each play takes a fresh seed unless one is supplied. */
   performer?: PerformerName | PerformerProfile;
@@ -139,12 +140,18 @@ export default class Player {
     this.geometry = layout && layout.score === this.score ? layout.read : undefined;
     const ctx = this.artist?.getPlayerData().context;
     const element = surface ?? ctx?.canvas ?? ctx?.svg;
-    if (!element && !this.options.controls) throw new Error('Render the score before mounting playback controls');
-    const overlay = (target: HTMLCanvasElement | SVGSVGElement, controls: boolean, toolbar?: HTMLElement) =>
-      new PlayerOverlay(target, this.options.overlay_class, controls,
+    const controls = this.options.controls;
+    const toolbar = controls instanceof HTMLElement ? controls : undefined;
+    if (!element && !toolbar) throw new Error('Render the score before mounting playback controls');
+    const written = this.score?.playback?.controls;
+    const custom = typeof controls === 'object' && !(controls instanceof HTMLElement) ? controls : undefined;
+    const settings = sheetControlSettings({ ...written, ...custom });
+    if ((controls === true || toolbar) && settings.visibility === 'off') settings.visibility = 'hover';
+    const overlay = (target: HTMLCanvasElement | SVGSVGElement, buttons: boolean, host?: HTMLElement) =>
+      new PlayerOverlay(target, this.options.overlay_class, buttons,
         () => { void this.play().catch(() => { /* play displays the error on the main overlay. */ }); }, () => this.stop(),
-        this.options.tempo, bpm => this.setTempo(bpm), toolbar);
-    this.overlay = overlay(element, this.options.show_controls, this.options.controls);
+        this.options.tempo, bpm => this.setTempo(bpm), settings, host);
+    this.overlay = overlay(element, this.options.show_controls && controls !== false && settings.visibility !== 'off', toolbar);
     const parts = new Set(this.ensemble);
     for (const target of additional) {
       const layout = scoreSurfaces.get(target);

@@ -1,5 +1,8 @@
 // Mount the transport on the sheet and keep playback ink aligned with SVG or Canvas.
 
+import type { SheetControls } from './playback/control-options.mts';
+import { followVisibleSheet } from './sheet-controls';
+
 /** Namespace for the Canvas cursor layer and SVG position markers. */
 const svgNamespace = 'http://www.w3.org/2000/svg';
 
@@ -22,6 +25,7 @@ export class PlayerOverlay {
   private readonly controls: HTMLElement;
   private readonly listeners = new AbortController();
   private sheet?: HTMLElement;
+  private untrack?: () => void;
   private revealTimer?: number;
   private toggle?: HTMLButtonElement;
   private marker?: SVGCircleElement;
@@ -31,7 +35,7 @@ export class PlayerOverlay {
   private tempo: number;
 
   constructor(score: HTMLCanvasElement | SVGSVGElement | undefined, className: string, showControls: boolean,
-    play: () => void, stop: () => void, tempo: number, changeTempo: (bpm: number) => void, toolbar?: HTMLElement) {
+    play: () => void, stop: () => void, tempo: number, changeTempo: (bpm: number) => void, settings: Required<SheetControls>, toolbar?: HTMLElement) {
     this.root.className = `vextab-transport ${className}`;
     this.controls = document.createElement(toolbar ? 'span' : 'div');
     this.controls.className = toolbar ? 'vextab-playback-controls' : 'vextab-sheet-controls';
@@ -40,17 +44,22 @@ export class PlayerOverlay {
       this.toggle = button('Play', 'vextab-play', () => this.toggle.classList.contains('vextab-stop') ? stop() : play());
       this.controls.append(this.toggle);
       this.setButton(false);
-      if (!toolbar) this.addTempo(changeTempo);
+      if (!toolbar) {
+        this.controls.dataset.position = settings.position;
+        this.controls.dataset.visibility = settings.visibility;
+        this.controls.style.setProperty('--control-inset', settings.inset + 'px');
+        this.addTempo(changeTempo);
+      }
     }
     this.setTempo(tempo);
     this.controls.append(this.status);
     (toolbar ?? this.root).append(showControls || toolbar ? this.controls : this.status);
     if (score instanceof SVGSVGElement) this.surface = score;
-    if (score && (!toolbar || score instanceof HTMLCanvasElement)) this.mountSheet(score);
+    if (score && (!toolbar || score instanceof HTMLCanvasElement)) this.mountSheet(score, showControls && !toolbar, settings.inset);
   }
 
   /** The wrapper follows the engraved surface through layout, zoom and responsive resizing. */
-  private mountSheet(score: HTMLCanvasElement | SVGSVGElement): void {
+  private mountSheet(score: HTMLCanvasElement | SVGSVGElement, sheetControls: boolean, inset: number): void {
     const sheet = this.sheet = document.createElement('div');
     sheet.className = 'vextab-sheet';
     score.before(sheet);
@@ -66,10 +75,14 @@ export class PlayerOverlay {
       svg.append(this.surface);
       this.root.prepend(svg);
     }
-    // Let touch users reveal the controls by tapping the sheet after they fade.
-    sheet.addEventListener('pointerdown', () => this.reveal(), { signal: this.listeners.signal });
-    this.controls.addEventListener('click', event => event.stopPropagation());
-    this.reveal();
+    if (!sheetControls) return;
+    this.controls.addEventListener('click', event => event.stopPropagation(), { signal: this.listeners.signal });
+    if (this.controls.dataset.visibility === 'hover') {
+      // Start visible on the first paint and let a tap reveal the buttons after they fade.
+      this.reveal();
+      sheet.addEventListener('pointerdown', () => this.reveal(), { signal: this.listeners.signal });
+    }
+    this.untrack = followVisibleSheet(sheet, score, this.root, this.controls, inset);
   }
 
   /** Keep the initial and touch previews visible for three seconds. Hover and focus use CSS. */
@@ -170,6 +183,7 @@ export class PlayerOverlay {
 
   /** Drop the cursor, controls, and their event handlers when the score is replaced. */
   remove(): void {
+    this.untrack?.();
     this.listeners.abort();
     window.clearTimeout(this.revealTimer);
     this.marker?.remove();
