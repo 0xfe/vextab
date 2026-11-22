@@ -55,3 +55,4 @@ If I ask you to triage issues, then go through all open issues and assign a prio
 - Put detailed setup, architecture, testing, security, and deployment notes in `docs/`.
 - Avoid long prose paragraphs and duplicated instructions.
 - Avoid overly cutesy, poetic, or clever phrases. Keep it clear and technical.
+- When working with larger documents, or writing a full one from scratch, use the writing style in docs/writing-style.md
