@@ -221,7 +221,7 @@ function showLesson(current: Lesson, section: string): void {
 /** List the complete studies separately from the short practice scores. */
 function showStudies(host: HTMLElement) {
   document.title = 'Studies · VexTab';
-  const lead = node('p', 'Read a complete piece, then change one musical idea in its source.');
+  const lead = node('p', 'Choose a score to play, read or print. Each study points out a passage to listen for and gives you an edit to try on the same music.');
   lead.className = 'goal';
   const entries = node('div', '');
   entries.id = 'entries';

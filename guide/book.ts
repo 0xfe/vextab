@@ -110,7 +110,7 @@ export function showCover(host: HTMLElement): Div {
   cover.className = 'book-cover';
   const introduction = document.createElement('div');
   heading(introduction, '', 'The VexTab Tutorial',
-    'Write standard notation and guitar tablature, one stave at a time. Start with four notes, then add rhythm, chords and guitar techniques as you play.');
+    'Write a melody as pitches or guitar frets and see how the two line up. The fourteen lessons take you from a four-note phrase to chords, bends, lyrics and rhythmic tab.');
   const start = link('Play your first notes →', '#tutorial/' + tutorial[0].id);
   start.className = 'start-reading';
   const paths = node('nav', '');
@@ -147,7 +147,7 @@ function directory(host: HTMLElement, items: Chapter[], section: string, title: 
 }
 
 export function showFeatures(host: HTMLElement) {
-  heading(host, 'Features', 'Beyond the tutorial', 'Take the same notation into measured scores, independent voices, lead sheets and printed parts.');
+  heading(host, 'Features', 'Beyond the tutorial', 'Write for two hands or several players, mark the phrasing, and prepare the score for rehearsal or print. Each chapter opens with a short passage you can edit.');
   directory(host, features, 'features', 'Writing with VexTab 6');
   host.append(node('h2', 'Practice scores'));
   const practice = node('ul', '');
@@ -188,7 +188,7 @@ export function showChapter(host: HTMLElement, section: keyof typeof chapterBook
 /** Search across signatures, arguments, examples and prose, including when starting at a deep link. */
 export function showReference(host: HTMLElement, id = '') {
   const group = groups.find(g => g.id === id || Array.from(g.element.querySelectorAll('article')).some(a => a.id === id));
-  heading(host, 'VexTab 6', 'API reference', 'Look up a module, method, editor option or notation command.');
+  heading(host, 'VexTab 6', 'API reference', 'Search by module, method or notation command. Each entry gives the accepted inputs and explains what the player, renderer or editor returns.');
   const label = node('label', 'Search the reference');
   label.htmlFor = 'search';
   const search = document.createElement('input');

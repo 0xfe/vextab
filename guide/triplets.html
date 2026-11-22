@@ -10,12 +10,11 @@
   <main id="triplets">
     <p>VexTab user guide</p>
     <h1>Triplets in tab and notation</h1>
-    <p>Play the first three frets evenly on beat one. The fourth fret lands on beat two.
-      <code>:8</code> selects eighth notes. <code>tuplet 3:2 { … }</code> fits the enclosed three into the time of two.</p>
+    <p>Count two beats. On beat one, play frets one, two and three evenly. On beat two, play fret four. The <code>:8</code> gives the first three notes eighth-note heads and the <code>tuplet 3:2</code> fits them into one beat.</p>
     <div class="controls"><label><input id="notation" type="checkbox" checked> Show standard notation</label>
     <button id="reset" type="button">Reset example</button></div>
     <div id="score" width="540" editor="true" editor-height="110"><pre><%- require('./scores/triplets.vextab').trimEnd() %></pre></div>
-    <p>Hide the standard staff and find the triplet on the tab. Remove the tuplet wrapper to see the bar-length diagnostic. Restore it to put the fourth fret back on beat two.</p>
+    <p>Clear <strong>Show standard notation</strong> and find the 3 over the opening frets. Remove the tuplet wrapper while keeping its three eighth notes. The bar now exceeds 2/4 by half a beat. Choose <strong>Reset example</strong> to restore the triplet.</p>
     <p><a href="shared-score.html">Next lesson · Follow a tied chord</a></p>
   </main>
   <script>

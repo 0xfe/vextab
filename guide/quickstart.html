@@ -1,9 +1,9 @@
 <!-- Developer quickstart. Each section is a linkable chapter in the offline and hosted guide. -->
 <section id="install">
   <h2>Get VexTab on a page</h2>
-  <p>Put an editable guitar part on a plain HTML page. The browser bundle includes VexFlow and the engraving fonts. You need one script and a score written as text.</p>
-  <figure class="code-sample"><figcaption>In your project directory</figcaption><pre data-language="bash"><code>curl -fLO https://github.com/0xfe/vextab/releases/download/6.1.0/div.prod.js</code></pre></figure>
-  <p>VexTab 6 reads this notation by default. Save this page as <code>index.html</code> beside the script and open it in your browser.</p>
+  <p>To put an editable guitar score on a plain HTML page, download the browser bundle into an empty directory. It contains VexTab, VexFlow and the engraving fonts, so you can open this first example directly from disk.</p>
+  <figure class="code-sample"><figcaption>In your project directory</figcaption><pre data-language="bash"><code>curl -fLO https://github.com/0xfe/vextab/releases/download/6.2.0/div.prod.js</code></pre></figure>
+  <p>Save the following as <code>index.html</code> beside <code>div.prod.js</code>, then open it in your browser. The script finds the <code>vextab-auto</code> element and turns the music inside it into a score and editor.</p>
   <figure class="code-sample"><figcaption>index.html</figcaption><pre data-language="html"><code>&lt;!doctype html&gt;
 &lt;html lang="en"&gt;
 &lt;meta charset="utf-8"&gt;
@@ -16,14 +16,15 @@ guitar { :q 0/1 2/1 3/1 2/1 | }
 &lt;/div&gt;
 &lt;script src="./div.prod.js"&gt;&lt;/script&gt;
 &lt;/html&gt;</code></pre></figure>
-  <p>You should see four quarter notes above the matching frets. Change <code>3</code> to <code>5</code> and press Ctrl+Enter or Cmd+Enter to redraw. Resize the window to see how the layout follows its container.</p>
-  <p>VexTab 5 was an experimental release that used grammar v1. For a v1 score, add <code>data-language="1"</code> to its embed or pass <code>{ language: 1 }</code> to <code>parseScore</code>. To convert it, follow the <a href="https://github.com/0xfe/vextab/blob/6.1.0/docs/migrate-scores.md">migration guide</a>.</p>
-  <p>In a bundled app, <code>import 'vextab/auto'</code> gives the same automatic mounting behavior. To create an editor when a component mounts, use the <a href="#quickstart/embed">JavaScript example</a>.</p>
+  <p>Find the four quarter notes and their matching frets. Change <code>3/1</code> to <code>5/1</code> and press Ctrl+Enter or Cmd+Enter. The third note moves from G to A. If the page shows only the source text, check that the script filename and its location match the HTML.</p>
+  <p>These examples use grammar v2, the default in VexTab 6. To read scores written for the VexTab 5 grammar, set <code>data-language="1"</code> on the host or pass <code>{ language: 1 }</code> to the parser. To update the music itself, follow the <a href="https://github.com/0xfe/vextab/blob/6.2.0/docs/migrate-scores.md">score migration guide</a>.</p>
+  <p>In an app with a bundler, importing <code>vextab/auto</code> mounts the same markup. If your component creates the host after the page loads, mount the <a href="#quickstart/embed">editor from JavaScript</a>.</p>
 </section>
 
 <section id="embed">
   <h2>Embed a score in your code</h2>
-  <p>Use <code>vextab/browser</code> in an app with a JavaScript bundler. Give VexTab an empty element after it enters the DOM. Set its text to the music, then construct a <code>Div</code>.</p>
+  <p>To mount the same four notes in a component, install the package in your app and import <code>Div</code> from <code>vextab/browser</code>. Add the host to the page before running the JavaScript so the editor can measure its width.</p>
+  <figure class="code-sample"><figcaption>In your app directory</figcaption><pre data-language="bash"><code>npm install https://github.com/0xfe/vextab/releases/download/6.2.0/vextab-6.2.0.tgz</code></pre></figure>
   <figure class="code-sample"><figcaption>HTML</figcaption><pre data-language="html"><code>&lt;div id="score" layout="flow" editor="true"&gt;&lt;/div&gt;</code></pre></figure>
   <figure class="code-sample"><figcaption>JavaScript</figcaption><pre data-language="javascript"><code>import { Div } from 'vextab/browser';
 
@@ -31,9 +32,9 @@ const host = document.querySelector('#score');
 host.textContent = `meter 4/4
 guitar { :q 0/1 2/1 3/1 2/1 | }`;
 const editor = new Div(host);</code></pre></figure>
-  <p>Use <code>editor.setPart('tab')</code> to show just the frets and <code>editor.setPart('score')</code> to restore both staves. Omit <code>editor="true"</code> for a read-only score. Call <code>editor.dispose()</code> when the component unmounts.</p>
+  <p>Call <code>editor.setPart('tab')</code> to read the four frets alone and <code>editor.setPart('score')</code> to bring back the staff. Omit <code>editor="true"</code> for a read-only score. When the component leaves the page, call <code>editor.dispose()</code> to release its observers and player.</p>
   <h3>Draw into your own preview</h3>
-  <p>If your app already has a text editor, parse its value and draw the result into an empty preview element. Catch <code>ScoreV2Error</code> to select the offending text. This example accepts a textarea and a preview element.</p>
+  <p>If your app already owns the textarea, pass its value to <code>parseScore</code> and give the result to <code>renderScore</code>. Call this function with the textarea and an empty preview element. On a grammar error it selects the offending characters and returns a message your app can display.</p>
   <figure class="code-sample"><figcaption>JavaScript</figcaption><pre data-language="javascript"><code>import { parseScore, renderScore, ScoreV2Error } from 'vextab/browser';
 
 function updatePreview(input, preview) {
@@ -47,23 +48,23 @@ function updatePreview(input, preview) {
     return error.message;
   }
 }</code></pre></figure>
-  <p>For validation in Node.js, import <code>parseScore</code> from <code>vextab/parse</code>. To engrave a printed part, pass the parsed score to <a href="#reference/render-part"><code>renderScorePart</code></a>.</p>
+  <p>A validator that only needs the parsed music can import <code>parseScore</code> from <code>vextab/parse</code> in Node.js. In a browser you can also use that parsed score to <a href="#reference/render-part">print an individual part</a>.</p>
 </section>
 
 <section id="playback">
   <h2>Enable and configure playback</h2>
-  <p>The player in this guide adds browser audio, a moving playhead and a choice of instruments. Install the 6.1.0 package in your app to use the browser playback adapters.</p>
-  <figure class="code-sample"><figcaption>In your app directory</figcaption><pre data-language="bash"><code>npm install https://github.com/0xfe/vextab/releases/download/6.1.0/vextab-6.1.0.tgz</code></pre></figure>
+  <p>The browser package can play an embedded score through Web Audio. Install the built package in your app directory to use the JavaScript examples below. The interactive example here uses the guide’s sampled guitar.</p>
+  <figure class="code-sample"><figcaption>In your app directory</figcaption><pre data-language="bash"><code>npm install https://github.com/0xfe/vextab/releases/download/6.2.0/vextab-6.2.0.tgz</code></pre></figure>
   <h3>Play a bar</h3>
-  <p>Add a <code>play</code> block before the first part in your embed. Press <strong>Play</strong> to start audio and <strong>Stop</strong> to end it. Try changing <code>tempo 96</code> to <code>tempo 72</code> in the example below, then play again.</p>
+  <p>Put the tempo and instrument in a <code>play</code> block before the guitar part. Press <strong>Play</strong>, then stop and change <code>tempo 96</code> to <code>tempo 72</code>. The four notes keep their pitches and take longer to finish.</p>
   <pre data-score>play { tempo 96 instrument 24 }
 meter 4/4
 guitar {
   :q 0/1 2/1 3/1 2/1 |
 }</pre>
-  <p><code>tempo</code> sets quarter-note beats per minute. <code>instrument</code> accepts a General MIDI program from 0 to 127 or a name such as <code>acoustic_guitar_nylon</code>. A fresh embed uses native Web Audio for a synthesized tone. This guide uses SpessaSynth and a bundled SoundFont, so you can hear sampled instruments here.</p>
+  <p>Tempo counts quarter notes per minute. Select an instrument with a General MIDI program from 0 to 127 or a name such as <code>acoustic_guitar_nylon</code>. An embed supplies a synthesized Web Audio tone by default. To hear the instrument samples used here, connect a SoundFont as shown in the next chapter.</p>
   <h3>Enable the sheet controls from JavaScript</h3>
-  <p>Pass <code>{ player: true }</code> to <code>Div</code> to enable playback for any source. Play and Stop share a button at the bottom center of the visible sheet. The buttons follow the score as you scroll. They fade after three seconds of pointer inactivity and reappear when you move over the music, tap it, or tab to a control. Hover over the metronome beside Play, or activate it with a tap or keyboard, to change the tempo.</p>
+  <p>An app can enable playback even when the music has no <code>play</code> block. Pass <code>player: true</code> when constructing the editor. By default, Play and the metronome sit at the bottom center of the visible score. Move over the sheet, tap it or focus a control to reveal them. After three seconds with the pointer still, the hover panel fades.</p>
   <figure class="code-sample"><figcaption>HTML</figcaption><pre data-language="html"><code>&lt;div id="score" layout="flow" editor="true"&gt;
 meter 4/4
 guitar { :q 0/1 2/1 3/1 2/1 | }
@@ -71,17 +72,18 @@ guitar { :q 0/1 2/1 3/1 2/1 | }
   <figure class="code-sample"><figcaption>JavaScript</figcaption><pre data-language="javascript"><code>import { Div } from 'vextab/browser';
 
 const editor = new Div(document.querySelector('#score'), {
+  player: true,
   playbackControls: { visibility: 'always', size: 'large', position: 'top-right', inset: 16 },
 });</code></pre></figure>
-  <p>This example keeps the large panel visible. Use <code>size: 'mini'</code> for compact buttons, or <code>size: 'auto'</code> to let the score choose. The default large panel has an Auto-scroll toggle for following the active system. Use <code>visibility: 'hover'</code> for the default reveal behavior, or <code>playbackControls: false</code> to hide them. You can also put <code>controls always controlSize large position top-right inset 16</code> in the score’s <code>play</code> block, or set <code>data-playback-controls="always"</code>, <code>data-playback-size="large"</code> and <code>data-playback-position="top-right"</code> on the embed.</p>
-  <p>To use your own SoundFont, load it into a connected SpessaSynth synthesizer, then pass <code>playback: createSpessaSynthPlayback(synth)</code> alongside <code>player: true</code>. For custom buttons, call <code>player.play()</code> from a click handler and <code>player.stop()</code> to cancel. See the <a href="#reference/player">Player API</a> and the <a href="#quickstart/spessasynth">SpessaSynth setup and examples</a>.</p>
+  <p>This example keeps the large panel in the upper right, 16 pixels from the edge. Its auto-scroll button starts enabled and follows the playing system. Use <code>size: 'mini'</code> for compact controls, <code>size: 'auto'</code> to choose by score height, or <code>playbackControls: false</code> to hide them. You can also write <code>controls always controlSize large position top-right inset 16</code> inside the score’s <code>play</code> block. The <a href="#reference/audio-plugins">control options</a> describe the defaults.</p>
+  <p>For your own Play and Stop buttons, call <code>player.play()</code> from a click handler and <code>player.stop()</code> to end the performance. To change how the notes sound, supply a playback adapter. See the <a href="#reference/player">Player API</a> and the <a href="#quickstart/spessasynth">working SpessaSynth example</a>.</p>
 </section>
 
 <section id="spessasynth">
   <h2>Play a SoundFont with SpessaSynth</h2>
-  <p>Give a score the sound of a sampled guitar, violin or marimba. Your app supplies the sound bank and the browser’s audio output. VexTab sends the written pitches, durations and bends to SpessaSynth.</p>
+  <p>A SoundFont is a bank of recorded instrument samples. In this example the browser supplies the audio output, SpessaSynth plays the samples, and VexTab tells it when to start, bend and release each note.</p>
   <h3>Hear the instrument change</h3>
-  <p>Press <strong>Play</strong> to hear a nylon-string guitar. The open bass stays steady while the other string releases its bend. Change <code data-language="vextab">instrument 24</code> to <code data-language="vextab">instrument 40</code> for violin or <code data-language="vextab">instrument=12</code> for marimba, then play it again.</p>
+  <p>Press <strong>Play</strong> and listen for the upper guitar string to release its bend over the steady open bass. Change <code data-language="vextab">instrument 24</code> to <code data-language="vextab">instrument 40</code> for violin or <code data-language="vextab">instrument 12</code> for marimba. Replay the bar to hear the new instrument play the same pitches.</p>
   <pre data-score>play { tempo 84 instrument 24 }
 meter 2/4
 guitar {
@@ -89,16 +91,16 @@ guitar {
 }</pre>
 
   <h3>Serve the worklet and sound bank</h3>
-  <p>Start with the <a href="#quickstart/playback">VexTab source build with playback support</a>. Install the synth in your app and copy its matching audio processor into your public assets. This example downloads the same public-domain SF2 bank used by the guide.</p>
+  <p>Start in a browser app with a bundler and the <a href="#quickstart/playback">VexTab package</a> installed. Install SpessaSynth, copy its matching worklet into your public directory, then download the small public-domain sound bank used in this guide.</p>
   <figure class="code-sample"><figcaption>In your app directory</figcaption><pre data-language="bash"><code>npm install spessasynth_lib@4.4.9
 mkdir -p public/audio
 cp node_modules/spessasynth_lib/dist/spessasynth_processor.min.js public/audio/
 curl -fL https://raw.githubusercontent.com/schellingb/TinySoundFont/a3621a19c6504885cd9583e6e26c35bc954fc8ec/examples/florestan-subset.sf2 \
   -o public/audio/guitar.sf2</code></pre></figure>
-  <p>Serve <code>public/audio/</code> at <code>/audio/</code> over HTTPS or localhost so the browser can start an AudioWorklet. To use a different bank, substitute its SF2 file and choose a program it contains.</p>
+  <p>Serve <code>public/audio/</code> at <code>/audio/</code> over HTTPS or localhost. The worklet runs the synthesizer on the browser’s audio thread. If you substitute another SF2 bank, choose a program that bank contains.</p>
 
   <h3>Load the instrument</h3>
-  <p>Load the processor into the audio context, connect the synth to the speakers and wait for its bank. Keeping this in a separate module lets several scores share one instrument.</p>
+  <p>Save this module beside your app entry. It loads the worklet and waits for the bank before connecting the synth to the output. Several scores can share the resulting synth.</p>
   <figure class="code-sample"><figcaption>soundfont.js</figcaption><pre data-language="javascript"><code>import { WorkletSynthesizer } from 'spessasynth_lib';
 
 export async function loadInstrument(audio) {
@@ -119,7 +121,7 @@ export async function loadInstrument(audio) {
 }</code></pre></figure>
 
   <h3>Connect the score</h3>
-  <p>Put these elements on the page. The first button opens audio from a user gesture. Once the samples are ready, the editable score displays its playback controls.</p>
+  <p>Add this markup to your page and use the JavaScript below as the entry for your bundler. Choose <strong>Enable sound</strong> to open the audio context from a user gesture. When the bank is ready, press <strong>Play</strong> on the score.</p>
   <figure class="code-sample"><figcaption>HTML</figcaption><pre data-language="html"><code>&lt;button id="enable"&gt;Enable sound&lt;/button&gt;
 &lt;span id="status" role="status"&gt;&lt;/span&gt;
 &lt;div id="score" layout="flow" editor="true"&gt;
@@ -163,6 +165,6 @@ enable.onclick = async () =&gt; {
     enable.disabled = false;
   }
 };</code></pre></figure>
-  <p>The four MIDI channels in this example are reserved for VexTab. A bent note needs its own channel so its pitch change leaves the bass alone. Reuse the same <code>playback</code> adapter for scores sharing a synth. Omit the channel list to use the default pool of 15 melodic channels.</p>
+  <p>Reserve these four MIDI channels for the playback adapter. It can then give the bending note a channel of its own so its pitch change leaves the bass steady. Reuse the adapter across scores that share the synth.</p>
   <p>If the button reports a loading error, open the two <code>/audio/</code> URLs directly and check that your server returns the JavaScript processor and SF2 file. If only some instruments are silent, check the bank’s General MIDI programs. <a href="#reference/audio-plugins">Playback adapter reference</a> · <a href="https://spessasus.github.io/spessasynth_lib/">SpessaSynth documentation</a></p>
 </section>

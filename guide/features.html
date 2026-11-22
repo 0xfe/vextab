@@ -1,8 +1,8 @@
 <!-- Short, editable scores for the techniques that follow the fixed-layout tutorial. -->
 <section id="measured-music">
   <h2>Measures, pickups and reflow</h2>
-  <p>Write a pickup that keeps its length as the music wraps onto a narrower page.</p>
-  <p>Flow layout counts each voice against the time signature and breaks at barlines. Here the opening G is a one-quarter pickup in 3/4. The next bar has three beats. Delete its last note to see the diagnostic, then restore it. Use <code>fragment { … }</code> for a deliberately incomplete excerpt.</p>
+  <p>A pickup begins a piece before its first full downbeat. Give that opening bar its own length so it still counts correctly when the score wraps.</p>
+  <p>Count one beat for the opening G, then three for A, B and C. The score declares <code>pickup 1/4</code> in a meter of 3/4. Delete C from the second bar and the editor reports the missing beat. Restore C to complete the bar. For a sketch whose length you want to leave open, use <code>fragment { … }</code>.</p>
   <pre data-score>meter 3/4
 pickup 1/4
 staff {
@@ -11,7 +11,7 @@ staff {
   :h D5 :q B4 |
 }</pre>
   <h3>Give each staff its own meter</h3>
-  <p>Both parts begin together. The guitar plays two bars of 3/4. The first staff plays a bar of 4/4 and changes to 2/4 at the barline. Both finish on the same beat.</p>
+  <p>Follow the first six beats in each part. The staff divides them into four plus two, while the guitar divides them into three plus three. Both arrive at the end together even though their first barlines fall a beat apart.</p>
   <pre data-score>staff { meter 4/4 C4 D4 E4 F4 |
   meter 2/4 G4 A4 | }
 guitar { meter 3/4 0-2-3/1 | 3-2-0/1 | }</pre>
@@ -19,39 +19,39 @@ guitar { meter 3/4 0-2-3/1 | 3-2-0/1 | }</pre>
 </section>
 <section id="beaming">
   <h2>Beam groups and accidental spelling</h2>
-  <p>Choose where a group of eighth notes begins and ends, or let the meter decide.</p>
-  <p>Use <code>beam { … }</code> around short notes to set the beam group. Move F4 into the first group. Without an explicit group the meter supplies the beams. <code>Bb4[courtesy]</code> requests a cautionary flat.</p>
+  <p>A beam shows which short notes a player should read as a group. VexTab can group them from the meter, or you can specify the phrasing yourself.</p>
+  <p>The first beam joins C, D and E. Move the closing brace past F to put four stems under that beam. The measure still has six eighth notes. The flat on the final B comes from <code>Bb4</code>, and <code>[courtesy]</code> requests a reminder accidental.</p>
   <div class="vex-tabdiv" width="600" scale="1" editor_height="90">meter 3/4
 staff { :8 beam { C4 D4 E4 } F4 beam { A4 Bb4[courtesy] } | }</div>
   <p><a href="#lesson/meter">Compare the automatic beams in 3/4 and 6/8 →</a></p>
 </section>
 <section id="playback">
   <h2>Play a phrase with a SoundFont</h2>
-  <p>Play this two-bar guitar phrase twice. Listen for the slight variation in an otherwise steady pulse.</p>
-  <p>Edit <code>controls hover</code> to <code>controls always</code> to keep the player visible, or try <code>position top-right</code> to move it. The large panel is the default. <strong>Auto-scroll</strong> follows the playing system by default. Select the three horizontal lines to turn it off, or try <code>controlSize mini</code> for two small buttons.</p>
+  <p>Listen to two bars on nylon-string guitar, then change either the instrument or the performer to hear what each contributes.</p>
+  <p>Move the pointer over the music or focus the player with the keyboard. Set <code>controls always</code> to leave it visible, or <code>position top-right</code> to move it. The large panel follows the playing system when auto-scroll is on. Its three horizontal lines switch scrolling off. Choose <code>controlSize mini</code> for just the transport and tempo.</p>
   <pre data-score>play { tempo 96 instrument 24 performer human controls hover }
 meter 4/4
 guitar {
   :8 0/1 2/1 3/1 2/1 :q 0/1 3/2 |
   :8 1/2 3/2 0/1 2/1 :h 0/1 |
 }</pre>
-  <p>Press <strong>Play</strong> at the bottom center of the score. Hover over the metronome beside it and use − or + to adjust the tempo as you listen. Try <code>instrument 40</code> for violin or <code>instrument 12</code> for marimba. The first Play loads the guide’s bundled SpessaSynth instrument. Stop, edit or open another score to end the performance.</p>
-  <p>Edit <code>performer human</code> to compare takes of the same notes. Try <code>bach</code> for a steady pulse, <code>chopin</code> for a broader rise and fall, <code>parker</code> for bebop, <code>ragtime</code> for crisp straight syncopation, <code>blues</code> for a shuffle, and <code>robot</code> for the original timing and dynamics.</p>
-  <p>Follow the light gray playhead through the bar. Each sounding note glows blue on the staff and tab. The line keeps moving through rests. Playback follows the written bars once. Ties sustain, rests take time and a chord label does not add an accompaniment. <a href="#reference/player">Player and instrument options</a> · <a href="#quickstart/spessasynth">Set up SpessaSynth →</a></p>
+  <p>Press <strong>Play</strong>. The first play loads the guide’s SoundFont. Once you hear the phrase, open the metronome and use − or + to change the tempo. Stop, change <code>instrument 24</code> to <code>instrument 40</code> and play again. The same notes now sound on violin. Program 12 selects marimba.</p>
+  <p>Keep the instrument and change <code>performer human</code> to <code>performer robot</code> to hear the written timing and dynamics. For a different interpretation, try <code>bach</code> for a steady pulse, <code>chopin</code> for a broader phrase, <code>parker</code> for bebop, <code>ragtime</code> for straight syncopation or <code>blues</code> for a shuffle.</p>
+  <p>Watch the last open string. Its yellow glow lasts through the half note while the gray playhead moves across the bar. A rest leaves time for the playhead to travel, and a tie carries the sound into the next note. To use the guide’s sampled instruments in your own page, follow the <a href="#quickstart/spessasynth">SpessaSynth setup</a>. For playback options, see the <a href="#reference/player">Player reference</a>.</p>
 </section>
 <section id="score-colours">
   <h2>Colour a stave, an attack or a chord label</h2>
-  <p>Use colour to show a student which attack to listen for.</p>
+  <p>Colour can draw a student’s eye to one fret while leaving the surrounding strings and chord name legible.</p>
   <pre data-score>meter 2/4
 guitar { view tab ink SeaGreen ink default at 2
   0/1[ink #1565c0, symbol "Em" ink crimson] 2/1 |
   break system 3/1 0/1 |
 }</pre>
-  <p>The first stave is green, its first note is blue and the Em label is crimson. Move the attack colour after the second fret to shift the emphasis. The second bar returns to the default ink. Stave and attack colours work in fixed SVG, Canvas and flow layout, and carry through to printed parts. <a href="#reference/ink">Colour syntax →</a></p>
+  <p>The first string is open on beat one. Change the two attacks to <code>0/1[symbol "Em" ink crimson] 2/1[ink #1565c0]</code>. The blue moves to beat two while “Em” stays crimson on beat one. The stave returns to its usual colour at bar two because the part specifies <code>ink default at 2</code>. These colours carry through to print. <a href="#reference/ink">Staff, attack and label ink</a>.</p>
 </section>
 <section id="piano">
   <h2>Piano grand staff</h2>
-  <p>The right hand plays four quarter notes while the left plays two half notes. Play the phrase, then change the bass rhythm without changing the melody. Each hand fills the same bars.</p>
+  <p>Follow the bass while the right hand plays E, G, C and G. The left hand strikes twice, first with E and then with C on beat three. Each hand fills four beats at its own pace.</p>
   <pre data-score>play { tempo 96 }
 meter 4/4
 piano {
@@ -64,7 +64,7 @@ piano {
     :h (F2 C3) C3 |
   }
 }</pre>
-  <p>The <code>upper</code> and <code>lower</code> blocks select the piano hands. Within either hand, give independent lines their own named voices. Set <code>stem up</code> or <code>stem down</code> on each voice.</p>
+  <p>A voice is a musical line with its own rhythm. In this second example, the upper staff holds E while G moves to A above it. Put the lines in separate <code>voice</code> blocks and give them opposite stem directions so a pianist can follow each line.</p>
   <pre data-score>meter 2/4
 piano {
   upper {
@@ -88,21 +88,21 @@ piano {
 </section>
 <section id="fingerings">
   <h2>Fingerings and accents</h2>
-  <p>Attach a finger to a head with <code>[finger 2]</code>. Add <code>accent</code> inside the brackets for an accent. Change <code>finger 3 right</code> to <code>finger 3 left</code> and compare the placement.</p>
+  <p>Compare the fingering above the fretted phrase with the accent on the last attack. Change <code>finger 3 right</code> to <code>finger 3 left</code>. The number changes sides while the accent stays with the note.</p>
   <div class="vex-tabdiv" width="560" scale="1" editor_height="85">meter 2/4
 guitar { :8 6/4[finger 2] 7/4[hammer, finger 3] :q 0/2[finger 3 right, accent] | }</div>
-  <p>Finger numbers run from 0 to 5. Use <code>finger T</code> for thumb. Choose left, right, above or below after the finger. Put the brackets inside a chord to mark that particular head.</p>
+  <p>In the chord below, finger 1 belongs to C and finger 3 to E because each mark follows its own pitch inside the parentheses. Numeric fingerings accept 0 through 5, with <code>T</code> for the thumb. Use <code>left</code>, <code>right</code>, <code>above</code> or <code>below</code> to place the mark.</p>
   <pre data-score>meter 2/4
 staff {
-  :q (C4[finger 1 left] E4[finger 3 right]) G4[finger 5 left, articulation undefined above] |
+  :q (C4[finger 1 left] E4[finger 3 right]) G4[finger 5 left, accent above] |
 }</pre>
-  <p>Independent notation parts print marks on named pitches and chords. For marks on fretted notes, use the fixed or flow view. Finger numbers appear on standard notation. Accents also appear on tablature.</p>
+  <p>Compare the paired guitar example with the staff example. Look on the standard staff for the finger numbers and on both guitar staves for the accent. You can also print the named pitches and their markings as an independent notation part.</p>
   <p><a href="#features/beaming">Group marked notes into beams →</a></p>
 </section>
 <section id="independent-voices">
   <h2>Independent voices and ties</h2>
-  <p>Let a melody cross a barline while the bass keeps its own pulse.</p>
-  <p>Each named voice begins at the first beat. Both voices fill the same bars. Put <code>[tie]</code> on the arriving head to sustain the matching pitch.</p>
+  <p>A singer can hold a note over a barline while the bass changes underneath. Give the melody and bass separate voices so each can keep its own rhythm.</p>
+  <p>In the melody, the G on beat two continues into bar two. Put <code>[tie]</code> on the second G to tell the player to sustain it. Remove that mark and replay the phrase. You should hear a fresh G as the bass changes from C to D.</p>
   <pre data-score>meter 2/4
 staff {
   voice melody stem up {
@@ -118,8 +118,8 @@ staff {
 </section>
 <section id="timed-techniques">
   <h2>Bends and palm muting by string</h2>
-  <p>Bend one string of a chord while its neighbor keeps sounding.</p>
-  <p>The half note stops strings two and three. The bend on string three rises two semitones. Its fractions specify the end of the rise, hold and release. <code>palmMute strings(6) { … }</code> covers the bass phrase in the second bar.</p>
+  <p>Hold one string steady while its neighbour bends, then mute the two low notes in the following bar.</p>
+  <p>String two stays at fret five while string three bends up two semitones. It reaches the top halfway through the half note, holds to the three-quarter point and releases by the end. In bar two, <code>palmMute strings(6)</code> confines the mute to the sixth string.</p>
   <pre data-score>meter 2/4
 guitar {
   tuning dropD
@@ -128,41 +128,41 @@ guitar {
   palmMute strings(6) { :q 0/6 3/6 } |
 }</pre>
   <h3>Open-ended slides</h3>
-  <p>Attach <code>slideIn below</code> or <code>slideIn above</code> to approach the picked note. Use <code>slideOut</code> to leave it. Follow the direction of all four slide marks.</p>
+  <p>A guitarist can slide into a note without specifying the starting fret. Look at the two approaches to fret nine in bar one. The first rises into the note and the second falls into it. In bar two, the marks show the direction of travel after the attack.</p>
   <pre data-score>alias approach="slideIn below" leave="slideOut below"
 meter 2/4
 guitar {
   :q 9/3[approach] 9/3[slideIn above] |
   :q 9/3[leave] (9/3[slideOut above] 7/2) |
 }</pre>
-  <p>Each slide has one picked attack. Playback uses its written fret. To slide between two specified frets in fixed layout, use <code>5/3 7/3[slide]</code>.</p>
+  <p>Each open-ended slide sounds one written fret. To join two particular frets, give both positions and mark the destination. In fixed layout, <code>5/3 7/3[slide]</code> connects fret five to fret seven.</p>
   <p><a href="#lesson/drop-d-turnaround">Play the Drop D turnaround →</a></p>
 </section>
 <section id="pre-bends">
   <h2>Pick a pre-bent string and release it</h2>
-  <p>Hear a string that is already bent when the pick lands.</p>
+  <p>A pre-bend starts at the raised pitch. Listen for the upper note to fall while the open bass underneath it stays level.</p>
   <pre data-score>play { tempo 80 instrument 24 }
 meter 2/4
 guitar {
   :q (0/6 7/3[prebend +1 release]) 7/3 |
 }</pre>
-  <p>Fret 7 on string three, raise it one semitone, then pick. The <code>release</code> brings it back during the same quarter. Remove that word to hold the raised pitch. The open bass stays at its original pitch. <a href="#features/timed-techniques">Compare a bend after the attack →</a></p>
+  <p>Raise fret seven by one semitone before picking it. The word <code>release</code> lets the string return during that quarter note. Remove it and compare the bent note with the ordinary seventh fret on beat two. <a href="#features/timed-techniques">Compare a bend that starts after the attack</a>.</p>
 </section>
 <section id="drum-kit">
   <h2>Drum kit notation</h2>
-  <p>Write a groove with <code>drums { … }</code>. In the first bar, read the kit from low to high. <code>kick</code> is a round head in the bottom space, <code>snare</code> is a round head in the third space, and <code>hat</code> is a cross above the top line for the closed hi-hat.</p>
+  <p>Read the first bar from the kick in the bottom space to the snare in the third space and the closed hi-hat above the staff. Its cross-shaped head distinguishes the hat. A <code>drums</code> part lets you enter each hit by its kit name.</p>
   <pre data-score>meter 4/4
 drums {
   :q kick snare hat rest |
   :8 (kick hat) hat (snare hat) hat (kick hat) hat (snare hat) hat |
 }</pre>
-  <p>Parentheses put both instruments on the same stem. To give the feet and hands independent rhythms, put them in separate voices. Drum hits have no sounding pitch in VexTab playback.</p>
+  <p>In bar two the hat plays every eighth, but only some strokes share a stem with the kick or snare. Parentheses place those hits together. Give the feet and hands separate voices if their durations differ. This example engraves the drum pattern. The player does not synthesize the kit hits.</p>
   <p><a href="#features/independent-voices">Write independent voices →</a></p>
 </section>
 <section id="lead-sheets">
   <h2>Chord frames and lyric syllables</h2>
-  <p>Give a chord its name, its guitar fingering and a place in a lyric.</p>
-  <p>Put each mark after its attack. The Am frame lists six strings from low to high. An <code>x</code> skips the sixth string and <code>0</code> rings an open string. The barre stops strings four and three at fret two. On the next attack, <code>extend=1</code> holds “on” through one more note.</p>
+  <p>A lead sheet can show the chord a guitarist grips and the syllable a singer starts at the same moment.</p>
+  <p>At “Sail”, read the Am diagram from the low string to the high string. Skip the string marked <code>x</code>, leave <code>0</code> open and barre strings four and three at fret two. At “on”, <code>extend=1</code> carries the syllable across the final C. Remove the extension and compare the end of the lyric line.</p>
   <pre data-score>meter 4/4
 guitar {
   view notation
@@ -172,8 +172,8 @@ guitar {
 </section>
 <section id="roadmap">
   <h2>Rehearsal marks and repeat endings</h2>
-  <p>Mark where to return and give each pass its own ending.</p>
-  <p>Use <code>mark "A"</code> at the beginning of a bar. A <code>volta 2</code> block prints the shared music, followed by its two numbered endings. Measure numbers follow the written score.</p>
+  <p>Two endings let a player repeat the same opening and leave it by a different route on the second pass.</p>
+  <p>Start at rehearsal mark A with C and D. On the first pass, play E and D and follow the repeat sign back to A. On the second pass, skip to the held C. The <code>volta 2</code> block contains the shared music, so you write that opening once.</p>
   <pre data-score>measureNumbers on
 meter 2/4
 staff {
@@ -189,21 +189,21 @@ staff {
 </section>
 <section id="reading">
   <h2>Read a note back to its source</h2>
-  <p>Follow the same attack in paired notation, tablature and editable text.</p>
-  <p>In a flow lesson, choose <strong>Next event</strong> to hear the bar, voice, duration and pitch or string with a screen reader. Choose <strong>Select source</strong> to select the original characters. A click on a note in the preview also selects its source. Narrow the score and try the same passage again.</p>
+  <p>Find the source of a note when you can see its position on the page or hear its description from a screen reader.</p>
+  <p>In the tied-chord study, choose <strong>Next event</strong> to move in musical order. A screen reader announces the bar, voice, duration and pitches or strings. Use <strong>Select source</strong> on the tied chord, then narrow the score and find it again. The same characters identify the chord after the music wraps.</p>
   <p><a href="#lesson/tied-chord">Try the reader on a tied chord →</a></p>
 </section>
 <section id="parts">
   <h2>Parts, print and offline SVG</h2>
-  <p>Engrave the same duet for two players or give each guitarist a separate part.</p>
-  <p>In the duet study, choose <strong>Full score</strong>, <strong>Guitar 1</strong> or <strong>Guitar 2</strong>. Switch between Letter and A4. <strong>Save print HTML</strong> keeps the whole edition together. <strong>Save SVG</strong> exports the selected page. Both carry outlined fonts and the score’s event metadata for offline use.</p>
+  <p>Two guitarists can read from a shared score in rehearsal and take home separate parts from the same music.</p>
+  <p>In the duet study, choose <strong>Guitar 2</strong> and find its opening G3. Compare that line with <strong>Full score</strong>, then choose Letter or A4. <strong>Save print HTML</strong> exports the whole edition. <strong>Save SVG</strong> exports the selected page. Both include font outlines for reading offline.</p>
   <p><a href="#lesson/guitar-duet">Open the printable duet →</a></p>
 </section>
 
 <section id="editions">
   <h2>Rehearse a conductor score and print a part</h2>
-  <p>Open the Haydn quartet and choose Conductor to read all four staves on a shared measure grid. Choose Violoncello to rehearse its line, then prepare the print edition. The paper menu can override the source for this export.</p>
-  <p>Scores display written pitch. For a B-flat instrument, <code>sounds -2</code> makes a written D4 sound as concert C4. Incompatible measure lengths prevent a shared conductor system. Read the diagnostic and select a single instrument to rehearse it independently.</p>
-  <p>In the source, <code>edition conductor { page at 22 }</code> starts a page at the variation. <code>edition part cello { paper Letter page at 23 prefer after 22 }</code> gives the cellist a later turn. Pickups count as measures. Cues quote one measure and stay silent. Use Find error to select an invalid source location.</p>
+  <p>A conductor needs to see where the quartet enters together. A cellist needs a readable part and a place to turn the page. In the Haydn study, choose Conductor to read the four aligned staves, then choose Violoncello and prepare its print edition.</p>
+  <p>The conductor reads written pitch. For a B-flat instrument, <code>sounds -2</code> makes written D sound as concert C. If the bars differ in duration and cannot line up, the diagnostic identifies the problem. Select one instrument to rehearse its part independently.</p>
+  <p>Compare the first bar after each page turn. The conductor’s <code>page at 22</code> starts the variation on a new page. The cello’s <code>page at 23</code> lets the player turn one bar later. Count the pickup as a measure when specifying these numbers. The cello’s cue shows what to listen for during a rest and stays silent in playback.</p>
   <p><a href="#lesson/haydn-emperor-variation">Open the quartet</a> · <a href="#lesson/handy-st-louis-blues">Rehearse the vocal part</a></p>
 </section>

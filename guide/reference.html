@@ -2,12 +2,17 @@
 <section id="modules">
   <h2>Modules and entry points</h2>
   <article id="parser-module"><h3>vextab/parse</h3>
-    <p>DOM-free entry point for Node, workers and validators. Exports <code>parseScore</code>, <code>ScoreError</code> and the TypeScript types <code>ParsedScore</code> and <code>SourceRange</code>. CommonJS and ES modules are supported.</p>
+    <p>Use this module to validate music in Node.js or a worker. <code>parseScore(source)</code> returns a <code>ScoreV2</code> document or throws <code>ScoreV2Error</code>. With <code>{ language: 1 }</code>, the result is a <code>ParsedScore</code> and parse errors use <code>ScoreError</code>. Both CommonJS and ES module callers can use this entry.</p>
     <pre>import { parseScore } from 'vextab/parse';
 const score = parseScore('meter 1/4 staff { C4 | }');</pre></article>
   <article id="browser-module"><h3>vextab/browser</h3>
-    <p>Use this entry for explicit mounting in a browser application. It exports the parser, <code>Div</code>, <code>renderScore</code>, <code>renderScorePart</code>, <code>renderConductor</code>, <code>renderEdition</code>, the <code>Part</code> type, the playback adapters <code>createWebAudioPlayback</code> and <code>createSpessaSynthPlayback</code>, and <code>Artist</code>, <code>VexTab</code>, <code>Player</code> and <code>Vex</code> objects.</p>
+    <p>Import <code>Div</code> to mount an editor on an existing element. For a separate preview, import <code>parseScore</code> and <code>renderScore</code>. The same entry exports part and conductor renderers, <code>Player</code> and its audio adapters, and the legacy <code>Artist</code>, <code>VexTab</code> and <code>Vex</code> objects.</p>
     <pre>import { Div, parseScore, renderScore } from 'vextab/browser';</pre></article>
+  <article id="performer-module"><h3>vextab/performer</h3>
+    <p>Use this entry to shape an existing performance without loading a browser renderer. <code>createPerformer(nameOrProfile, seed?, swing?)</code> defaults to the human profile. Supply the parts and bar data from your performance. Its <code>perform(parts, bars, tempo)</code> method returns the parts with performance timing and dynamics applied. Tempo defaults to 120 quarter notes per minute. A safe integer seed reproduces a take. An invalid seed throws <code>RangeError</code>.</p>
+    <pre>import { createPerformer } from 'vextab/performer';
+const take = createPerformer('parker', 42);
+const played = take.perform(parts, bars, 132);</pre></article>
   <article id="auto-module"><h3>vextab/auto and script tags</h3>
     <p>The auto entry mounts each <code>div.vextab-auto</code> on DOM ready. Load <code>dist/div.prod.js</code> for a plain HTML page. The package root and <code>dist/main.prod.js</code> retain the legacy browser API. The old <code>dist/vextab-div.js</code> adapter supports <code>.vex-tabdiv</code>, underscore editor attributes and the original Canvas default.</p>
     <pre data-language="html">&lt;div class="vextab-auto" editor="true"&gt;guitar { 0/1 2/1 3/1 2/1 | }&lt;/div&gt;
@@ -15,9 +20,9 @@ const score = parseScore('meter 1/4 staff { C4 | }');</pre></article>
 </section>
 <section id="parsing">
   <h2>Parsing and the score model</h2>
-  <article id="parse-score"><h3>parseScore(source)</h3><p>Parse a score once, then pass it to the renderer, printer or player. The returned ScoreV2 retains the original source and the expanded music. Use <code>fragment { … }</code> for an incomplete phrase.</p></article>
+  <article id="parse-score"><h3>parseScore(source)</h3><p>Pass the VexTab source as a string. The default result, <code>ScoreV2</code>, retains that string and the music after pattern expansion. You can reuse the result for engraving, printing and playback. Enclose an intentionally incomplete phrase in <code>fragment { … }</code> to skip its bar-length check.</p></article>
   <article id="note-aliases"><h3>Note-mark aliases and comments</h3>
-    <p>Put <code>alias v="vibrato" sd="stroke down"</code> above a part. Now <code>5/3[sd]</code> has a downstroke and <code>2/2[v]</code> has vibrato. A name expands to one complete built-in mark. Use it in any voice or part in the score.</p>
+    <p>Declare an alias before the part that uses it. With <code>alias v="vibrato" sd="stroke down"</code>, <code>5/3[sd]</code> marks a downstroke and <code>2/2[v]</code> marks vibrato. Each name expands to one built-in mark and can be reused across voices and parts.</p>
     <p>Use <code>#</code> for a line of commentary or after the music. A sharp in <code>F#4</code>, a hex colour such as <code>ink #abc</code>, and text inside quotes keep their musical meaning. <a href="#tutorial/strokes-and-vibrato">Play the example →</a></p>
   </article>
   <article id="string-runs"><h3>Same-string fret runs</h3>
@@ -27,15 +32,15 @@ const score = parseScore('meter 1/4 staff { C4 | }');</pre></article>
     <p>Declare <code>meter 3/4</code> inside a staff or guitar part. Change it immediately after a barline, or declare <code>meter 6/8 at 2</code> in the part header. A meter before all parts supplies their default. <a href="#features/measured-music">Compare two parts with different meters →</a></p>
   </article>
   <article id="transpose"><h3>transpose</h3>
-    <p>Write a signed semitone offset before the first stave. Both the printed signature and the sounding notes move. Guitar notes stay on their original strings. Change the source fingering if a downward shift would require a negative fret.</p>
+    <p><code>transpose</code> takes a signed number of semitones before the first part. It shifts the key signature and sounding pitches while keeping guitar notes on their authored strings. If the new pitch would fall below an open string, choose another string in the source.</p>
     <pre>transpose +2
 meter 4/4
 guitar { key C :q 3/5 5/5 7/5 8/5 | }</pre>
     <p>This shifts C major to D major and displays frets 5, 7, 9, and 10 on string five.</p></article>
-  <article id="grammar-v2"><h3>Grammar v2</h3><p>VexTab 6 reads grammar v2 by default. VexTab 5 was an experimental release that defaulted to grammar v1. <code>parseScore('staff { :w C4 | }').measureCount</code> is 1. Guitar tablature hides stems by default. Use <code>tabStems on</code> in a guitar part or voice to show its rhythm. Pass the score to <code>renderScore</code>, <code>renderScorePart</code> or <code>Player</code>. Use <code>ScoreV2Error.range</code> to select invalid input. Set <code>{ language: 1 }</code> or <code>data-language="1"</code> when loading a historical score.</p></article>
-  <article id="parsed-score"><h3>ScoreV2</h3><p>A part contains staves and named voices. Each voice has ordered events and a list of measures indexing them. An event has its exact onset, duration, heads and source range.</p><pre>const event = score.parts[0].staves[0].voices[0].events[0];
+  <article id="grammar-v2"><h3>Grammar v2</h3><p>VexTab 6 selects grammar v2 unless the caller passes <code>{ language: 1 }</code> to the parser or sets <code>data-language="1"</code> on the embed. For a complete bar, <code>parseScore('staff { :w C4 | }').measureCount</code> returns 1. To show rhythm in a guitar part, add <code>tabStems on</code>.</p></article>
+  <article id="parsed-score"><h3>ScoreV2</h3><p>Follow <code>parts → staves → voices → events</code> to reach a written attack. Each event records its onset, duration, heads and source range. Use that range with the original source string to recover the text the musician entered.</p><pre>const event = score.parts[0].staves[0].voices[0].events[0];
 const token = score.source.slice(...event.range);</pre></article>
-  <article id="score-error"><h3>ScoreV2Error and source ranges</h3><p>Grammar errors report a one-based line and column. The range contains two UTF-16 offsets into the original input. The end is exclusive.</p><pre>try { parseScore(input.value); }
+  <article id="score-error"><h3>ScoreV2Error and source ranges</h3><p>Read <code>line</code> and <code>column</code> for a one-based location to display to the author. Use <code>range</code> for text selection. Its two offsets count UTF-16 code units from the start of the input and exclude the character at the end offset.</p><pre>try { parseScore(input.value); }
 catch (error) {
   if (!(error instanceof ScoreV2Error)) throw error;
   input.focus();
@@ -44,17 +49,17 @@ catch (error) {
 </section>
 <section id="layout">
   <h2>Rendering and navigation</h2>
-  <article id="render-score"><h3>renderScore(host, score, options?)</h3><p>Engrave a parsed score into an HTML element using SVG. <code>width</code> takes CSS pixels and must exceed 20. It defaults to the host width or 640 if the host has no width. <code>part</code> accepts <code>'score'</code> (all authored staves), <code>'notation'</code> or <code>'tab'</code>. The host is replaced after successful layout. The returned view contains the composition, navigation, hit regions and diagnostics.</p>
+  <article id="render-score"><h3>renderScore(host, score, options?)</h3><p>Pass a host element, a parsed score and optional layout settings. The default renderer produces SVG. <code>width</code> is measured in CSS pixels and must exceed 20. It defaults to the host width, or 640 when the host has no width. Choose <code>part: 'score'</code> for the authored staves, <code>'notation'</code> for the staff or <code>'tab'</code> for the frets. Successful layout replaces the host contents and returns the composition, navigation data, hit regions and diagnostics.</p>
     <pre>const score = parseScore(input.value);
 const view = renderScore(preview, score, { width: 640, part: 'tab' });</pre></article>
-  <article id="navigation"><h3>navigation.events and hitTest(x, y)</h3><p>Read <code>view.navigation.events</code> in musical order. Each entry has a label and projected ID. <code>view.hitTest(x, y)</code> takes SVG-local coordinates and returns a hit region or <code>undefined</code>. Convert pointer positions with the SVG screen transform when scaling the preview. A wrapped tie may have several regions.</p></article>
-  <article id="source-mapping"><h3>sourceFor(id) and rangeFor(id, source)</h3><p>Screen and print views can have different projected IDs for the same written attack. <code>sourceFor</code> resolves the projection to its musical ID. <code>rangeFor</code> returns a source range for a matching source string. Unrecognized IDs and stale source produce <code>undefined</code>.</p>
+  <article id="navigation"><h3>navigation.events and hitTest(x, y)</h3><p>Use <code>view.navigation.events</code> to read labelled attacks in musical order. For a pointer selection, convert the screen position to SVG-local coordinates and pass them to <code>view.hitTest(x, y)</code>. It returns the hit region, or <code>undefined</code> in empty space. A tie across a system break can occupy more than one region.</p></article>
+  <article id="source-mapping"><h3>sourceFor(id) and rangeFor(id, source)</h3><p>Pass a screen or print ID to <code>sourceFor(id)</code> to recover the shared musical ID. For an editor selection, pass the ID and the current source string to <code>rangeFor</code>. An unknown ID or a changed source string yields <code>undefined</code>.</p>
     <pre>const range = view.rangeFor(view.navigation.events[0].id, input.value);
 if (range) input.setSelectionRange(range.start, range.end);</pre></article>
 </section>
 <section id="editors">
   <h2>DOM embeds and live editors</h2>
-  <article id="div"><h3>new Div(host)</h3><p>Pass an HTML element or a selector for one host. The constructor reads its text and attributes, renders immediately, and optionally adds an editor. Set <code>textContent</code> for source supplied by a user. Use one instance per host.</p>
+  <article id="div"><h3>new Div(host)</h3><p>Pass an HTML element or a selector for a single host. Set the source using <code>textContent</code> before construction. <code>Div</code> reads the host attributes, draws the score immediately and adds a textarea when editing is enabled. Create one instance per host.</p>
     <pre>import { Div } from 'vextab/browser';
 host.setAttribute('layout', 'flow');
 host.setAttribute('editor', 'true');
@@ -63,7 +68,7 @@ const editor = new Div(host);</pre></article>
   <article id="attributes"><h3>Host attributes and defaults</h3>
     <p>Each setting accepts a <code>data-</code> prefix. For example, set <code>data-layout="flow" data-editor="true" data-width="auto"</code> for a responsive editor. A nonempty prefixed value takes precedence over the plain attribute. With automatic width, an authored <code>layout { width 1460 scale 0.61 }</code> engraves at 1460 pixels and displays the music at about 891 pixels.</p>
     <dl><dt>layout, renderer, scale</dt><dd>Fixed layout defaults to SVG at scale 1 and also supports Canvas. Grammar v2 flow supports SVG and Canvas. Use <code>data-view="conductor"</code> to align all instruments.</dd><dt>width</dt><dd>Fixed defaults to 400 px. A flow host with an omitted width or <code>width="auto"</code> follows its container.</dd><dt>editor, show-errors</dt><dd>Set <code>editor="true"</code> to expose the source textarea. <code>show-errors="true"</code> displays diagnostics without the editor.</dd><dt>editor-width, editor-height</dt><dd>Pixel dimensions. Defaults are the score width and 200 px high. The historical adapter also accepts <code>editor_width</code> and <code>editor_height</code>.</dd></dl></article>
-  <article id="run"><h3>run(), redraw(), parse() and draw()</h3><p><code>run()</code> flushes the pending edit and draws the current textarea value. Keyboard users can press Ctrl+Enter or Command+Enter. <code>redraw()</code> reparses the stored source and draws it. <code>parse()</code> and <code>draw()</code> expose the two stages. These methods return the instance. A failing edit keeps the last valid picture and displays the error.</p></article>
+  <article id="run"><h3>run(), redraw(), parse() and draw()</h3><p>Call <code>run()</code> to apply a pending textarea edit immediately. Ctrl+Enter or Command+Enter does the same. Call <code>redraw()</code> to parse and draw the stored source again. For separate steps use <code>parse()</code> and <code>draw()</code>. Each returns the editor. An invalid edit displays a diagnostic and leaves the last valid score visible.</p></article>
   <article id="editor-view"><h3>setPart(part) and setWidth(pixels)</h3><p>Flow-only methods that return the editor. Select a staff or reflow the same parsed revision without rewriting the source. Setting a width explicitly takes over from automatic container observation.</p></article>
   <article id="editor-reading"><h3>getScore(), getReadingEvents() and selectSource()</h3><p><code>getScore()</code> returns the current valid flow revision or <code>undefined</code>. <code>getReadingEvents()</code> returns the current reading order, or an empty array when unavailable. <code>selectSource(id, revision)</code> focuses the editor and selects the matching token. It returns false for a stale revision or missing selection.</p>
     <pre>const revision = editor.getScore();
@@ -79,7 +84,7 @@ editor.setInstrumentView({ partId: 'cello' });</pre></article>
 <section id="publication">
   <h2>Publication and export</h2>
   <article id="conductor-editions"><h3>renderConductor() and renderEdition()</h3>
-    <p>Render a shared screen score in written pitch. Prepare its conductor edition or a named instrument from the same document. Source editions set breaks, turns and cues. Explicit paper options override the source for one export. Read <code>result.diagnostics</code> for the affected measure and source range.</p>
+    <p>Use <code>renderConductor</code> for a screen view that aligns the instruments in written pitch. Use <code>renderEdition</code> for the conductor’s print edition or an individual part. The source supplies breaks, turns and cues. A paper size in the options overrides the source for that export. Inspect <code>result.diagnostics</code> for the affected measure and source range.</p>
     <pre>const score = parseScore(source);
 renderConductor(preview, score, { width: 800 });
 const result = renderEdition(paperHost, score, { partId: 'cello' }, { paper: 'Letter' });</pre>
@@ -95,15 +100,15 @@ const result = renderEdition(paperHost, score, { partId: 'cello' }, { paper: 'Le
     <p><code>renderScorePart(host, score, 'notation')</code> prints both staves. Use <code>'right'</code> or <code>'left'</code> for a practice part. The optional <code>voice</code> number selects one voice within that hand. Native part <a href="#reference/publication-scope">engraving limits</a> also apply to piano. <a href="#features/piano">Try two-hand and four-voice examples</a>.</p>
   </article>
   <article id="piano-ornaments" data-language="vextab"><h3>Grace chords, ossias and sustain pedal</h3>
-    <p>Each pitch inside a grace group is a separate attack. Parenthesize pitches together for one chord. Add <code>slashed</code> for a slashed eighth. On guitar, <code>0/1[grace before (0/1 0/1)]</code> shows the grace notes in both notation and TAB. Use fret/string positions throughout a group to choose the strings. Attach a finger to a grace head with <code>0/1[finger i above]</code>. Grace groups borrow time from their principal. An ossia prints a small alternative staff below its anchor. Playback follows the principal reading.</p>
+    <p>Put a grace group on the principal note. Each pitch in the group gets a separate attack unless you enclose pitches together as a chord. In the example, G and B sound together just before C. <code>slashed</code> draws the stroke through the grace stem. Guitar groups can use frets such as <code>0/1[finger i above]</code> to place each grace on a string and name the picking finger. Grace notes borrow time from the principal. An <code>ossia</code> gives the player an alternative in small notation below the anchor. Playback uses the main reading.</p>
     <pre>meter 3/4
 piano {
   upper { :q C5[grace before slashed ((G4 B4))] D5 E5 | }
   lower { :q C3[pedal down] G3[ossia :8 (G3[ornament mordent] F3 G3)] C4[pedal up] | }
 }</pre>
-    <p>Put both pedal marks in the same piano voice. The pedal goes down at the first attack and lifts at the end of the marked release note or rest. It sustains both hands. <a href="#lesson/chopin-ballade-no3">See the markings in Chopin’s Ballade</a>.</p></article>
+    <p>Place <code>pedal down</code> and <code>pedal up</code> in the same piano voice. The pedal sustains both hands from the first marked attack through the end of the release note or rest. <a href="#lesson/chopin-ballade-no3">Follow the pedal changes in Chopin’s Ballade</a>.</p></article>
   <article id="score-heading" data-language="vextab"><h3>Score heading and optical spacing</h3>
-    <p>For handwritten notation, use <code>layout { font Petaluma }</code>. The music uses Petaluma and the lettering uses Petaluma Script on screen and in print. <a href="#lesson/pocket-change">Pocket Change</a> shows the pair. <code>font Bravura</code> selects the standard Bravura and Academico pair.</p>
+    <p>Set <code>layout { font Petaluma }</code> for handwritten music with Petaluma Script lettering. Both screen and print use the pair. Choose <code>font Bravura</code> for Bravura music and Academico lettering. <a href="#lesson/pocket-change">Read Pocket Change in Petaluma</a>.</p>
     <p>Neighboring piano systems also share space. A high note can rise beside an ossia or between pedal symbols on the system above. Increase <code>layout { rowGap 48 }</code> for more separation on screen.</p>
     <p>The first system can carry a centered title, a left dedication, an indented tempo and a right-aligned composer. Each field is optional. Use <code>heading { align center title "Soleá" composer "Traditional flamenco" }</code> to stack the heading lines at the top, above a centered key of chord diagrams. Set <code>firstSystemIndent</code> in engraving pixels to inset the opening system. Later systems return to the usual margin. The indent counts toward the width available for notes on screen and in print. Use <code>^{me}</code> for a raised ordinal. Optical spacing distributes room according to note duration and measured ink.</p>
     <pre>layout {
@@ -114,18 +119,18 @@ piano {
 </section>
 <section id="fixed-api">
   <h2>Rendering a fragment</h2>
-  <article id="artist"><h3>Free-form examples</h3><p>Put an unfinished bar inside a fragment block. Set the host width to keep a fixed-width example.</p></article>
+  <article id="artist"><h3>Free-form examples</h3><p>Use <code>fragment { … }</code> when the excerpt starts or ends with an unfinished measure. In the example below, two quarter notes are enough to render the sketch. The host supplies the drawing element.</p></article>
   <article id="vextab-parser"><h3>Render into SVG or Canvas</h3><pre>const score = parseScore('guitar { fragment { 3/2 5/2 } }');
 renderScore(host, score, { width: 500, renderer: 'canvas' });</pre></article>
-  <article id="artist-render"><h3>Change the view</h3><p>Pass the same score back to renderScore when the available width changes. A Div editor can use setWidth directly.</p></article>
+  <article id="artist-render"><h3>Change the view</h3><p>To fit a new width, call <code>renderScore</code> again with the parsed score and the new width in CSS pixels. On a flow editor use <code>editor.setWidth(pixels)</code>.</p></article>
 </section>
 <section id="audio-api">
   <h2>Playback and instruments</h2>
   <article id="player"><h3>Player, tempo and instrument</h3>
     <p>Pass a ScoreV2 to <code>new Player(source, options)</code>. Call <code>play()</code> from a user gesture. Its promise resolves at the end or on Stop and rejects on audio errors. <code>stop()</code> cancels a pending load and releases sounding notes. <code>dispose()</code> also removes controls. <code>setTempo(bpm)</code> changes the tempo during playback. <code>setInstrument(program)</code> stops the current performance.</p>
-    <p>In an embed, put <code>play { tempo 96 instrument 24 }</code> before the first stave. Tempo defaults to 120 quarter notes per minute. The default performer is <code>human</code>. Set <code>performer bach</code>, <code>chopin</code>, <code>parker</code>, <code>ragtime</code>, <code>blues</code>, or <code>robot</code> in the play block. Add <code>swing eighths</code> to engrave the swing equation and play the written eighths long–short. Use <code>swing off</code> for straight eighths. <a href="#lesson/pocket-change">Hear the bebop piano head</a>. A host can override the score with the <code>performer</code> option and reproduce a take with an integer <code>seed</code>. Instrument accepts a General MIDI program from 0 to 127 or a supported name such as <code>acoustic_guitar_nylon</code>. Use the metronome beside Play to adjust playback tempo. <a href="#features/playback">Play a phrase →</a></p></article>
+    <p>Tempo defaults to 120 quarter notes per minute. Set a General MIDI program from 0 to 127 or a name such as <code>acoustic_guitar_nylon</code>. The default performer is <code>human</code>. Other presets are <code>bach</code>, <code>chopin</code>, <code>parker</code>, <code>ragtime</code>, <code>blues</code> and <code>robot</code>. Use <code>swing eighths</code> for a printed swing equation and long–short playback, or <code>swing off</code> for straight eighths. A host can override the performer and pass an integer <code>seed</code> to reproduce a take. <a href="#lesson/pocket-change">Compare performers on the same piano chords</a>.</p></article>
   <article id="audio-plugins"><h3>createWebAudioPlayback() and createSpessaSynthPlayback(synth, channels?)</h3>
-    <p>Embeds default to a sample-free Web Audio instrument. For a SoundFont host, load the matching worklet and bank, connect the synth to your output, then pass the adapter to the editor. A reserved channel pool lets a bent string change pitch independently of its neighbours. <a href="#quickstart/spessasynth">Set up SpessaSynth and play a SoundFont →</a></p>
+    <p>Use the default Web Audio adapter for a synthesized tone that needs no sample files. To play a SoundFont, load the matching worklet and bank, connect the synth to an output and pass it to <code>createSpessaSynthPlayback</code>. Reserve channels for the adapter so one string can bend while another holds a steady pitch. <a href="#quickstart/spessasynth">Load a SoundFont and connect the score</a>.</p>
     <pre>const playback = createSpessaSynthPlayback(synth);
 const editor = new Div(scoreHost, { playback, player: true });</pre>
     <p><code>player: true</code> enables the sheet controls even for source without a player directive. Use <code>playbackControls</code> on <code>Div</code> or <code>controls</code> on <code>Player</code> to pass <code>false</code>, a toolbar element, or an object with <code>visibility</code> (hover, always or off), <code>size</code> (auto, mini or large), <code>position</code> and <code>inset</code>. Large is the default. Auto-scroll starts on and follows the playing system. Auto selects the large panel for a scrolling score or one at least 80% of the viewport height. Both control sizes default to bottom-center with a 12-pixel inset from the visible sheet. Positions combine top or bottom with left, center or right, such as <code>top-right</code>. Custom instruments implement <code>PlaybackPlugin.open(program, signal)</code> and return a session with <code>playNote(note)</code> and <code>stop()</code>.</p></article>

@@ -6,7 +6,7 @@ import guitar from './scores/drop-d-turnaround.vextab';
 import lead from './scores/slow-river.vextab';
 
 const studies = {
-  guitar: { source: guitar, lesson: 'In Drop D, hold the sixth-string bass under the melody. At bar 4, bend string three up a whole tone while string two rings. The peak comes on beat two. Change rise=1/2 to rise=1/4 and follow the earlier peak. Narrow the window and trace the mute and first ending across rows.' },
+  guitar: { source: guitar, lesson: 'In Drop D, hold the sixth-string bass under the melody. At bar 4, bend string three up a whole tone while string two rings. The bend reaches the held pitch on beat two. Change rise=1/2 to rise=1/4 and listen for the strings to meet half a beat earlier. Narrow the window and trace the mute and first ending across rows.' },
   lead: { source: lead, lesson: 'Read the Am frame from the sixth string to the first. Leave the sixth string out and barre strings four and three. Change “Slow,” in the source and follow the comma, the hyphen in “riv-er” and the line under “roll”. The Am/G change lands on the dotted slash.' },
 };
 

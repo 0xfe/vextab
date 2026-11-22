@@ -18,10 +18,9 @@
       <button id="reset">Reset example</button>
     </div>
     <div id="score" layout="flow" width="640" editor="true" editor-height="130"><pre><%- require('./scores/tied-chord.vextab').trimEnd() %></pre></div>
-    <p>Narrow the score to split the tie across two rows. Click a note or use the select button
-      to find its source. Try changing the order of the notes inside the tied chord.</p>
+    <p>Choose <strong>Narrow the score</strong> to split the tie across two rows. Select the tied chord and swap its two marked frets in the editor. Each string should still connect to its own fret across the break.</p>
     <h2>Read the notation part</h2>
-    <p>Engrave just the standard staff on its own page. Both views use the music in the editor.</p>
+    <p>Choose <strong>Engrave notation part</strong>, then <strong>Find the chord from the part</strong>. The printed chord selects the same source as the chord in the screen score.</p>
     <div class="controls"><button id="engrave">Engrave notation part</button>
       <button id="find" disabled>Find the chord from the part</button></div>
     <p id="message" role="status"></p>
