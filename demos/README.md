@@ -4,6 +4,8 @@ Run `npm ci` and `npm start`, then open the [demo library](http://127.0.0.1:9005
 
 | Study | What to try |
 | --- | --- |
+| [All of Me](../guide/scores/all-of-me.vextab) | Follow Django Reinhardt’s guitar solo from its Dm7–G7 lead-in to the run in bar 17. |
+| [Soleá](../guide/scores/flamenco-tab.vextab) | Compare the triplet arpeggios and bass line in paired notation and tab. |
 | Compound-time picking | Move the triplet and read it in rhythmic tab. |
 | A-major chord workshop | Track the natural on G and a fingering through reordered chord members. |
 | Two-voice bossa | Change the upper attack while the bass holds. |

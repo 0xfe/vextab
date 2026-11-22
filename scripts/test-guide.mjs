@@ -100,7 +100,7 @@ export async function testGuide(page, dist) {
     assert.equal(await chapter.locator('svg').count(), editors + extraStaff, hash);
   }
   await go('#demos');
-  assert.equal(await page.locator('#entries a').count(), 14);
+  assert.equal(await page.locator('#entries a').count(), 16);
   const routes = await page.locator('#picker option').evaluateAll(options => options.map(o => '#lesson/' + o.value));
   for (const hash of routes) {
     await go(hash);
@@ -111,7 +111,7 @@ export async function testGuide(page, dist) {
 
   // Rehearse and export the same source revision, including a single player's part.
   for (const [id, view] of [['sor-op35-no22', '0/tab'], ['joplin-maple-leaf', 'keys'], ['chopin-ballade-no3', 'keys'],
-    ['pocket-change', 'keys'], ['handy-st-louis-blues', 'singer'], ['haydn-emperor-variation', 'cello']]) {
+    ['all-of-me', 'guitar/tab'], ['flamenco-tab', 'guitarra/notation'], ['pocket-change', 'keys'], ['handy-st-louis-blues', 'singer'], ['haydn-emperor-variation', 'cello']]) {
     await go('#lesson/' + id);
     assert.equal(await page.locator('#view').inputValue(), 'conductor');
     if (id === 'chopin-ballade-no3') {
@@ -144,9 +144,15 @@ export async function testGuide(page, dist) {
     await page.getByRole('button', { name:'Select source' }).press('Enter');
     assert.ok(await source.evaluate(s => s === document.activeElement && s.selectionEnd > s.selectionStart));
     await page.locator('#prepare-print').click();
-    await page.waitForFunction(() => !document.getElementById('save-svg').disabled);
+    await page.waitForFunction(() => !document.getElementById('save-svg').disabled || document.getElementById('print-status').textContent);
+    assert.ok(await page.locator('#save-svg').isEnabled(), id + ' export: ' + await page.locator('#print-status').textContent());
     const pages = page.locator('#part svg:has(metadata)');
     assert.ok(await pages.count() > 0);
+    if (id === 'all-of-me' || id === 'flamenco-tab') {
+      const bars = await pages.locator('metadata').evaluateAll(nodes => nodes.flatMap(n => JSON.parse(n.textContent).measures));
+      const count = id === 'all-of-me' ? 17 : 16;
+      assert.deepEqual(bars, Array.from({ length: count }, (_, i) => i + 1), id + ' exports every bar of the source page');
+    }
     if (id === 'pocket-change') assert.equal(await pages.locator('[data-system="1"] .vf-swing-mark').count(), 1);
     if (id === 'chopin-ballade-no3') {
       assert.equal(await pages.count(), 1);

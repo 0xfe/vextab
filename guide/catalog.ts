@@ -17,6 +17,8 @@ import workbench from './scores/embed-workbench.vextab';
 import sor from './scores/sor-op35-no22.vextab';
 import pocketChange from './scores/pocket-change.vextab';
 import chopin from './scores/chopin-ballade-no3.vextab';
+import allOfMe from './scores/all-of-me.vextab';
+import solea from './scores/flamenco-tab.vextab';
 import joplin from './scores/joplin-maple-leaf.vextab';
 import handy from './scores/handy-st-louis-blues.vextab';
 import haydn from './scores/haydn-emperor-variation.vextab';
@@ -68,6 +70,14 @@ export const lessons: Lesson[] = [
     goal:'Play the opening 24 bars of the A-flat major Ballade, Op. 47. Listen for the high E-flat held through bars 2–4 while the lines beneath it move.',
     edit:'Slow the tempo from 132 to 96 and follow the right-hand octaves in bar 14. The seven-in-five tuplet lets the flourish land on the next downbeat with the bass.',
     edition:{ credit:'After the opening page engraved in VexFlow. This piano transcription uses fixed clefs and selected fingerings, slurs and dynamics. The ossia below bar 3 gives an alternative to the slashed grace note. Follow the pedal releases from bar 9 and listen for the grace chord in bar 22.', url:'https://github.com/vexflow/vexflow/blob/c2d965dda437f96c938403dfe18abfbb5db59779/tests/scores/ballade.js' } },
+  { id:'all-of-me', title:'All of Me · Django Reinhardt’s guitar solo', source:allOfMe, views:guitar, demo:true,
+    goal:'Play the first page of Django Reinhardt’s solo. Follow the Dm7–G7 lead-in into C6, then find the muted attack in bar 12.',
+    edit:'Choose the TAB part and slow the player down. Follow the string changes in the G7 run in bar 17, then switch to notation to read the same phrase.',
+    edition:{ credit:'“All of Me” by Gerald Marks and Seymour Simons. Guitar solo by Django Reinhardt, transcribed by Miguel Mateu. The 17-bar excerpt uses a practice tempo of 160 BPM and swung eighths. The source leaves the muted note’s string unspecified.', url:'https://cdn.ustatik.com/musescore/scoredata/g/a137b36c3a51e331b58d6906a476a34d8b8941c0/score_0.svg?no-cache=1715710756' } },
+  { id:'flamenco-tab', title:'Soleá · Flamenco guitar', source:solea, views:guitar, demo:true,
+    goal:'Play the first 16 bars of this traditional soleá in standard tuning. Follow the open first string into the opening chord, then listen for the bass beneath the triplet arpeggios in bar 9.',
+    edit:'Slow the quarter note from 100 to 75. Choose the TAB part to follow the open strings, then switch to notation and compare the durations of the bass and upper notes.',
+    edition:{ credit:'Traditional flamenco, arranged by Eugen Sedko. Page 1 of his guitar notation and tablature. The tab uses plain digits for the parenthesized open strings.', url:'https://www.sheetmusicplus.com/en/product/traditional-solea-soleares-flamenco-guitar-notes-tabs-21752865.html' } },
   { id:'pocket-change', title:'Pocket Change · Bebop piano', source:pocketChange, views:staff, demo:true,
     goal:'Play an original sixteen-bar head in F. Hear the opening eighth-note figure return in bars 5 and 13, and listen for the left hand answering in the gaps.',
     edit:'Change swing eighths to swing off and replay the opening at 176 BPM. Listen to the offbeat before the first G, then compare the sparse chord hits in bars 9–12.',
