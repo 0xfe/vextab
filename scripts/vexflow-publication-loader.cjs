@@ -88,6 +88,11 @@ module.exports = function publicationHooks(source) {
     source = replaceOnce(source, staffBottom, "stave.getYForLine(Math.max(stave.getNumLines() + 0.6, Number(stave.getAttribute('vextab-ossia-bottom')) || 0))");
     return pianoLayout(tabSlurs(source));
   }
+  if (path.basename(this.resourcePath) === 'gracenotegroup.js') {
+    // Before-graces own left-side space. Right-side chord labels must not push TAB frets past the clef.
+    return replaceOnce(source, 'tick.getXOffset() + this.afterWidth - fretOverhang',
+      'tick.getXOffset() + (isTabNote(note) ? note.getTickContext().getMetrics().modRightPx : this.afterWidth) - fretOverhang');
+  }
   if (path.basename(this.resourcePath) === 'factory.js') {
     const point = 'const defaults = ctx.getDefaultStyle();';
     return replaceOnce(source, point, 'options.afterFormat?.();\n        ' + point);

@@ -48,6 +48,23 @@ QUnit.module('Grammar v2 score views', () => {
     }
   });
 
+  QUnit.test('fretted grace chords keep their strings, capo and single playback onset', assert => {
+    const input = 'meter 1/4 guitar { capo 2 0/1[grace before ((0/1 1/2) 2/3)] | }';
+    const score = parseScore(input);
+    for (const part of ['score', 'tab', 'notation'] as const) {
+      const target = host(), view = renderScore(target, score, { part });
+      const grace = view.score.measures[0].voices[0].events[0].grace;
+      assert.deepEqual(grace.positions, [[{ str: 1, fret: 0 }, { str: 2, fret: 1 }], [{ str: 3, fret: 2 }]]);
+      assert.deepEqual(scorePerformance(view.score, 60).events.map(event => event.notes.map(n => n.pitch)),
+        [[66, 62], [59], [66]]);
+      const svg = part === 'score' ? target.querySelector('svg') : renderScorePart(host(), score, part).publication.pages[0].svg;
+      assert.equal(svg.querySelectorAll('.vf-tabnote .vf-tabnote').length, part === 'notation' ? 0 : 2);
+    }
+    const tabOnly = parseScore(input.replace('capo 2', 'view tab capo 2'));
+    assert.deepEqual(renderScore(host(), tabOnly).diagnostics, []);
+    assert.throws(() => renderScore(host(), parseScore(input.replace('1/2', '2/1'))), /each string once/);
+  });
+
   QUnit.test('piano aligns hands, sustains a tied bass, and prints the correct fingering and sign', assert => {
     const input = 'meter 2/4 piano { upper { times 2 { (Fn4[finger 2, showSign] A4[finger 4 right]) G4[accent] | } } lower { :h C3 | C3[tie] | } }';
     const score = parseScore(input);

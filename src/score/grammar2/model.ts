@@ -2,6 +2,8 @@
 
 /** Half-open UTF-16 offsets in the original score, suitable for textarea.setSelectionRange. */
 export type TextRange = [start: number, end: number];
+/** Grace frets retain their authored string when several fingerings have the same pitch. */
+export type GracePitch = string | { fret: number; string: number };
 export type PartKind = 'staff' | 'guitar' | 'piano' | 'drums';
 export type StaffName = 'main' | 'upper' | 'lower';
 
@@ -30,7 +32,7 @@ export type EventMark =
   { kind: 'harmony'; root: string; quality: string; bass?: string; range: TextRange } |
   { kind: 'onStaff'; hand: 'upper' | 'lower'; range: TextRange } |
   { kind: 'sharedStem'; name: string; range: TextRange } |
-  { kind: 'grace'; side: 'before' | 'after'; pitches: (string | string[])[]; slash?: boolean; range: TextRange } |
+  { kind: 'grace'; side: 'before' | 'after'; pitches: (GracePitch | GracePitch[])[]; slash?: boolean; range: TextRange } |
   { kind: 'pedal'; action: 'down' | 'up'; range: TextRange } |
   { kind: 'ossia'; duration: string; notes: { pitch: string; ornament?: string }[]; range: TextRange } |
   { kind: 'ornament'; value: string; range: TextRange } | { kind: 'slash'; range: TextRange } | { kind: 'line'; value: number; range: TextRange } | { kind: 'text'; text: string; glyph?: boolean; style?: LaneStyle; range: TextRange } | { kind: 'ink'; value: string; range: TextRange } |

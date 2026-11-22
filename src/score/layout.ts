@@ -16,7 +16,7 @@ import { drawHeading, drawOssia, drawPedal, ossiaLines, ossiaReadings, registerP
 import { drawSwingMark } from './swing-mark';
 import { scoreMusicFont, scoreTextFont, withScoreFonts } from './engraving';
 import {
-  AlternatingTremolo, Ornament, TextDynamics, Clef, Fraction, Accidental, Annotation, Stroke, Vibrato, Articulation, Modifier, TabSlide, Barline, StaveNote, TabNote, TabTie, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, CanvasContext,
+  AlternatingTremolo, GraceNoteGroup, GraceTabNote, Ornament, TextDynamics, Clef, Fraction, Accidental, Annotation, Stroke, Vibrato, Articulation, Modifier, TabSlide, Barline, StaveNote, TabNote, TabTie, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, CanvasContext,
   type Beam, type Tuplet, type StemmableNote, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
   type EasyScoreVoiceSpec, type NotationIdentity, type PublicationOptions, type RenderContext, type ScoreHitRegion,
 } from 'vexflow';
@@ -188,8 +188,8 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
   // VexFlow can draw a tab ending between two TabNotes or two rendered rests.
   // A volta spans bar boundaries, so any compatible anchor in each boundary bar is sufficient.
   const rests = new Set(parsed.measures.flatMap(m => m.voices.flatMap(v => v.events.filter(e => !e.heads.length).map(e => e.id))));
-  // A sustained outer piano voice ties away from the other voices on its staff.
-  const pianoTieSides = new Map<string, 'above' | 'below'>();
+  // A sustained outer notation voice ties away from the other voices on its staff.
+  const notationTieSides = new Map<string, 'above' | 'below'>();
   const mixedEndings: ScoreSpan[] = [];
   // Both views pass this policy through to the bundled continuous-layout adapter.
   // Some decorations draw outside the native note ink. Preserve their full row margins.
@@ -212,10 +212,10 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       options: staff === 'tab' ? { numLines: parsed.measures[0].state.strings } : {},
       measures: parsed.measures.map(m => {
         const voices = voicesFor(m, staff);
-        if (m.state.piano && parsed.ties.length && voices.filter(v => v.events.some(e => e.heads.length)).length > 1) {
+        if (staff !== 'tab' && parsed.ties.length && voices.filter(v => v.events.some(e => e.heads.length)).length > 1) {
           for (const voice of voices) {
             if (!voice.stem) continue;
-            for (const event of voice.events) pianoTieSides.set(event.id, voice.stem === 'up' ? 'above' : 'below');
+            for (const event of voice.events) notationTieSides.set(event.id, voice.stem === 'up' ? 'above' : 'below');
           }
         }
         const sharedPianoStaff = handsShareStave(m);
@@ -259,7 +259,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       const from = eventId(staff, tie.from);
       if (!sources.ids[from]) continue;
       spans.push({ kind: 'tie', id: sources.project(staff, tie.id, tie.range), from,
-        to: eventId(staff, tie.to), side: pianoTieSides.get(tie.from) ?? pianoTieSides.get(tie.to),
+        to: eventId(staff, tie.to), side: staff === 'tab' ? undefined : notationTieSides.get(tie.from) ?? notationTieSides.get(tie.to),
         ...(staff === 'tab' && tie.bend && { bend: tie.bend, string: tie.string }), fromHead: tie.fromHead, toHead: tie.toHead });
     }
   }
@@ -419,6 +419,11 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
       }
       for (const voice of voicesFor(m, staff)) for (const event of voice.events) {
         const note = composition.getNote(view.eventId(staff, event.id));
+        if (event.grace?.positions && note instanceof TabNote) {
+          const frets = event.grace.positions.map(positions => new GraceTabNote({ positions, duration: '16' }));
+          const group = new GraceNoteGroup(frets).setPosition(event.grace.side === 'before' ? Modifier.Position.LEFT : Modifier.Position.RIGHT);
+          note.addModifier(group, 0);
+        }
         if (event.ossia && staff !== 'tab') {
           ossiaReadings.set(note as StaveNote, event.ossia);
           const stave = note.checkStave();

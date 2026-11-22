@@ -1,6 +1,6 @@
 // Parse written v2 notation into a bounded syntax tree before expanding any pattern.
 import { isPerformerName } from '../../playback/profiles.mts';
-import type { EventMark, Head, HeadMark, PartKind, PartSettings, WrittenMeter, StaffName, TextStyle, LaneStyle, TextBoundary, TextRange, ExpansionFrame, InstrumentIdentity } from './model.js';
+import type { GracePitch, EventMark, Head, HeadMark, PartKind, PartSettings, WrittenMeter, StaffName, TextStyle, LaneStyle, TextBoundary, TextRange, ExpansionFrame, InstrumentIdentity } from './model.js';
 
 /** One compilation shares these budgets across all parts, voices and pattern calls. */
 export const limits = Object.freeze({
@@ -380,7 +380,7 @@ export function readScore(source: string, fail: Fail) {
       return { kind: 'ossia', duration: duration.text.slice(1), notes, range: range() };
     }
     if (mark.text === 'grace') {
-      const side = take(), pitches: (string | string[])[] = [];
+      const side = take(), pitches: (GracePitch | GracePitch[])[] = [];
       if (side.text !== 'before' && side.text !== 'after') error('Expected before or after', side);
       const slash = peek() === 'slashed';
       if (slash) take();
@@ -389,11 +389,14 @@ export function readScore(source: string, fail: Fail) {
         if (pitches.length >= 16) error('Expected up to 16 grace attacks');
         const chord = peek() === '(';
         if (chord) take();
-        const keys: string[] = [];
+        const keys: GracePitch[] = [];
         do {
           const pitch = take();
-          if (!notePattern.test(pitch.text) || keys.length >= limits.heads) error('Expected a grace pitch', pitch);
-          keys.push(pitch.text);
+          const position = positionPattern.exec(pitch.text);
+          if (keys.length >= limits.heads) error('Too many grace chord heads', pitch);
+          if (notePattern.test(pitch.text)) keys.push(pitch.text);
+          else if (position && position[1] !== 'x') keys.push({ fret: Number(position[1]), string: Number(position[2]) });
+          else error('Expected a grace pitch or fret/string', pitch);
         } while (chord && peek() !== ')');
         if (chord) expect(')');
         pitches.push(chord ? keys : keys[0]);

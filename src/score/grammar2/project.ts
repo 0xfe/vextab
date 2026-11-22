@@ -9,7 +9,7 @@ import { frame, resolveMarks } from '../commands';
 import { isScoreColor } from '../color';
 import { drumKit } from '../drums';
 import { ScoreError, type SourceRange } from '../source';
-import type { ScoreV2, Head as WrittenHead, ScoreVoice, ScoreEvent, TextRange } from './model';
+import type { EventMark, ScoreV2, Head as WrittenHead, ScoreVoice, ScoreEvent, TextRange } from './model';
 
 /** Index the original revision once. CRLF and non-BMP characters keep their DOM selection offsets. */
 export function locations(source: string) {
@@ -148,6 +148,24 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     return result;
   }
 
+  /** Resolve grace pitches once so notation, TAB and playback use the same tuning and transposition. */
+  function projectGrace(mark: Extract<EventMark, { kind: 'grace' }>, interval?: Interval): Attack['grace'] {
+    const steps = mark.pitches.map(step => (Array.isArray(step) ? step : [step]).map(key => {
+      const head = typeof key === 'string' ? { pitch: key } : key;
+      return projectHead({ ...head, marks: [], range: mark.range }, interval);
+    }));
+    const fretted = steps.some(chord => chord.some(head => head.position));
+    if (fretted && (part.kind !== 'guitar' || steps.some(chord => chord.some(head => !head.position))))
+      throw new ScoreError('measure', 'Write every guitar grace head as a fret/string, or use written pitches throughout', locate(mark.range));
+    if (!fretted && !state.notation)
+      throw new ScoreError('measure', 'TAB grace notes need explicit fret/string positions', locate(mark.range));
+    const positions = fretted ? steps.map(chord => chord.map(head => head.position!)) : undefined;
+    if (positions?.some(chord => new Set(chord.map(head => head.str)).size !== chord.length))
+      throw new ScoreError('measure', 'A grace chord may use each string once', locate(mark.range));
+    return { side: mark.side, slash: mark.slash, positions,
+      pitches: steps.map((chord, i) => Array.isArray(mark.pitches[i]) ? chord.map(head => head.written) : chord[0].written) };
+  }
+
   /** Place one expanded event on the measure clock and resolve its annotations. */
   function attack(event: ScoreEvent, sounds: number): Attack {
     const interval = intervalFor((score.transpose ?? 0) + (event.transpose ?? 0));
@@ -204,7 +222,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         result.chord = { text: NotationSpelling.chordText(result.harmony), range: locate(mark.range) };
       }
       if (mark.kind === 'dynamic') result.dynamic = mark.value;
-      if ((mark.kind === 'ossia' || mark.kind === 'ornament' || mark.kind === 'grace') && (!heads.length || !state.notation || heads.some(h => !!h.drum)))
+      if ((mark.kind === 'ossia' || mark.kind === 'ornament' || mark.kind === 'grace') && (!heads.length || (!state.notation && mark.kind !== 'grace') || heads.some(h => !!h.drum)))
         throw new ScoreError('measure', 'Grace notes, ornaments and ossias need a pitched notation anchor', locate(mark.range));
       if (mark.kind === 'ornament') result.ornament = mark.value;
       if (mark.kind === 'onStaff' || mark.kind === 'sharedStem') {
@@ -213,12 +231,9 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         if (mark.kind === 'onStaff') result.displayHand = mark.hand === 'upper' ? 'right' : 'left';
         else result.sharedStem = mark.name;
       }
-      if (mark.kind === 'grace' || mark.kind === 'ossia') {
-        const written = (pitch: string) => projectHead({ pitch, range: mark.range, marks: [] }, interval).written;
-        if (mark.kind === 'grace') result.grace = { side: mark.side, slash: mark.slash,
-          pitches: mark.pitches.map(pitch => Array.isArray(pitch) ? pitch.map(written) : written(pitch)) };
-        else result.ossia = { duration: mark.duration, notes: mark.notes.map(n => ({ key: written(n.pitch), ornament: n.ornament })) };
-      }
+      if (mark.kind === 'grace') result.grace = projectGrace(mark, interval);
+      if (mark.kind === 'ossia') result.ossia = { duration: mark.duration,
+        notes: mark.notes.map(n => ({ key: projectHead({ pitch: n.pitch, range: mark.range, marks: [] }, interval).written, ornament: n.ornament })) };
       if (mark.kind === 'symbol') result.chord = { text: interval ? transposeChord(mark.text, interval) : mark.text, color: mark.ink && ink(mark.ink, locate(mark.range)), range: locate(mark.range) };
       if (mark.kind === 'line') {
         if (event.kind !== 'rest') throw new ScoreError('measure', 'Only a rest takes a staff line', locate(mark.range));

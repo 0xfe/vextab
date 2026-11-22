@@ -47,7 +47,7 @@ export interface Attack {
   dynamic?: import('./grammar2/model').Dynamic;
   displayHand?: PianoHand;
   sharedStem?: string;
-  grace?: { side: 'before' | 'after'; pitches: (string | string[])[]; slash?: boolean };
+  grace?: { side: 'before' | 'after'; pitches: (string | string[])[]; positions?: NonNullable<Head['position']>[][]; slash?: boolean };
   ossia?: { duration: string; notes: { key: string; ornament?: string }[] };
   ornament?: string;
   continuousBeam?: boolean;
