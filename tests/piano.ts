@@ -1,4 +1,5 @@
 // Exercise aligned piano timing, clefs and connectors, independent hand parts, and located diagnostics.
+import { VexFlow } from 'vexflow';
 import { Div, parseScore, renderScore, renderScorePart } from '../src/browser';
 import { projectScoreV2 } from '../src/score/grammar2/project';
 import { scoreSurfaces } from '../src/playback/geometry';
@@ -42,6 +43,34 @@ QUnit.module('Piano grand staff', () => {
     const notes = scorePerformance(score, 60).events.flatMap(e => e.notes.map(n => [e.time, n.pitch, n.duration]));
     assert.deepEqual(notes.filter(n => n[0] === 0), [[0,60,1], [0,48,2]], 'both hands sound on beat one');
     assert.deepEqual(notes.filter(n => n[1] === 43), [[2,43,4]], 'left hand sustains across the bar');
+  });
+
+  QUnit.test('a handwritten score restores both host font stacks after drawing or failing', assert => {
+    const music = VexFlow.getFonts(), text = VexFlow.getTextFonts();
+    try {
+      VexFlow.setFonts('Bravura', 'Academico');
+      VexFlow.setTextFonts('Academico', 'serif');
+      const hostText = VexFlow.getTextFonts();
+      const musicSource = 'piano { upper { :w C5 | } lower { :w C3 | } }';
+      const handwritten = parseScore('layout { font Petaluma heading { title "Jazz" } } ' + musicSource);
+      const root = host();
+      for (const renderer of ['canvas', 'svg'] as const) {
+        const view = renderScore(root, handwritten, { renderer });
+        assert.deepEqual(view.diagnostics, []);
+        assert.ok(view.composition.getNote(view.navigation.events[0].id).fontInfo.family.startsWith('Petaluma'));
+        assert.deepEqual(VexFlow.getTextFonts(), hostText);
+      }
+      assert.equal(root.querySelector('.vf-score-heading text').getAttribute('font-family'), 'Petaluma Script');
+      const plain = renderScore(host(), parseScore(musicSource));
+      assert.ok(plain.composition.getNote(plain.navigation.events[0].id).fontInfo.family.startsWith('Bravura'));
+      assert.throws(() => renderScore(root, handwritten, { width: 1 }), /width/);
+      assert.deepEqual(VexFlow.getFonts(), ['Bravura', 'Academico']);
+      assert.deepEqual(VexFlow.getTextFonts(), hostText);
+      assert.throws(() => parseScore('layout { font Unknown } ' + musicSource), /Petaluma or Bravura/);
+    } finally {
+      VexFlow.setFonts(...music);
+      VexFlow.setTextFonts(...text);
+    }
   });
 
   QUnit.test('grand staff uses a compact default and respects an authored minimum', assert => {

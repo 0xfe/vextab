@@ -892,6 +892,11 @@ export function readScore(source: string, fail: Fail) {
             continue;
           }
           const value = take(), number = Number(value.text);
+          if (field.text === 'font') {
+            if (value.text !== 'Petaluma' && value.text !== 'Bravura') error('Expected Petaluma or Bravura', value);
+            layout!.font = value.text;
+            continue;
+          }
           if (field.text === 'spacing') {
             if (value.text !== 'optical') error('Expected optical spacing', value);
             layout!.spacing = 'optical';

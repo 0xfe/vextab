@@ -2,7 +2,7 @@
 import { Accidental, Element, Factory, PedalMarking, VexFlow, type RenderContext, type StaveNote } from 'vexflow';
 import type { ScoreHeading } from './grammar2/model';
 import type { Attack } from './model';
-import { scoreFont } from './engraving';
+import { headingWeight, scoreTextFont } from './engraving';
 
 /** Heading positions are relative to the music margins and the first staff line. */
 export function drawHeading(ctx: RenderContext, heading: ScoreHeading, left: number, width: number, staffTop: number) {
@@ -17,7 +17,7 @@ export function drawHeading(ctx: RenderContext, heading: ScoreHeading, left: num
       const content = raised ? token.slice(2, -1) : token;
       const label = content.trim();
       const fontSize = size * factor * (raised ? 0.62 : 1);
-      ctx.setFont(scoreFont, fontSize, 'bold', 'normal');
+      ctx.setFont(scoreTextFont(), fontSize, headingWeight(), 'normal');
       // SVG collapses edge spaces on separate text elements. Advance explicitly at run boundaries.
       const space = ctx.measureText('a a').width - ctx.measureText('aa').width;
       const leading = (content.length - content.trimStart().length) * space;
@@ -26,7 +26,7 @@ export function drawHeading(ctx: RenderContext, heading: ScoreHeading, left: num
     });
     let x = left + position * width - runs.reduce((sum, r) => sum + r.advance, 0) * align;
     for (const run of runs) {
-      ctx.setFont(scoreFont, run.fontSize, 'bold', 'normal');
+      ctx.setFont(scoreTextFont(), run.fontSize, headingWeight(), 'normal');
       ctx.fillText(run.label, x + run.leading, staffTop - (lift + (run.raised ? size * 0.5 : 0)) * factor);
       x += run.advance;
     }
@@ -68,7 +68,7 @@ export function placeOssia(reading: Attack['ossia'], anchor: StaveNote, row: { x
   const y = stave.getYForLine(lines.top - lift) / scale;
   const ctx = anchor.checkContext();
   ctx.save();
-  ctx.setFont(scoreFont, 18, 'bold');
+  ctx.setFont(scoreTextFont(), 18, headingWeight());
   const labelWidth = ctx.measureText('Ossia.').width;
   ctx.restore();
   const labelX = Math.max(0, x - labelWidth - 8);
@@ -98,7 +98,7 @@ export function drawOssia(ctx: RenderContext, reading: Attack['ossia'], anchor: 
   Accidental.applyAccidentals([voice], key);
   factory.System({ x, y: y - 40, width }).addStave({ voices: [voice] });
   factory.draw();
-  ctx.setFont(scoreFont, 18, 'bold');
+  ctx.setFont(scoreTextFont(), 18, headingWeight());
   ctx.fillText('Ossia.', labelX, labelY);
   ctx.closeGroup();
   ctx.restore();

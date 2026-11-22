@@ -1,6 +1,6 @@
 // Engrave the lead-sheet swing equation with VexFlow notes, a beam and a bracketed triplet.
 import { Beam, Stave, StaveNote, TickContext, Tuplet, type RenderContext } from 'vexflow';
-import { scoreFont } from './engraving';
+import { headingWeight, scoreTextFont } from './engraving';
 
 /** The invisible stave supplies cue-note coordinates. No demo notes enter the score or playback. */
 export function drawSwingMark(ctx: RenderContext, left: number, baseline: number) {
@@ -12,7 +12,7 @@ export function drawSwingMark(ctx: RenderContext, left: number, baseline: number
     group.setAttribute('aria-label', 'Swing eighth notes');
   } else ctx.scale(scale, scale);
   const x = left / scale, y = baseline / scale;
-  ctx.setFont(scoreFont, 22, 'bold', 'normal');
+  ctx.setFont(scoreTextFont(), 22, headingWeight(), 'normal');
   ctx.fillText('Swing', x, y);
   const stave = new Stave(0, 0, 130);
   stave.setY(y - stave.getYForNote(3)).setNoteStartX(0);

@@ -14,7 +14,7 @@ import { conductorSpec, instrumentComposition, instrumentLabel, selectedPart, ty
 import { fitGrandStaff, includeSystemBottom, sharedSystemSpace } from './grand-staff';
 import { drawHeading, drawOssia, drawPedal, ossiaLines, ossiaReadings, registerPedal } from './score-details';
 import { drawSwingMark } from './swing-mark';
-import { scoreFont } from './engraving';
+import { scoreMusicFont, scoreTextFont, withScoreFonts } from './engraving';
 import {
   AlternatingTremolo, Ornament, TextDynamics, Clef, Fraction, Accidental, Annotation, Stroke, Vibrato, Articulation, Modifier, TabSlide, Barline, StaveNote, TabNote, TabTie, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, CanvasContext,
   type Beam, type Tuplet, type StemmableNote, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
@@ -359,7 +359,7 @@ function splitSilentBeams(factory: Factory, beams: Set<Beam>, silent: Set<string
 function attachPerformanceMarks(note: StaveNote | TabNote, event: Attack, tab: boolean) {
   for (const label of event.labels ?? []) {
     const annotation = new Annotation(label.text).setVerticalJustification(label.position === 'below' ? Annotation.VerticalJustify.BOTTOM : Annotation.VerticalJustify.TOP);
-    annotation.setFont(label.family ?? scoreFont, label.size ?? 12, label.style === 'bold' ? 'bold' : undefined, label.style === 'italic' ? 'italic' : undefined);
+    annotation.setFont(label.family ?? scoreTextFont(), label.size ?? 12, label.style === 'bold' ? 'bold' : undefined, label.style === 'italic' ? 'italic' : undefined);
     if (label.ink) annotation.setStyle(inkStyle(label.ink));
     note.addModifier(annotation, 0);
   }
@@ -440,7 +440,7 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
           const glyphs = [...event.dynamic].map(letter => TextDynamics.GLYPHS[letter]).join('');
           // A right-hand dynamic on the bass staff sits above the two voices, as in a grand staff.
           const side = voice.hand === 'right' && event.displayHand === 'left' ? Annotation.VerticalJustify.TOP : Annotation.VerticalJustify.BOTTOM;
-          note.addModifier(new Annotation(glyphs).setFont('Bravura', 15).setVerticalJustification(side), 0);
+          note.addModifier(new Annotation(glyphs).setFont(scoreMusicFont(), 15).setVerticalJustification(side), 0);
         }
         attachPerformanceMarks(note as StaveNote | TabNote, event, staff === 'tab');
         if (event.color) {
@@ -524,7 +524,7 @@ function drawTabEndings(view: Projection, composition: EasyScoreComposition, ctx
       ctx.fillRect(x, y, right - x, 1);
       if (first === mark.firstBar) {
         ctx.fillRect(x, y, 1, 12);
-        ctx.setFont(scoreFont, 11).fillText(mark.label, x + 4, y + 12);
+        ctx.setFont(scoreTextFont(), 11).fillText(mark.label, x + 4, y + 12);
       }
       if (last === mark.lastBar) ctx.fillRect(right - 1, y, 1, 12);
       ctx.closeGroup();
@@ -632,12 +632,12 @@ export function renderScore(host: HTMLElement, source: ParsedScore | ScoreV2,
   options: ScreenOptions & PartSelector & { part?: Part } = {}) {
   const part = options.part ?? 'score';
   const selected = 'parts' in source ? projectScoreV2(source, selectedPart(source, options)) : source;
-  return renderParts(host, [selectVoices(selected, part)], part, options);
+  return withScoreFonts(selected.layout?.font, () => renderParts(host, [selectVoices(selected, part)], part, options));
 }
 
 /** Build one native conductor composition and retain each source instrument for independent extraction. */
 export function renderConductor(host: HTMLElement, document: ScoreV2, options: ScreenOptions = {}) {
-  return renderParts(host, document.parts.map((_, i) => projectScoreV2(document, i)), 'score', options, true);
+  return withScoreFonts(document.layout?.font, () => renderParts(host, document.parts.map((_, i) => projectScoreV2(document, i)), 'score', options, true));
 }
 
 /** Prepare fresh native objects for the requested surface. Commit the DOM only after successful layout. */
@@ -757,7 +757,7 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
     }
   }
 
-  scoreSurfaces.set(canvas ?? (ctx as SVGContext).svg, { score: parsed, ensemble: conductor ? scores : undefined, read: () => playbackGeometry(composition, instruments) });
+  scoreSurfaces.set(canvas ?? (ctx as SVGContext).svg, { score: parsed, ensemble: conductor ? scores : undefined, read: () => withScoreFonts(parsed.layout?.font, () => playbackGeometry(composition, instruments)) });
   return { score: parsed, parts: scores, composition, navigation, hitTest, tabRegions, extraRegions, diagnostics, rangeFor,
     sourceFor: (id: string): string | undefined => sources[id] };
 }
@@ -854,13 +854,15 @@ function publicationDrawing(scores: ParsedScore[], views: Projection[], source: 
 export function renderScorePart(host: HTMLElement, source: ParsedScore | ScoreV2, part: Staff,
   options: EditionOptions & PartSelector & { voice?: number } = {}) {
   const { voice, partId, partIndex, ...paper } = options;
-  if ('parts' in source) return publishEdition(host, source, selectedPart(source, { partId, partIndex }), paper, part, voice);
-  return publish(host, [selectVoices(source, part, voice)], [part], paper, undefined);
+  return withScoreFonts(source.layout?.font, () => 'parts' in source
+    ? publishEdition(host, source, selectedPart(source, { partId, partIndex }), paper, part, voice)
+    : publish(host, [selectVoices(source, part, voice)], [part], paper));
 }
 
 /** Print a complete conductor edition or an independent named instrument with its authored cues. */
 export function renderEdition(host: HTMLElement, document: ScoreV2, target: 'conductor' | PartSelector = 'conductor', options: EditionOptions = {}) {
-  return publishEdition(host, document, target === 'conductor' ? target : selectedPart(document, target), options, 'score');
+  return withScoreFonts(document.layout?.font, () =>
+    publishEdition(host, document, target === 'conductor' ? target : selectedPart(document, target), options, 'score'));
 }
 
 /** Include only the requested music and the staves supplying cue references. */

@@ -2,7 +2,7 @@
 import { lyrics } from './verses';
 import { describeOpenSlide } from './open-slide';
 import { describePrebend } from './music';
-import { scoreFont } from './engraving';
+import { scoreTextFont } from './engraving';
 import { Annotation, FretDiagram, type EasyScoreComposition, type EasyScoreMeasureSpec, type RenderContext, type ScoreHitRegion } from 'vexflow';
 import type { Measure, ParsedScore } from './model';
 import { ScoreError, type SourceRange } from './source';
@@ -58,7 +58,7 @@ export function drawFrames(score: ParsedScore, width: number, ctx: RenderContext
   const regions: ScoreHitRegion[] = [];
   let x = 10, y = top + 6, bottom = top, right = 0;
   ctx.save();
-  ctx.setFont(scoreFont, 12);
+  ctx.setFont(scoreTextFont(), 12);
   for (const measure of score.measures) for (const voice of measure.voices) for (const event of voice.events) {
     if (!event.frame) continue;
     const { spec, range } = event.frame;

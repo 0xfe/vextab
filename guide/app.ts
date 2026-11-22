@@ -111,7 +111,9 @@ async function printPart(): Promise<void> {
       partPlayer = new Player(result.score, { playback: scoreOptions(part).playback });
       partPlayer.render(publication.pages[0].svg);
     }
-    const { faces } = await import(/* webpackChunkName: "print-outlines" */ './outlines');
+    const { faces } = result.score.layout?.font === 'Petaluma'
+      ? await import(/* webpackChunkName: "petaluma-outlines" */ './petaluma-outlines')
+      : await import(/* webpackChunkName: "print-outlines" */ './outlines');
     if (revision !== printRevision) return;
     const html = publication.toPrintHTML(faces);
     const document = new DOMParser().parseFromString(html, 'text/html');

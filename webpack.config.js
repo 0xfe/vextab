@@ -54,7 +54,7 @@ module.exports = (env = {}) => {
         new HtmlWebpackPlugin({ template: './static/div.html', filename: 'static/div.html', chunks: ['div', 'example-audio'] }),
       ] : []),
       new CopyPlugin({ patterns: [
-        ...['bravura', 'academico'].map(face => ({
+        ...['bravura', 'academico', 'petaluma', 'petalumascript'].map(face => ({
           from: require.resolve('@vexflow-fonts/' + face + '/LICENSE.txt'),
           to: guidePrefix + 'licenses/' + face + '.txt',
         })),

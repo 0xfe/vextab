@@ -20,6 +20,8 @@
         "@lahmatiy/jison": "0.4.18-remastered.7",
         "@vexflow-fonts/academico": "1.0.1",
         "@vexflow-fonts/bravura": "1.0.2",
+        "@vexflow-fonts/petaluma": "1.0.1",
+        "@vexflow-fonts/petalumascript": "1.0.0",
         "copy-webpack-plugin": "14.0.0",
         "css-loader": "7.1.5",
         "esbuild-loader": "4.5.0",
