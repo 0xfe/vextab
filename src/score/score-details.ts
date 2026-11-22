@@ -2,7 +2,7 @@
 import { Accidental, Element, Factory, PedalMarking, VexFlow, type RenderContext, type StaveNote } from 'vexflow';
 import type { ScoreHeading } from './grammar2/model';
 import type { Attack } from './model';
-import { headingWeight, scoreTextFont } from './engraving';
+import { headingWeight, scoreMusicFont, scoreTextFont } from './engraving';
 
 /** Heading positions are relative to the music margins and the first staff line. */
 export function drawHeading(ctx: RenderContext, heading: ScoreHeading, left: number, width: number, staffTop: number) {
@@ -12,21 +12,25 @@ export function drawHeading(ctx: RenderContext, heading: ScoreHeading, left: num
   function line(text: string | undefined, position: number, lift: number, size: number, align = 0) {
     if (!text) return;
     // Raised ordinals use ordinary font outlines, including in portable SVG exports.
-    const runs = text.split(/(\^\{[^{}]+\})/).filter(Boolean).map(token => {
+    const runs = text.split(/(\^\{[^{}]+\}|♩)/).filter(Boolean).map(token => {
       const raised = token.startsWith('^{') && token.endsWith('}');
       const content = raised ? token.slice(2, -1) : token;
-      const label = content.trim();
+      // The metronome note belongs to the music face so portable SVG can outline it.
+      const quarter = token === '♩';
+      const family = quarter ? scoreMusicFont() : scoreTextFont();
+      const weight = quarter ? 'normal' : headingWeight();
+      const label = quarter ? VexFlow.Glyphs.metNoteQuarterUp : content.trim();
       const fontSize = size * factor * (raised ? 0.62 : 1);
-      ctx.setFont(scoreTextFont(), fontSize, headingWeight(), 'normal');
+      ctx.setFont(family, fontSize, weight, 'normal');
       // SVG collapses edge spaces on separate text elements. Advance explicitly at run boundaries.
-      const space = ctx.measureText('a a').width - ctx.measureText('aa').width;
+      const space = quarter ? 0 : ctx.measureText('a a').width - ctx.measureText('aa').width;
       const leading = (content.length - content.trimStart().length) * space;
       const advance = (content.length - label.length) * space + ctx.measureText(label).width;
-      return { label, fontSize, raised, leading, advance };
+      return { label, family, weight, fontSize, raised, leading, advance };
     });
     let x = left + position * width - runs.reduce((sum, r) => sum + r.advance, 0) * align;
     for (const run of runs) {
-      ctx.setFont(scoreTextFont(), run.fontSize, headingWeight(), 'normal');
+      ctx.setFont(run.family, run.fontSize, run.weight, 'normal');
       ctx.fillText(run.label, x + run.leading, staffTop - (lift + (run.raised ? size * 0.5 : 0)) * factor);
       x += run.advance;
     }

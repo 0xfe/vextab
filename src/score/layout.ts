@@ -14,7 +14,7 @@ import { conductorSpec, instrumentComposition, instrumentLabel, selectedPart, ty
 import { fitGrandStaff, includeSystemBottom, sharedSystemSpace } from './grand-staff';
 import { drawHeading, drawOssia, drawPedal, ossiaLines, ossiaReadings, registerPedal } from './score-details';
 import { drawSwingMark } from './swing-mark';
-import { scoreMusicFont, scoreTextFont, withScoreFonts } from './engraving';
+import { headingWeight, scoreMusicFont, scoreTextFont, withScoreFonts } from './engraving';
 import {
   AlternatingTremolo, GraceNoteGroup, GraceTabNote, Ornament, TextDynamics, Clef, Fraction, Accidental, Annotation, Stroke, Vibrato, Articulation, Modifier, TabSlide, Barline, StaveNote, TabNote, TabTie, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, CanvasContext,
   type Beam, type Tuplet, type StemmableNote, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
@@ -570,6 +570,9 @@ function drawPairedMarks(parsed: ParsedScore, view: Projection, composition: Eas
       const mark = span.kind === 'slide' || span.kind === 'glissando' ? new TabSlide(ends, up ? TabSlide.SLIDE_UP : TabSlide.SLIDE_DOWN)
         : !firstNote ? new TabTie(ends)
           : span.kind === 'pull' ? TabTie.createPulloff(ends) : TabTie.createHammeron(ends);
+      // Use the score's exportable lettering for hammer-ons and pull-offs on TAB.
+      if (firstNote && (span.kind === 'hammer' || span.kind === 'pull'))
+        mark.setFont({ ...mark.fontInfo, family: scoreTextFont(), weight: headingWeight() });
       mark.setContext(ctx).draw();
     };
     if (from.getStave().getY() === to.getStave().getY()) draw(from, to);
