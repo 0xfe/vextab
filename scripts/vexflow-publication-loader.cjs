@@ -22,8 +22,30 @@ function tabSlurs(source) {
   // Use individual fret digits as obstacles, so the curve can pass through open string space.
   source = replaceOnce(source, '.filter((n) => n instanceof StaveNote &&\n                    (n.getStave()',
     '.filter((n) => (n instanceof StaveNote || (kind === "slur" && n instanceof TabNote)) &&\n                    (n.getStave()');
+  const failure = 'if (!fitSpan(fragment, obstacles))';
+  source = replaceOnce(source, failure, `let fitted = fitSpan(fragment, obstacles);
+            if (!fitted && s.spec.guitarPhrase) {
+                const { x1, x2, y1, y2, rise } = fragment;
+                // Try the two head edges and a small inside offset. Lift past simultaneous dots only as a last resort.
+                // Coordinates are staff spaces. Endpoints at a system break stay at the native continuation.
+                for (const [left, right, lift] of [[0.3, 0, 0], [0.3, -0.5, 0], [-0.5, -0.5, 0], [0.3, 0.3, 0], [0.3, 0, 0.8]]) {
+                    fragment.x1 = x1 + (starts ? left * space : 0);
+                    fragment.x2 = x2 - (ends ? right * space : 0);
+                    fragment.y1 = y1 + (starts ? sign * lift * space : 0);
+                    fragment.y2 = y2 + (ends ? sign * lift * space : 0);
+                    if (fragment.x2 > fragment.x1 && fitSpan(fragment, obstacles)) {
+                        fitted = true;
+                        break;
+                    }
+                }
+                if (!fitted) Object.assign(fragment, { x1, x2, y1, y2, rise });
+            }
+            if (!fitted)`);
+  // A grace slur leaves usable space between its ribbon and the sustained chord.
   return replaceOnce(source, '.flatMap((n) => measureEngraving(n).parts);',
-    '.flatMap((n) => n instanceof TabNote ? n.getFretInk() : measureEngraving(n).parts);');
+    `.flatMap((n) => n instanceof TabNote ? n.getFretInk() : measureEngraving(n, s.spec.guitarPhrase ? {
+                    extension(owner) { if (owner.getRouteParts && !owner.text) return { parts: owner.getRouteParts(), anchors: {} }; }
+                } : {}).parts);`);
 }
 
 /** Give the row breaker and the formatter the same opening indent. The preview pass

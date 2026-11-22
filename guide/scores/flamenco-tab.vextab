@@ -14,10 +14,10 @@ alias sweep="brush down"
 
 # Fourth-string ligados and treble arpeggios recur across the four-bar compás.
 pattern longligado {
-  slur below { :8 2/4 tuplet 3:2 { :16 3/4 2/4 0/4 } :16 2/4 3/4 2/4 0/4 :q 2/4 }
+  slur { :8 2/4 tuplet 3:2 { :16 3/4 2/4 0/4 } :16 2/4 3/4 2/4 0/4 :q 2/4 }
 }
 pattern shortligado {
-  slur below { :8 2/4 tuplet 3:2 { :16 3/4 2/4 0/4 } :q 2/4 }
+  slur { :8 2/4 tuplet 3:2 { :16 3/4 2/4 0/4 } :q 2/4 }
 }
 pattern flicks {
   tuplet 3:2 { :q rest :8 0/1 }
@@ -83,9 +83,9 @@ guitar guitarra {
     use cadencebass |
 
     :q 0/5[sweep] slur { :8 2/5[finger 2] 3/5[finger 3] }
-    slur below { tuplet 3:2 { :8 0/4[label "*" above] :16 2/4 } tuplet 3:2 { :16 3/4 2/4 0/4 } } |
+    slur { tuplet 3:2 { :8 0/4[label "*" above] :16 2/4 } tuplet 3:2 { :16 3/4 2/4 0/4 } } |
     :q 3/5[sweep] slur { :8 2/4 3/4 }
-    slur below { tuplet 3:2 { :8 0/3[label "*" above] :16 2/3[finger 2] } tuplet 3:2 { :16 4/3 2/3 0/3 } } |
+    slur { tuplet 3:2 { :8 0/3[label "*" above] :16 2/3[finger 2] } tuplet 3:2 { :16 4/3 2/3 0/3 } } |
     :q 3/4 2/4 3/4 |
     use cadencebass |
   }

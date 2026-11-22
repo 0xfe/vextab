@@ -48,6 +48,20 @@ QUnit.module('Grammar v2 score views', () => {
     }
   });
 
+  QUnit.test('a bass phrase clears the triplet below its beam and the grace group above it', assert => {
+    const score = parseScore(`meter 3/4 guitar {
+      voice treble stem up { :h. (1/3 0/2 0/1)[grace before (0/1 0/1 0/1 0/1), brush down] | }
+      voice bass stem down { slur { :8 2/4 tuplet 3:2 { :16 3/4 2/4 0/4 } :16 2/4 3/4 2/4 0/4 :q 2/4 } | }
+    }`);
+    const view = renderScore(host(), score, { width: 565 });
+    const slurs = view.composition.sheet.getContinuousLayout().fragments.filter(f => f.kind === 'slur');
+    const written = slurs.find(f => f.above);
+    const numeral = view.composition.notes[0][0].flat().find(note => note.getTuplet())!.getTuplet()!.getBoundingBox();
+    assert.ok(Math.max(written.y1, written.y2) < numeral.y, 'both ends and the upward arch clear the numeral');
+    assert.ok(slurs.some(f => !f.above), 'the TAB slur stays below the frets');
+    assert.deepEqual(view.diagnostics, []);
+  });
+
   QUnit.test('fretted grace chords keep their strings, capo and single playback onset', assert => {
     const input = 'meter 1/4 guitar { capo 2 0/1[grace before ((0/1 1/2) 2/3)] | }';
     const score = parseScore(input);
