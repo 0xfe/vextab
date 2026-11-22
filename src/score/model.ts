@@ -47,7 +47,8 @@ export interface Attack {
   dynamic?: import('./grammar2/model').Dynamic;
   displayHand?: PianoHand;
   sharedStem?: string;
-  grace?: { side: 'before' | 'after'; pitches: string[]; slash?: boolean };
+  grace?: { side: 'before' | 'after'; pitches: (string | string[])[]; slash?: boolean };
+  ossia?: { duration: string; notes: { key: string; ornament?: string }[] };
   ornament?: string;
   continuousBeam?: boolean;
   tremolo?: number;
@@ -157,7 +158,7 @@ export type ScoreSpan = { id: string; from: string; to: string; range: SourceRan
   { kind: 'lyric' | 'hyphen'; lane: string } |
   { kind: 'crescendo' | 'diminuendo' | 'continuousBeam' | 'tremolo'; niente?: boolean; strokes?: number } |
   { kind: 'volta'; label: string; firstBar: number; lastBar: number } |
-  { kind: 'palmMute'; strings: number[] } | { kind: 'slur' } | { kind: 'hammer' | 'pull' | 'slide'; fromHead: number; toHead: number }
+  { kind: 'palmMute'; strings: number[] } | { kind: 'slur'; side?: 'above' | 'below' } | { kind: 'pedal' } | { kind: 'hammer' | 'pull' | 'slide'; fromHead: number; toHead: number }
 );
 
 export interface ParsedScore {

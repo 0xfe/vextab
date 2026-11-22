@@ -22,14 +22,15 @@ export function decorateAttack(event: PlaybackEvent, attack: Attack, key: KeyMan
   if (!head) return [event];
   const out: PlaybackEvent[] = [];
   let start = event.time, length = event.duration;
-  function play(pitches: number[], at: number, duration: number) {
+  function play(pitches: (number | number[])[], at: number, duration: number) {
     const step = duration / pitches.length;
     pitches.forEach((pitch, i) => out.push({ ...event, time: at + i * step, duration: step,
-      notes: [{ pitch, duration: step, velocity: principal.velocity, program: principal.program }] }));
+      notes: (Array.isArray(pitch) ? pitch : [pitch]).map(key => ({ pitch: key, duration: step, velocity: principal.velocity, program: principal.program })) }));
   }
   if (attack.grace) {
     const shift = principal.pitch - midiPitch(head.written);
-    const pitches = attack.grace.pitches.map(p => midiPitch(p) + shift).filter(p => p >= 0 && p <= 127);
+    const pitches = attack.grace.pitches.map(step => (Array.isArray(step) ? step : [step])
+      .map(pitch => midiPitch(pitch) + shift).filter(p => p >= 0 && p <= 127)).filter(step => step.length);
     if (pitches.length) {
       const duration = length * graceFraction;
       const before = attack.grace.side === 'before';

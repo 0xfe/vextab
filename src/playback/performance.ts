@@ -90,6 +90,37 @@ function expression(score: ParsedScore, tempo: number, expressive: boolean) {
   return { tempi, velocities };
 }
 
+/** Dampers affect both hands. Repeated strikes of the same key still get their own attack. */
+function sustainNotes(events: PlaybackEvent[], windows: { start: number; end: number }[]) {
+  if (!windows.length) return;
+  windows.sort((a, b) => a.start - b.start);
+  const ranges: typeof windows = [];
+  for (const window of windows) {
+    const last = ranges[ranges.length - 1];
+    if (last && window.start < last.end) last.end = Math.max(last.end, window.end);
+    else ranges.push(window);
+  }
+  const nextStrike = new Map<number, number>();
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i];
+    for (const note of event.notes) {
+      const release = event.time + note.duration;
+      let low = 0, high = ranges.length;
+      while (low < high) {
+        const mid = (low + high) >>> 1;
+        if (ranges[mid].end <= release) low = mid + 1;
+        else high = mid;
+      }
+      const pedal = ranges[low];
+      if (pedal && pedal.start < release) {
+        const end = Math.min(pedal.end, nextStrike.get(note.pitch) ?? Infinity);
+        note.duration = Math.max(note.duration, end - event.time);
+      }
+      nextStrike.set(note.pitch, event.time);
+    }
+  }
+}
+
 /** Translate meter, pickup and phrasing marks to seconds on this performed visit. */
 function performanceBar(measure: Measure, whole: number, slurEnds: Set<string>): PerformanceBar {
   const duration = seconds(measure.span, whole), quarter = whole / 4;
@@ -151,11 +182,20 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
   const glissandi = new Map((score.spans ?? []).flatMap(span => span.kind === 'glissando' ? [[span.to + ':' + span.toHead, span] as const] : []));
   const decorations = new Map<string, { attack: Attack; key: KeyManager }>();
   const keys = new Map<string, KeyManager>();
+  const pedals = (score.spans ?? []).filter(s => s.kind === 'pedal');
+  const downs = new Map(pedals.map(s => [s.from, s.to]));
+  const held = new Map<string, number>();
+  const windows: { start: number; end: number }[] = [];
+  // A repeat jump or a partial playback selection releases any unfinished pedal.
+  function liftAll(end: number) {
+    for (const start of held.values()) windows.push({ start, end });
+    held.clear();
+  }
   let previousBar = 0;
   let bar = 0;
   for (const number of visits) {
     const measure = score.measures[number - 1];
-    if (number !== previousBar + 1) sounding.clear();
+    if (number !== previousBar + 1) { sounding.clear(); liftAll(bar); }
     previousBar = number;
     const whole = 240 / tempi[number - 1];
     // Process by onset so an earlier attack in a later-written voice can start a named tie.
@@ -165,6 +205,11 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
     const inBar = new Map<string, PlaybackEvent>();
     for (const { attack, time } of attacks) {
       const duration = seconds(attack.duration, whole);
+      if (downs.has(attack.id)) held.set(downs.get(attack.id), time);
+      if (held.has(attack.id)) {
+        windows.push({ start: held.get(attack.id), end: time + duration });
+        held.delete(attack.id);
+      }
       const notes: PlaybackNote[] = [];
       if (attack.grace || attack.ornament) {
         const key = measure.state.key ?? 'C';
@@ -226,7 +271,10 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
     const share = grace && take?.graceFraction(event.time, event.duration, grace.pitches.length, grace.slash);
     return decorateAttack(event, word.attack, word.key, share);
   }) : events;
-  return { events: sounded.sort((a,b) => a.time - b.time), duration: bar };
+  sounded.sort((a,b) => a.time - b.time);
+  liftAll(bar);
+  sustainNotes(sounded, windows);
+  return { events: sounded, duration: bar };
 }
 
 /** Fixed scores may contain fragments and text voices outside the shared parser's grammar. */

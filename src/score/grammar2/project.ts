@@ -204,8 +204,8 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         result.chord = { text: NotationSpelling.chordText(result.harmony), range: locate(mark.range) };
       }
       if (mark.kind === 'dynamic') result.dynamic = mark.value;
-      if ((mark.kind === 'ornament' || mark.kind === 'grace') && (!heads.length || !state.notation || heads.some(h => !!h.drum)))
-        throw new ScoreError('measure', 'A grace group or ornament needs a pitched notation anchor', locate(mark.range));
+      if ((mark.kind === 'ossia' || mark.kind === 'ornament' || mark.kind === 'grace') && (!heads.length || !state.notation || heads.some(h => !!h.drum)))
+        throw new ScoreError('measure', 'Grace notes, ornaments and ossias need a pitched notation anchor', locate(mark.range));
       if (mark.kind === 'ornament') result.ornament = mark.value;
       if (mark.kind === 'onStaff' || mark.kind === 'sharedStem') {
         if (!state.piano || (mark.kind === 'sharedStem' && !heads.length))
@@ -213,8 +213,12 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         if (mark.kind === 'onStaff') result.displayHand = mark.hand === 'upper' ? 'right' : 'left';
         else result.sharedStem = mark.name;
       }
-      if (mark.kind === 'grace') result.grace = { side: mark.side, pitches: mark.pitches.map(pitch =>
-        projectHead({ pitch, range: mark.range, marks: [] }, interval).written) };
+      if (mark.kind === 'grace' || mark.kind === 'ossia') {
+        const written = (pitch: string) => projectHead({ pitch, range: mark.range, marks: [] }, interval).written;
+        if (mark.kind === 'grace') result.grace = { side: mark.side, slash: mark.slash,
+          pitches: mark.pitches.map(pitch => Array.isArray(pitch) ? pitch.map(written) : written(pitch)) };
+        else result.ossia = { duration: mark.duration, notes: mark.notes.map(n => ({ key: written(n.pitch), ornament: n.ornament })) };
+      }
       if (mark.kind === 'symbol') result.chord = { text: interval ? transposeChord(mark.text, interval) : mark.text, color: mark.ink && ink(mark.ink, locate(mark.range)), range: locate(mark.range) };
       if (mark.kind === 'line') {
         if (event.kind !== 'rest') throw new ScoreError('measure', 'Only a rest takes a staff line', locate(mark.range));
@@ -266,8 +270,22 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     const voices: MeasureVoice[] = [];
     const engraving = { ...part, ...voice.settings };
     let previous: Attack | undefined;
+    let depressed: Attack | undefined;
     function voiceAttack(event: ScoreEvent) {
       const next = attack(event, staffSounds);
+      for (const mark of event.marks) {
+        if (mark.kind !== 'pedal') continue;
+        const range = locate(mark.range);
+        if (!state.piano || event.kind === 'skip') throw new ScoreError('measure', 'Place pedal marks on piano notes or rests', range);
+        if (mark.action === 'down') {
+          if (depressed) throw new ScoreError('measure', 'Lift the pedal before pressing again', range);
+          depressed = next;
+        } else {
+          if (!depressed) throw new ScoreError('measure', 'Pedal up needs an earlier pedal down in this voice', range);
+          projected.spans.push({ kind: 'pedal', from: depressed.id, to: next.id, id: 'pedal-' + depressed.id, range });
+          depressed = undefined;
+        }
+      }
       const used = new Set<number>();
       event.heads.forEach((head, i) => {
         for (const mark of head.marks) {
@@ -343,6 +361,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       m.voices.push(value);
       voices.push(value);
     }
+    if (depressed) throw new ScoreError('measure', 'Missing pedal up', depressed.range);
     resolveVerseLinks(voices, projected.spans);
     addEndings(voice);
     addSpans(voice, voices);
@@ -390,7 +409,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       } else if (mark.kind === 'slur' || mark.kind === 'palmMute') {
         if (mark.kind === 'palmMute' && mark.strings.some(n => n > state.strings))
           throw new ScoreError('measure', 'Mute outside the instrument tuning', range);
-        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, strings: mark.strings, range, id: mark.kind + '-' + mark.first });
+        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, side: mark.side, strings: mark.strings, range, id: mark.kind + '-' + mark.first });
       } else if (mark.kind === 'beam' || mark.kind === 'feather') {
         const first = indices.get(mark.first), last = indices.get(mark.last);
         const bar = voice.measures[voice.events[first].bar - 1];

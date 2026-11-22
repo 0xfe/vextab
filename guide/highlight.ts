@@ -11,8 +11,8 @@ const notation = {
   // Mark hex arguments first so an ink colour is never painted as a comment.
   color: { pattern: /(\bink\s+)#(?:[a-f\d]{8}|[a-f\d]{6}|[a-f\d]{4}|[a-f\d]{3})\b/i, lookbehind: true, alias: 'number' },
   comment: { pattern: /\/\/[^\r\n]*|(^|[\s{}()[\],|])#[^\r\n]*/m, lookbehind: true, greedy: true },
-  keyword: /\b(?:alias|meter|pickup|guitar|staff|stave|drums|piano|upper|lower|voice|fragment|layout|play|pattern|times|use|tuplet|beam|volta|ending|palmMute|strings|transpose|octave|text|mark|sign|bar|break|system|repeatStart)\b/,
-  property: /\b(?:name|shortName|sounds|key|tuning|capo|view|stem|tabStems|ink|tempo|instrument|performer|swing|finger|tie|hammer|pull|slide|prebend|bend|lyric|symbol|frame|line|font|size|style)\b/,
+  keyword: /\b(?:alias|meter|pickup|guitar|staff|stave|drums|piano|upper|lower|voice|fragment|layout|heading|grace|ossia|pedal|slur|play|pattern|times|use|tuplet|beam|volta|ending|palmMute|strings|transpose|octave|text|mark|sign|bar|break|system|repeatStart)\b/,
+  property: /\b(?:slashed|firstSystemIndent|spacing|optical|dedication|title|composer|ornament|before|after|above|below|down|up|name|shortName|sounds|key|tuning|capo|view|stem|tabStems|ink|tempo|instrument|performer|swing|finger|tie|hammer|pull|slide|prebend|bend|lyric|symbol|frame|line|font|size|style)\b/,
   duration: /:(?:\d+|[qwh])\.{0,2}/,
   pitch: /\b(?:[A-G](?:bb|##|[#bn])?[0-8]|(?:x|\d+)(?:-(?:x|\d+))*\/[1-8]|kick|snare|hat|rest|skip|slash)\b/,
   operator: /[{}|()[\],]/,

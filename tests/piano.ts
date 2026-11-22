@@ -44,6 +44,90 @@ QUnit.module('Piano grand staff', () => {
     assert.deepEqual(notes.filter(n => n[1] === 43), [[2,43,4]], 'left hand sustains across the bar');
   });
 
+  QUnit.test('grand staff uses a compact default and respects an authored minimum', assert => {
+    const duet = 'piano { upper { :w G4 | } lower { :w C3 | } }';
+    function gap(source: string) {
+      const [upper, lower] = renderScore(host(), read(source)).composition.staves[0];
+      return lower.getYForLine(0) - upper.getYForLine(4);
+    }
+    assert.ok(gap(duet) <= 52, 'a plain grand staff leaves about five spaces between the nearest staff lines');
+    assert.ok(gap('layout { staffDistance 16 } ' + duet) >= 120, 'explicit distance sets a floor');
+  });
+
+  QUnit.test('opposing extremes share vertical space on different beats', assert => {
+    const distance = (lower: string) => {
+      const source = 'piano { upper { :h C3 G5 | } lower { :h ' + lower + ' | } }';
+      const [a, b] = renderScore(host(), read(source)).composition.staves[0];
+      return b.getYForLine(0) - a.getYForLine(4);
+    };
+    assert.ok(distance('G4 C2') >= distance('C2 G4') + 25, 'reserve space only where the two hands meet');
+  });
+
+  QUnit.test('neighboring systems share space at different beats and keep their page margins', assert => {
+    const piano = (upper: string, gap = 16) => read('layout { rowGap ' + gap + ' } piano { '
+      + 'upper { :h G4 G4 | break system ' + upper + ' | } lower { :h C1 C3 | G3 G3 | } }');
+    const aligned = piano('C7 G4'), staggered = piano('G4 C7');
+    function screenGap(score: ReturnType<typeof read>, renderer: 'svg' | 'canvas') {
+      const [first, second] = renderScore(host(), score, { width: 550, renderer }).composition.staves;
+      return second[0].getYForLine(0) - first[1].getYForLine(4);
+    }
+    for (const backend of ['svg', 'canvas'] as const) {
+      const compact = screenGap(staggered, backend);
+      assert.ok(screenGap(aligned, backend) > compact + 12, backend + ' clears coincident ledger notes');
+      assert.closeTo(screenGap(piano('G4 C7', 40), backend) - compact, 24, 0.01, backend + ' respects the authored row gap');
+    }
+    function pageGap(score: ReturnType<typeof read>) {
+      const page = renderScorePart(host(), score, 'notation').publication.pages[0].svg;
+      const systems = [...page.querySelectorAll('[data-system]')];
+      const line = (i: number, staff: number, n: number) =>
+        systems[i].querySelectorAll('.vf-stave')[staff].children[n].getBoundingClientRect().y;
+      return line(1, 0, 0) - line(0, 1, 4);
+    }
+    assert.ok(pageGap(aligned) > pageGap(staggered) + 2, 'printed neighbors share the same open space');
+    const pageTop = (score: ReturnType<typeof read>) => {
+      const page = renderScorePart(host(), score, 'notation', { pageBreaks: [2] }).publication.pages[1].svg;
+      return page.querySelector('[data-system]').getBoundingClientRect().top - page.getBoundingClientRect().top;
+    };
+    assert.closeTo(pageTop(aligned), pageTop(staggered), 1, 'the first system on a new page keeps its top margin');
+  });
+
+  QUnit.test('opening indent participates in layout and leaves the right margin aligned', assert => {
+    const source = 'layout { firstSystemIndent 64 } piano { upper { :w G4 | break system G4 | } lower { :w C3 | C3 | } }';
+    for (const renderer of ['svg', 'canvas'] as const) {
+      const score = renderScore(host(), read(source), { width: 550, renderer });
+      const [upper, next] = score.composition.staves.map(staves => staves[0]);
+      assert.closeTo(upper.getX() - next.getX(), 64, 0.01);
+      assert.closeTo(upper.getX() + upper.getWidth(), next.getX() + next.getWidth(), 0.01);
+    }
+    const print = renderScorePart(host(), read(source), 'notation').publication.pages[0].svg;
+    const starts = [...print.querySelectorAll('[data-system]')].map(group =>
+      group.querySelector<SVGGraphicsElement>('.vf-stave').firstElementChild.getBoundingClientRect().left);
+    assert.ok(starts[0] > starts[1] + 20, 'the printed opening staff is also inset');
+    assert.throws(() => parseScore(source.replace('64', '-1')), /Invalid layout dimension/);
+  });
+
+  QUnit.test('pedals sound across hands, grace chords attack together, and ossias stay on paper', assert => {
+    const source = 'meter 4/4 piano { upper { C5 D5 C5 F5[grace before slashed ((G4 B4))] | } '
+      + 'lower { C3[pedal down] E3[ossia :8 (E3[ornament mordent] F3 E3)] G3[pedal up] rest | } }';
+    const score = read(source);
+    for (const renderer of ['canvas', 'svg'] as const) {
+      const view = renderScore(host(), score, { renderer });
+      assert.deepEqual(view.diagnostics, []);
+    }
+    const paper = renderScorePart(host(), score, 'left').publication.pages[0].svg;
+    assert.equal(paper.querySelectorAll('.vf-ossia .vf-stavenote').length, 3);
+    assert.equal(paper.querySelectorAll('.vf-pedal text').length, 2);
+    const music = scorePerformance(score, 60);
+    const at = (time: number) => music.events.filter(event => event.time === time).flatMap(event => event.notes);
+    assert.deepEqual(at(0).map(n => [n.pitch, n.duration]), [[72, 2], [48, 3]], 'restrike the upper C while the bass continues ringing');
+    assert.equal(at(1).find(n => n.pitch === 74).duration, 2, 'right hand sustains under a left-hand pedal');
+    assert.deepEqual(at(3).map(n => n.pitch), [67, 71], 'grace pitches share one onset');
+    assert.deepEqual(at(3.25).map(n => n.pitch), [77]);
+    assert.equal(music.duration, 4);
+    assert.throws(() => read(source.replace('[pedal up]', '')), /Missing pedal up/);
+    assert.throws(() => read(source.replace('[pedal down]', '')), /earlier pedal down/);
+  });
+
   QUnit.test('Four voices keep accidental memory on the owning stave', assert => {
     const satb = 'meter 2/4 piano { upper { voice lead stem up { F#4 F#4 | } voice alto stem down { :h C4 | } } '
       + 'lower { voice tenor stem up { F4 F4 | } voice bass stem down { :h C3 | } } }';

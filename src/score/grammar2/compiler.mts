@@ -212,7 +212,7 @@ export function compile(source: string): ScoreV2 {
             if (node.kind === 'beam' && (members[0].bar !== members[members.length - 1].bar ||
               members.some(e => Number(e.writtenDuration.split('/')[0]) * 4 >= Number(e.writtenDuration.split('/')[1]))))
               fail('syntax', 'Beam short notes within one bar', node.range, trace);
-            spans.push({ kind: node.kind, first: members[0].id, last: members[members.length - 1].id, strings: node.strings ?? [], range: node.range });
+            spans.push({ kind: node.kind, first: members[0].id, last: members[members.length - 1].id, side: node.side, strings: node.strings ?? [], range: node.range });
             break;
           }
           case 'use':

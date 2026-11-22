@@ -21,7 +21,7 @@ export type Node = TimedNode | { kind: import('./model.js').ExpressiveSpan; body
   { kind: 'times'; count: number; body: Node[] } | { kind: 'tuplet'; scale: Fraction; body: Node[] } |
   { kind: 'volta'; body: Node[]; endings: Node[][] } | { kind: '|'; closing?: string } |
   { kind: 'textBoundary'; boundary: Omit<TextBoundary, 'bar'> } | { kind: 'break' | 'repeatStart' } | { kind: 'mark'; text: string } |
-  { kind: 'fragment' | 'slur' | 'beam' | 'palmMute' | 'transpose' | 'octave'; body: Node[]; strings?: number[]; semitones?: number }
+  { kind: 'fragment' | 'slur' | 'beam' | 'palmMute' | 'transpose' | 'octave'; body: Node[]; side?: 'above' | 'below'; strings?: number[]; semitones?: number }
 );
 export interface VoiceSyntax { settings?: import('./model.js').VoiceSettings; name: string; range: TextRange; body: Node[] }
 export interface StaffSyntax extends Omit<InstrumentIdentity, 'name'> { displayName?: string; name: StaffName; range: TextRange; voices: VoiceSyntax[] }
@@ -82,7 +82,7 @@ const positionPattern = /^(x|0|[1-9]\d?)\/([1-8])$/;
 const builtInMarks = new Set([
   'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'line', 'ink', 'label',
   'tap', 'vibrato', 'brush', 'roll', 'stroke', 'rasgueado', 'symbol', 'write', 'staccato', 'fermata',
-  'dynamic', 'harmony', 'onStaff', 'sharedStem', 'grace', 'ornament', 'verse', 'gliss', 'release', 'articulation', 'lyric', 'bend', 'prebend', 'finger',
+  'dynamic', 'harmony', 'onStaff', 'sharedStem', 'pedal', 'ossia', 'grace', 'ornament', 'verse', 'gliss', 'release', 'articulation', 'lyric', 'bend', 'prebend', 'finger',
 ]);
 const standardDrums = ['kick', 'snare', 'hat'];
 function isPartKind(name: string): name is PartKind {
@@ -156,8 +156,14 @@ export function readScore(source: string, fail: Fail) {
     meters[bar] = signature;
   }
 
+  function ornamentName() {
+    const sign = take();
+    if (!['tr', 'turn', 'turn_inverted', 'mordent', 'mordent_inverted'].includes(sign.text)) error('Unknown ornament', sign);
+    return sign.text;
+  }
+
   function isEventMark(mark: HeadMark | EventMark): mark is EventMark {
-    return ['dynamic','harmony','onStaff','sharedStem','grace','ornament','slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
+    return ['dynamic','harmony','onStaff','sharedStem','pedal','ossia','grace','ornament','slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
   }
 
   /** JSON quoting handles embedded punctuation and escaped quotes in musical text. */
@@ -346,22 +352,55 @@ export function readScore(source: string, fail: Fail) {
     }
     if (mark.text === 'sharedStem') return { kind: 'sharedStem', name: identifier(), range: range() };
     if (mark.text === 'ornament') {
-      const value = take();
-      if (!['tr','turn','turn_inverted','mordent','mordent_inverted'].includes(value.text)) error('Unknown ornament', value);
-      return { kind: 'ornament', value: value.text, range: range() };
+      return { kind: 'ornament', value: ornamentName(), range: range() };
     }
-    if (mark.text === 'grace') {
-      const side = take(), pitches: string[] = [];
-      if (side.text !== 'before' && side.text !== 'after') error('Expected before or after', side);
+    if (mark.text === 'pedal') {
+      const action = take();
+      if (action.text !== 'down' && action.text !== 'up') error('Expected pedal down or up', action);
+      return { kind: 'pedal', action: action.text, range: range() };
+    }
+    if (mark.text === 'ossia') {
+      const duration = take();
+      if (!/^:(?:q|8|16|32)$/.test(duration.text)) error('Expected an ossia note value such as :8', duration);
+      const notes: { pitch: string; ornament?: string }[] = [];
       expect('(');
       while (peek() !== ')') {
         const pitch = take();
-        if (!notePattern.test(pitch.text) || pitches.length >= 16) error('Expected up to 16 grace pitches', pitch);
-        pitches.push(pitch.text);
+        if (!notePattern.test(pitch.text) || notes.length >= 16) error('Expected up to 16 ossia notes', pitch);
+        let ornament: string;
+        if (peek() === '[') {
+          take(); expect('ornament');
+          ornament = ornamentName();
+          expect(']');
+        }
+        notes.push({ pitch: pitch.text, ornament });
+      }
+      expect(')');
+      if (!notes.length) error('Expected an ossia note', mark);
+      return { kind: 'ossia', duration: duration.text.slice(1), notes, range: range() };
+    }
+    if (mark.text === 'grace') {
+      const side = take(), pitches: (string | string[])[] = [];
+      if (side.text !== 'before' && side.text !== 'after') error('Expected before or after', side);
+      const slash = peek() === 'slashed';
+      if (slash) take();
+      expect('(');
+      while (peek() !== ')') {
+        if (pitches.length >= 16) error('Expected up to 16 grace attacks');
+        const chord = peek() === '(';
+        if (chord) take();
+        const keys: string[] = [];
+        do {
+          const pitch = take();
+          if (!notePattern.test(pitch.text) || keys.length >= limits.heads) error('Expected a grace pitch', pitch);
+          keys.push(pitch.text);
+        } while (chord && peek() !== ')');
+        if (chord) expect(')');
+        pitches.push(chord ? keys : keys[0]);
       }
       expect(')');
       if (!pitches.length) error('Expected a grace pitch', side);
-      return { kind: 'grace', side: side.text, pitches, range: range() };
+      return { kind: 'grace', side: side.text, pitches, ...(slash && { slash }), range: range() };
     }
     if (mark.text === 'harmony') {
       function chordPitch() {
@@ -576,7 +615,9 @@ export function readScore(source: string, fail: Fail) {
         } else if (kind !== 'continuousBeam' && peek() === 'niente') { take(); niente = true; }
         node = { kind, strokes, feather, niente, body: block(sequence), range: token.range };
       } else if (token.text === 'fragment' || token.text === 'slur' || token.text === 'beam') {
-        take(); node = { kind: token.text, body: block(sequence), range: token.range };
+        take();
+        const side = token.text === 'slur' && (peek() === 'above' || peek() === 'below') ? take().text as 'above' | 'below' : undefined;
+        node = { kind: token.text, side, body: block(sequence), range: token.range };
       } else if (token.text === 'palmMute') {
         take(); expect('strings'); expect('(');
         const strings: number[] = [];
@@ -856,7 +897,7 @@ export function readScore(source: string, fail: Fail) {
             layout!.spacing = 'optical';
             continue;
           }
-          if (field.text !== 'width' && field.text !== 'scale' && field.text !== 'rowGap' && field.text !== 'staffDistance' && field.text !== 'top')
+          if (field.text !== 'width' && field.text !== 'scale' && field.text !== 'rowGap' && field.text !== 'staffDistance' && field.text !== 'firstSystemIndent' && field.text !== 'top')
             error('Unknown score layout setting', field);
           if (!/^\d{1,4}(?:\.\d{1,3})?$/.test(value.text) || (field.text === 'width' && number <= 20) ||
             (field.text === 'scale' && (!number || number > 8))) error('Invalid layout dimension', value);

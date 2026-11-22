@@ -66,6 +66,7 @@ class Div {
   private sel: string | HTMLElement;
   private code: string;
   private width: number;
+  private autoWidth: boolean;
   private scale: number;
   private rendererBackend: string;
   private flow: boolean;
@@ -184,14 +185,14 @@ class Div {
       this.parser = new VexTab(this.artist, { language: 1 });
     }
 
-    const autoWidth = this.flow && embedAttribute(host, 'layout') !== 'fixed' && (width === null || width === 'auto');
-    if (autoWidth && host.clientWidth > 20) this.width = host.clientWidth;
+    this.autoWidth = this.flow && embedAttribute(host, 'layout') !== 'fixed' && (width === null || width === 'auto');
+    if (this.autoWidth && host.clientWidth > 20) this.width = host.clientWidth;
     this.redraw();
     // Embedded music fonts can finish after the first synchronous draw.
     if (document.fonts.status === 'loading') {
       void document.fonts.ready.then(() => { if (!this.disposed) this.redraw(); });
     }
-    if (autoWidth) {
+    if (this.autoWidth) {
       this.observer = new ResizeObserver(([entry]) => {
         const width = Math.floor(entry.contentRect.width);
         // A new score changes host height. Draw outside the observer delivery cycle.
@@ -308,6 +309,7 @@ class Div {
     if (!this.flow) throw new Error('setWidth requires layout="flow"');
     this.observer?.disconnect();
     cancelAnimationFrame(this.resizeFrame);
+    this.autoWidth = false;
     this.width = width;
     return this.draw();
   }
@@ -326,9 +328,11 @@ class Div {
   /** Bind editor selection to this surface and its current instrument or conductor geometry. */
   private drawView(host: HTMLElement, score: ParsedScore | ScoreV2, revision: ParsedScore) {
     const renderer = this.rendererBackend.toLowerCase() === 'canvas' ? 'canvas' : 'svg';
+    // An authored page width fixes its system breaks inside a responsive embed.
+    const width = this.autoWidth ? score.layout?.width ?? this.width : this.width;
     const layout = 'parts' in score
-      ? renderConductor(host, score, { width: this.width, renderer })
-      : renderScore(host, score, { width: this.width, part: this.part, renderer });
+      ? renderConductor(host, score, { width, renderer })
+      : renderScore(host, score, { width, part: this.part, renderer });
     const surface = host.querySelector<HTMLCanvasElement | SVGSVGElement>('svg, canvas');
     if (this.text_area) surface.addEventListener('click', (event: MouseEvent) => {
       let point: DOMPoint;

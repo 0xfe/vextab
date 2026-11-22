@@ -61,7 +61,7 @@ host.setAttribute('editor', 'true');
 host.textContent = 'meter 1/4 staff { C4 | }';
 const editor = new Div(host);</pre></article>
   <article id="attributes"><h3>Host attributes and defaults</h3>
-    <p>Each setting accepts a <code>data-</code> prefix. For example, set <code>data-layout="flow" data-editor="true" data-width="auto"</code> for a responsive editor. A nonempty prefixed value takes precedence over the plain attribute.</p>
+    <p>Each setting accepts a <code>data-</code> prefix. For example, set <code>data-layout="flow" data-editor="true" data-width="auto"</code> for a responsive editor. A nonempty prefixed value takes precedence over the plain attribute. With automatic width, an authored <code>layout { width 1460 scale 0.61 }</code> engraves at 1460 pixels and displays the music at about 891 pixels.</p>
     <dl><dt>layout, renderer, scale</dt><dd>Fixed layout defaults to SVG at scale 1 and also supports Canvas. Grammar v2 flow supports SVG and Canvas. Use <code>data-view="conductor"</code> to align all instruments.</dd><dt>width</dt><dd>Fixed defaults to 400 px. A flow host with an omitted width or <code>width="auto"</code> follows its container.</dd><dt>editor, show-errors</dt><dd>Set <code>editor="true"</code> to expose the source textarea. <code>show-errors="true"</code> displays diagnostics without the editor.</dd><dt>editor-width, editor-height</dt><dd>Pixel dimensions. Defaults are the score width and 200 px high. The historical adapter also accepts <code>editor_width</code> and <code>editor_height</code>.</dd></dl></article>
   <article id="run"><h3>run(), redraw(), parse() and draw()</h3><p><code>run()</code> flushes the pending edit and draws the current textarea value. Keyboard users can press Ctrl+Enter or Command+Enter. <code>redraw()</code> reparses the stored source and draws it. <code>parse()</code> and <code>draw()</code> expose the two stages. These methods return the instance. A failing edit keeps the last valid picture and displays the error.</p></article>
   <article id="editor-view"><h3>setPart(part) and setWidth(pixels)</h3><p>Flow-only methods that return the editor. Select a staff or reflow the same parsed revision without rewriting the source. Setting a width explicitly takes over from automatic container observation.</p></article>
@@ -90,10 +90,25 @@ const result = renderEdition(paperHost, score, { partId: 'cello' }, { paper: 'Le
 });</pre></article>
   <article id="publication-result"><h3>PublicationResult.pages, diagnostics and toPrintHTML()</h3><p>Each page has an SVG and its musical metadata. Inspect <code>publication.diagnostics</code> for overflow and engraving details. Supply matching outline fonts to <code>toPrintHTML(faces)</code> for an offline print document or <code>toSVG(pageNumber, faces)</code> for a single outlined page. Page numbers start at one. The guide supplies Bravura and Academico.</p></article>
   <article id="piano"><h3>Piano grand staff and hand parts</h3>
-    <p>Put <code>upper { … }</code> and <code>lower { … }</code> inside a piano part. Both hands share the meter, keys and bar boundaries. A hand can contain several named voices. Set <code>stem up</code> and <code>stem down</code> for opposing stems.</p>
+    <p>Put <code>upper { … }</code> and <code>lower { … }</code> inside a piano part. Both hands share the meter, keys and bar boundaries. The hands share space where their notes and expression marks fall on different beats. Marks above and below the same beat open the gap as needed. To request more room, set a minimum with <code>layout { staffDistance 14 }</code>, measured in staff spaces from one top line to the next. A hand can contain several named voices. Set <code>stem up</code> and <code>stem down</code> for opposing stems.</p>
     <p>Use <code>layout="flow"</code> for an SVG embed. Modern and legacy embeds initially containing a piano declaration also select flow automatically. For a programmatic score, pass <code>parseScore(source)</code> to <code>renderScore</code> or <code>Player</code>. Pass <code>part: 'left'</code> or <code>'right'</code> to show one hand. The reader and playback follow the visible hand in an embed.</p>
     <p><code>renderScorePart(host, score, 'notation')</code> prints both staves. Use <code>'right'</code> or <code>'left'</code> for a practice part. The optional <code>voice</code> number selects one voice within that hand. Native part <a href="#reference/publication-scope">engraving limits</a> also apply to piano. <a href="#features/piano">Try two-hand and four-voice examples</a>.</p>
   </article>
+  <article id="piano-ornaments" data-language="vextab"><h3>Grace chords, ossias and sustain pedal</h3>
+    <p>Each pitch inside a grace group is a separate attack. Parenthesize pitches together for one chord. Add <code>slashed</code> for a slashed eighth. Grace groups borrow time from their principal. An ossia prints a small alternative staff below its anchor. Playback follows the principal reading.</p>
+    <pre>meter 3/4
+piano {
+  upper { :q C5[grace before slashed ((G4 B4))] D5 E5 | }
+  lower { :q C3[pedal down] G3[ossia :8 (G3[ornament mordent] F3 G3)] C4[pedal up] | }
+}</pre>
+    <p>Put both pedal marks in the same piano voice. The pedal goes down at the first attack and lifts at the end of the marked release note or rest. It sustains both hands. <a href="#lesson/chopin-ballade-no3">See the markings in Chopin’s Ballade</a>.</p></article>
+  <article id="score-heading" data-language="vextab"><h3>Score heading and optical spacing</h3>
+    <p>Neighboring piano systems also share space. A high note can rise beside an ossia or between pedal symbols on the system above. Increase <code>layout { rowGap 48 }</code> for more separation on screen.</p>
+    <p>The first system can carry a centered title, a left dedication, an indented tempo and a right-aligned composer. Each field is optional. Set <code>firstSystemIndent</code> in engraving pixels to inset the opening system. Later systems return to the usual margin. The indent counts toward the width available for notes on screen and in print. Use <code>^{me}</code> for a raised ordinal. Optical spacing distributes room according to note duration and measured ink.</p>
+    <pre>layout {
+  spacing optical firstSystemIndent 80
+  heading { title "3^{me} Ballade." tempo "Allegretto." composer "Fr. Chopin, Op. 47." }
+}</pre></article>
   <article id="publication-scope"><h3>Independent part coverage</h3><p>Printed parts preserve explicit beams, silent beats, chord diagrams, forced accidentals and head fingerings. Lyrics in a voice share a baseline across a system. Use distinct named verses for two underlays. A duplicate lyric in the same lane produces a diagnostic at the second mark. TAB retains fingerings beside the selected fret. Selecting a voice missing from a bar also produces an error.</p></article>
 </section>
 <section id="fixed-api">

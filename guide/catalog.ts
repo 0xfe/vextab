@@ -16,6 +16,7 @@ import duet from './scores/guitar-duet.vextab';
 import workbench from './scores/embed-workbench.vextab';
 import sor from './scores/sor-op35-no22.vextab';
 import pocketChange from './scores/pocket-change.vextab';
+import chopin from './scores/chopin-ballade-no3.vextab';
 import joplin from './scores/joplin-maple-leaf.vextab';
 import handy from './scores/handy-st-louis-blues.vextab';
 import haydn from './scores/haydn-emperor-variation.vextab';
@@ -63,6 +64,10 @@ export const lessons: Lesson[] = [
     goal:'Bars 1–8 of Op. 35 No. 22. Sustain the half-note melody over the moving eighths and hold the bass across the first barline.',
     edit:'Choose Guitar · TAB and compare the circled fingering with the fret on string two. Change finger 2 to finger 3 on the opening note.',
     edition:{ credit:'Glen Larsen’s Mutopia engraving after N. Simrock (CC BY-SA 3.0). This adaptation uses editorial string choices and the original three voices. The adaptation shares the same license.', url:'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1850' } },
+  { id:'chopin-ballade-no3', title:'Chopin · Ballade No. 3', source:chopin, views:staff, demo:true,
+    goal:'Play the opening 24 bars of the A-flat major Ballade, Op. 47. Listen for the high E-flat held through bars 2–4 while the lines beneath it move.',
+    edit:'Slow the tempo from 132 to 96 and follow the right-hand octaves in bar 14. The seven-in-five tuplet lets the flourish land on the next downbeat with the bass.',
+    edition:{ credit:'After the opening page engraved in VexFlow. This piano transcription uses fixed clefs and selected fingerings, slurs and dynamics. The ossia below bar 3 gives an alternative to the slashed grace note. Follow the pedal releases from bar 9 and listen for the grace chord in bar 22.', url:'https://github.com/vexflow/vexflow/blob/c2d965dda437f96c938403dfe18abfbb5db59779/tests/scores/ballade.js' } },
   { id:'pocket-change', title:'Pocket Change · Bebop piano', source:pocketChange, views:staff, demo:true,
     goal:'Play an original sixteen-bar head in F. Hear the opening eighth-note figure return in bars 5 and 13, and listen for the left hand answering in the gaps.',
     edit:'Change swing eighths to swing off and replay the opening at 176 BPM. Listen to the offbeat before the first G, then compare the sparse chord hits in bars 9–12.',

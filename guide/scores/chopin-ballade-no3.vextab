@@ -1,0 +1,92 @@
+// Frédéric Chopin · Ballade No. 3 in A-flat major, Op. 47, bars 1–24.
+// After the opening page engraved in the VexFlow Ballade demo.
+// https://github.com/vexflow/vexflow/blob/c2d965dda437f96c938403dfe18abfbb5db59779/tests/scores/ballade.js
+layout {
+  width 1460 scale 0.61 spacing optical rowGap 16 firstSystemIndent 80
+  heading {
+    title "3^{me} Ballade." dedication "À M^{lle} Pauline de Noailles."
+    tempo "Allegretto." composer "Fr. Chopin, Op. 47."
+  }
+}
+meter 6/8
+play { performer chopin tempo 132 }
+edition {
+  paper Letter margins 12 9 12 9 staffSize 5.1
+}
+piano keys {
+  key Ab program 0 beamRests off
+  upper {
+    voice melody stem up {
+      slur { crescendo { :q Eb4[finger 3 above, label "m. v." below] :8 F4 (Eb4 G4) (Eb4 Ab4[finger 5 above]) (Eb4 Bb4[finger 3 above]) } |
+      diminuendo { :q (Eb4 C5) :8 (F4 Ab4 F5) :q. (Eb4 Ab4 Eb5) } } |
+      :h. Eb5[tie, label "dolce" below] |
+      :h. (Eb4 Ab4 C5 Eb5[tie]) |
+      slur { :h. Eb4[finger 5 above] |
+      :q (Ab3 Eb4[tie]) :8 (Ab3 Bn3 Dn4) :q. (Ab3 C4 Eb4) } |
+      break system
+      slur { crescendo { :8 (Ab3[tie] C4[tie] Eb4[tie]) (C4 Eb4 Ab4[finger 5 above]) (Db4 Eb4 Bb4[finger 5 above]) :q (Eb4 Ab4 C5) :8 (Db4 Eb4 Bb4[finger 4 above]) } |
+      diminuendo { :q (Eb4 Ab4 C5) :8 (C4 Eb4 Ab4[finger 4 above]) :q (C4 Eb4 Ab4) } } :8 rest |
+      :q. (Ab5 Ab6[articulation "a^" above])[dynamic f] :q rest :8 rest |
+      slur { :q. (Ab4 Ab5[articulation "a^" above])[label "meno f" below] :8. rest crescendo { :16 (C4 C5[finger 4 above]) :8 (F4 F5[finger 5 above]) } } |
+      :8. rest[dynamic p] slur { :16 (Eb4 Eb5[finger 4 above]) :8 (Eb4 Eb5[finger 5 above]) :8. rest :16 (Eb4 Eb5[finger 4 above]) :8 (Eb4 Eb5[finger 5 above]) |
+      :8. rest :16 (Eb4 Eb5[finger 4 above]) :8 (Eb4 Eb5[finger 5 above]) :8. rest :16 (Eb4 Eb5[finger 4 above]) :8 (Eb4 Eb5[finger 5 above]) } |
+      break system
+      :q. (Ab5 Ab6[articulation "a^" above])[dynamic f] :q rest :8 rest |
+      slur { :q. (Ab4 Ab5[articulation "a^" above])[label "meno f" below] :16 rest tuplet 7:5 { crescendo { (C4 C5[finger 5 above]) (Db4 Db5[finger 4 above]) (Dn4 Dn5) (Eb4 Eb5[finger 3 above]) (En4 En5) (G4 G5) } :32 rest (F4 F5[finger 5 above]) } } |
+      slur { diminuendo { :8. (F4[tie] F5[tie])[dynamic p] :16 (Eb4 Eb5[finger 4 above]) :8 (Eb4 Eb5[finger 5 above]) } :8. rest :16 (Eb4 Eb5[finger 4 above]) :8 (Eb4 Eb5[finger 5 above]) |
+      diminuendo { :8. (Eb4[tie] Eb5[tie]) :16 (Eb4 Eb5[finger 4 above]) :8 (Eb4 Eb5[finger 5 above]) } :8. rest :16 (Eb4 Eb5[finger 4 above]) :8 (Eb4 Eb5[finger 5 above]) } |
+      :8. (Eb4[tie] Eb5[tie]) :16 Ab4[finger 2 above] slur { :8 (F4 F5) :8. (F4[tie] F5[tie]) :16 (Eb4 Eb5[finger 4 above]) :8 (Dn4 Dn5) |
+      :8. rest[label "poco cresc." below] :16 Db5[finger 4 above] :8 (Db4 G4 Db5[finger 5 above]) :8. rest :16 (C4 Ab4 C5) } :8 (Db4 Ab4 Db5) |
+      break system
+      :8. (Ab4 C5[finger 5 above]) :16 Bb4[finger 4 above] diminuendo { :8 Bb4[finger 5 above] :q. Bb4[tie] } |
+      :q. Bb4[label "dim." below] skip |
+      :8 (Ab3 C4 Ab4)[label "rf" below] :16 rest (Eb5 Ab5 Eb6) slur { :8 (Eb5 Ab5 Eb6) :8. (Eb5[tie] Ab5[tie] Eb6[tie]) crescendo { :16 (Dn5 Dn6[finger 4 above]) :8 (Ab5 Ab6) } } |
+      :8. rest :16 (Db5 Ab5 Db6) slur { :8 (Db5 Ab5 Db6) :8. (Db5[tie] Ab5[tie] Db6[tie]) :16 (C5 C6) :8 (Db5 Ab5 Db6[finger 4 above])[grace before slashed ((Eb5 Ab5 Eb6))] } |
+      :q skip :8 Bb5 :q. Bb5[tie] |
+      :q. Bb5[label "poco dim." below] skip |
+    }
+    voice inner stem down {
+      times 2 { :h. skip | }
+      :q. (Eb4 G4) (Eb4 G4 Db5) |
+      :h. skip |
+      :q G3 :8 Ab3 Bb3 C4 G3 |
+      times 13 { :h. skip | }
+      :8 C4 rest (Bb3 Dn4 Ab4) :8. rest :16 (Bb3 Dn4 Ab4) :8 (Bb3 Dn4 Ab4) |
+      :8. rest :16 (Bb3 Db4 G4[finger 4 above]) :8 (Bb3 Db4 G4) :8. rest crescendo { :16 (G3 Db4 Eb4[finger 4 above]) :8 (G3 Db4 Eb4[finger 3 above]) } |
+      times 2 { :h. skip | }
+      :8. (C5 Ab5 C6[finger 5 above]) :16 (Bb4 Dn5 Ab5 Bb5) :8 (Bb4 Dn5 Ab5) :8. rest :16 (Bb4 Dn5 Ab5[finger 3 above]) :8 (Bb4 Dn5 Ab5[finger 4 above]) |
+      :8. rest :16 (Bb4 Db5 G5) :8 (Bb4 Db5 G5) :8. rest :16 (G4 Db5 Eb5[finger 4 above]) :8 (G4 Db5 Eb5[finger 3 above]) |
+    }
+    voice suspension stem down {
+      times 4 { :h. skip | }
+      :q. Db4 skip |
+      times 19 { :h. skip | }
+    }
+  }
+  lower {
+    :q rest :8 Dn4[finger 1 below] Db4 C4[finger 1 below] G3[finger 4 below] |
+    :q Ab3 :8 (Eb3 Bn3 Dn4) :q. (Eb3 C4) |
+    slur { :8 Db4[finger 2 below] C4 Bb3 Bb3[grace before slashed (C4), ossia :8 (Bb3[ornament mordent] An3 Bb3)] An3 Bb3 |
+    :8 C4 :8. Ab3 :16 Eb3[finger 4 below] :q. Eb3 } |
+    slur below { :q Eb2[finger 3 below] :8 F2 G2 Ab2 Bb2 |
+    :q C3 :8 F3 :q. Eb3 } |
+    :q. Eb3[tie] :q Eb3[tie] slur { :8 Eb2 |
+    :q Ab2[finger 4 below] :8 Eb3 :q Ab3 } :8 rest |
+    :8 (Ab1[staccato above] Ab2)[pedal down] rest slur { (Gb4[finger 3 below] Ab4 Eb5)[pedal up] :q (F4 Ab4 Dn5) } :8 rest |
+    :8 (Ab1[staccato above] Ab2)[pedal down] rest slur { (Fb3[finger 4 below] Ab3 Db4)[pedal up] :q (Eb3 Ab3 C4) } :8 rest |
+    :8 (Eb1[staccato above] Eb2)[pedal down] rest slur { (Eb3[finger 4 below] C4)[pedal up] :q (Dn3 F3 Bn3) } :8 rest |
+    :8 Eb2[staccato above, pedal down] rest slur { (Dn3[finger 5 below] F3 Bn3)[pedal up] :q (Db3 G3 Bb3) } :8 rest |
+    :8 (Ab1[staccato above] Ab2)[pedal down] :16 rest (Gb4[finger 4 below] Ab4 Eb5) :8 (Gb4 Ab4 Eb5)[pedal up] :q (F4 Ab4 Dn5) :8 rest |
+    :8 (Ab1[staccato above] Ab2)[pedal down] :16 rest slur below { (Fb3 Ab3 Db4) :8 (Fb3 Ab3 Db4)[pedal up] (Eb3 Ab3 C4) } :q rest |
+    :8 (Eb1[staccato above] Eb2)[pedal down] rest slur { (Eb3 C4)[pedal up] :q (Dn3 F3 Bn3) } :8 rest |
+    :8 Eb2[staccato above, pedal down] rest slur { (Dn3 F3 Bn3)[pedal up] :q (Db3 G3 Bb3) } :8 rest |
+    :8 (Ab1[staccato above] Ab2)[pedal down] rest slur below { (C3[finger 4 below] Gb3 Ab3)[pedal up] :q. (Bn2 F3 Ab3) } |
+    :8 (Ab1[staccato above] Ab2)[pedal down] rest slur below { (Ab2 Eb3 Bb3)[pedal up] :q. (Ab2 Eb3 Ab3) } |
+    :8 (F1[staccato above] F2)[pedal down] rest slur below { (G2[finger 4 below] G3)[pedal up] :q (F2 F3) } :8 rest |
+    :8 (Eb1[staccato above] Eb2)[pedal down] rest slur below { (F2[finger 4 below] F3)[pedal up] :q (Eb2 Eb3) } :8 rest |
+    :8 (Ab1[staccato above] Ab2)[pedal down] :16 rest (Gb3 Ab3 Gb4) slur { :8 (Gb3 Ab3 Gb4)[pedal up] :q (F3 Ab3 F4) } :8 rest |
+    :8 (Ab1[staccato above] Ab2)[pedal down] :16 rest (Fb3 Ab3 Fb4) slur { :8 (Fb3 Ab3 Fb4)[pedal up] :q (Eb3 Ab3 Eb4) } :8 rest |
+    :8 (F1[staccato above] F2)[pedal down] :16 rest (G3 G4) slur { :8 (G3 G4)[pedal up] :q (F3 F4) } :8 rest |
+    :8 (Eb1[staccato above] Eb2)[pedal down] :16 rest (F3 F4) slur { :8 (F3 F4)[pedal up] :q (Eb3 Eb4) } :8 rest |
+  }
+}

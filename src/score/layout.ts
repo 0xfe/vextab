@@ -11,7 +11,8 @@ import { attachOpenSlide, describeOpenSlide } from './open-slide';
 import { inkStyle, setFretPaper } from './color';
 import { drawPrepared, spansForInset, type PartDrawingOptions } from './publication-draw';
 import { conductorSpec, instrumentComposition, instrumentLabel, selectedPart, type PartSelector } from './conductor';
-import { drawHeading } from './score-details';
+import { fitGrandStaff, includeSystemBottom, sharedSystemSpace } from './grand-staff';
+import { drawHeading, drawOssia, drawPedal, ossiaLines, ossiaReadings, registerPedal } from './score-details';
 import { drawSwingMark } from './swing-mark';
 import { scoreFont } from './engraving';
 import {
@@ -151,7 +152,7 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     }
     return { id, ...(destination && { stave: destination }), note: event.tremolo ? AlternatingTremolo.endpoint(note, event.tremolo) : note,
       ...(event.grace && { grace: { side: event.grace.side, slur: true, beam: event.grace.pitches.length > 1,
-        notes: event.grace.pitches.map(key => ({ keys: [key], duration: '16', clef: writtenClef })) } }) };
+        notes: event.grace.pitches.map(key => ({ keys: Array.isArray(key) ? key : [key], duration: event.grace.slash ? '8' : '16', slash: event.grace.slash, clef: writtenClef })) } }) };
   });
   return {
     notes, stem: direction ?? 'auto',
@@ -187,7 +188,16 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
   // VexFlow can draw a tab ending between two TabNotes or two rendered rests.
   // A volta spans bar boundaries, so any compatible anchor in each boundary bar is sufficient.
   const rests = new Set(parsed.measures.flatMap(m => m.voices.flatMap(v => v.events.filter(e => !e.heads.length).map(e => e.id))));
+  // A sustained outer piano voice ties away from the other voices on its staff.
+  const pianoTieSides = new Map<string, 'above' | 'below'>();
   const mixedEndings: ScoreSpan[] = [];
+  // Both views pass this policy through to the bundled continuous-layout adapter.
+  // Some decorations draw outside the native note ink. Preserve their full row margins.
+  const fullMargins = new Set(parsed.measures.filter(m => m.text?.length || m.voices.some(v =>
+    v.rehearsal || v.ending || v.events.some(e => e.tremolo || e.frame || e.chord || e.lyric || e.verses?.length || e.gestures?.length)))
+    .map(m => m.number));
+  const flowOptions = { fitGrandStaff, publication, includeSystemBottom, sharedSystemSpace,
+    allowSystemFit: (bars: number[]) => !parsed.measureNumbers && bars.every(bar => !fullMargins.has(bar)), firstSystemIndent: parsed.layout?.firstSystemIndent };
   const spec: EasyScoreCompositionSpec = {
     accidentals: 'key-aware', graceAccidentals: 'ordered', sheet: { width, x: 10, y: parsed.layout?.top ?? 14, rowGap: parsed.layout?.rowGap ?? 36,
       ...(parsed.layout?.spacing && { measurePadding: 18, measureGap: 0 }) },
@@ -202,6 +212,12 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       options: staff === 'tab' ? { numLines: parsed.measures[0].state.strings } : {},
       measures: parsed.measures.map(m => {
         const voices = voicesFor(m, staff);
+        if (m.state.piano && parsed.ties.length && voices.filter(v => v.events.some(e => e.heads.length)).length > 1) {
+          for (const voice of voices) {
+            if (!voice.stem) continue;
+            for (const event of voice.events) pianoTieSides.set(event.id, voice.stem === 'up' ? 'above' : 'below');
+          }
+        }
         const sharedPianoStaff = handsShareStave(m);
         const showMarks = staff === staves[0] || m.state.piano;
         const clef = staff === 'tab' ? 'tab' : staff === 'left' ? 'bass' : m.state.clef;
@@ -225,6 +241,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       }),
     })),
     continuous: {
+      ...flowOptions,
       courtesy: false, measureNumbers: parsed.measureNumbers, spans,
       groups: staves.length === 2 ? [{
         first: staves[0], last: staves[1], type: parsed.measures[0].state.piano ? 'brace' : 'bracket',
@@ -242,7 +259,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       const from = eventId(staff, tie.from);
       if (!sources.ids[from]) continue;
       spans.push({ kind: 'tie', id: sources.project(staff, tie.id, tie.range), from,
-        to: eventId(staff, tie.to),
+        to: eventId(staff, tie.to), side: pianoTieSides.get(tie.from) ?? pianoTieSides.get(tie.to),
         ...(staff === 'tab' && tie.bend && { bend: tie.bend, string: tie.string }), fromHead: tie.fromHead, toHead: tie.toHead });
     }
   }
@@ -271,7 +288,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
     if (mark.kind === 'slur') {
       for (const staff of staves) {
         const from = eventId(staff, mark.from);
-        if (sources.ids[from]) spans.push({ kind: 'slur', id: sources.project(staff, mark.id, mark.range), from, to: eventId(staff, mark.to) });
+        if (sources.ids[from]) spans.push({ kind: 'slur', side: mark.side, id: sources.project(staff, mark.id, mark.range), from, to: eventId(staff, mark.to) });
       }
       continue;
     }
@@ -371,6 +388,15 @@ function tremoloPairs(score: ParsedScore, view: Projection, composition: EasySco
 function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, factory: Factory) {
   const silent = new Set<string>();
   const split = new Set<Beam>();
+  for (const span of parsed.spans) {
+    if (span.kind !== 'pedal') continue;
+    for (const staff of view.staves) {
+      const id = view.eventId(staff, span.from);
+      if (staff === 'tab' || !view.sources.ids[id]) continue;
+      const first = composition.getNote(id) as StaveNote, last = composition.getNote(view.eventId(staff, span.to)) as StaveNote;
+      registerPedal(first, last);
+    }
+  }
   for (const m of parsed.measures) {
     for (const staff of view.staves) {
       const staveColor = m.state.color;
@@ -388,6 +414,13 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
       }
       for (const voice of voicesFor(m, staff)) for (const event of voice.events) {
         const note = composition.getNote(view.eventId(staff, event.id));
+        if (event.ossia && staff !== 'tab') {
+          ossiaReadings.set(note as StaveNote, event.ossia);
+          const stave = note.checkStave();
+          const { bottom } = ossiaLines(event.ossia, stave.getClef());
+          const previous = Number(stave.getAttribute('vextab-ossia-bottom')) || 0;
+          stave.setAttribute('vextab-ossia-bottom', String(Math.max(bottom, previous)));
+        }
         if (event.lyric || event.verses?.length) {
           const marks = note.getModifiers().filter((m): m is Annotation => m instanceof Annotation &&
             m.phraseManaged && m.getVerticalJustification() === Annotation.VerticalJustify.BOTTOM);
@@ -492,6 +525,20 @@ function drawTabEndings(view: Projection, composition: EasyScoreComposition, ctx
 
 /** Attach alternating tremolos and guitar connections after their native stem and string positions settle. */
 function drawPairedMarks(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, ctx: RenderContext) {
+  const pedals = new Map(parsed.spans.filter(span => span.kind === 'pedal').map(span => [span.from, span.to]));
+  for (const staff of view.staves) {
+    if (staff === 'tab') continue;
+    for (const measure of parsed.measures) for (const voice of voicesFor(measure, staff)) for (const event of voice.events) {
+      const release = pedals.get(event.id);
+      if (!event.ossia && !release) continue;
+      const note = composition.getNote(view.eventId(staff, event.id)) as StaveNote;
+      if (release) drawPedal(ctx, note, composition.getNote(view.eventId(staff, release)) as StaveNote);
+      if (event.ossia) {
+        const row = composition.sheet.getRows().find(row => row.systems.includes(composition.systems[measure.number - 1]));
+        drawOssia(ctx, event.ossia, note, measure.state.key ?? 'C', row);
+      }
+    }
+  }
   for (const { first, last, strokes } of tremoloPairs(parsed, view, composition)) {
     new AlternatingTremolo(first, last, strokes).setContext(ctx).draw();
   }
@@ -671,7 +718,13 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
     canvas.setAttribute('role', 'img');
     canvas.setAttribute('aria-label', navigation.events.map(event => event.label).join('. '));
   }
-  if (parsed.layout?.scale) surface.style.zoom = String(parsed.layout.scale);
+  // Scale the engraved surface in its own coordinates. Playback buttons retain their normal target size.
+  const scale = parsed.layout?.scale ?? 1;
+  if (scale !== 1) {
+    const music = canvas ?? (ctx as SVGContext).svg;
+    music.style.zoom = String(scale);
+    if (!canvas) surface.style.width = (parseFloat(music.style.width) * scale) + 'px';
+  }
   host.replaceChildren(surface);
 
   function rangeFor(id: string, revision: string) {

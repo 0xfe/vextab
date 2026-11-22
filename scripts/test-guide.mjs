@@ -100,7 +100,7 @@ export async function testGuide(page, dist) {
     assert.equal(await chapter.locator('svg').count(), editors + extraStaff, hash);
   }
   await go('#demos');
-  assert.equal(await page.locator('#entries a').count(), 13);
+  assert.equal(await page.locator('#entries a').count(), 14);
   const routes = await page.locator('#picker option').evaluateAll(options => options.map(o => '#lesson/' + o.value));
   for (const hash of routes) {
     await go(hash);
@@ -110,10 +110,26 @@ export async function testGuide(page, dist) {
   }
 
   // Rehearse and export the same source revision, including a single player's part.
-  for (const [id, view] of [['sor-op35-no22', '0/tab'], ['joplin-maple-leaf', 'keys'],
+  for (const [id, view] of [['sor-op35-no22', '0/tab'], ['joplin-maple-leaf', 'keys'], ['chopin-ballade-no3', 'keys'],
     ['pocket-change', 'keys'], ['handy-st-louis-blues', 'singer'], ['haydn-emperor-variation', 'cello']]) {
     await go('#lesson/' + id);
     assert.equal(await page.locator('#view').inputValue(), 'conductor');
+    if (id === 'chopin-ballade-no3') {
+      // The two staves on each of four systems each contain six engraved measures.
+      const counts = await svg.locator('g.vf-stave:not(.vf-ossia *)').evaluateAll(staves => {
+        const rows = new Map();
+        for (const stave of staves) {
+          const y = stave.firstElementChild.getBBox().y;
+          rows.set(y, (rows.get(y) ?? 0) + 1);
+        }
+        return [...rows.values()];
+      });
+      assert.deepEqual(counts, Array(8).fill(6));
+      assert.equal(await svg.locator('.vf-ossia .vf-stavenote').count(), 3);
+      assert.equal(await svg.locator('.vf-pedal').count(), 16);
+      assert.match(await svg.locator('.vf-score-heading').textContent(), /Fr.\sChopin,\sOp.\s47/);
+      assert.ok((await svg.boundingBox()).width < 900);
+    }
     if (id === 'pocket-change') {
       const mark = svg.locator('.vf-swing-mark');
       assert.equal(await mark.count(), 1);
@@ -132,6 +148,14 @@ export async function testGuide(page, dist) {
     const pages = page.locator('#part svg:has(metadata)');
     assert.ok(await pages.count() > 0);
     if (id === 'pocket-change') assert.equal(await pages.locator('[data-system="1"] .vf-swing-mark').count(), 1);
+    if (id === 'chopin-ballade-no3') {
+      assert.equal(await pages.count(), 1);
+      assert.equal(await pages.locator('[data-system="1"] .vf-ossia .vf-stavenote').count(), 3);
+      assert.equal(await pages.locator('.vf-pedal').count(), 16);
+      assert.equal(await pages.locator('[data-system="1"] .vf-score-heading').count(), 1);
+      assert.deepEqual(await pages.locator('[data-system]').evaluateAll(rows => rows.map(row => row.dataset.system)),
+        ['1', '7', '13', '19']);
+    }
     const edited = (await source.inputValue()) + '\n# rehearsal draft';
     await source.fill(edited);
     assert.equal(await page.locator('#save-svg').isDisabled(), true);

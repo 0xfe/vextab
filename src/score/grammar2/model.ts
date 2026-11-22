@@ -30,7 +30,9 @@ export type EventMark =
   { kind: 'harmony'; root: string; quality: string; bass?: string; range: TextRange } |
   { kind: 'onStaff'; hand: 'upper' | 'lower'; range: TextRange } |
   { kind: 'sharedStem'; name: string; range: TextRange } |
-  { kind: 'grace'; side: 'before' | 'after'; pitches: string[]; range: TextRange } |
+  { kind: 'grace'; side: 'before' | 'after'; pitches: (string | string[])[]; slash?: boolean; range: TextRange } |
+  { kind: 'pedal'; action: 'down' | 'up'; range: TextRange } |
+  { kind: 'ossia'; duration: string; notes: { pitch: string; ornament?: string }[]; range: TextRange } |
   { kind: 'ornament'; value: string; range: TextRange } | { kind: 'slash'; range: TextRange } | { kind: 'line'; value: number; range: TextRange } | { kind: 'text'; text: string; glyph?: boolean; style?: LaneStyle; range: TextRange } | { kind: 'ink'; value: string; range: TextRange } |
 { kind: 'frame'; frets: (number | 'x')[]; barre?: [number, number, number]; range: TextRange } |
 { kind: 'label'; text: string; style: TextStyle; range: TextRange } |
@@ -75,7 +77,7 @@ export interface VoiceMeasure {
 export type VoiceSpan =
   | { kind: ExpressiveSpan; first: string; last: string; niente?: boolean; feather?: 'left' | 'right'; strokes?: number; range: TextRange }
   | { kind: 'tuplet'; ratio: string; first: string; last: string; range: TextRange }
-  | { kind: 'palmMute' | 'slur' | 'beam'; first: string; last: string; strings: number[]; range: TextRange } |
+  | { kind: 'palmMute' | 'slur' | 'beam'; side?: 'above' | 'below'; first: string; last: string; strings: number[]; range: TextRange } |
   { kind: 'hammer' | 'pull' | 'slide'; from: HeadRef; to: HeadRef; range: TextRange };
 
 /** Measure numbers in written order. Endings identify their inclusive bar ranges. */
@@ -93,7 +95,7 @@ export interface InstrumentIdentity { id?: string; name?: string; shortName?: st
 export interface ScoreStaff extends Omit<InstrumentIdentity, 'name'> { displayName?: string; name: StaffName; range: TextRange; voices: ScoreVoice[] }
 /** Optional front matter shared by the screen engraving and its printed edition. */
 export interface ScoreHeading { title?: string; dedication?: string; tempo?: string; composer?: string }
-export interface ScoreLayout { heading?: ScoreHeading; spacing?: 'optical'; width?: number; scale?: number; rowGap?: number; staffDistance?: number; top?: number }
+export interface ScoreLayout { heading?: ScoreHeading; spacing?: 'optical'; firstSystemIndent?: number; width?: number; scale?: number; rowGap?: number; staffDistance?: number; top?: number }
 /** Instrument declarations apply to every voice of the part. */
 export interface PartSettings {
   program?: number;

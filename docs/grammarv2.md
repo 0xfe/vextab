@@ -96,6 +96,8 @@ const pickup = parseScore('meter 2/4 pickup 1/8 staff { :8 G4 | :q A4 G4 | }');
 | Set rhythm, grouping and boundaries | `slash` is an unpitched rhythm. `B4[slash]` has a pitch. `rest[line -1]` places a rest. Use `beam { … }`, `groupBeats (3 3)`, `break system`, `repeatStart`, `bar repeatEnd`, `bar double` and `bar final` as needed. |
 | Control ink and labels | Use part-level `ink navy`, attack-level `[ink crimson]`, or `[label "P.H." below font "Georgia" size 14 style italic ink teal]`. |
 | Set engraving or playback defaults | `voice bass stem down { … }` sets a voice’s stem direction. `layout { width 640 rowGap 36 }`, `measureNumbers on`, and `play { tempo 84 instrument 24 }` go before the first part. |
+| Space neighboring piano systems | Adjacent grand staves share space where their markings fall at different horizontal positions. Ossias and pedal symbols count toward clearance. Increase `rowGap` for more space on screen. Printed editions use the page’s system gap. |
+| Indent the first system | `layout { firstSystemIndent 80 }` reserves 80 engraving pixels before the opening brace or staff, in addition to any instrument labels. Screen and print use this space when choosing system breaks. The default is zero. |
 
 Declare changes of tuning, ink or meter visibility at a bar boundary in the part header. For example, `tuning dropD at 3` retunes the same strings from bar three. `ink default at 2` returns the staff to its default colour, and `display meter shown at 3` prints the meter at that boundary.
 
@@ -405,6 +407,10 @@ Read `result.diagnostics` for source ranges and `result.publication.pages` for s
 | `5/1[bend +2 rise=1/2] 5/1[tie, release hold=1/4 release=3/4]` | Bend the first attack and release during the tied note on that string. Fractions on the continuation are relative to its own duration. |
 | `(5/2 5/1) (7/2 8/1[gliss 2])` | Slide from head 2 of the preceding attack to the marked destination head. Head numbers start at one in authored chord order. |
 | `E4[grace before (D4 Eb4), ornament turn]` | Attach up to sixteen grace pitches before or after the principal. Supported signs are `tr`, `turn`, `turn_inverted`, `mordent` and `mordent_inverted`. |
+| `C5[grace before slashed ((Eb5 Ab5 Eb6))]` | Play the three grace pitches together. Separate attacks can mix single pitches and parenthesized chords. |
+| `Bb3[ossia :8 (Bb3[ornament mordent] An3 Bb3)]` | Engrave a cue-sized alternative below this attack. Write up to 16 pitches with one shared quarter, eighth, sixteenth or thirty-second duration. Playback uses the principal voice. |
+| `C3[pedal down] E3 G3[pedal up]` | Depress the piano sustain pedal at the start of C3 and lift at the end of G3. Pair the marks in one voice. Both hands sustain. |
+| `slur below { C4 D4 E4 }` | Choose the side of a phrase slur. An unqualified slur uses the native placement. |
 | `map bell "Ride bell" line 4.5 head triangle stem up midi 53` | Declare a named hit inside a drums part. Use its ID as a note or chord head. Available shapes are normal, cross, circle-cross and triangle. |
 
 ### Playing expression
