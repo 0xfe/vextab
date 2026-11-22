@@ -8,6 +8,24 @@ function replaceOnce(source, original, replacement) {
   return source.replace(original, replacement);
 }
 
+/** Route TAB phrase slurs through the native system splitter, using string heights at breaks. */
+function tabSlurs(source) {
+  source = replaceOnce(source, "(span.kind !== 'tie' && span.kind !== 'volta')",
+    "(span.kind !== 'tie' && span.kind !== 'volta' && span.kind !== 'slur')");
+  const fragment = 'addFragment(s, units, row, baseline) {';
+  source = replaceOnce(source, fragment, fragment + `
+        const continuation = (anchor, stave, index = 0) => anchor.note instanceof TabNote
+            ? stave.getYForLine(anchor.note.getPositions()[index].str - 1)
+            : continuationPitch(anchor, stave, index);`);
+  source = replaceOnce(source, 'continuationPitch(s.first, startStaff, s.spec.fromHead)', 'continuation(s.first, startStaff, s.spec.fromHead)');
+  source = replaceOnce(source, 'continuationPitch(s.last, endStaff, s.spec.toHead)', 'continuation(s.last, endStaff, s.spec.toHead)');
+  // Use individual fret digits as obstacles, so the curve can pass through open string space.
+  source = replaceOnce(source, '.filter((n) => n instanceof StaveNote &&\n                    (n.getStave()',
+    '.filter((n) => (n instanceof StaveNote || (kind === "slur" && n instanceof TabNote)) &&\n                    (n.getStave()');
+  return replaceOnce(source, '.flatMap((n) => measureEngraving(n).parts);',
+    '.flatMap((n) => n instanceof TabNote ? n.getFretInk() : measureEngraving(n).parts);');
+}
+
 /** Give the row breaker and the formatter the same opening indent. The preview pass
  * routes curves at native coordinates; only the final pass contributes drawings and diagnostics. */
 function pianoLayout(source) {
@@ -68,7 +86,7 @@ module.exports = function publicationHooks(source) {
     // Include a cue staff in the same envelope as native ink before placing the next hand or system.
     const staffBottom = 'stave.getYForLine(stave.getNumLines() - 1) + stave.space(1.6)';
     source = replaceOnce(source, staffBottom, "stave.getYForLine(Math.max(stave.getNumLines() + 0.6, Number(stave.getAttribute('vextab-ossia-bottom')) || 0))");
-    return pianoLayout(source);
+    return pianoLayout(tabSlurs(source));
   }
   if (path.basename(this.resourcePath) === 'factory.js') {
     const point = 'const defaults = ctx.getDefaultStyle();';

@@ -288,7 +288,10 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
     if (mark.kind === 'slur') {
       for (const staff of staves) {
         const from = eventId(staff, mark.from);
-        if (sources.ids[from]) spans.push({ kind: 'slur', side: mark.side, id: sources.project(staff, mark.id, mark.range), from, to: eventId(staff, mark.to) });
+        // A written rest has no fret to anchor a TAB slur. The pitched staff can still phrase over it.
+        if (staff === 'tab' && (rests.has(mark.from) || rests.has(mark.to))) continue;
+        if (sources.ids[from]) spans.push({ kind: 'slur', side: mark.side ?? (staff === 'tab' ? 'below' : undefined),
+          id: sources.project(staff, mark.id, mark.range), from, to: eventId(staff, mark.to) });
       }
       continue;
     }

@@ -37,6 +37,17 @@ QUnit.module('Grammar v2 score views', () => {
     assert.equal(renderScorePart(host(), score, 'tab').publication.diagnostics.length, 0);
   });
 
+  QUnit.test('guitar phrase slurs follow both staves across a system break', assert => {
+    const score = parseScore('meter 2/4 guitar { slur { 0/4 2/4 | break system 3/4 2/4 } | }');
+    for (const part of ['score', 'tab', 'notation'] as const) {
+      const view = renderScore(host(), score, { part, width: 500 });
+      const slurs = view.composition.sheet.getContinuousLayout().fragments.filter(f => f.kind === 'slur');
+      assert.deepEqual(slurs.map(f => f.part), part === 'score' ? ['first', 'first', 'last', 'last'] : ['first', 'last']);
+      assert.ok(slurs.every(f => Number.isFinite(f.y1) && Number.isFinite(f.y2)));
+      if (part !== 'score') assert.deepEqual(renderScorePart(host(), score, part).publication.diagnostics, []);
+    }
+  });
+
   QUnit.test('piano aligns hands, sustains a tied bass, and prints the correct fingering and sign', assert => {
     const input = 'meter 2/4 piano { upper { times 2 { (Fn4[finger 2, showSign] A4[finger 4 right]) G4[accent] | } } lower { :h C3 | C3[tie] | } }';
     const score = parseScore(input);
