@@ -16,6 +16,23 @@ function verse(root: Element) {
 }
 
 QUnit.module('Independent part engraving', () => {
+  QUnit.test('centered title and credit sit above the framed chord in screen and page coordinates', assert => {
+    const score = parseScore('layout { heading { align center title "Solo guitar" composer "An arrangement" } } '
+      + 'guitar { view notation :w (2/3 1/2 0/1)[symbol "Am", frame (x x x 2 1 0)] | }');
+    for (const width of [360, 850]) {
+      const screen = host();
+      renderScore(screen, score, { width });
+      const print = renderScorePart(host(), score, 'notation').publication.pages[0].svg;
+      for (const root of [screen, print]) {
+        const [title, credit] = [...root.querySelectorAll('.vf-score-heading text')].map(el => el.getBoundingClientRect());
+        const frame = root.querySelector('.vf-fret-diagram').getBoundingClientRect();
+        const staff = root.querySelector('.vf-stave').getBoundingClientRect();
+        assert.closeTo(title.x + title.width / 2, credit.x + credit.width / 2, 2, 'centers match');
+        assert.ok(title.bottom < credit.top && credit.bottom < frame.top && frame.bottom < staff.top, 'heading, key and music stack in order');
+      }
+    }
+  });
+
   QUnit.test('singleton marks locate their second spelling, including in persisted scores', assert => {
     for (const [marks, second] of [
       ['lyric "one", lyric "two"', 'lyric "two"'], ['symbol "C", symbol "D"', 'symbol "D"'],

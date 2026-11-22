@@ -96,7 +96,7 @@ export interface ScoreVoice {
 export interface InstrumentIdentity { id?: string; name?: string; shortName?: string; sounds?: number }
 export interface ScoreStaff extends Omit<InstrumentIdentity, 'name'> { displayName?: string; name: StaffName; range: TextRange; voices: ScoreVoice[] }
 /** Optional front matter shared by the screen engraving and its printed edition. */
-export interface ScoreHeading { title?: string; dedication?: string; tempo?: string; composer?: string }
+export interface ScoreHeading { align?: 'center'; title?: string; dedication?: string; tempo?: string; composer?: string }
 export interface ScoreLayout { font?: 'Bravura' | 'Petaluma'; heading?: ScoreHeading; spacing?: 'optical'; firstSystemIndent?: number; width?: number; scale?: number; rowGap?: number; staffDistance?: number; top?: number }
 /** Instrument declarations apply to every voice of the part. */
 export interface PartSettings {

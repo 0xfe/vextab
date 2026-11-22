@@ -56,24 +56,41 @@ export function leadMarks(measure: Measure, staff: 'notation' | 'tab', noteId: (
 /** Draw native diagrams in source order above the music, wrapping the key with the score. */
 export function drawFrames(score: ParsedScore, width: number, ctx: RenderContext, register: Register, top = 0) {
   const regions: ScoreHitRegion[] = [];
-  let x = 10, y = top + 6, bottom = top, right = 0;
+  const centered = score.layout?.heading?.align === 'center';
+  let y = top + 6, bottom = top, right = 0, rowWidth = 0;
   ctx.save();
   ctx.setFont(scoreTextFont(), 12);
+  const row: { diagram: FretDiagram; label: string; source: string; id: string; w: number; h: number }[] = [];
+  function drawRow() {
+    let x = centered ? Math.max(10, (width - rowWidth) / 2) : 10;
+    for (const cell of row) {
+      const diagramWidth = cell.diagram.getBoundingBox().w;
+      const diagramX = centered ? x + (cell.w - diagramWidth) / 2 : x;
+      const labelX = centered ? x + (cell.w - ctx.measureText(cell.label).width) / 2 : x + 12;
+      ctx.fillText(cell.label, labelX, y + 12);
+      cell.diagram.setX(diagramX).setY(y + 16).setContext(ctx).draw();
+      regions.push({ id: cell.id, kind: 'event', source: cell.source, x, y, w: cell.w, h: cell.h });
+      bottom = Math.max(bottom, y + cell.h);
+      right = Math.max(right, x + cell.w + 10);
+      x += cell.w + 12;
+    }
+    row.length = 0;
+    rowWidth = 0;
+    y = bottom + 8;
+  }
   for (const measure of score.measures) for (const voice of measure.voices) for (const event of voice.events) {
     if (!event.frame) continue;
     const { spec, range } = event.frame;
-    const id = register('frame' + range.start, range, event.id);
+    const source = 'frame' + range.start;
+    const id = register(source, range, event.id);
     const diagram = new FretDiagram(spec).setAttribute('id', id);
-    const bounds = diagram.getBoundingBox();
-    const cellWidth = Math.max(bounds.w, 12 + ctx.measureText(event.chord.text).width);
-    if (x > 10 && x + cellWidth > width - 10) { x = 10; y = bottom + 8; }
-    ctx.fillText(event.chord.text, x + 12, y + 12);
-    diagram.setX(x).setY(y + 16).setContext(ctx).draw();
-    regions.push({ id, kind: 'event', source: 'frame' + range.start, x, y, w: cellWidth, h: bounds.h + 16 });
-    bottom = y + 16 + bounds.h;
-    right = Math.max(right, x + cellWidth + 10);
-    x += cellWidth + 12;
+    const bounds = diagram.getBoundingBox(), label = event.chord.text;
+    const w = Math.max(bounds.w, ctx.measureText(label).width + 12);
+    if (row.length && rowWidth + 12 + w > width - 20) drawRow();
+    rowWidth += (row.length ? 12 : 0) + w;
+    row.push({ diagram, label, source, id, w, h: bounds.h + 16 });
   }
+  drawRow();
   ctx.restore();
   return { height: bottom - top, width: right, regions };
 }

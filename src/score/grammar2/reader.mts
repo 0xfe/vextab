@@ -885,6 +885,12 @@ export function readScore(source: string, fail: Fail) {
             block(() => {
               while (peek() !== '}') {
                 const key = take();
+                if (key.text === 'align') {
+                  if (heading.align) error('Duplicate score heading alignment', key);
+                  expect('center');
+                  heading.align = 'center';
+                  continue;
+                }
                 if (key.text !== 'title' && key.text !== 'dedication' && key.text !== 'tempo' && key.text !== 'composer')
                   error('Unknown score heading field', key);
                 if (heading[key.text] !== undefined) error('Duplicate score heading field', key);

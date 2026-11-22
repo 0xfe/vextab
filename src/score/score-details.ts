@@ -4,43 +4,58 @@ import type { ScoreHeading } from './grammar2/model';
 import type { Attack } from './model';
 import { headingWeight, scoreMusicFont, scoreTextFont } from './engraving';
 
-/** Heading positions are relative to the music margins and the first staff line. */
-export function drawHeading(ctx: RenderContext, heading: ScoreHeading, left: number, width: number, staffTop: number) {
+/** Engrave a heading relative to the staff (traditional) or the top of the page (centered).
+ * Return the space occupied by a centered block so the chord key and score can follow it. */
+export function drawHeading(ctx: RenderContext, heading: ScoreHeading, left: number, width: number, origin: number) {
   ctx.save();
   ctx.openGroup('score-heading');
-  const factor = Math.min(1, width / 620);
+  const centered = heading.align === 'center';
+  const factor = Math.min(1, centered ? Math.max(0.75, width / 620) : width / 620);
+  let height = 0;
+
   function line(text: string | undefined, position: number, lift: number, size: number, align = 0) {
     if (!text) return;
-    // Raised ordinals use ordinary font outlines, including in portable SVG exports.
+    // Raised ordinals and metronome marks each need their own size or typeface in portable SVG.
     const runs = text.split(/(\^\{[^{}]+\}|♩)/).filter(Boolean).map(token => {
       const raised = token.startsWith('^{') && token.endsWith('}');
       const content = raised ? token.slice(2, -1) : token;
-      // The metronome note belongs to the music face so portable SVG can outline it.
       const quarter = token === '♩';
       const family = quarter ? scoreMusicFont() : scoreTextFont();
       const weight = quarter ? 'normal' : headingWeight();
       const label = quarter ? VexFlow.Glyphs.metNoteQuarterUp : content.trim();
       const fontSize = size * factor * (raised ? 0.62 : 1);
       ctx.setFont(family, fontSize, weight, 'normal');
-      // SVG collapses edge spaces on separate text elements. Advance explicitly at run boundaries.
       const space = quarter ? 0 : ctx.measureText('a a').width - ctx.measureText('aa').width;
       const leading = (content.length - content.trimStart().length) * space;
       const advance = (content.length - label.length) * space + ctx.measureText(label).width;
       return { label, family, weight, fontSize, raised, leading, advance };
     });
-    let x = left + position * width - runs.reduce((sum, r) => sum + r.advance, 0) * align;
+    const span = runs.reduce((sum, run) => sum + run.advance, 0);
+    const fit = centered && span > width ? width / span : 1;
+    const lineSize = size * factor * fit;
+    let x = left + position * width - span * fit * align;
+    const baseline = centered ? origin + height + lineSize * 1.3 : origin - lift * factor;
     for (const run of runs) {
-      ctx.setFont(run.family, run.fontSize, run.weight, 'normal');
-      ctx.fillText(run.label, x + run.leading, staffTop - (lift + (run.raised ? size * 0.5 : 0)) * factor);
-      x += run.advance;
+      ctx.setFont(run.family, run.fontSize * fit, run.weight, 'normal');
+      ctx.fillText(run.label, x + run.leading * fit, baseline - (run.raised ? lineSize * 0.5 : 0));
+      x += run.advance * fit;
     }
+    if (centered) height += lineSize * 1.85;
   }
-  line(heading.title, 0.5, 112, 34, 0.5);
-  line(heading.dedication, 0.045, 74, 18);
-  line(heading.tempo, 0.17, 39, 23);
-  line(heading.composer, 0.985, 32, 19, 1);
+  if (centered) {
+    line(heading.title, 0.5, 0, 32, 0.5);
+    line(heading.dedication, 0.5, 0, 16, 0.5);
+    line(heading.composer, 0.5, 0, 16, 0.5);
+    line(heading.tempo, 0.5, 0, 16, 0.5);
+  } else {
+    line(heading.title, 0.5, 112, 34, 0.5);
+    line(heading.dedication, 0.045, 74, 18);
+    line(heading.tempo, 0.17, 39, 23);
+    line(heading.composer, 0.985, 32, 19, 1);
+  }
   ctx.closeGroup();
   ctx.restore();
+  return height;
 }
 
 /** The alternative has its own accidental state, rhythm and cue-sized staff. */

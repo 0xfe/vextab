@@ -587,7 +587,8 @@ function drawScoreHeading(parsed: ParsedScore, composition: EasyScoreComposition
   if (!row) return;
   const swing = parsed.playback?.swing === 'eighths';
   const staffTop = composition.staves[0][0].getYForLine(0);
-  if (parsed.layout?.heading) drawHeading(ctx, parsed.layout.heading, row.x, row.width, staffTop - (swing ? 40 : 0));
+  const heading = parsed.layout?.heading;
+  if (heading && !heading.align) drawHeading(ctx, heading, row.x, row.width, staffTop - (swing ? 40 : 0));
   if (swing) drawSwingMark(ctx, row.x + 6, row.y - 5);
 }
 
@@ -662,9 +663,10 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
   const ctx = canvas ? new CanvasContext(canvas.getContext('2d')) : new SVGContext(surface);
   if (!canvas) setFretPaper(ctx, host);
 
-  function frameKeys() {
+  const centered = parsed.layout?.heading?.align === 'center' && parsed.layout.heading;
+  function frontMatter() {
     const regions: ScoreHitRegion[] = [];
-    let height = 0, extent = 0;
+    let height = centered ? drawHeading(ctx, centered, 10, width - 20, 4) + 12 : 0, extent = 0;
     scores.forEach((score, i) => {
       const view = views[i];
       const key = drawFrames(score, width, ctx, (id, range, event) => view.sources.project(view.staves[0], id, range, event), height);
@@ -674,8 +676,8 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
     });
     return { height, extent, regions };
   }
-  const frames = frameKeys();
-  if (parsed.layout?.heading) spec.sheet.y += 125;
+  const frames = frontMatter();
+  if (parsed.layout?.heading && !centered) spec.sheet.y += 125;
   if (parsed.playback?.swing === 'eighths') spec.sheet.y += 40;
   spec.sheet.y += frames.height + (views.some(view => view.mixedEndings.length) ? 20 : 0);
   const factory = new Factory({ renderer: { elementId: null, width, height: 1 } }).setContext(ctx);
@@ -699,7 +701,7 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
   if (canvas) {
     composition.sheet.format();
     resize();
-    if (frames.height) frameKeys();
+    if (frames.height) frontMatter();
   }
   drawPrepared(factory, () => finishLayout(composition, instruments));
   drawScoreHeading(parsed, composition, ctx);
@@ -855,6 +857,15 @@ function publicationDrawing(scores: ParsedScore[], views: Projection[], source: 
       ctx.closeGroup();
       const box = key.getBBox();
       key.setAttribute('transform', 'translate(0,' + (top - box.y - box.height - 8) + ')');
+    }
+    const heading = scores[0].layout?.heading;
+    if (heading?.align === 'center' && insetMeasure === undefined) {
+      // Publication measures actual ink after each instrument's chord key has been placed.
+      const top = Math.min(0, ctx.svg.getBBox().y);
+      const group = ctx.openGroup('front-matter');
+      const height = drawHeading(ctx, heading, 0, spec.sheet.width, 0);
+      group.setAttribute('transform', 'translate(0,' + (top - height - 8) + ')');
+      ctx.closeGroup();
     }
   };
 }

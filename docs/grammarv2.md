@@ -99,6 +99,7 @@ const pickup = parseScore('meter 2/4 pickup 1/8 staff { :8 G4 | :q A4 G4 | }');
 | Use handwritten engraving | `layout { font Petaluma }` pairs Petaluma music glyphs with Petaluma Script lettering on screen and in print. `font Bravura` selects the standard Bravura and Academico faces. |
 | Fit more bars in a responsive embed | `layout { scale 0.75 spacing optical }` draws at three-quarter size and reflows to fill the host. Add `width` for fixed system breaks, as in the Ballade. |
 | Space neighboring piano systems | Adjacent grand staves share space where their markings fall at different horizontal positions. Ossias and pedal symbols count toward clearance. Increase `rowGap` for more space on screen. Printed editions use the page’s system gap. |
+| Center the heading above the diagram key | `layout { heading { align center title "All of Me" composer "Chord melody for guitar" } }` stacks the title and credits above the music on screen and in print. Diagrams wrap and center by row. |
 | Indent the first system | `layout { firstSystemIndent 80 }` reserves 80 engraving pixels before the opening brace or staff, in addition to any instrument labels. Screen and print use this space when choosing system breaks. The default is zero. |
 
 Declare changes of tuning, ink or meter visibility at a bar boundary in the part header. For example, `tuning dropD at 3` retunes the same strings from bar three. `ink default at 2` returns the staff to its default colour, and `display meter shown at 3` prints the meter at that boundary.
