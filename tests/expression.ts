@@ -1,5 +1,5 @@
 // Exercise expressive grammar through VexFlow screen, publication and playback entry points.
-import { Annotation, GraceNoteGroup, Ornament, StaveNote } from 'vexflow';
+import { Annotation, GraceNoteGroup, Ornament, StaveNote, type StemmableNote } from 'vexflow';
 import { parseScore, Player, renderConductor, renderEdition, renderScorePart } from '../src/browser';
 import { scoreSurfaces } from '../src/playback/geometry';
 import { scorePerformance } from '../src/playback/performance';
@@ -63,6 +63,30 @@ QUnit.module('Expressive notation and performance', () => {
     assert.ok(pulses.every(e => e.duration === 0.25));
     assert.equal(performance.duration, 16);
     assert.equal(renderEdition(host(), score).publication.pages[0].svg.querySelectorAll('.vf-alternating-tremolo').length, 1);
+  });
+
+  QUnit.test('an explicit beam carries its tuplet numeral on the stem side in notation and tab', assert => {
+    const score = parseScore('meter 1/4 guitar { tabStems on tabDirection down '
+      + 'tuplet 3:2 { :8 beam { 0/6 2/6[hammer] 0/6[pull] } } | '
+      + 'tuplet 3:2 { :8 0/6 2/6 0/6 } | '
+      + 'tuplet 3:2 { :8 beam { 0/6 2/6 } 0/6 } | }');
+    for (const renderer of ['svg', 'canvas'] as const) {
+      const { composition, diagnostics } = renderConductor(host(), score, { renderer, width: 520 });
+      assert.deepEqual(diagnostics, [], renderer);
+      for (const staff of [0, 1]) {
+        // The low pitches stem up on the notation staff. The tab rhythms stem down.
+        for (const bar of [0, 1]) {
+          const notes = composition.notes[bar][staff][0] as StemmableNote[];
+          const box = notes[0].getTupletStack()[0].getBoundingBox();
+          const beam = notes[0].getBeam().getBoundingBox();
+          assert.ok(staff ? box.y >= beam.y + beam.h : box.y + box.h <= beam.y, renderer + ' clears beam ' + bar);
+          assert.ok(box.w < notes[2].getAbsoluteX() - notes[0].getAbsoluteX(), 'a full beam needs only the numeral');
+        }
+        const partial = composition.notes[2][staff][0];
+        const box = partial[0].getTupletStack()[0].getBoundingBox();
+        assert.ok(box.w >= partial[2].getAbsoluteX() - partial[0].getAbsoluteX(), 'a partial beam keeps its bracket');
+      }
+    }
   });
 
   QUnit.test('a held bend releases on one attack; a particular chord head slides and the mapped drum keeps its pitch', assert => {

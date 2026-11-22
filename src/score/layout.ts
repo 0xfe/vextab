@@ -17,7 +17,7 @@ import { drawSwingMark } from './swing-mark';
 import { scoreFont } from './engraving';
 import {
   AlternatingTremolo, Ornament, TextDynamics, Clef, Fraction, Accidental, Annotation, Stroke, Vibrato, Articulation, Modifier, TabSlide, Barline, StaveNote, TabNote, TabTie, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, CanvasContext,
-  type Beam, type StemmableNote, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
+  type Beam, type Tuplet, type StemmableNote, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
   type EasyScoreVoiceSpec, type NotationIdentity, type PublicationOptions, type RenderContext, type ScoreHitRegion,
 } from 'vexflow';
 import { describePrebend, makePrebend } from './music';
@@ -388,6 +388,7 @@ function tremoloPairs(score: ParsedScore, view: Projection, composition: EasySco
 function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyScoreComposition, factory: Factory) {
   const silent = new Set<string>();
   const split = new Set<Beam>();
+  const beamedTuplets = new Set<Tuplet>();
   for (const span of parsed.spans) {
     if (span.kind !== 'pedal') continue;
     for (const staff of view.staves) {
@@ -410,6 +411,7 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
         for (const group of voice.beamGroups ?? []) {
           const notes = voice.events.slice(group.start, group.end + 1).map(e => composition.getNote(view.eventId(staff, e.id)));
           factory.Beam({ notes: notes as StemmableNote[], options: { feathered: group.feather } });
+          for (const note of notes) for (const tuplet of note.getTupletStack()) beamedTuplets.add(tuplet);
         }
       }
       for (const voice of voicesFor(m, staff)) for (const event of voice.events) {
@@ -491,6 +493,13 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
     }
   }
   splitSilentBeams(factory, split, silent);
+  // Tuplets predate authored beams. Measure their numeral on the final stem side;
+  // keep the bracket when a partial or split beam cannot identify the whole group.
+  for (const tuplet of beamedTuplets) {
+    const notes = tuplet.getNotes(), first = notes[0], beam = first.getBeam();
+    tuplet.setTupletLocation(first.getStemDirection());
+    tuplet.setBracketed(!beam || notes.some(note => note.getBeam() !== beam));
+  }
 }
 
 /** Draw mixed rest/fret endings that the native tab span cannot yet anchor. */
