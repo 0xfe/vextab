@@ -3,7 +3,7 @@ import { lyrics } from './verses';
 import { describeOpenSlide } from './open-slide';
 import { describePrebend } from './music';
 import { scoreTextFont } from './engraving';
-import { Annotation, FretDiagram, type EasyScoreComposition, type EasyScoreMeasureSpec, type RenderContext, type ScoreHitRegion } from 'vexflow';
+import { Annotation, Fraction, FretDiagram, type EasyScoreComposition, type EasyScoreMeasureSpec, type RenderContext, type ScoreHitRegion } from 'vexflow';
 import type { Measure, ParsedScore } from './model';
 import { ScoreError, type SourceRange } from './source';
 
@@ -53,7 +53,14 @@ export function leadMarks(measure: Measure, staff: 'notation' | 'tab', noteId: (
   return { chords, verses };
 }
 
-/** Draw native diagrams in source order above the music, wrapping the key with the score. */
+/** Order chord grips by their first written beat, including when the bass introduces a grip. */
+function framedAttacks(measure: Measure) {
+  return measure.voices.flatMap(voice => voice.events.filter(event => event.frame))
+    .map(event => ({ event, beat: new Fraction().parse(event.onset).value() }))
+    .sort((a, b) => a.beat - b.beat);
+}
+
+/** Draw native diagrams in musical order above the music, wrapping the key with the score. */
 export function drawFrames(score: ParsedScore, width: number, ctx: RenderContext, register: Register, top = 0) {
   const regions: ScoreHitRegion[] = [];
   const centered = score.layout?.heading?.align === 'center';
@@ -78,8 +85,7 @@ export function drawFrames(score: ParsedScore, width: number, ctx: RenderContext
     rowWidth = 0;
     y = bottom + 8;
   }
-  for (const measure of score.measures) for (const voice of measure.voices) for (const event of voice.events) {
-    if (!event.frame) continue;
+  for (const measure of score.measures) for (const { event } of framedAttacks(measure)) {
     const { spec, range } = event.frame;
     const source = 'frame' + range.start;
     const id = register(source, range, event.id);
