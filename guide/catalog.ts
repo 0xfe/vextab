@@ -80,7 +80,7 @@ export const lessons: Lesson[] = [
     edition:{ credit:'VexTab study after the opening 16 bars of Eugen Sedko’s traditional soleá arrangement. The two diagrams show the exact three-string grips. The chord changes are editorial. Asterisks retain the player’s marks from the source.', url:'https://www.sheetmusicplus.com/en/product/traditional-solea-soleares-flamenco-guitar-notes-tabs-21752865.html' } },
   { id:'pocket-change', title:'Pocket Change · Bebop piano', source:pocketChange, views:staff, demo:true,
     goal:'Play an original sixteen-bar head in F. Hear the opening eighth-note figure return in bars 5 and 13, and listen for the left hand answering in the gaps.',
-    edit:'Change swing eighths to swing off and replay the opening at 176 BPM. Listen to the offbeat before the first G, then compare the sparse chord hits in bars 9–12.',
+    edit:'Listen to the left hand’s F–A–D in bar 1. Change performer parker to performer robot and replay it to compare the finger attacks and releases. Then change swing eighths to swing off to hear the head played straight.',
     edition:{ credit:'An original VexTab piano score with a Parker-inspired head and left-hand comping.', url:'scores/pocket-change.vextab' } },
   { id:'joplin-maple-leaf', title:'Joplin · Maple Leaf Rag', source:joplin, views:staff, demo:true,
     goal:'Play the pickup and first strain, including both endings. In written measure 8 the right hand crosses onto the bass staff.',

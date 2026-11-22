@@ -8,6 +8,10 @@ export interface PlaybackNote {
   program?: number;
   pitch: number;
   duration: number;
+  /** Seconds after the event pulse. The transport consumes this before it calls the instrument. */
+  onsetOffset?: number;
+  /** A tie or damper owns the release, so finger articulation must preserve its endpoint. */
+  holdRelease?: boolean;
   velocity: number;
   bend?: readonly PitchPoint[];
 }
@@ -28,6 +32,22 @@ export interface PlaybackPlugin {
 /** An onset can contain a rest or a chord. Mark is optional visual feedback. */
 export interface PlaybackEvent { time: number; duration: number; source: string | object; notes: PlaybackNote[]; mark?: () => void }
 export interface Performance { events: PlaybackEvent[]; duration: number }
+
+/** Keep one visual mark per event and merge finger attacks with the other voices on the score clock. */
+function transportSteps(events: PlaybackEvent[]): Pick<PlaybackEvent, 'time' | 'notes' | 'mark'>[] {
+  if (!events.some(event => event.notes.some(note => note.onsetOffset))) return events;
+  const steps = [];
+  for (const event of events) {
+    const onBeat: PlaybackNote[] = [];
+    steps.push({ time: event.time, notes: onBeat, mark: event.mark });
+    for (const note of event.notes) {
+      if (!note.onsetOffset) { onBeat.push(note); continue; }
+      const { onsetOffset, ...sounding } = note;
+      steps.push({ time: event.time + onsetOffset, notes: [sounding] });
+    }
+  }
+  return steps.sort((a, b) => a.time - b.time);
+}
 
 /** Drive onsets from elapsed time. Timer delays do not accumulate in the tempo. */
 export class PlaybackTransport {
@@ -60,6 +80,7 @@ export class PlaybackTransport {
         if (request.signal.aborted) { session.stop(); return; }
         this.session = session;
         const now = () => session.currentTime ?? performance.now() / 1000;
+        const steps = transportSteps(music.events);
         let wallOrigin = now();
         let scoreOrigin = -leadIn;
         const position = () => scoreOrigin + (now() - wallOrigin) * this.rate;
@@ -68,19 +89,19 @@ export class PlaybackTransport {
           if (request.signal.aborted) return;
           try {
             const elapsed = position();
-            while (index < music.events.length && music.events[index].time <= elapsed) {
-              const event = music.events[index++];
+            while (index < steps.length && steps[index].time <= elapsed) {
+              const event = steps[index++];
               event.mark?.();
               for (const note of event.notes) {
                 // A throttled background tab may wake after this note has already ended.
                 if (event.time + note.duration > elapsed) session.playNote(atPlaybackRate(note, this.rate));
               }
             }
-            if (index === music.events.length && elapsed >= music.duration) {
+            if (index === steps.length && elapsed >= music.duration) {
               this.stop();
               return;
             }
-            const next = music.events[index]?.time ?? music.duration;
+            const next = steps[index]?.time ?? music.duration;
             this.timer = window.setTimeout(advance, Math.max(1, (next - position()) / this.rate * 1000));
           } catch (error) { fail(error); }
         };

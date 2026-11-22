@@ -91,7 +91,7 @@ function expression(score: ParsedScore, tempo: number, expressive: boolean) {
 }
 
 /** Dampers affect both hands. Repeated strikes of the same key still get their own attack. */
-function sustainNotes(events: PlaybackEvent[], windows: { start: number; end: number }[]) {
+function sustainNotes(events: PlaybackEvent[], windows: { start: number; end: number }[], expressive: boolean) {
   if (!windows.length) return;
   windows.sort((a, b) => a.start - b.start);
   const ranges: typeof windows = [];
@@ -112,6 +112,8 @@ function sustainNotes(events: PlaybackEvent[], windows: { start: number; end: nu
         else high = mid;
       }
       const pedal = ranges[low];
+      // A finger may lift early, but the damper still determines the audible note-off.
+      if (expressive && (pedal?.start < release || ranges[low - 1]?.end === release)) note.holdRelease = true;
       if (pedal && pedal.start < release) {
         const end = Math.min(pedal.end, nextStrike.get(note.pitch) ?? Infinity);
         note.duration = Math.max(note.duration, end - event.time);
@@ -221,6 +223,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
         const tie = prior.get(id);
         const tied = tie && sounding.get(tie.from + ':' + tie.fromHead);
         if (tied) {
+          if (expressive) tied.note.holdRelease = true;
           tied.note.duration = Math.max(tied.note.duration, time + duration - tied.start);
           if (tie.bend) {
             const { semitones, hold, release } = tie.bend;
@@ -273,7 +276,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
   }) : events;
   sounded.sort((a,b) => a.time - b.time);
   liftAll(bar);
-  sustainNotes(sounded, windows);
+  sustainNotes(sounded, windows, expressive);
   return { events: sounded, duration: bar };
 }
 

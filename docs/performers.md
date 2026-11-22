@@ -1,6 +1,6 @@
 # Performers
 
-A performer interprets the same written notes on each press of Play. It shapes the pulse, attack strength and timing of graces. Try changing just the performer in the guide’s editable guitar phrase, or add the following line before the first instrument of a score. [Listen in the guide](../dist/guide/index.html#features/playback)
+A performer interprets the same written notes on each press of Play. It shapes the pulse, attack strength and timing of graces, and how the fingers voice a chord. Try changing just the performer in the guide’s editable guitar phrase, or add the following line before the first instrument of a score. [Listen in the guide](../dist/guide/index.html#features/playback)
 
 ```vextab
 play { tempo 176 performer parker swing eighths }
@@ -20,7 +20,7 @@ The names describe editable interpretations. Their parameter values are listenin
 
 ## Written swing
 
-`play { swing eighths }` prints a beamed eighth-note pair equated to a triplet quarter and eighth above the first system. The notes stay written as ordinary eighths. The performed ratio eases toward straight eighths at faster tempos. `swing off` selects even eighths and removes the lead’s downbeat displacement. Omit the directive to inherit the performer’s feel. A robot with explicitly swung eighths plays a repeatable long–short pattern. [Play Pocket Change](../dist/guide/index.html#lesson/pocket-change)
+`play { swing eighths }` prints a beamed eighth-note pair equated to a triplet quarter and eighth above the first system. The notes stay written as ordinary eighths. The performed ratio eases toward straight eighths at faster tempos. `swing off` selects even eighths and removes the lead’s downbeat displacement. Omit the directive to inherit the performer’s feel. A robot with explicitly swung eighths plays a repeatable long–short pattern with simultaneous chord attacks. [Play Pocket Change](../dist/guide/index.html#lesson/pocket-change)
 
 The player’s `swing` option overrides the score for a listening comparison. A standalone sequencer can pass `'eighths'` or `'off'` as the third argument to `createPerformer`.
 
@@ -29,7 +29,7 @@ The player’s `swing` option overrides the score for a listening comparison. A 
 - Written repeats, tempo changes, dynamics and hairpins are resolved before the performer shapes the result. Nearby beats share a small, slowly changing tempo deviation. A bounded, center-weighted distribution varies touch and grace length on each take.
 - Phrases run up to four performed bars. A slur ending at the barline can end a phrase sooner. A fermata stretches the beat containing its release for the whole ensemble. Accents add weight and staccato shortens the sounding note. Ties and pedal can carry sound through a written release.
 - Swing operates on full quarter beats. The performer leaves a beat’s subdivisions even when that part contains triplets, sixteenths or irregular grace attacks. A compound meter in an ensemble keeps the overlapping bars straight. The first part supplies the conducting grid and acts as the jazz lead. A piano’s hands share one part.
-- Chord heads strike together. Grace groups borrow from the principal note, with a shorter allowance for slashed graces and a time cap on long notes. Timing changes move bends, note releases and the visual playhead along with the music.
+- In an expressive chord, one finger lands on the beat and the others follow within a few milliseconds. The upper voice gets a little more weight, inner notes stay lighter, and each finger lifts independently. A bent, tied or pedalled note keeps its written release. Grace groups borrow from the principal note, with a shorter allowance for slashed graces and a time cap on long notes. Timing changes move bends, note releases and the visual playhead along with the music.
 
 ## Use it from JavaScript
 
@@ -47,9 +47,11 @@ await player.play();
 
 A positive `pocket` delays the lead downbeat. A negative value anticipates it. Both meet the rhythm section on the swung offbeat. Use `rubato` and `drift` for the phrase and take-to-take beat-length variation, `swell` and `touch` for velocity, and `beatAccent` for onbeat or offbeat emphasis. `swing` ranges from zero to one. `grace` is the nominal fraction of the principal note available to a grace group.
 
+Set `chordSpread` in seconds to control the touch inside a chord. Parker allows up to 0.013 seconds from first finger to last. Short notes use a smaller window. Set it to zero for simultaneous attacks, equal finger weight and a common lift while keeping the performer’s pulse and swing. Custom profiles that omit it use zero.
+
 ### Use it with a VexFlow score or another sequencer
 
-The standalone entry accepts note events in seconds and runs in Node or the browser. A VexFlow application can keep its own score, renderer, audio engine and source IDs. Convert voice ticks to seconds using the written tempo map, then pass all parts to the same take. The result contains the performed times to schedule in the host.
+The standalone entry accepts note events in seconds and runs in Node or the browser. A VexFlow application can keep its own score, renderer, audio engine and source IDs. Convert voice ticks to seconds using the written tempo map, then pass all parts to the same take. Schedule each note at `event.time + (note.onsetOffset ?? 0)`. Its duration and bend points start at that finger’s attack. Use `event.time` for a single score highlight.
 
 ```ts
 import { createPerformer, type Performance } from 'vextab/performer';

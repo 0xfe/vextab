@@ -1,6 +1,6 @@
 // Transform written timelines in seconds into one expressive ensemble take. No DOM or audio backend.
 import { isPerformerName, performerProfiles, type PerformerName, type PerformerProfile, type SwingSetting } from './profiles.mts';
-import type { Performance, PlaybackEvent } from './transport';
+import type { Performance, PlaybackEvent, PlaybackNote } from './transport';
 
 export { isPerformerName, performerProfiles, type PerformerName, type PerformerProfile, type SwingSetting };
 export type { Performance, PlaybackEvent, PlaybackNote } from './transport';
@@ -151,22 +151,63 @@ function partClock(part: Performance, index: number, beats: Beat[], profile: Per
   return clock;
 }
 
-/** Keep note identity and synth routing while applying a common onset and velocity change to chord heads. */
+/** Voice the outer notes, lighten the inner notes, and let the fingers land and lift independently. */
+function voiceChord(notes: PlaybackNote[], duration: number, spread: number, seed: number): void {
+  // Existing finger timings belong to the caller. Single notes keep their own phrasing.
+  if (notes.length < 2 || !spread || notes.some(note => note.onsetOffset)) return;
+  const low = Math.min(...notes.map(note => note.pitch)), high = Math.max(...notes.map(note => note.pitch));
+  const direction = noise(seed, 0);
+  const fingers = notes.map((note, index) => {
+    const register = (note.pitch - low) / Math.max(1, high - low);
+    const finger = seed ^ Math.imul(note.pitch + 1, 617) ^ index;
+    // A gentle tendency across the hand changes with each chord. Either outer voice can arrive first.
+    return { note, finger, landing: direction * register + noise(finger, 1) };
+  }).sort((a, b) => a.landing - b.landing);
+  const shortest = Math.min(duration, ...notes.map(note => note.duration));
+  if (shortest <= 0) return;
+  const width = Math.min(shortest * .12, spread * (.78 + .22 * noise(seed, 2)));
+  const strength = Math.min(1, spread / .013);
+  fingers.forEach(({ note, finger }, i) => {
+    const rank = i / (fingers.length - 1);
+    const stagger = i > 0 && i < fingers.length - 1 ? .32 * noise(finger, 3) / (fingers.length - 1) : 0;
+    const delay = width * (rank + stagger);
+    const outer = note.pitch === high ? .042 : note.pitch === low ? -.012 : -.085;
+    const balance = 1 + strength * (outer + .052 * noise(finger, 4));
+    note.velocity = Math.max(1, Math.min(127, Math.round(note.velocity * balance)));
+    if (delay) note.onsetOffset = delay;
+    // A tied, pedalled or bending head still reaches its written endpoint on the common clock.
+    let lift = 0;
+    if (!note.holdRelease && !note.bend && note.duration <= duration + 1e-9) {
+      const length = Math.min(spread * 1.8, note.duration * .09);
+      lift = length * Math.max(0, .56 + .40 * noise(finger, 5) - (note.pitch === high ? .23 : 0));
+    }
+    note.duration -= delay + lift;
+    if (delay && note.bend) note.bend = note.bend.map(point => ({ ...point, time: Math.max(0, point.time - delay) }));
+  });
+}
+
+/** Share the pulse across the part, then shape the notes inside each written chord. */
 function playPart(part: Performance, index: number, beats: Beat[], profile: PerformerProfile, take: number): Performance {
   const clock = partClock(part, index, beats, profile);
-  const events = part.events.map(event => {
+  const events = part.events.map((event, eventIndex) => {
     const time = clock(event.time);
-    const after = (seconds: number) => clock(event.time + seconds) - time;
+    const duration = clock(event.time + event.duration) - time;
     const beat = beats[beatAt(beats, event.time)];
     const touch = profile.touch * noise(take ^ (index + 1), Math.round(event.time * 100000));
     const phase = (event.time - beat.start) / (beat.end - beat.start);
     const accent = beat.fullBeat ? profile.beatAccent * Math.cos(2 * Math.PI * phase) : 0;
     const gain = 1 + (beat.velocity + touch + accent) / 100;
-    const notes = event.notes.map(note => ({ ...note, duration: after(note.duration),
-      velocity: Math.max(1, Math.min(127, Math.round(note.velocity * gain))),
-      ...(note.bend && { bend: note.bend.map(point => ({ ...point, time: after(point.time) })) }),
-    }));
-    return { ...event, time, duration: after(event.duration), notes };
+    const notes = event.notes.map(note => {
+      const written = event.time + (note.onsetOffset ?? 0), attack = clock(written);
+      const after = (seconds: number) => clock(written + seconds) - attack;
+      return { ...note, duration: after(note.duration),
+        ...(note.onsetOffset && { onsetOffset: attack - time }),
+        velocity: Math.max(1, Math.min(127, Math.round(note.velocity * gain))),
+        ...(note.bend && { bend: note.bend.map(point => ({ ...point, time: after(point.time) })) }),
+      };
+    });
+    voiceChord(notes, duration, profile.chordSpread ?? 0, take ^ Math.imul(index + 1, 65537) ^ Math.imul(eventIndex + 1, 16777619));
+    return { ...event, time, duration, notes };
   });
   return { events, duration: clock(part.duration) };
 }
@@ -179,10 +220,10 @@ function resolveProfile(value: PerformerName | PerformerProfile): PerformerProfi
   }
   const limits: Record<keyof PerformerProfile, [number, number]> = {
     rubato: [0, .4], drift: [0, .25], swell: [0, 32], touch: [0, 32],
-    swing: [0, 1], beatAccent: [-32, 32], pocket: [-.15, .15], grace: [.05, .4],
+    swing: [0, 1], beatAccent: [-32, 32], pocket: [-.15, .15], grace: [.05, .4], chordSpread: [0, .03],
   };
   for (const key of Object.keys(limits) as (keyof PerformerProfile)[]) {
-    const n = value[key], [min, max] = limits[key];
+    const n = key === 'chordSpread' && value[key] === undefined ? 0 : value[key], [min, max] = limits[key];
     if (!Number.isFinite(n) || n < min || n > max) throw new RangeError('Invalid performer ' + key);
   }
   return { ...value };
