@@ -410,6 +410,7 @@ Read `result.diagnostics` for source ranges and `result.publication.pages` for s
 | `5/1[bend +2 rise=1/2] 5/1[tie, release hold=1/4 release=3/4]` | Bend the first attack and release during the tied note on that string. Fractions on the continuation are relative to its own duration. |
 | `(5/2 5/1) (7/2 8/1[gliss 2])` | Slide from head 2 of the preceding attack to the marked destination head. Head numbers start at one in authored chord order. |
 | `0/1[grace before ((0/1 1/2) 2/3)]` | Engrave an opening grace chord on strings one and two, followed by fret two on string three. Use only fret/string positions within this group. Capo and transposition apply to both notation and playback. The tab part retains the chosen strings. |
+| `0/1[grace before (0/1[finger i above] 0/1[finger a above])]` | Place each finger on its own grace note. The same syntax marks an individual pitch inside a grace chord. |
 | `E4[grace before (D4 Eb4), ornament turn]` | Attach up to sixteen grace pitches before or after the principal. Supported signs are `tr`, `turn`, `turn_inverted`, `mordent` and `mordent_inverted`. |
 | `C5[grace before slashed ((Eb5 Ab5 Eb6))]` | Play the three grace pitches together. Separate attacks can mix single pitches and parenthesized chords. |
 | `Bb3[ossia :8 (Bb3[ornament mordent] An3 Bb3)]` | Engrave a cue-sized alternative below this attack. Write up to 16 pitches with one shared quarter, eighth, sixteenth or thirty-second duration. Playback uses the principal voice. |

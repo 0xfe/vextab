@@ -43,9 +43,13 @@ function tabSlurs(source) {
             if (!fitted)`);
   // A grace slur leaves usable space between its ribbon and the sustained chord.
   return replaceOnce(source, '.flatMap((n) => measureEngraving(n).parts);',
-    `.flatMap((n) => n instanceof TabNote ? n.getFretInk() : measureEngraving(n, s.spec.guitarPhrase ? {
-                    extension(owner) { if (owner.getRouteParts && !owner.text) return { parts: owner.getRouteParts(), anchors: {} }; }
-                } : {}).parts);`);
+    `.flatMap((n) => n instanceof TabNote ? n.getFretInk() : measureEngraving(n, {
+                    extension(owner) {
+                        // The guitar chord lane is positioned outside the finished curves after formatting.
+                        if (owner.getAttribute('vextab-guitar-chord')) return { parts: [], anchors: {} };
+                        if (s.spec.guitarPhrase && owner.getRouteParts && !owner.text) return { parts: owner.getRouteParts(), anchors: {} };
+                    }
+                }).parts);`);
 }
 
 /** Give the row breaker and the formatter the same opening indent. The preview pass
@@ -103,6 +107,11 @@ function pageGaps(source) {
 module.exports = function publicationHooks(source) {
   // VexFlow already positions and draws a hyphen from the verse annotation. Its
   // 5.7 validator only admits this anchor on an extender, leaving a hyphen in a separate lane.
+  if (path.basename(this.resourcePath) === 'composition.js') {
+    // Keep native chord annotations and their spacing. Polyphonic guitar has its own row-wide baseline.
+    return replaceOnce(source, 'if (note instanceof StaveNote) {\n            const stave = note.checkStave();',
+      'if (note instanceof StaveNote && !measure.guitarChordLane) {\n            const stave = note.checkStave();');
+  }
   if (path.basename(this.resourcePath) === 'continuouslayout.js') {
     source = replaceOnce(source, "span.kind !== 'lyric' ||", "(span.kind !== 'lyric' && span.kind !== 'hyphen') ||");
     // Include a cue staff in the same envelope as native ink before placing the next hand or system.

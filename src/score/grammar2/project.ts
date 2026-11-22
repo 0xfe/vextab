@@ -162,7 +162,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     const positions = fretted ? steps.map(chord => chord.map(head => head.position!)) : undefined;
     if (positions?.some(chord => new Set(chord.map(head => head.str)).size !== chord.length))
       throw new ScoreError('measure', 'A grace chord may use each string once', locate(mark.range));
-    return { side: mark.side, slash: mark.slash, positions,
+    return { side: mark.side, slash: mark.slash, positions, fingerings: mark.fingerings,
       pitches: steps.map((chord, i) => Array.isArray(mark.pitches[i]) ? chord.map(head => head.written) : chord[0].written) };
   }
 

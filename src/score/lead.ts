@@ -14,7 +14,7 @@ type Register = (id: string, range: SourceRange, event: string) => string;
 
 /** Use note IDs so Publication can recreate the same marks in a fresh composition. */
 export function leadMarks(measure: Measure, staff: 'notation' | 'tab', noteId: (id: string) => string,
-  labelTechniques: boolean, publication = false): Pick<EasyScoreMeasureSpec, 'chords' | 'verses'> {
+  labelTechniques: boolean, publication = false, guitarChordLane = false): Pick<EasyScoreMeasureSpec, 'chords' | 'verses'> {
   const chords: EasyScoreMeasureSpec['chords'][number][] = [];
   const verses: EasyScoreMeasureSpec['verses'][number][] = [];
   for (const voice of measure.voices) {
@@ -33,7 +33,10 @@ export function leadMarks(measure: Measure, staff: 'notation' | 'tab', noteId: (
       }
       if (publication) {
         for (const gesture of event.gestures ?? []) {
-          if ('direction' in gesture) labels.push(gesture.kind + ' ' + gesture.direction);
+          if ('direction' in gesture) {
+            // Independent preparation already draws these string-by-string arrows on both guitar staves.
+            if (!guitarChordLane) labels.push(gesture.kind + ' ' + gesture.direction);
+          }
           else labels.push(gesture.kind === 'tap' ? 'T' : gesture.wide ? 'Wide vibrato' : 'Vibrato');
         }
       }
@@ -131,6 +134,36 @@ function verseLanes<Staff extends string>(score: ParsedScore, measures: number[]
 type LyricInstrument<Staff extends string> = {
   score: ParsedScore; view: { staves: Staff[]; eventId: (staff: Staff, id: string) => string };
 };
+
+/** Put polyphonic guitar chord changes above the printed geometry of either voice. */
+export function alignGuitarChords<Staff extends string>(composition: EasyScoreComposition, instruments: LyricInstrument<Staff>[]) {
+  const { rows, fragments } = composition.sheet.getContinuousLayout();
+  for (const { score, view } of instruments) for (const [index, row] of rows.entries()) {
+    const marks: Annotation[] = [];
+    const staff = view.staves[0];
+    let top = Infinity;
+    for (const bar of row.measures) for (const voice of score.measures[bar - 1].voices) for (const event of voice.events) {
+      const note = composition.getNote(view.eventId(staff, event.id));
+      if (event.silent) continue;
+      top = Math.min(top, note.checkStave().getYForLine(-1));
+      for (const element of [note.getBeam(), ...note.getTupletStack()]) {
+        if (element && (staff !== 'tab' || voice.tabStems)) top = Math.min(top, element.getBoundingBox().y);
+      }
+      if (!event.chord) continue;
+      const chord = note.getModifiers().find((mark): mark is Annotation => mark instanceof Annotation &&
+        mark.getAttribute('id') === view.eventId(staff, 'chord' + event.chord.range.start + '-' + event.id));
+      if (chord) marks.push(chord);
+    }
+    if (!marks.length) continue;
+    // The chord lane clears the whole upward arch, including a cross-system continuation.
+    for (const span of fragments) {
+      if (span.row === index && span.above && span.rise && span.id.startsWith(view.eventId(staff, '')))
+        top = Math.min(top, Math.min(span.y1, span.y2) - span.rise);
+    }
+    const baseline = Math.min(top, ...marks.map(mark => mark.computeY().y)) - marks[0].getNote().checkStave().space(0.6);
+    for (const mark of marks) mark.setLayoutBaseline(baseline);
+  }
+}
 
 /** Across a piano system, read the lead-sheet changes at one height above the highest local chord lane. */
 export function alignPianoChords<Staff extends string>(composition: EasyScoreComposition, instruments: LyricInstrument<Staff>[]) {

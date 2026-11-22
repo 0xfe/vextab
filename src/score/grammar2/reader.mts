@@ -1,6 +1,6 @@
 // Parse written v2 notation into a bounded syntax tree before expanding any pattern.
 import { isPerformerName } from '../../playback/profiles.mts';
-import type { GracePitch, EventMark, Head, HeadMark, PartKind, PartSettings, WrittenMeter, StaffName, TextStyle, LaneStyle, TextBoundary, TextRange, ExpansionFrame, InstrumentIdentity } from './model.js';
+import type { GraceFingering, GracePitch, EventMark, Head, HeadMark, PartKind, PartSettings, WrittenMeter, StaffName, TextStyle, LaneStyle, TextBoundary, TextRange, ExpansionFrame, InstrumentIdentity } from './model.js';
 
 /** One compilation shares these budgets across all parts, voices and pattern calls. */
 export const limits = Object.freeze({
@@ -381,6 +381,7 @@ export function readScore(source: string, fail: Fail) {
     }
     if (mark.text === 'grace') {
       const side = take(), pitches: (GracePitch | GracePitch[])[] = [];
+      const fingerings: GraceFingering[] = [];
       if (side.text !== 'before' && side.text !== 'after') error('Expected before or after', side);
       const slash = peek() === 'slashed';
       if (slash) take();
@@ -397,13 +398,21 @@ export function readScore(source: string, fail: Fail) {
           if (notePattern.test(pitch.text)) keys.push(pitch.text);
           else if (position && position[1] !== 'x') keys.push({ fret: Number(position[1]), string: Number(position[2]) });
           else error('Expected a grace pitch or fret/string', pitch);
+          if (peek() === '[') {
+            take();
+            if (peek() !== 'finger') error('Expected a finger on the grace head');
+            const finger = readMark();
+            if (finger.kind !== 'finger') return error('Expected a grace fingering');
+            fingerings.push({ attack: pitches.length, head: keys.length - 1, finger: String(finger.value), position: finger.side });
+            expect(']');
+          }
         } while (chord && peek() !== ')');
         if (chord) expect(')');
         pitches.push(chord ? keys : keys[0]);
       }
       expect(')');
       if (!pitches.length) error('Expected a grace pitch', side);
-      return { kind: 'grace', side: side.text, pitches, ...(slash && { slash }), range: range() };
+      return { kind: 'grace', side: side.text, pitches, ...(fingerings.length && { fingerings }), ...(slash && { slash }), range: range() };
     }
     if (mark.text === 'harmony') {
       function chordPitch() {

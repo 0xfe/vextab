@@ -95,7 +95,7 @@ const result = renderEdition(paperHost, score, { partId: 'cello' }, { paper: 'Le
     <p><code>renderScorePart(host, score, 'notation')</code> prints both staves. Use <code>'right'</code> or <code>'left'</code> for a practice part. The optional <code>voice</code> number selects one voice within that hand. Native part <a href="#reference/publication-scope">engraving limits</a> also apply to piano. <a href="#features/piano">Try two-hand and four-voice examples</a>.</p>
   </article>
   <article id="piano-ornaments" data-language="vextab"><h3>Grace chords, ossias and sustain pedal</h3>
-    <p>Each pitch inside a grace group is a separate attack. Parenthesize pitches together for one chord. Add <code>slashed</code> for a slashed eighth. On guitar, <code>0/1[grace before (0/1 0/1)]</code> shows the grace notes in both notation and TAB. Use fret/string positions throughout a group to choose its fingering. Grace groups borrow time from their principal. An ossia prints a small alternative staff below its anchor. Playback follows the principal reading.</p>
+    <p>Each pitch inside a grace group is a separate attack. Parenthesize pitches together for one chord. Add <code>slashed</code> for a slashed eighth. On guitar, <code>0/1[grace before (0/1 0/1)]</code> shows the grace notes in both notation and TAB. Use fret/string positions throughout a group to choose the strings. Attach a finger to a grace head with <code>0/1[finger i above]</code>. Grace groups borrow time from their principal. An ossia prints a small alternative staff below its anchor. Playback follows the principal reading.</p>
     <pre>meter 3/4
 piano {
   upper { :q C5[grace before slashed ((G4 B4))] D5 E5 | }

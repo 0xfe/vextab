@@ -21,7 +21,7 @@ import {
   type EasyScoreVoiceSpec, type NotationIdentity, type PublicationOptions, type RenderContext, type ScoreHitRegion,
 } from 'vexflow';
 import { describePrebend, makePrebend } from './music';
-import { leadMarks, drawFrames, alignPianoChords, alignVerseBaselines } from './lead';
+import { leadMarks, drawFrames, alignGuitarChords, alignPianoChords, alignVerseBaselines } from './lead';
 import type { Attack, Measure, MeasureVoice, ParsedScore, PianoHand, ScoreSpan } from './model';
 import { ScoreError, type SourceRange } from './source';
 
@@ -184,6 +184,8 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
   const sources = new Sources(parsed.source);
   const eventId = sources.id;
   const textLanes = new TextLanes();
+  // On polyphonic guitar, one chord lane follows whichever voice carries the harmony.
+  const guitarChordLane = parsed.measures[0].state.tab && parsed.measures.some(m => m.voices.length > 1);
   const spans: ContinuousSpan[] = [];
   // VexFlow can draw a tab ending between two TabNotes or two rendered rests.
   // A volta spans bar boundaries, so any compatible anchor in each boundary bar is sufficient.
@@ -222,11 +224,11 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
         const showMarks = staff === staves[0] || m.state.piano;
         const clef = staff === 'tab' ? 'tab' : staff === 'left' ? 'bass' : m.state.clef;
         return {
-          clef, key: m.state.key, time: m.state.meterSign ?? m.state.meter, span: m.span === '0/1' ? '1/1' : m.span,
+          guitarChordLane, clef, key: m.state.key, time: m.state.meterSign ?? m.state.meter, span: m.span === '0/1' ? '1/1' : m.span,
           showTimeSignature: m.state.showTime && !(staff === 'tab' && staves.includes('notation')),
           endBarline: writtenEndBar(m),
           ...(showMarks && leadMarks({ ...m, voices }, staff === 'tab' ? 'tab' : 'notation',
-            id => eventId(staff, id), publication || !staves.includes('tab'), publication)),
+            id => eventId(staff, id), publication || !staves.includes('tab'), publication, guitarChordLane)),
           voices: [
             ...voices.map((v, index) => v.events.length ? voiceSpec(v, m, staff, sources, index, voices.length, sharedPianoStaff)
               : { notes: [textLanes.anchor(eventId(staff, 'blank-' + m.number + '-' + index), null)] }),
@@ -290,7 +292,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
         const from = eventId(staff, mark.from);
         // A written rest has no fret to anchor a TAB slur. The pitched staff can still phrase over it.
         if (staff === 'tab' && (rests.has(mark.from) || rests.has(mark.to))) continue;
-        const phrase = { guitarPhrase: staff === 'notation' && parsed.measures[0].state.tab };
+        const phrase = { guitarPhrase: parsed.measures[0].state.tab };
         if (sources.ids[from]) spans.push({ kind: 'slur', ...phrase, side: mark.side ?? (staff === 'tab' ? 'below' : undefined),
           id: sources.project(staff, mark.id, mark.range), from, to: eventId(staff, mark.to) });
       }
@@ -334,7 +336,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
     }
     spec.continuous.splitChords = pairs;
   }
-  return { spec, staves, sources, eventId, mixedEndings, textLanes };
+  return { spec, staves, sources, eventId, mixedEndings, textLanes, guitarChordLane };
 }
 type Projection = ReturnType<typeof project>;
 
@@ -425,6 +427,12 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
           const group = new GraceNoteGroup(frets).setPosition(event.grace.side === 'before' ? Modifier.Position.LEFT : Modifier.Position.RIGHT);
           note.addModifier(group, 0);
         }
+        if (event.grace?.fingerings) {
+          const group = note.getModifiers().find((m): m is GraceNoteGroup => m instanceof GraceNoteGroup);
+          for (const { attack, head, finger, position } of event.grace.fingerings) {
+            if (group) attachHeadMarks(group.getGraceNotes()[attack], head, [{ finger, position }], staff === 'tab', true, true);
+          }
+        }
         if (event.ossia && staff !== 'tab') {
           ossiaReadings.set(note as StaveNote, event.ossia);
           const stave = note.checkStave();
@@ -479,8 +487,12 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
           for (const mark of note.getModifiers()) {
             if (!(mark instanceof Annotation)) continue;
             // VexFlow's TAB chord label is an ordinary annotation outside the pitched phrase lane.
-            const tabChord = staff === 'tab' && event.chord && mark.getText().split(' · ')[0] === event.chord.text;
-            if (!mark.phraseManaged && !tabChord) continue;
+            const guitarChord = (staff === 'tab' || view.guitarChordLane) && event.chord && mark.getText().split(' · ')[0] === event.chord.text;
+            if (!mark.phraseManaged && !guitarChord) continue;
+            if (guitarChord && view.guitarChordLane) {
+              mark.phraseManaged = true;
+              mark.setAttribute('vextab-guitar-chord', 'true');
+            }
             const kind = mark.getVerticalJustification() === Annotation.VerticalJustify.TOP ? 'chord' : 'lyric';
             if (kind === 'chord' && event.chord?.color) mark.setStyle(inkStyle(event.chord.color));
             const range = kind === 'chord' && event.chord?.range;
@@ -617,6 +629,7 @@ function finishLayout(composition: EasyScoreComposition, instruments: ScreenInst
   }
   alignVerseBaselines(composition, instruments);
   alignPianoChords(composition, instruments);
+  alignGuitarChords(composition, instruments.filter(i => i.view.guitarChordLane));
 }
 
 /** All voices use one row clock, including paired notation/TAB which references one attack twice. */

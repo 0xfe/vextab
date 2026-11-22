@@ -79,6 +79,32 @@ QUnit.module('Grammar v2 score views', () => {
     assert.throws(() => renderScore(host(), parseScore(input.replace('1/2', '2/1'))), /each string once/);
   });
 
+  QUnit.test('grace fingerings and both voices’ harmony survive guitar part extraction', assert => {
+    const source = `meter 2/4 guitar {
+      voice top stem up { :q (1/3 0/2 0/1)[symbol "E", frame (x x x 1 0 0),
+        grace before ((0/1[finger i above] 0/2) 0/1[finger a above] 0/1[finger m above] 0/1[finger i above])] 0/1 | }
+      voice bass stem down { :q 2/4 (3/4 2/3 1/2)[symbol "F", brush down] | }
+    }`;
+    const score = parseScore(source);
+    const plain = renderScore(host(), parseScore(source.replace(/\[finger [ima] above\]/g, '')));
+    for (const part of ['score', 'notation', 'tab'] as const) {
+      const target = host(), view = renderScore(target, score, { width: 570, part });
+      assert.deepEqual(view.diagnostics, []);
+      assert.deepEqual(performance(view.score), performance(plain.score), 'fingerings preserve the grace chord and its attacks');
+      const svg = part === 'score' ? target.querySelector('svg') : renderScorePart(host(), score, part).publication.pages[0].svg;
+      const cells = [...svg.querySelectorAll('text')];
+      const fingerings = cells.filter(cell => /^[iam]$/.test(cell.textContent));
+      assert.deepEqual(fingerings.map(f => f.textContent).join(''), part === 'score' ? 'iamiiami' : 'iami');
+      assert.ok(fingerings.slice(1, 4).every((f, i) => f.getBoundingClientRect().left > fingerings[i].getBoundingClientRect().right),
+        'adjacent grace letters retain horizontal clearance');
+      for (const chord of ['E', 'F']) {
+        const marks = cells.filter(c => c.textContent === chord && c.closest('.vf-stavenote,.vf-tabnote'));
+        assert.equal(marks.length, 1, 'one chord symbol for the attack');
+      }
+    }
+    assert.throws(() => parseScore(source.replace('[finger a above]', '[accent]')), /finger on the grace head/);
+  });
+
   QUnit.test('piano aligns hands, sustains a tied bass, and prints the correct fingering and sign', assert => {
     const input = 'meter 2/4 piano { upper { times 2 { (Fn4[finger 2, showSign] A4[finger 4 right]) G4[accent] | } } lower { :h C3 | C3[tie] | } }';
     const score = parseScore(input);
