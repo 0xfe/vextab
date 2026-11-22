@@ -1,6 +1,7 @@
 // Exercise the historical score families through the public grammar v2 browser APIs.
 import { Artist, parseScore, renderScore, renderScorePart, Vex, VexTab } from '../src/browser';
 import { Clef, VexFlow } from 'vexflow';
+import { textInk } from './svg-ink';
 import { scorePerformance } from '../src/playback/performance';
 
 /** Each independent surface needs its own VexFlow objects. */
@@ -15,15 +16,6 @@ function fixed(source: string) {
   new VexTab(artist, { language: 1 }).parse(source);
   artist.draw(new Vex.Flow.Renderer(surface, Vex.Flow.Renderer.Backends.SVG));
   return surface;
-}
-
-/** Measure painted text rather than SVG's much taller font line box. */
-function textInk(text: SVGTextElement) {
-  const style = getComputedStyle(text), context = document.createElement('canvas').getContext('2d');
-  context.font = [style.fontStyle, style.fontWeight, style.fontSize, style.fontFamily].join(' ');
-  const m = context.measureText(text.textContent), x = Number(text.getAttribute('x')), y = Number(text.getAttribute('y'));
-  return { left: x - m.actualBoundingBoxLeft, right: x + m.actualBoundingBoxRight,
-    top: y - m.actualBoundingBoxAscent, bottom: y + m.actualBoundingBoxDescent };
 }
 
 QUnit.module('Grammar v2 historical parity', () => {

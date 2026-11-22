@@ -1,6 +1,7 @@
 // Compare musical and engraved results from both score languages at the public entry points.
 import { TimeSignature } from 'vexflow';
 import { Div, parseScore, Player, renderScore, renderScorePart } from '../src/browser';
+import { textInk } from './svg-ink';
 import { scorePerformance } from '../src/playback/performance';
 import { scoreSurfaces } from '../src/playback/geometry';
 
@@ -95,8 +96,11 @@ QUnit.module('Grammar v2 score views', () => {
       const cells = [...svg.querySelectorAll('text')];
       const fingerings = cells.filter(cell => /^[iam]$/.test(cell.textContent));
       assert.deepEqual(fingerings.map(f => f.textContent).join(''), part === 'score' ? 'iamiiami' : 'iami');
-      assert.ok(fingerings.slice(1, 4).every((f, i) => f.getBoundingClientRect().left > fingerings[i].getBoundingClientRect().right),
-        'adjacent grace letters retain horizontal clearance');
+      for (let i = 0; i < fingerings.length; i += 4) {
+        const strokes = fingerings.slice(i, i + 4).map(textInk);
+        assert.ok(strokes.slice(1).every((stroke, j) => stroke.left > strokes[j].right),
+          'adjacent grace letters retain horizontal clearance');
+      }
       for (const chord of ['E', 'F']) {
         const marks = cells.filter(c => c.textContent === chord && c.closest('.vf-stavenote,.vf-tabnote'));
         assert.equal(marks.length, 1, 'one chord symbol for the attack');
