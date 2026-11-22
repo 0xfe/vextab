@@ -4,6 +4,8 @@ Add `play { tempo 100 }` before the first stave of an embed to show playback con
 
 The controls fade after three seconds. Hover over the sheet, tap it, or tab to a control to reveal them. Hover over the metronome beside Play, or activate it with a tap or keyboard, to adjust the tempo in steps of 5 BPM. Changes apply to upcoming notes during playback and leave the written tempo in the source intact.
 
+Each Play creates a fresh human performance. Choose a style in the score with `play { performer chopin }`, or use `performer robot` for literal playback. Hosts can specify a profile and seed. [Performer examples, API and research](performers.md)
+
 ## Listen in the guide
 
 Press **Play** at the bottom center of a tutorial example, study or playground score. The button becomes **Stop** and can cancel the first instrument load. Changing an edit or starting a different score ends playback. The duet edition has its own button for the selected voice. An empty stave or an example containing only rests has no pitches to play.

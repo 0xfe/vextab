@@ -16,4 +16,5 @@ import './transpose';
 import './studies';
 import './player';
 import './playback';
+import './performer';
 import './compat/artist-parser';

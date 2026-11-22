@@ -47,7 +47,7 @@ export interface Attack {
   dynamic?: import('./grammar2/model').Dynamic;
   displayHand?: PianoHand;
   sharedStem?: string;
-  grace?: { side: 'before' | 'after'; pitches: string[] };
+  grace?: { side: 'before' | 'after'; pitches: string[]; slash?: boolean };
   ornament?: string;
   continuousBeam?: boolean;
   tremolo?: number;
@@ -167,7 +167,7 @@ export interface ParsedScore {
   };
   layout?: import('./grammar2/model').ScoreLayout;
   /** Playback directives, when authored before the first flow stave. */
-  playback?: { enabled: boolean; tempos?: Record<number, number>; tempo?: number; instrument?: string };
+  playback?: { enabled: boolean; tempos?: Record<number, number>; tempo?: number; swing?: import('../playback/profiles.mts').SwingSetting; performer?: import('../playback/profiles.mts').PerformerName; instrument?: string };
   source: string;
   repeats?: import('./grammar2/model').WrittenRepeat[];
   program?: number;

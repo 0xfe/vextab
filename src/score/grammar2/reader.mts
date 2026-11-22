@@ -1,4 +1,5 @@
 // Parse written v2 notation into a bounded syntax tree before expanding any pattern.
+import { isPerformerName } from '../../playback/profiles.mts';
 import type { EventMark, Head, HeadMark, PartKind, PartSettings, WrittenMeter, StaffName, TextStyle, LaneStyle, TextBoundary, TextRange, ExpansionFrame, InstrumentIdentity } from './model.js';
 
 /** One compilation shares these budgets across all parts, voices and pattern calls. */
@@ -833,7 +834,28 @@ export function readScore(source: string, fail: Fail) {
       layout = {};
       block(() => {
         while (peek() !== '}') {
-          const field = take(), value = take(), number = Number(value.text);
+          const field = take();
+          if (field.text === 'heading') {
+            if (layout!.heading) error('Declare the score heading once', field);
+            const heading: import('./model.js').ScoreHeading = {};
+            block(() => {
+              while (peek() !== '}') {
+                const key = take();
+                if (key.text !== 'title' && key.text !== 'dedication' && key.text !== 'tempo' && key.text !== 'composer')
+                  error('Unknown score heading field', key);
+                if (heading[key.text] !== undefined) error('Duplicate score heading field', key);
+                heading[key.text] = literal();
+              }
+            });
+            layout!.heading = heading;
+            continue;
+          }
+          const value = take(), number = Number(value.text);
+          if (field.text === 'spacing') {
+            if (value.text !== 'optical') error('Expected optical spacing', value);
+            layout!.spacing = 'optical';
+            continue;
+          }
           if (field.text !== 'width' && field.text !== 'scale' && field.text !== 'rowGap' && field.text !== 'staffDistance' && field.text !== 'top')
             error('Unknown score layout setting', field);
           if (!/^\d{1,4}(?:\.\d{1,3})?$/.test(value.text) || (field.text === 'width' && number <= 20) ||
@@ -861,12 +883,20 @@ export function readScore(source: string, fail: Fail) {
               tempoRanges.set(Number(bar.text), bar.range);
               (playback!.tempos ??= {})[Number(bar.text)] = Number(tempo.text);
             } else playback!.tempo = Number(tempo.text);
+          } else if (field.text === 'swing') {
+            const feel = take();
+            if (feel.text !== 'eighths' && feel.text !== 'off') error('Expected swing eighths or swing off', feel);
+            else playback!.swing = feel.text;
+          } else if (field.text === 'performer') {
+            const name = take();
+            if (!isPerformerName(name.text)) error('Unknown performer: ' + name.text, name);
+            else playback!.performer = name.text;
           } else if (field.text === 'instrument') {
             const instrument = take();
             if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(instrument.text) && !/^(?:0|[1-9]\d?|1[01]\d|12[0-7])$/.test(instrument.text)) error('Expected an instrument name or MIDI program', instrument);
             playback!.instrument = instrument.text;
           }
-          else error('Expected enabled, tempo or instrument', field);
+          else error('Expected enabled, tempo, performer, swing or instrument', field);
         }
       });
     } else if (token.text === 'transpose') {

@@ -11,6 +11,8 @@ import { attachOpenSlide, describeOpenSlide } from './open-slide';
 import { inkStyle, setFretPaper } from './color';
 import { drawPrepared, spansForInset, type PartDrawingOptions } from './publication-draw';
 import { conductorSpec, instrumentComposition, instrumentLabel, selectedPart, type PartSelector } from './conductor';
+import { drawHeading } from './score-details';
+import { drawSwingMark } from './swing-mark';
 import { scoreFont } from './engraving';
 import {
   AlternatingTremolo, Ornament, TextDynamics, Clef, Fraction, Accidental, Annotation, Stroke, Vibrato, Articulation, Modifier, TabSlide, Barline, StaveNote, TabNote, TabTie, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, CanvasContext,
@@ -18,7 +20,7 @@ import {
   type EasyScoreVoiceSpec, type NotationIdentity, type PublicationOptions, type RenderContext, type ScoreHitRegion,
 } from 'vexflow';
 import { describePrebend, makePrebend } from './music';
-import { leadMarks, drawFrames, alignVerseBaselines } from './lead';
+import { leadMarks, drawFrames, alignPianoChords, alignVerseBaselines } from './lead';
 import type { Attack, Measure, MeasureVoice, ParsedScore, PianoHand, ScoreSpan } from './model';
 import { ScoreError, type SourceRange } from './source';
 
@@ -187,7 +189,10 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
   const rests = new Set(parsed.measures.flatMap(m => m.voices.flatMap(v => v.events.filter(e => !e.heads.length).map(e => e.id))));
   const mixedEndings: ScoreSpan[] = [];
   const spec: EasyScoreCompositionSpec = {
-    accidentals: 'key-aware', graceAccidentals: 'ordered', sheet: { width, x: 10, y: parsed.layout?.top ?? 14, rowGap: parsed.layout?.rowGap ?? 36 }, system: { spaceBetweenStaves: parsed.layout?.staffDistance ?? 9 },
+    accidentals: 'key-aware', graceAccidentals: 'ordered', sheet: { width, x: 10, y: parsed.layout?.top ?? 14, rowGap: parsed.layout?.rowGap ?? 36,
+      ...(parsed.layout?.spacing && { measurePadding: 18, measureGap: 0 }) },
+    system: { ...(parsed.layout?.spacing && { details: { spacing: { mode: parsed.layout.spacing } } }),
+      spaceBetweenStaves: parsed.layout?.staffDistance ?? 9 },
     staves: staves.map(staff => ({
       id: staff, kind: staff === 'tab' ? 'tab' : 'stave',
       // Native instrument labels reserve horizontal room for the brace on every printed system.
@@ -508,6 +513,16 @@ function drawPairedMarks(parsed: ParsedScore, view: Projection, composition: Eas
   }
 }
 
+/** Anchor front matter to the first system after the formatter has placed its staff. */
+function drawScoreHeading(parsed: ParsedScore, composition: EasyScoreComposition, ctx: RenderContext) {
+  const row = composition.sheet.getRows()[0];
+  if (!row) return;
+  const swing = parsed.playback?.swing === 'eighths';
+  const staffTop = composition.staves[0][0].getYForLine(0);
+  if (parsed.layout?.heading) drawHeading(ctx, parsed.layout.heading, row.x, row.width, staffTop - (swing ? 40 : 0));
+  if (swing) drawSwingMark(ctx, row.x + 6, row.y - 5);
+}
+
 /** Invisible timed events still advance the reader's clock but have no pointer target. */
 function hiddenNotes(parsed: ParsedScore, view: Projection) {
   const hidden = new Set(parsed.measures.flatMap(m => m.voices.filter(v => !v.tabStems)
@@ -532,6 +547,7 @@ function finishLayout(composition: EasyScoreComposition, instruments: ScreenInst
     }
   }
   alignVerseBaselines(composition, instruments);
+  alignPianoChords(composition, instruments);
 }
 
 /** All voices use one row clock, including paired notation/TAB which references one attack twice. */
@@ -591,6 +607,8 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
     return { height, extent, regions };
   }
   const frames = frameKeys();
+  if (parsed.layout?.heading) spec.sheet.y += 125;
+  if (parsed.playback?.swing === 'eighths') spec.sheet.y += 40;
   spec.sheet.y += frames.height + (views.some(view => view.mixedEndings.length) ? 20 : 0);
   const factory = new Factory({ renderer: { elementId: null, width, height: 1 } }).setContext(ctx);
   const easy = factory.EasyScore();
@@ -616,6 +634,7 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
     if (frames.height) frameKeys();
   }
   drawPrepared(factory, () => finishLayout(composition, instruments));
+  drawScoreHeading(parsed, composition, ctx);
   const labels = views.flatMap(view => [...view.textLanes.regions.values()]);
   const extraRegions = [...labels, ...frames.regions];
   for (const { score, view, local } of instruments) {
@@ -751,6 +770,7 @@ function publicationDrawing(scores: ParsedScore[], views: Projection[], source: 
       instruments.push({ score: selected, view: partView, local });
     }
     drawPrepared(factory, () => finishLayout(composition, instruments));
+    if (insetMeasure === undefined) drawScoreHeading(scores[0], composition, ctx);
     for (const { score, view, local } of instruments) {
       drawPairedMarks(score, view, local, ctx);
       drawTabEndings(view, local, ctx, composition);

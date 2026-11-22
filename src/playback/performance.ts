@@ -1,11 +1,12 @@
 // Translate parsed scores and legacy fixed rows into sounding notes on one timeline.
+import type { createPerformer, PerformanceBar } from './performer';
 import { measureVisits } from './visits';
 import { decorateAttack } from './decorations';
 import { KeyManager, VexFlow } from 'vexflow';
 import { midiPitch } from '../score/music';
 import type { SourceRange } from '../score/source';
 import type Artist from '../artist';
-import type { Attack, Head, ParsedScore } from '../score/model';
+import type { Attack, Head, Measure, ParsedScore } from '../score/model';
 import type { Performance, PlaybackEvent, PlaybackNote } from './transport';
 
 /** A single picked string owns its pitch envelope, including the release of a pre-bend. */
@@ -38,13 +39,18 @@ function scoreNote(event: Attack, head: Head, duration: number) {
 }
 
 /** Resolve tempo and attack velocities on the written clock so a repeat restores its own expression. */
-function expression(score: ParsedScore, tempo: number) {
+function expression(score: ParsedScore, tempo: number, expressive: boolean) {
   const tempi: number[] = [];
   const velocities = new Map<string, number>();
   type Position = { id: string; time: number; explicit: boolean; index: number; voice: number };
   const positions = new Map<string, Position>();
   const lanes: Position[][] = [];
   const levels = { ppp: 28, pp: 40, p: 52, mp: 66, mf: 82, f: 98, ff: 112, fff: 124 };
+  // With dynamics written for both piano hands, the performer voices each independently.
+  // A dynamic written for only one staff still sets the level of the whole instrument.
+  const markedHands = new Set(expressive && score.measures[0]?.state.piano
+    ? score.measures.flatMap(m => m.voices.filter(v => v.hand && v.events.some(e => e.dynamic)).map(v => v.hand)) : []);
+  const handLevels = new Map<string, number>();
   let bpm = tempo, velocity = 100, time = 0;
   for (const m of score.measures) {
     const change = score.playback?.tempos?.[m.number];
@@ -54,8 +60,14 @@ function expression(score: ParsedScore, tempo: number) {
       attack, voice: index, onset: seconds(attack.onset, 1),
     }))).sort((a, b) => a.onset - b.onset || Number(!!b.attack.dynamic) - Number(!!a.attack.dynamic));
     for (const { attack, voice, onset } of byTime) {
-      if (attack.dynamic) velocity = levels[attack.dynamic];
-      velocities.set(attack.id, velocity);
+      const hand = m.voices[voice].hand;
+      if (markedHands.size === 2 && hand) {
+        if (attack.dynamic) handLevels.set(hand, levels[attack.dynamic]);
+        velocities.set(attack.id, handLevels.get(hand) ?? velocity);
+      } else {
+        if (attack.dynamic) velocity = levels[attack.dynamic];
+        velocities.set(attack.id, velocity);
+      }
       const lane = lanes[voice] ??= [];
       const point = { id: attack.id, time: time + onset, voice, explicit: !!attack.dynamic, index: lane.length };
       positions.set(attack.id, point);
@@ -78,12 +90,63 @@ function expression(score: ParsedScore, tempo: number) {
   return { tempi, velocities };
 }
 
+/** Translate meter, pickup and phrasing marks to seconds on this performed visit. */
+function performanceBar(measure: Measure, whole: number, slurEnds: Set<string>): PerformanceBar {
+  const duration = seconds(measure.span, whole), quarter = whole / 4;
+  const [count, unit] = measure.state.meter.split('/').map(Number);
+  // A fractional pickup ends on the downbeat even if it starts halfway through a beat.
+  const missing = Math.max(0, count / unit * whole - duration) / quarter;
+  const beatOffset = Math.abs(missing - Math.round(missing)) > 1e-8 ? (missing % 1) * quarter : 0;
+  const fermatas: number[] = [];
+  let phraseEnd = false;
+  for (const voice of measure.voices) {
+    for (const attack of voice.events) {
+      const release = seconds(attack.onset, whole) + seconds(attack.duration, whole);
+      if (attack.heads.some(h => h.marks?.some(m => m.articulation?.startsWith('a@')))) fermatas.push(release);
+      if (release >= duration - 1e-8 && slurEnds.has(attack.id)) phraseEnd = true;
+    }
+  }
+  return { duration, quarter, beatOffset, swingable: unit === 2 || unit === 4, fermatas, phraseEnd: phraseEnd || !!fermatas.length };
+}
+
+/** Conduct from the lead meter. A held beat in another part also holds the ensemble.
+ * Overlapping compound meters keep their written divisions, including at independent barlines. */
+export function ensembleBars(tracks: PerformanceBar[][]): PerformanceBar[] {
+  const grid = tracks[0] ?? [];
+  for (const track of tracks.slice(1)) {
+    let first = 0, gridStart = 0, partStart = 0;
+    for (const measure of track) {
+      let i = first, start = gridStart;
+      const partEnd = partStart + measure.duration;
+      while (i < grid.length && start < partEnd - 1e-9) {
+        const bar = grid[i], end = start + bar.duration;
+        if (measure.swingable === false) bar.swingable = false;
+        if (measure.phraseEnd && Math.abs(partEnd - end) < 1e-8) bar.phraseEnd = true;
+        for (const at of measure.fermatas ?? []) {
+          const t = partStart + at;
+          if (t > start + 1e-9 && t <= end + 1e-9) bar.fermatas = [...(bar.fermatas ?? []), t - start];
+        }
+        if (end > partEnd + 1e-9) break;
+        start = end;
+        i++;
+      }
+      first = i;
+      gridStart = start;
+      partStart = partEnd;
+    }
+  }
+  return grid;
+}
+
 /** Traverse the chosen written measures, carrying sounding heads through adjacent ties. */
-export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: string) => void, visits = measureVisits(score, false)): Performance {
+export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: string) => void, visits = measureVisits(score, false),
+  take?: ReturnType<typeof createPerformer>, bars?: PerformanceBar[]): Performance {
   const events: PlaybackEvent[] = [];
   const prior = new Map(score.ties.map(tie => [tie.to + ':' + tie.toHead, tie]));
   const sounding = new Map<string, { note: PlaybackNote; start: number }>();
-  const { tempi, velocities } = expression(score, tempo);
+  const expressive = !!take && !take.literal;
+  const { tempi, velocities } = expression(score, tempo, expressive);
+  const slurEnds = new Set((score.spans ?? []).filter(s => s.kind === 'slur').map(s => s.to));
   const tremolos = new Map((score.spans ?? []).filter(span => span.kind === 'tremolo').map(span => [span.from, span]));
   const glissandi = new Map((score.spans ?? []).flatMap(span => span.kind === 'glissando' ? [[span.to + ':' + span.toHead, span] as const] : []));
   const decorations = new Map<string, { attack: Attack; key: KeyManager }>();
@@ -98,6 +161,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
     // Process by onset so an earlier attack in a later-written voice can start a named tie.
     const attacks = measure.voices.flatMap(v => v.events).map(attack => ({ attack, time: bar + seconds(attack.onset, whole) }));
     attacks.sort((a, b) => a.time - b.time);
+    if (bars && seconds(measure.span, whole) > 0) bars.push(performanceBar(measure, whole, slurEnds));
     const inBar = new Map<string, PlaybackEvent>();
     for (const { attack, time } of attacks) {
       const duration = seconds(attack.duration, whole);
@@ -128,6 +192,12 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
             if (source) source.note.bend = [...(source.note.bend ?? []),
               { time: time - source.start, semitones: note.pitch - source.note.pitch }];
             note.velocity = velocities.get(attack.id);
+            if (expressive && head.marks) {
+              if (head.marks.some(m => m.articulation === 'a>' || (!m.articulation && !m.finger && !m.stringNumber)))
+                note.velocity = Math.min(127, note.velocity + 10);
+              if (!note.bend && !attack.grace && !attack.ornament && head.marks.some(m => m.articulation === 'a.'))
+                note.duration *= .58;
+            }
             if (score.program !== undefined) note.program = score.program;
             notes.push(note); sounding.set(id, { note, start: time });
           }
@@ -151,7 +221,10 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
   }
   const sounded = decorations.size ? events.flatMap(event => {
     const word = decorations.get(String(event.source));
-    return word ? decorateAttack(event, word.attack, word.key) : [event];
+    if (!word) return [event];
+    const grace = word.attack.grace;
+    const share = grace && take?.graceFraction(event.time, event.duration, grace.pitches.length, grace.slash);
+    return decorateAttack(event, word.attack, word.key, share);
   }) : events;
   return { events: sounded.sort((a,b) => a.time - b.time), duration: bar };
 }

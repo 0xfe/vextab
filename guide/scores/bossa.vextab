@@ -1,3 +1,4 @@
+play { performer human }
 meter 4/4
 guitar {
   voice melody stem up tabStems on {

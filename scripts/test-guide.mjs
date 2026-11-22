@@ -100,7 +100,7 @@ export async function testGuide(page, dist) {
     assert.equal(await chapter.locator('svg').count(), editors + extraStaff, hash);
   }
   await go('#demos');
-  assert.equal(await page.locator('#entries a').count(), 12);
+  assert.equal(await page.locator('#entries a').count(), 13);
   const routes = await page.locator('#picker option').evaluateAll(options => options.map(o => '#lesson/' + o.value));
   for (const hash of routes) {
     await go(hash);
@@ -111,9 +111,15 @@ export async function testGuide(page, dist) {
 
   // Rehearse and export the same source revision, including a single player's part.
   for (const [id, view] of [['sor-op35-no22', '0/tab'], ['joplin-maple-leaf', 'keys'],
-    ['handy-st-louis-blues', 'singer'], ['haydn-emperor-variation', 'cello']]) {
+    ['pocket-change', 'keys'], ['handy-st-louis-blues', 'singer'], ['haydn-emperor-variation', 'cello']]) {
     await go('#lesson/' + id);
     assert.equal(await page.locator('#view').inputValue(), 'conductor');
+    if (id === 'pocket-change') {
+      const mark = svg.locator('.vf-swing-mark');
+      assert.equal(await mark.count(), 1);
+      assert.equal(await mark.locator('.vf-stavenote').count(), 4);
+      assert.equal(await mark.locator('.vf-beam').count(), 1);
+    }
     if (id === 'sor-op35-no22') assert.match(await page.locator('#reading').innerText(), /Guitar, notation, voice 1/);
     await page.locator('#view').selectOption('part-' + view);
     assert.equal(await status.textContent(), '');
@@ -125,6 +131,7 @@ export async function testGuide(page, dist) {
     await page.waitForFunction(() => !document.getElementById('save-svg').disabled);
     const pages = page.locator('#part svg:has(metadata)');
     assert.ok(await pages.count() > 0);
+    if (id === 'pocket-change') assert.equal(await pages.locator('[data-system="1"] .vf-swing-mark').count(), 1);
     const edited = (await source.inputValue()) + '\n# rehearsal draft';
     await source.fill(edited);
     assert.equal(await page.locator('#save-svg').isDisabled(), true);

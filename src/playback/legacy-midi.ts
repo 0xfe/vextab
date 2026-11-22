@@ -2,14 +2,14 @@
 import type { PlaybackPlugin, PlaybackSession } from './transport';
 
 /** Preserve the public instrument cache and the host's historical soundfont URL. */
-export function legacyMidiPlayback(instrument: string, url: string, cache: Record<string, boolean>): PlaybackPlugin {
+export function legacyMidiPlayback(instrument: string, url: string, cache: Record<string, boolean>, literal = true): PlaybackPlugin {
   return { open(program, signal) {
     function connect(): PlaybackSession {
       signal.throwIfAborted();
       MIDI.programChange(0, program);
       return {
         playNote(note) {
-          MIDI.noteOn(0, note.pitch, 127, 0);
+          MIDI.noteOn(0, note.pitch, literal ? 127 : note.velocity, 0);
           MIDI.noteOff(0, note.pitch, note.duration);
         },
         stop() { /* MIDI.js owns the scheduled releases. */ },

@@ -95,7 +95,7 @@ export async function testGuideAudio(browser, dist) {
     assert.equal(await page.locator('#part .vextab-playback-paper').count(), 0);
     assert.equal(await part.first().evaluate(svg => svg.outerHTML), whilePlaying, 'Stop preserves the printable music');
     // Each repertoire page opens a fresh synth, so a previous release tail cannot pass this check.
-    for (const id of ['sor-op35-no22', 'joplin-maple-leaf', 'handy-st-louis-blues', 'haydn-emperor-variation']) {
+    for (const id of ['pocket-change', 'sor-op35-no22', 'joplin-maple-leaf', 'handy-st-louis-blues', 'haydn-emperor-variation']) {
       await page.goto('about:blank');
       await page.goto(url + '#lesson/' + id);
       await page.locator('#score .vextab-play').click();

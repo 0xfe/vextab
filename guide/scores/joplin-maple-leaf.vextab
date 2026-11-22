@@ -2,7 +2,7 @@
 // John Stark (1899), via Chris Sawer’s public-domain Mutopia transcription, ID 23.
 meter 2/4
 pickup 1/8
-play { tempo 92 }
+play { performer ragtime tempo 92 }
 edition { title "Maple Leaf Rag" subtitle "First strain" staffSize 6 }
 piano keys { key Ab beamRests off
   upper {

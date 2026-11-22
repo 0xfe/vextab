@@ -91,8 +91,10 @@ export interface ScoreVoice {
 /** Stable authored key, display labels and semitone distance from written to sounding pitch. */
 export interface InstrumentIdentity { id?: string; name?: string; shortName?: string; sounds?: number }
 export interface ScoreStaff extends Omit<InstrumentIdentity, 'name'> { displayName?: string; name: StaffName; range: TextRange; voices: ScoreVoice[] }
+/** Optional front matter shared by the screen engraving and its printed edition. */
+export interface ScoreHeading { title?: string; dedication?: string; tempo?: string; composer?: string }
+export interface ScoreLayout { heading?: ScoreHeading; spacing?: 'optical'; width?: number; scale?: number; rowGap?: number; staffDistance?: number; top?: number }
 /** Instrument declarations apply to every voice of the part. */
-export interface ScoreLayout { width?: number; scale?: number; rowGap?: number; staffDistance?: number; top?: number }
 export interface PartSettings {
   program?: number;
   drums?: { id: string; label: string; line: number; head: 'normal' | 'cross' | 'circle-cross' | 'triangle'; stem: 'up' | 'down'; midi: number }[];
@@ -126,7 +128,7 @@ export interface Edition {
 /** V2 parts share a playback origin. measureCount is the largest local bar count. */
 export interface ScoreV2 {
   editions?: Edition[];
-  playback?: { enabled: boolean; tempos?: Record<number, number>; tempo?: number; instrument?: string };
+  playback?: { enabled: boolean; tempos?: Record<number, number>; tempo?: number; swing?: import('../../playback/profiles.mts').SwingSetting; performer?: import('../../playback/profiles.mts').PerformerName; instrument?: string };
   transpose?: number; measureNumbers?: boolean; layout?: ScoreLayout;
   language: 2; source: string; meter: string; meterRange?: TextRange; pickup?: string; measureCount: number; parts: ScorePart[];
 }

@@ -8,7 +8,8 @@
 import Vex from './vexflow';
 import Artist from './artist';
 import VexTab from './vextab';
-import Player from './player';
+import Player, { type PlayerOptions } from './player';
+import { isPerformerName } from './playback/profiles.mts';
 import { createWebAudioPlayback } from './playback/web-audio';
 import type { PlaybackPlugin } from './playback/transport';
 import type { SourceRange } from './score/source';
@@ -48,6 +49,8 @@ export interface DivOptions {
   playback?: PlaybackPlugin;
   /** Choose performed order to follow repeat signs and endings. */
   order?: 'written' | 'performed';
+  performer?: PlayerOptions['performer'];
+  seed?: number;
   /** Enable sheet playback even when the source omits player=true. */
   player?: boolean;
   /** Always offer playback for this embed and place its controls in this host. */
@@ -70,6 +73,8 @@ class Div {
   private partIndex?: number;
   private partId?: string;
   private conductor: boolean;
+  private readonly performer: DivOptions['performer'];
+  private readonly seed?: number;
   private readonly order: DivOptions['order'];
   private part: Part = 'score';
   private observer?: ResizeObserver;
@@ -118,6 +123,13 @@ class Div {
     }
 
     const host = $(sel)[0] as HTMLElement;
+    const name = embedAttribute(host, 'performer');
+    if (options.performer !== undefined) this.performer = options.performer;
+    else if (name) {
+      if (!isPerformerName(name)) throw new RangeError('Unknown performer: ' + name);
+      this.performer = name;
+    }
+    this.seed = options.seed;
     const width = embedAttribute(host, 'width');
     this.width = parseInt(width, 10) || 400;
     this.scale = parseFloat(embedAttribute(host, 'scale')) || 1.0;
@@ -357,7 +369,7 @@ class Div {
     this.player = undefined;
     if (this.enablePlayer || score.playback?.enabled) {
       const player = this.player = new Player(ensemble ? documentScore : mounted[0].layout.score, {
-        playback: this.playback, controls: this.playbackControls, order: this.order,
+        playback: this.playback, controls: this.playbackControls, performer: this.performer, seed: this.seed, order: this.order,
       });
       player.render(mounted[0].surface, undefined, mounted.slice(1).map(d => d.surface));
     }
@@ -380,7 +392,7 @@ class Div {
         if (!canvas) setFretPaper(renderer.getContext(), next);
         if (this.enablePlayer) this.artist.customizations.player = 'true';
         if (!this.player && this.artist.customizations.player === 'true') {
-          this.player = new Player(this.artist, { playback: this.playback, controls: this.playbackControls });
+          this.player = new Player(this.artist, { playback: this.playback, controls: this.playbackControls, performer: this.performer, seed: this.seed });
         }
         this.artist.draw(renderer);
         if (canvas) {

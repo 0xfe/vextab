@@ -15,7 +15,7 @@ function neighbor(written: string, sounding: number, direction: number, key: Key
 }
 
 /** Keep the original event ID on every subdivision so playback follows the written note. */
-export function decorateAttack(event: PlaybackEvent, attack: Attack, key: KeyManager): PlaybackEvent[] {
+export function decorateAttack(event: PlaybackEvent, attack: Attack, key: KeyManager, graceFraction = .25): PlaybackEvent[] {
   if (!event.notes.length) return [event];
   const principal = event.notes[0];
   const head = attack.heads.find(h => h.sounding && midiPitch(h.sounding) === principal.pitch);
@@ -31,7 +31,7 @@ export function decorateAttack(event: PlaybackEvent, attack: Attack, key: KeyMan
     const shift = principal.pitch - midiPitch(head.written);
     const pitches = attack.grace.pitches.map(p => midiPitch(p) + shift).filter(p => p >= 0 && p <= 127);
     if (pitches.length) {
-      const duration = length / 4;
+      const duration = length * graceFraction;
       const before = attack.grace.side === 'before';
       play(pitches, before ? start : start + principal.duration - duration, duration);
       length -= duration;

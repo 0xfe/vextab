@@ -2,7 +2,7 @@
 // OpenScore CC0 edition 20428156. Editorial details and source check in issues/198.
 meter cut
 pickup 1/2
-play { tempo 80 }
+play { performer bach tempo 80 }
 edition {
   paper A4 margins 15 16 16 16 staffSize 6
   title "Emperor Quartet" subtitle "II. Poco adagio, cantabile"

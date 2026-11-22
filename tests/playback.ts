@@ -11,7 +11,7 @@ QUnit.module('Playback plugins', () => {
         return { playNote: note => notes.push(note), stop: () => { stops++; } };
       },
     };
-    const score = parseScore('play { tempo 600 instrument acoustic_guitar_nylon } meter 2/4 guitar { (5/2 7/3[prebend +1 release]) 5/2[tie] | }');
+    const score = parseScore('play { performer robot tempo 600 instrument acoustic_guitar_nylon } meter 2/4 guitar { (5/2 7/3[prebend +1 release]) 5/2[tie] | }');
     const player = new Player(score, { playback: plugin });
     await player.play();
     assert.equal(notes.length, 2, 'the tied E4 has one attack');
@@ -25,7 +25,7 @@ QUnit.module('Playback plugins', () => {
     const notes: PlaybackNote[] = [];
     let clock = 0;
     let ready: (session: PlaybackSession) => void;
-    const score = parseScore('play { tempo 60 } meter 2/4 guitar { 0/1 7/3[prebend +1 release] | }');
+    const score = parseScore('play { performer robot tempo 60 } meter 2/4 guitar { 0/1 7/3[prebend +1 release] | }');
     const player = new Player(score, { playback: { open: () => new Promise(resolve => { ready = resolve; }) } });
     try {
       const finished = player.play();
@@ -84,7 +84,7 @@ QUnit.module('Playback plugins', () => {
     const host = document.createElement('div');
     host.dataset.layout = 'flow';
     host.dataset.width = '210';
-    host.textContent = 'play { tempo 120 } meter 4/4 guitar { (0/1 2/3) 2/1 rest 3/1 | :w 5/1 | }';
+    host.textContent = 'play { performer robot tempo 120 } meter 4/4 guitar { (0/1 2/3) 2/1 rest 3/1 | :w 5/1 | }';
     document.querySelector('#qunit-fixture').append(host);
     let clock = 0;
     const embed = new Div(host, { playback: { open: () => ({

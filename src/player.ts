@@ -6,10 +6,11 @@ import type { ScoreV2 } from './score/grammar2/model';
 import type { ParsedScore } from './score/model';
 import { PlaybackAnimation, anticipation } from './playback/animation';
 import { artistGeometry, scoreSurfaces, type Geometry } from './playback/geometry';
+import { createPerformer, type PerformerName, type PerformerProfile, type PerformanceBar, type SwingSetting } from './playback/performer';
 import { PlayerOverlay } from './player-overlay';
 import { routedPlayback } from './playback/routing';
 import { ensembleVisits } from './playback/visits';
-import { artistPerformance, scorePerformance } from './playback/performance';
+import { artistPerformance, ensembleBars, scorePerformance } from './playback/performance';
 import { PlaybackTransport, type PlaybackPlugin, type Performance } from './playback/transport';
 import { createWebAudioPlayback } from './playback/web-audio';
 import { legacyMidiPlayback } from './playback/legacy-midi';
@@ -35,6 +36,11 @@ export interface PlayerOptions {
   /** Place transport buttons here while keeping the cursor on the score. */
   controls?: HTMLElement;
   tempo?: number;
+  /** Override the written performer. Each play takes a fresh seed unless one is supplied. */
+  performer?: PerformerName | PerformerProfile;
+  seed?: number;
+  /** Override the written swing directive for this performance. */
+  swing?: SwingSetting;
   order?: 'written' | 'performed';
   instrument?: string | number;
   show_controls?: boolean;
@@ -157,17 +163,21 @@ export default class Player {
     this.performanceTempo = tempo;
     const ensemble = this.ensemble ?? (this.score ? [this.score] : []);
     const visits = ensembleVisits(ensemble, this.options.order === 'performed');
-    const first = this.score ? scorePerformance(this.score, tempo, this.mark, visits.get(this.score))
-      : artistPerformance(this.artist, tempo);
-    const performances = new Map<ParsedScore, Performance>();
-    for (const score of this.ensemble?.slice(1) ?? []) performances.set(score, scorePerformance(score, tempo, this.mark, visits.get(score)));
-    const parts = [first, ...performances.values()];
+    const take = createPerformer(this.options.performer ?? this.score?.playback?.performer, this.options.seed,
+      this.options.swing ?? this.score?.playback?.swing);
+    const bars = ensemble.map((): PerformanceBar[] => []);
+    const written = ensemble.length ? ensemble.map((score, i) =>
+      scorePerformance(score, tempo, this.mark, visits.get(score), take, take.needsBeatGrid ? bars[i] : undefined))
+      : [artistPerformance(this.artist, tempo)];
+    const parts = take.perform(written, ensembleBars(bars), tempo);
+    const first = parts[0];
+    const performances = new Map<ParsedScore, Performance>(ensemble.map((score, i) => [score, parts[i]]));
     const music = parts.length === 1 ? first : {
       events: parts.flatMap(p => p.events).sort((a,b) => a.time - b.time),
       duration: Math.max(...parts.map(p => p.duration)),
     };
     const plugin = playback ?? (!this.artist || typeof MIDI === 'undefined' ? createWebAudioPlayback()
-      : legacyMidiPlayback(String(instrument), soundfont_url, Player.INSTRUMENTS_LOADED));
+      : legacyMidiPlayback(String(instrument), soundfont_url, Player.INSTRUMENTS_LOADED, take.literal));
     if (this.overlay && !music.events.some(event => event.notes.length)) {
       this.overlay?.setStatus('This example has no pitched notes to play.');
       return;

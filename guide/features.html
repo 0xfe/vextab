@@ -27,13 +27,15 @@ staff { :8 beam { C4 D4 E4 } F4 beam { A4 Bb4[courtesy] } | }</div>
 </section>
 <section id="playback">
   <h2>Play a phrase with a SoundFont</h2>
-  <p>Listen to four beats on a nylon-string guitar, then slow them down and try a different instrument.</p>
-  <pre data-score>play { tempo 96 instrument 24 }
+  <p>Play this two-bar guitar phrase twice. Listen for the slight variation in an otherwise steady pulse.</p>
+  <pre data-score>play { tempo 96 instrument 24 performer human }
 meter 4/4
 guitar {
-  :q 0/1 2/1 3/1 2/1 |
+  :8 0/1 2/1 3/1 2/1 :q 0/1 3/2 |
+  :8 1/2 3/2 0/1 2/1 :h 0/1 |
 }</pre>
   <p>Press <strong>Play</strong> at the bottom center of the score. Hover over the metronome beside it and use − or + to adjust the tempo as you listen. Try <code>instrument 40</code> for violin or <code>instrument 12</code> for marimba. The first Play loads the guide’s bundled SpessaSynth instrument. Stop, edit or open another score to end the performance.</p>
+  <p>Edit <code>performer human</code> to compare takes of the same notes. Try <code>bach</code> for a steady pulse, <code>chopin</code> for a broader rise and fall, <code>parker</code> for bebop, <code>ragtime</code> for crisp straight syncopation, <code>blues</code> for a shuffle, and <code>robot</code> for the original timing and dynamics.</p>
   <p>Follow the light gray playhead through the bar. Each sounding note glows blue on the staff and tab. The line keeps moving through rests. Playback follows the written bars once. Ties sustain, rests take time and a chord label does not add an accompaniment. <a href="#reference/player">Player and instrument options</a> · <a href="#quickstart/spessasynth">Set up SpessaSynth →</a></p>
 </section>
 <section id="score-colours">

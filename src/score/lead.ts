@@ -109,6 +109,31 @@ type LyricInstrument<Staff extends string> = {
   score: ParsedScore; view: { staves: Staff[]; eventId: (staff: Staff, id: string) => string };
 };
 
+/** Across a piano system, read the lead-sheet changes at one height above the highest local chord lane. */
+export function alignPianoChords<Staff extends string>(composition: EasyScoreComposition, instruments: LyricInstrument<Staff>[]) {
+  for (const { score, view } of instruments) {
+    const upper = view.staves.find(staff => staff === 'right');
+    if (!upper || !score.measures.some(m => m.voices.some(v => v.hand === 'right' && v.events.some(e => e.chord)))) continue;
+    for (const row of composition.sheet.getContinuousLayout().rows) {
+      const marks: Annotation[] = [];
+      for (const number of row.measures) for (const voice of score.measures[number - 1].voices) {
+        if (voice.hand !== 'right') continue;
+        for (const event of voice.events) {
+          if (!event.chord) continue;
+          const note = composition.getNote(view.eventId(upper, event.id));
+          const mark = note.getModifiers().find((m): m is Annotation => m instanceof Annotation &&
+            m.phraseManaged && m.getText() === event.chord.text && m.getVerticalJustification() === Annotation.VerticalJustify.TOP);
+          if (mark) marks.push(mark);
+        }
+      }
+      if (!marks.length) continue;
+      const clearance = marks[0].getNote().getStave().space(.65);
+      const baseline = Math.min(...marks.map(mark => mark.computeY().y)) - clearance;
+      for (const mark of marks) mark.setLayoutBaseline(baseline);
+    }
+  }
+}
+
 /** Anchor a native cross-system hyphen to the final ink of the verse on each end. */
 function alignHyphens<Staff extends string>(composition: EasyScoreComposition, instruments: LyricInstrument<Staff>[]) {
   const ends = new Map<string, { from: Annotation; to: Annotation }>();

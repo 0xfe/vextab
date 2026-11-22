@@ -15,6 +15,7 @@ import repeats from './scores/repeat-endings.vextab';
 import duet from './scores/guitar-duet.vextab';
 import workbench from './scores/embed-workbench.vextab';
 import sor from './scores/sor-op35-no22.vextab';
+import pocketChange from './scores/pocket-change.vextab';
 import joplin from './scores/joplin-maple-leaf.vextab';
 import handy from './scores/handy-st-louis-blues.vextab';
 import haydn from './scores/haydn-emperor-variation.vextab';
@@ -62,6 +63,10 @@ export const lessons: Lesson[] = [
     goal:'Bars 1–8 of Op. 35 No. 22. Sustain the half-note melody over the moving eighths and hold the bass across the first barline.',
     edit:'Choose Guitar · TAB and compare the circled fingering with the fret on string two. Change finger 2 to finger 3 on the opening note.',
     edition:{ credit:'Glen Larsen’s Mutopia engraving after N. Simrock (CC BY-SA 3.0). This adaptation uses editorial string choices and the original three voices. The adaptation shares the same license.', url:'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1850' } },
+  { id:'pocket-change', title:'Pocket Change · Bebop piano', source:pocketChange, views:staff, demo:true,
+    goal:'Play an original sixteen-bar head in F. Hear the opening eighth-note figure return in bars 5 and 13, and listen for the left hand answering in the gaps.',
+    edit:'Change swing eighths to swing off and replay the opening at 176 BPM. Listen to the offbeat before the first G, then compare the sparse chord hits in bars 9–12.',
+    edition:{ credit:'An original VexTab piano score with a Parker-inspired head and left-hand comping.', url:'scores/pocket-change.vextab' } },
   { id:'joplin-maple-leaf', title:'Joplin · Maple Leaf Rag', source:joplin, views:staff, demo:true,
     goal:'Play the pickup and first strain, including both endings. In written measure 8 the right hand crosses onto the bass staff.',
     edit:'Lower the tempo from 92 to 72 and follow the two groups of three sixteenths. Listen for the return after the first ending.',

@@ -23,6 +23,7 @@ module.exports = (env = {}) => {
       'guide-syntax': { import: './guide/highlight.ts', library: { name: 'VexTabSyntax', type: 'umd' } },
       'example-audio': { import: './guide/example-audio.ts', library: { name: 'VexTabAudio', type: 'umd' } },
       ...(!guideSite && {
+        performer: { import: './src/playback/performer.ts', filename: 'performer.cjs', library: { type: 'commonjs-static' } },
         score: { import: './src/score/parse.ts', layer: 'parser', filename: 'score.cjs', library: { type: 'commonjs-static' } },
         browser: { import: './src/browser.ts', filename: 'browser.cjs', library: { type: 'commonjs-static' } },
         tests: './tests/tests.ts',

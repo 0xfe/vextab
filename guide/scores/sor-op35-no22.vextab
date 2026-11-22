@@ -4,6 +4,7 @@
 # License: https://creativecommons.org/licenses/by-sa/3.0/
 # Unspecified strings are editorial. The two melodic voices share some attacks in the source.
 measureNumbers on
+play { performer human }
 meter 3/4
 edition { title "Study in B minor" subtitle "Fernando Sor · Op. 35 No. 22, bars 1–8" staffSize 6 }
 guitar {

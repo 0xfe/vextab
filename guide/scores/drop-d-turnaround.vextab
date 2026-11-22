@@ -1,6 +1,7 @@
 # Bend one whole tone, hold it, then release.
 alias fullbend="bend +2 rise=1/2 hold=3/4 release=1"
 measureNumbers on
+play { performer blues }
 meter 4/4
 guitar {
   tuning dropD capo 0

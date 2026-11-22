@@ -1,0 +1,49 @@
+// Pocket Change · an original sixteen-bar bebop head for solo piano.
+// Four-bar phrases in F. The left hand answers the head with shells, ninths and altered dominants.
+play { performer parker swing eighths tempo 176 }
+layout { spacing optical heading { title "Pocket Change" } }
+edition { paper Letter staffSize 5.4 }
+meter 4/4
+piano keys { key F program 0 beamRests off
+  upper {
+    :8 rest[harmony F "6/9"] A4[dynamic mf] C5 D5 Eb5[harmony D "7b9"] E5 F5 F#5 |
+    :8 G5[harmony G "m7"] F5 D5 Bb4 :q E5[harmony C "7b9"] :8 Db5 C5 |
+    :8 Bn4[harmony A "m7"] C5 E5 G5 F#5[harmony D "7"] A5 :q C6[accent] |
+    :8 Bb5[harmony G "m7"] A5 G5 E5 :q Db5[harmony C "7b9"] :8 C5 rest |
+    break system
+    :8 rest[harmony F "6/9"] A4 C5 D5 :q F5[harmony D "7b9"] :8 A5 F#5 |
+    :8 G5[harmony G "m7"] Bb5 A5 G5 E5[harmony C "13"] Db5 :q C5 |
+    :8 Eb5[harmony C "m9"] G5 Bb5 A5 Ab5[harmony F "13"] G5 F5 Eb5 |
+    :q D5[harmony Bb "maj7"] :8 F5 A5 :q Ab5[harmony B "dim7"] :8 F5 D5 |
+    break system
+    :8 Db5[harmony Bb "m9"] F5 Ab5 C6 Bb5[harmony Eb "13"] G5 :q F5 |
+    :q Eb5[harmony Ab "maj9"] :8 rest C5 Eb5 G5 :q Bb5[accent] |
+    :8 A5[harmony A "m7b5"] G5 Eb5 C5 F#5[harmony D "7b9"] A5 Ab5 F#5 |
+    :q G5[harmony G "m7"] :8 D5 Bb4 :8 A4[harmony C "7b9"] G4 Db5 C5 |
+    break system
+    :8 rest[harmony F "6/9"] A4 C5 D5 Eb5[harmony D "7b9"] E5 F5 A5 |
+    :8 Bb5[harmony G "m7"] A5 G5 E5 :q Db5[harmony C "7b9"] :8 C5 Bb4 |
+    :8 A4[harmony G "m9"] Bb4 D5 F5 :8 E5[harmony C "13"] Db5 C5 G4 |
+    :8 A4[harmony F "6/9"] C5 :q F5[accent] :h rest bar final
+  }
+  lower {
+    // F6/9 to D7b9. Leave beat one open so the head can make its entrance.
+    :q rest :8 (F3 A3 D4)[dynamic mp] rest :q rest (F#3 C4 Eb4)[staccato] |
+    :q (G2 Bb2 F3) :q rest :8 rest (E3 Bb3 D4) :q rest |
+    :q. rest :8 (G3 C4 E4) :q (F#3 C4 E4)[staccato] rest |
+    :8 rest (F3 A3 Bb3 D4) :q rest :h (E3 Bb3 Db4) |
+    :h (F3 A3 D4) :q. rest :8 (F#3 C4 Eb4) |
+    :q rest (F3 Bb3 D4) :q. (E3 A3 Bb3) :8 rest |
+    :8 rest (Eb3 Bb3 D4) :q rest :q rest (Eb3 A3 D4)[staccato] |
+    :h (Bb2 F3 A3) :8 rest (Bn2 F3 Ab3) :q rest |
+    // Minor subdominant: move the inner voice from A-flat to G over E-flat seven.
+    :q. (Db3 Ab3 C4) :8 rest :q (Db3 G3 C4) rest |
+    :q rest :8 rest (C3 G3 Bb3) :h rest |
+    :q (A2 C3 G3) rest :q. rest :8 (F#3 C4 Eb4) |
+    :8 rest (F3 Bb3 D4) :q rest :h (E3 Bb3 Db4) |
+    :q. rest :8 (F3 A3 D4) :q rest (F#3 C4 Eb4)[staccato] |
+    :8 (G2 Bb2 F3) rest :q rest :8 rest (E3 Bb3 Db4) :q rest |
+    :q. (F3 Bb3 D4) :8 rest :q (E3 A3 Bb3) rest |
+    :q rest (F3 G3 A3 D4)[accent] :h rest bar final
+  }
+}

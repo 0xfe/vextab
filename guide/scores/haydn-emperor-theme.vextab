@@ -2,7 +2,7 @@
 // OpenScore CC0 transcription 20428156. See issues/197/README.md for the edition and editorial choices.
 meter cut
 pickup 1/2
-play { tempo 80 }
+play { performer bach tempo 80 }
 
 staff violin_i { name "Violin I" shortName "Vln. I"
   key G clef treble

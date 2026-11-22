@@ -95,6 +95,10 @@
             "types": "./dist/types/browser.d.ts",
             "default": "./dist/browser.cjs"
         },
+        "./performer": {
+            "types": "./dist/types/playback/performer.d.ts",
+            "default": "./dist/performer.cjs"
+        },
         "./parse": {
             "types": "./dist/types/score/parse.d.ts",
             "default": "./dist/score.cjs"
