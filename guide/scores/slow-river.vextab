@@ -1,3 +1,4 @@
+layout { scale 0.82 spacing optical rowGap 20 }
 measureNumbers on
 meter 4/4
 guitar {
@@ -8,11 +9,11 @@ guitar {
     :q D5[symbol "Dm7", lyric "roll" extend=2] E5 F5 E5 |
     :h D5[symbol "G", lyric "to"] :q B4 A4 |
     :h G4[symbol "G6", lyric "sea" extend=1] G4 |
-    break system :q G4[symbol "G", lyric "Car" hyphen] A4[lyric "ry"] :h B4[lyric "me"] |
+    :q G4[symbol "G", lyric "Car" hyphen] A4[lyric "ry"] :h B4[lyric "me"] |
     :h C5[symbol "C", lyric "past"] :q B4 A4 |
-    :h A4[symbol "Am7", lyric "the"] :q G4[lyric "wil" hyphen] E4[lyric "low"] |
+    break system :h A4[symbol "Am7", lyric "the"] :q G4[lyric "wil" hyphen] E4[lyric "low"] |
     :h F#4[symbol "D7", lyric "tree" extend=2] :q E4 D4 |
-    break system :q E4[symbol "C", lyric "Sing"] G4 :h C5[lyric "soft,"] |
+    :q E4[symbol "C", lyric "Sing"] G4 :h C5[lyric "soft,"] |
     :q A4[symbol "D7", lyric "flow"] B4 :h A4[lyric "on"] |
     :h G4[symbol "G", lyric "and"] :q A4 B4 |
     :h G4[symbol "G6", lyric "rest" extend=1] G4 bar final
@@ -22,11 +23,11 @@ guitar {
     :h D3 A3 |
     :w G3 |
     :w G3 |
-    break system :h G3 D3 |
+    :h G3 D3 |
     :h C3 G3 |
     :h A3 E3 |
     :h D3 A3 |
-    break system :h C3 G3 |
+    :h C3 G3 |
     :h D3 A3 |
     :w G3 |
     :w G3 bar final

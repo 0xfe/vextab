@@ -1,3 +1,4 @@
+layout { width 420 scale 0.82 spacing optical }
 play { performer human }
 meter 4/4
 guitar {

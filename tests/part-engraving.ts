@@ -37,15 +37,15 @@ QUnit.module('Independent part engraving', () => {
 
   QUnit.test('Slow River fits its verse on one system and counts the diagram as printable ink', assert => {
     const score = parseScore(river), root = host();
-    for (const width of [560, 360, 560]) {
+    for (const width of [440, 360, 440]) {
       const view = renderScore(root, score, { width });
-      if (width === 560) {
+      if (width === 440) {
         assert.deepEqual(view.composition.sheet.getContinuousLayout().rows[1].measures, [2, 3, 4]);
         assert.equal(new Set(verse(root).map(el => el.getAttribute('y'))).size, 1);
         assert.equal(verse(root).length, 3);
       }
     }
-    const canvas = renderScore(root, score, { width: 560, renderer: 'canvas' });
+    const canvas = renderScore(root, score, { width: 440, renderer: 'canvas' });
     const baselines = canvas.composition.notes.slice(1, 4).map(staves => staves[0][0][0].getModifiers()
       .find((m): m is Annotation => m instanceof Annotation && m.phraseManaged && m.getVerticalJustification() === Annotation.VerticalJustify.BOTTOM).computeY().y);
     assert.equal(new Set(baselines).size, 1);

@@ -1,10 +1,11 @@
 // Joseph Haydn, Op. 76 No. 3, II. Theme and Variation I, pickup through bar 40.
 // OpenScore CC0 edition 20428156. Editorial details and source check in issues/198.
+layout { scale 0.67 rowGap 20 }
 meter cut
 pickup 1/2
 play { performer bach tempo 80 }
 edition {
-  paper A4 margins 15 16 16 16 staffSize 6
+  paper A4 margins 15 16 16 16 staffSize 5.2
   title "Emperor Quartet" subtitle "II. Poco adagio, cantabile"
   header "Haydn · Op. 76 No. 3" footer "Theme and Variation I" pageNumbers on
 }

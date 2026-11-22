@@ -87,7 +87,7 @@ export const lessons: Lesson[] = [
   { id:'compound-picking', title:'Compound-time picking', source:picking, views:guitar, demo:true,
     goal:'A triplet plus one eighth fills the first dotted-quarter beat. Three ordinary eighths fill the second.',
     edit:'Move the tuplet block from the three frets on string one to the three on string two. The extra eighth now belongs to the other beat. Hide notation and count again.' },
-  { id:'chord-workshop', title:'A-major chord workshop', source:workshop, views:['score'], fixed:true, demo:true,
+  { id:'chord-workshop', title:'A-major chord workshop', source:workshop, views:['score'], demo:true,
     goal:'The natural cancels G-sharp on the open third string. The left-hand fingering belongs to fret two on string two.',
     edit:'Compare the two orders of the same voicing. Reorder one and keep [f] beside its fret on string two.' },
   { id:'bossa', title:'Two-voice bossa', source:bossa, views:guitar, demo:true,

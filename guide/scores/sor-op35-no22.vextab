@@ -3,10 +3,11 @@
 # Edition: https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1850
 # License: https://creativecommons.org/licenses/by-sa/3.0/
 # Unspecified strings are editorial. The two melodic voices share some attacks in the source.
+layout { scale 0.73 spacing optical rowGap 18 }
 measureNumbers on
 play { performer human }
 meter 3/4
-edition { title "Study in B minor" subtitle "Fernando Sor · Op. 35 No. 22, bars 1–8" staffSize 6 }
+edition { title "Study in B minor" subtitle "Fernando Sor · Op. 35 No. 22, bars 1–8" staffSize 5.2 }
 guitar {
   program 24
   key Bm

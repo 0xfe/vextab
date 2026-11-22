@@ -1,9 +1,10 @@
 // Scott Joplin, Maple Leaf Rag. Pickup, first strain and both endings.
 // John Stark (1899), via Chris Sawer’s public-domain Mutopia transcription, ID 23.
+layout { scale 0.68 spacing optical rowGap 18 }
 meter 2/4
 pickup 1/8
 play { performer ragtime tempo 92 }
-edition { title "Maple Leaf Rag" subtitle "First strain" staffSize 6 }
+edition { title "Maple Leaf Rag" subtitle "First strain" staffSize 5.2 }
 piano keys { key Ab beamRests off
   upper {
       :8 rest |

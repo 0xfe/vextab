@@ -1,3 +1,4 @@
+layout { width 300 scale 0.88 spacing optical }
 alias f="finger 2 right"
 meter 2/4
 guitar { key A tabStems off

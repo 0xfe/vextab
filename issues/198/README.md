@@ -6,7 +6,7 @@ The theme retains the [M2 editorial choices](../197/README.md). Variation I incl
 
 | Edition | A4 pages | Letter pages | Reading check |
 | --- | ---: | ---: | --- |
-| Conductor | 8 | 6 | Four labeled staves. Variation starts on a fresh page at measure 22. |
+| Conductor | 5 | 5 | Four labeled staves. Variation starts on a fresh page at measure 22. |
 | Violin I | 3 | 3 | Broken-chord sixteenths and two triplets. The variation uses short systems for slur clearance. |
 | Violin II | 2 | 2 | Receives the theme at the variation pickup. |
 | Viola | 2 | 2 | Variation starts on page two. The violin cue precedes a numbered rest. |
@@ -14,7 +14,7 @@ The theme retains the [M2 editorial choices](../197/README.md). Variation I incl
 
 The VexFlow 5.7.0 publication adapter passes complete native span descriptors into the cue composition before VexFlow formats it. This preserves the second violin’s four-note slur over the unchanged cello rest. Spans crossing the edge of the quoted bar remain in the full-size score. The adapter checks the same pinned insertion point used for M1 cue drawing. [Adapter](../../scripts/vexflow-publication-loader.cjs) · [Regression tests](../../tests/editions.ts)
 
-The MusicXML comparison covers all 772 principal attacks and rests, including ordered chord heads and exact rational durations. The browser check traces each printed event and cue back to that transcription. Both paper sizes retain all 42 written measures, page furniture and physical margins. Chromium produced A4 MediaBoxes of 209.89 × 297.01 mm and Letter MediaBoxes of 215.90 × 279.40 mm. All 32 pages opened individually as outlined SVG with networking disabled.
+The MusicXML comparison covers all 772 principal attacks and rests, including ordered chord heads and exact rational durations. The browser check traces each printed event and cue back to that transcription. Both paper sizes retain all 42 written measures, page furniture and physical margins. Chromium produced A4 MediaBoxes of 209.89 × 297.01 mm and Letter MediaBoxes of 215.90 × 279.40 mm. All 28 pages opened individually as outlined SVG with networking disabled.
 
 ## Reproduce
 

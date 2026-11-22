@@ -126,7 +126,7 @@ try {
   const wideHeight = await scoreHeight();
   await page.setViewportSize({ width: 392, height: 800 }); // 360 px after page gutters.
   const waitForScoreWidth = width => page.waitForFunction(expected =>
-    Math.abs(Number(document.querySelector('#score svg').getAttribute('width')) - expected) < 0.01, width);
+    Math.abs(document.querySelector('#score svg').getBoundingClientRect().width - expected) < 1, width);
   await waitForScoreWidth(360);
   assert.ok(await scoreHeight() > wideHeight);
   await tabs.check();

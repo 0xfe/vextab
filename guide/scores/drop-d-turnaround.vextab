@@ -1,4 +1,5 @@
 # Bend one whole tone, hold it, then release.
+layout { scale 0.75 spacing optical rowGap 20 }
 alias fullbend="bend +2 rise=1/2 hold=3/4 release=1"
 measureNumbers on
 play { performer blues }

@@ -328,8 +328,10 @@ class Div {
   /** Bind editor selection to this surface and its current instrument or conductor geometry. */
   private drawView(host: HTMLElement, score: ParsedScore | ScoreV2, revision: ParsedScore) {
     const renderer = this.rendererBackend.toLowerCase() === 'canvas' ? 'canvas' : 'svg';
-    // An authored page width fixes its system breaks inside a responsive embed.
-    const width = this.autoWidth ? score.layout?.width ?? this.width : this.width;
+    // The formatter takes engraving units. A scaled, auto-width score can fit more
+    // music in the host's CSS pixels. An authored page width fixes its system breaks.
+    const available = Math.max(21, this.width / (score.layout?.scale ?? 1));
+    const width = this.autoWidth ? score.layout?.width ?? available : this.width;
     const layout = 'parts' in score
       ? renderConductor(host, score, { width, renderer })
       : renderScore(host, score, { width, part: this.part, renderer });

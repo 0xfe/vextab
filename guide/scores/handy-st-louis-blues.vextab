@@ -1,8 +1,9 @@
 // W. C. Handy, The St. Louis Blues (Pace & Handy, 1914), first sung twelve bars.
 // Vocal line and two printed underlays. Piano is an editorial reduction, chord symbols are editorial.
+layout { scale 0.74 spacing optical rowGap 24 }
 meter 2/4
 play { performer blues tempo 76 }
-edition { title "The St. Louis Blues" subtitle "First sung chorus" staffSize 6 }
+edition { title "The St. Louis Blues" subtitle "First sung chorus" staffSize 5.2 }
 staff singer { name "Voice" shortName "V." key G
   :16 B4[grace before (A#4), verse first "I", verse second "Been", harmony G "7"] D5[verse first "hate", verse second "to"]
   B4[verse first "to", verse second "de"] G4[verse first "see", verse second "Gyp" hyphen] :q G4[tie, verse second "sy"] |

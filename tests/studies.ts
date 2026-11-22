@@ -108,7 +108,7 @@ QUnit.module('Responsive studies', () => {
       assert.deepEqual(view.diagnostics, []);
       for (const sys of view.composition.systems) assert.deepEqual(sys.getPhraseLayout().diagnostics, []);
       const starts = view.composition.sheet.getContinuousLayout().rows.map(row => row.measures[0]);
-      assert.ok(starts.includes(5) && starts.includes(9), 'The two authored line breaks survive reflow');
+      assert.ok(starts.includes(7), 'The second six-bar line starts at its authored break');
       assert.equal(view.composition.systems[0].getPhraseLayout().getLyricConnectors().length, 1);
       const line = view.composition.systems[1].getPhraseLayout().getLyricConnectors()[0];
       const end = view.composition.getNote(view.navigation.events.find(e => e.source === second.voices[0].events[2].id).id) as StaveNote;

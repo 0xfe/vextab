@@ -1,7 +1,7 @@
 // Pocket Change · an original sixteen-bar bebop head for solo piano.
 // Four-bar phrases in F. The left hand answers the head with shells, ninths and altered dominants.
 play { performer parker swing eighths tempo 176 }
-layout { spacing optical heading { title "Pocket Change" } }
+layout { scale 0.69 spacing optical rowGap 18 heading { title "Pocket Change" } }
 edition { paper Letter staffSize 5.4 }
 meter 4/4
 piano keys { key F program 0 beamRests off
