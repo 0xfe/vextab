@@ -14,8 +14,7 @@ export type ExpansionFrame = { range: TextRange } & (
   { pattern: string } | { iteration: number } | { tuplet: string }
 );
 
-/** A finger or a hammer belongs to one head. Accents belong to a whole attack. */
-/** Independent sounding length is measured in whole notes on the score clock. */
+/** Fingering, technique and sounding duration (whole notes) belong to an individual head. */
 export type HeadMark = { kind: 'sustain'; duration: string; range: TextRange } | { kind: 'tieStart' | 'tieEnd'; name: string; range: TextRange } | { kind: 'write'; pitch: string; range: TextRange } | { kind: 'sign'; code: string; position: 'above' | 'below'; range: TextRange } | { kind: 'bend'; semitones: number; rise: [number, number]; hold?: [number, number]; release?: [number, number]; range: TextRange } |
   { kind: 'slideIn' | 'slideOut'; side: 'above' | 'below'; range: TextRange } |
   { kind: 'prebend'; semitones: number; release: boolean; range: TextRange } |
@@ -44,7 +43,7 @@ export type EventMark = SpanEndpoint |
   { kind: 'pedal'; action: 'down' | 'up'; onset?: boolean; range: TextRange } |
   { kind: 'ossia'; duration: string; notes: { pitch: string; ornament?: string }[]; range: TextRange } |
   { kind: 'ornament'; value: string; range: TextRange } | { kind: 'slash'; range: TextRange } | { kind: 'line'; value: number; range: TextRange } | { kind: 'text'; text: string; glyph?: boolean; style?: LaneStyle; range: TextRange } | { kind: 'ink'; value: string; range: TextRange } |
-{ kind: 'frame'; frets: (number | 'x')[]; barre?: [number, number, number]; range: TextRange } |
+{ kind: 'frame' | 'diagram'; frets: (number | 'x')[]; barre?: [number, number, number]; range: TextRange } |
 { kind: 'label'; text: string; style: TextStyle; range: TextRange } |
 { kind: 'stroke' | 'brush' | 'roll' | 'rasgueado'; direction: 'up' | 'down'; range: TextRange } |
 { kind: 'tap' | 'vibrato'; wide: boolean; range: TextRange } | { kind: 'accent'; range: TextRange } |

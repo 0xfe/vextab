@@ -203,7 +203,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
   const slurEnds = new Set((score.spans ?? []).filter(s => s.kind === 'slur').map(s => s.to));
   const tremolos = new Map((score.spans ?? []).filter(span => span.kind === 'tremolo').map(span => [span.from, span]));
   const glissandi = new Map((score.spans ?? []).flatMap(span => span.kind === 'glissando' ? [[span.to + ':' + span.toHead, span] as const] : []));
-  const decorations = new Map<string, { attack: Attack; key: KeyManager }>();
+  const decorations = new Map<string, { attack: Attack; key: KeyManager; graceShare?: number }>();
   const keys = new Map<string, KeyManager>();
   const pedals = (score.spans ?? []).filter(s => s.kind === 'pedal');
   const downs = new Map(pedals.map(s => [s.from, s.to]));
@@ -256,7 +256,15 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
       if (attack.grace || attack.ornament) {
         const key = attack.activeKey ?? measure.state.key ?? 'C';
         if (!keys.has(key)) keys.set(key, new KeyManager(key));
-        decorations.set(attack.id, { attack, key: keys.get(key) });
+        // Explicit grace stealing is a fraction of score time; a tempo boundary can divide that window.
+        let graceShare: number | undefined;
+        if (attack.grace?.steal) {
+          const onset = seconds(attack.onset, 1), span = seconds(attack.duration, 1);
+          const window = span * seconds(attack.grace.steal, 1);
+          const start = attack.grace.side === 'before' ? onset : onset + span - window;
+          graceShare = (elapsed(start + window) - elapsed(start)) / duration;
+        }
+        decorations.set(attack.id, { attack, key: keys.get(key), graceShare });
       }
       attack.heads.forEach((head, i) => {
         const headDuration = head.sustain
@@ -314,7 +322,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
     const word = decorations.get(String(event.source));
     if (!word) return [event];
     const grace = word.attack.grace;
-    const share = grace?.steal ? seconds(grace.steal, 1) : grace && take?.graceFraction(event.time, event.duration, grace.pitches.length, grace.slash);
+    const share = word.graceShare ?? (grace && take?.graceFraction(event.time, event.duration, grace.pitches.length, grace.slash));
     return decorateAttack(event, word.attack, word.key, share);
   }) : events;
   sounded.sort((a,b) => a.time - b.time);

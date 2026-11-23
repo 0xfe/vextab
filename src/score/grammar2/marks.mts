@@ -4,7 +4,7 @@ import type { TextRange } from './model.js';
 /** Projection stores one value for each of these slots. Diagnose a second spelling at its source. */
 const singletonSlots = new Map<string, string>([
   ...['sustain', 'gliss', 'release', 'dynamic','sharedStem','onStaff','pedal','ossia','grace','ornament','lyric', 'symbol', 'frame', 'line', 'ink', 'write', 'prebend', 'bend', 'text'].map(kind => [kind, kind] as const),
-  ['slideIn', 'open slide'], ['slideOut', 'open slide'], ['showSign', 'accidental'], ['courtesy', 'accidental'],
+  ['diagram', 'frame'], ['slideIn', 'open slide'], ['slideOut', 'open slide'], ['showSign', 'accidental'], ['courtesy', 'accidental'],
   ['hammer', 'connection'], ['pull', 'connection'], ['slide', 'connection'],
 ]);
 

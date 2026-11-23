@@ -15,6 +15,23 @@ export function validateBeam(events: ScoreEvent[], first: number, last: number, 
 export function resolveSpanEndpoints(voice: ScoreVoice, fail: Fail): void {
   const open = new Map<string, { mark: SpanEndpoint; index: number }>();
   let openBeam = false;
+  let claimed: Uint8Array | undefined;
+
+  /** Mark existing scoped groups only when this voice also contains a named beam. */
+  function claimBeam(first: number, last: number, mark: SpanEndpoint, trace: ExpansionFrame[]) {
+    if (!claimed) {
+      claimed = new Uint8Array(voice.events.length);
+      const indices = new Map(voice.events.map((event, i) => [event.id, i]));
+      for (const span of voice.spans) {
+        if (span.kind === 'beam' || span.kind === 'feather' || span.kind === 'continuousBeam')
+          claimed.fill(1, indices.get(span.first), indices.get(span.last)! + 1);
+      }
+    }
+    for (let i = first; i <= last; i++) {
+      if (claimed[i]) fail('syntax', 'A note may belong to only one beam', mark.range, trace);
+      claimed[i] = 1;
+    }
+  }
   voice.events.forEach((event, index) => {
     for (const mark of event.marks) {
       if (mark.kind !== 'spanEndpoint') continue;
@@ -36,6 +53,7 @@ export function resolveSpanEndpoints(voice: ScoreVoice, fail: Fail): void {
       } else {
         if (mark.span === 'beam') {
           validateBeam(voice.events, start.index, index, mark.range, event.trace, fail);
+          claimBeam(start.index, index, mark, event.trace);
           openBeam = false;
         }
         voice.spans.push({ kind: mark.span, first, last, range, name, side: start.mark.side, strings: [] });

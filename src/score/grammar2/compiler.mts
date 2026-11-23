@@ -121,6 +121,12 @@ export function compile(source: string, capacity?: ScoreCapacity): ScoreV2 {
             const [n, d] = asFraction(mark.duration);
             if (n * length[1] > length[0] * d)
               fail('syntax', 'Head sustain exceeds this attack; write a separate voice or tie', mark.range, trace);
+            const grace = node.marks?.find(m => m.kind === 'grace');
+            if (grace?.kind === 'grace' && grace.steal && grace.side === 'before') {
+              const [a, b] = asFraction(grace.steal);
+              if (n * length[1] * b <= length[0] * d * a)
+                fail('syntax', 'Before-grace would consume the entire sounding head', grace.range, trace);
+            }
           }
           if (['bend', 'prebend', 'slideIn', 'slideOut'].includes(mark.kind) && (!('fret' in head) || typeof head.fret !== 'number'))
             fail('instrument', 'This technique needs a pitched fret', mark.range, trace);

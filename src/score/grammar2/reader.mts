@@ -79,7 +79,7 @@ const durationPattern = /^:(w|h|q|1|2|4|8|16|32|64|128|256)(\.{0,2})$/;
 const notePattern = /^[A-G](?:bb|##|b|#|n)?[0-9]$/;
 const positionPattern = /^(x|0|[1-9]\d?)\/([1-8])$/;
 const builtInMarks = new Set([
-  'sustain', 'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'line', 'ink', 'label',
+  'sustain', 'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'diagram', 'line', 'ink', 'label',
   'tap', 'vibrato', 'brush', 'roll', 'stroke', 'rasgueado', 'symbol', 'write', 'staccato', 'fermata',
   'dynamic', 'harmony', 'onStaff', 'sharedStem', 'pedal', 'ossia', 'grace', 'ornament', 'verse', 'gliss', 'release', 'articulation', 'lyric', 'bend', 'prebend', 'finger',
 ]);
@@ -163,7 +163,7 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
   }
 
   function isEventMark(mark: HeadMark | EventMark): mark is EventMark {
-    return ['spanEndpoint','dynamic','harmony','onStaff','sharedStem','pedal','ossia','grace','ornament','slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
+    return ['spanEndpoint','dynamic','harmony','onStaff','sharedStem','pedal','ossia','grace','ornament','slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'diagram', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
   }
 
   /** JSON quoting handles embedded punctuation and escaped quotes in musical text. */
@@ -312,7 +312,7 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
       if (niente) take();
       return { kind: 'spanEndpoint', name, span, edge, hairpin, side, niente, range: range() };
     }
-    if (mark.text === 'frame') {
+    if (mark.text === 'frame' || mark.text === 'diagram') {
       expect('(');
       const frets: (number | 'x')[] = [];
       while (peek() !== ')') {
@@ -327,7 +327,7 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
         if (!parsed) error('Expected barre=fret/from..to', cell);
         barre = [Number(parsed[1]), Number(parsed[2]), Number(parsed[3])];
       }
-      return { kind: 'frame', frets, barre, range: range() };
+      return { kind: mark.text, frets, barre, range: range() };
     }
     if (mark.text === 'line') {
       const value = take();
