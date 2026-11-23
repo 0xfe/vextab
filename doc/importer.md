@@ -124,6 +124,8 @@ Set a hard gate of **zero importer modules or bytes** in the ordinary VexTab pro
 
 ## Implementation milestones
 
+[M0 qualification results](../issues/206/README.md) record the native screen and print controls, capacity decision and measured Node/browser budgets. The three controls pass on VexFlow 5.9.0. M1 can use existing VexTab syntax while M3 develops the larger target profile and timed staff changes.
+
 | Milestone | Deliverable and dependencies | Exit test |
 | --- | --- | --- |
 | **M0 · Establish the contract** | Pin target grammar, both source profiles and reference tools. Add the corpus manifest and a matrix of features versus parse, engraving, print and playback. Collect histograms of document size, source features and required compiler limits. Prototype XML streaming, ZIP extraction and LilyPond tokenization on common and large cases. Measure dependency graphs, memory and latency. | Record reproducible baselines and numeric budgets per entry and runner. Show the Haydn size failure under the default profile. Decide bounded whole-score capacity and caller-selected extraction behavior before promising complete works. |
