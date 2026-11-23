@@ -48,10 +48,13 @@ async function proof(profile) {
             text:[...surface.querySelectorAll('text')].map(n => n.textContent),
             classes:[...new Set([...surface.querySelectorAll('[class]')].flatMap(n => [...n.classList]))],
             events:surface.querySelectorAll('.vf-notehead').length,
+            beams:surface.querySelectorAll('.vf-beam').length,
+            frets:[...surface.querySelectorAll('.vf-tabnote text')].map(n => n.textContent),
+
           };
         }
         const notes = [];
-        const player = new vt.Player(model, {playback:{open:() => ({
+        const player = new vt.Player(model, {seed:42, playback:{open:() => ({
           playNote(note) { notes.push({pitch:note.pitch, duration:note.duration, velocity:note.velocity}); },
           stop() {},
         })}});
@@ -66,10 +69,15 @@ async function proof(profile) {
 
 /** Compare the projected reading, physical ink and actual plugin calls against these source scores. */
 function check(id, score) {
+  if (process.argv.includes('--inspect')) console.log(id, JSON.stringify(score));
   const pitches = score.notes.map(n => n.pitch);
   for (const surface of [score.screen,score.print]) {
     assert.ok(surface.events || surface.classes.includes('vf-tabnote'), id + ' must engrave on both surfaces');
+    if (id === 'keyboard') assert.equal(surface.beams, 1, 'One beam joins all four eighth notes');
+    if (id === 'kit') assert.ok(surface.text.includes('\ue0a9'), 'Cross-shaped quarter-note head');
+    if (id === 'guitar') assert.deepEqual(surface.frets, ['1','1'], 'Both stopped strings print fret one');
     if (id === 'song') {
+      assert.equal(surface.events, 6);
       for (const syllable of ['Fly','ing']) assert.ok(surface.text.includes(syllable), syllable);
     }
   }
