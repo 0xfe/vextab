@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 import { checkMeasuredConsumers } from '../../scripts/test-importer-measured.mjs';
 import { parseScore } from 'vextab/parse';
 
-const out = resolve('build/importer-m1');
+const out = resolve('build/importer-m2');
 await mkdir(out, { recursive: true });
 const consumer = await mkdtemp(join(tmpdir(), 'vextab-import-consumer-'));
 const [pack] = JSON.parse(execFileSync('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', out],
@@ -92,5 +92,5 @@ try {
   await page.locator('main').screenshot({ path: join(out, 'imported-voices.png') });
   await checkMeasuredConsumers(browser, use, out);
 } finally { await browser.close(); }
-console.log('Packed Node ESM, CommonJS, TypeScript, two independent browser workers and projected pitches passed.');
+console.log('Packed Node ESM, CommonJS, TypeScript, independent MusicXML/MXL/LilyPond workers and projected pitches passed.');
 console.log({ packedBytes: pack.size, installedBytes: pack.unpackedSize, consumer });

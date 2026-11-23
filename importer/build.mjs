@@ -11,6 +11,7 @@ for (const [entry, ceiling] of [['musicxml', 32768], ['lilypond', 24576], ['mxl'
   const graph = Object.keys(result.metafile.inputs);
   assert.ok(graph.every(path => !path.includes('node_modules/') || /node_modules\/(?:saxes|xmlchars)\//.test(path)), graph);
   assert.equal(graph.some(path => path.includes('saxes/')), entry !== 'lilypond');
+  assert.equal(graph.includes('src/mxl.ts'), entry === 'mxl');
   assert.ok(!graph.includes('src/' + (entry === 'lilypond' ? 'musicxml' : 'lilypond') + '.ts'));
   assert.equal(graph.includes('src/mxl.ts'), entry === 'mxl');
   const bytes = gzipSync(readFileSync(outfile), { level: 9 }).length;
