@@ -40,3 +40,21 @@ The print selection returns a located warning for the omitted forte in partial m
 - The reader handles sequential and simultaneous music, named voices, piano hands, staff changes, pickups, inherited and double-dotted durations, rests, skips, chords, whole-event ties and nested tuplets. Timing changes require measure boundaries. Ordered eighth-note grace heads attach to a pitched anchor. Other grace durations require partial mode and carry a warning.
 - Volta bodies and endings occupy complete measures. Both the historical external alternatives and the modern trailing numbered blocks are qualified for one consecutive ending per pass. Bounded unfold creates written copies.
 - Unknown duration-producing commands, arbitrary Scheme, unprovided includes, unsupported overlays and incomplete music return a located failure. Header and layout settings lie outside the music profile. Full-file qualification of older repertoire and expressive engraving remain later milestones.
+
+## Extended target and upstream regressions
+
+Select `targetProfile: 'extended'` for timed keys and clefs, literal metronome marks, written-to-sounding instrument transposition and StaffGroup brackets. A metronome mark in eighth notes is converted to quarter-note BPM before emission. Source pitches retain their written spelling when a transposition changes their sounding MIDI values.
+
+Four unchanged input files from the LilyPond 2.26.0 source tree are pinned by commit and SHA-256. The regular check downloads only these fixtures, and accepts a local checkout in `LILYPOND_SOURCE_DIR`. The native check additionally runs the two successful inputs through the installed LilyPond 2.26.0 listener. [Qualification script](../210/lilypond-upstream.mjs) · [Pinned upstream regression suite](https://github.com/lilypond/lilypond/tree/3596756be0fac1f81066a99d2054329212172b2d/input/regression)
+
+```sh
+node issues/210/lilypond-upstream.mjs
+node issues/210/lilypond-upstream.mjs --native
+```
+
+| Upstream file | Declared source version | Expected result |
+| --- | --- | --- |
+| `chord-repetition-times.ly` | 2.19.21 | Exact in the default profile. Compare 25 chord heads and rests, including a tie and triplets in two complete bars. |
+| `tuplet-nest-beam.ly` | 2.17.11 | Eight native pitches, onsets and durations inside nested 7:4 and 5:4 tuplets. Pass `finalFragment: true` to admit its intentionally short final bar. |
+| `staff-change-autobeam.ly` | 2.16.0 | A located failure at the standalone change to an implicit destination staff. Named piano-hand staff changes remain covered by the native context fixture. |
+| `repeat-volta-specified-alternatives.ly` | 2.23.0 | A located failure at the first nonconsecutive pass number in the source's reordered pass list. Consecutive numbered and historical endings remain covered by the native endings fixture. |

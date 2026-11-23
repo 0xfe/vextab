@@ -92,3 +92,19 @@ test('malformed, cyclic, explosive and unresolved sources fail with a diagnostic
     assert.equal(r.diagnostics.at(-1).severity, 'error');
   }
 });
+
+test('extended writer preserves timed signatures, tempo, instrument sound and the staff group', () => {
+  const source = ly`\new StaffGroup <<
+    \new Staff = "reed" { \time 2/4 \transposition bes \tempo 4 = 120
+      f'4 \clef bass \key g \major \tempo 8 = 144 f' | f'2 | }
+    \new Staff = "horn" { \time 2/4 c'2 | c' | }
+  >>`;
+  const doc = exact(source, {targetProfile:'extended'});
+  assert.match(doc.text, /group bracket \(staff1 staff2\)/);
+  assert.match(doc.text, /sounds -2 at 1/);
+  assert.match(doc.text, /tempo 72 at 1 \+ 1\/4/);
+  assert.match(doc.text, /key G at 1 \+ 1\/4/);
+  assert.match(doc.text, /clef bass at 1 \+ 1\/4/);
+  assert.match(doc.text, /:q F4 Fn4 \|\s+:h Fn4/);
+  assert.equal(read(source).status, 'failed');
+});
