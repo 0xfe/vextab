@@ -1,5 +1,9 @@
 // Resolve static LilyPond music into measured voices without executing user code.
-import { convert, Input, keys, Measure, meter, minorKeys, pitch } from './score.js';
+import { drumByName } from './lilypond-drums.js';
+import { Lanes } from './lilypond-lanes.js';
+import { afterNote, frets, headMark, standardGuitar, type Attachments } from './lilypond-marks.js';
+import type { Guitar, HeadDetail, Instrument } from './expression.js';
+import { includesExtended, convert, Input, keys, Measure, meter, minorKeys, pitch } from './score.js';
 import type { Event, Pitch } from './score.js';
 import { selectScore } from './lilypond-source.js';
 import type { Expression, Scope, Token } from './lilypond-source.js';
@@ -12,11 +16,15 @@ export interface LilyPondOptions extends ImportOptions {
   score?: number | 'print' | 'midi';
   /** Retain a source's short final bar as an explicit VexTab fragment. */
   finalFragment?: boolean;
+  /** Use sounding LilyPond guitar pitches and allocate strings for heads without an authored string. */
+  guitar?: boolean | { capo?:number };
 }
 
 /** All duration fields are lexical. Variables carry their own duration defaults. */
 interface Rhythm { denominator: number; dots: number }
 interface State {
+  marks:Attachments; instrument?:Instrument; headTies?:Map<string,string>;
+  lastEvent?:Event; lastDetails?:HeadDetail[]; tieFrom?:Event; graceSlashed?:boolean;
   part: string; voice: string; group?: NonNullable<Measure['group']>; piano?: { id: string; hands: string[] }; display?: number; index: number; at: Time;
   mode: 'absolute' | 'relative' | 'fixed'; anchor: Pitch; fixed: number;
   rhythm: Rhythm; last: Pitch[]; tuplets: NonNullable<Event['tuplets']>;
@@ -70,6 +78,7 @@ function length(rhythm: Rhythm, tuplets: State['tuplets'] = []) {
 /** Resolve only the chosen movement, retaining distinct clocks for simultaneous music. */
 class Resolver {
   private readonly parts = new Map<string, Measure[]>();
+  private readonly lanes = new Lanes();
   private work = 0;
   private serial = 0;
   constructor(private readonly input: Input) {}
@@ -86,6 +95,7 @@ class Resolver {
         bar.key = previous.key; bar.clef = previous.clef;
       }
       bar.part = s.piano?.id ?? s.part;
+      bar.instrument = s.instrument;
       if (s.group) {
         bar.group = s.group;
         if (!s.group.parts.includes(bar.part)) s.group.parts.push(bar.part);
@@ -103,11 +113,22 @@ class Resolver {
 
   /** Every indexed bar comes from an actual event or timing directive. Reject dangling attachments. */
   resolve(expr: Expression, finalFragment = false) {
+    const guitar = (this.input.options as LilyPondOptions).guitar;
+    let instrument:Guitar|undefined;
+    if (guitar) {
+      if (this.input.options.targetProfile!=='expressive') this.input.fail('unsupported','Guitar projection needs the expressive target.',[0,0]);
+      instrument=standardGuitar();
+      instrument.capo=typeof guitar==='object' ? guitar.capo ?? 0 : 0;
+      if (!Number.isInteger(instrument.capo) || instrument.capo<0 || instrument.capo>24)
+        this.input.fail('unsupported','Expected a capo fret from zero through 24.',[0,0]);
+    }
     const state: State = { part: 'staff', voice: 'upper', index: 0, at: zero,
       mode: 'absolute', anchor: pitch('F', 0, 3), fixed: 3, rhythm: quarter,
-      last: [], tuplets: [], pendingGrace: [], uses: [] };
+      last: [], tuplets: [], pendingGrace: [], uses: [], marks:{spans:new Map()},
+      instrument };
     this.sequence(expr.words, state, expr.scope, 0);
-    if (state.pendingGrace.length || state.tie) this.input.fail('timing', 'Missing attachment target.', expr.words.at(-1)!.range);
+    if (state.pendingGrace.length || state.tie || state.headTies?.size || state.marks.spans.size) this.input.fail('timing', 'Missing attachment target.', expr.words.at(-1)!.range);
+    this.lanes.attach([...this.parts.values()],this.input);
     for (const bars of this.parts.values()) this.resolveAttributes(bars);
     if (finalFragment) for (const bars of this.parts.values()) {
       const last = bars[bars.length - 1];
@@ -172,14 +193,26 @@ class Resolver {
       case '<<': this.simultaneous(t, s, scope, depth); break;
       case '\\new': case '\\context': {
         const context = next().value;
-        if (!['Staff', 'PianoStaff', 'StaffGroup', 'Voice'].includes(context))
+        if (!['Staff', 'PianoStaff', 'StaffGroup', 'Voice', ...(input.options.targetProfile==='expressive'?['TabStaff','TabVoice','DrumStaff','DrumVoice','ChordNames','Lyrics']:[])].includes(context))
           input.fail('unsupported', 'Unsupported context ' + context + '.', t.range);
-        const oldPart = s.part, oldVoice = s.voice, oldPiano = s.piano, oldDisplay = s.display, oldGroup = s.group;
+        const oldPart = s.part, oldVoice = s.voice, oldPiano = s.piano, oldDisplay = s.display, oldGroup = s.group, oldInstrument = s.instrument;
         let id: string | undefined;
         if (words[i]?.value === '=') {
           i++; const label = next();
           if (!/^"[^"\\]+"$|^[A-Za-z]+$/.test(label.value)) input.fail('syntax', 'Expected a literal context ID.', label.range);
           id = label.value.replace(/^"|"$/g, '');
+        }
+        if (context==='Lyrics' || context==='ChordNames') {
+          const mode=context==='Lyrics'?'\\lyricmode':'\\chordmode';
+          let target:string|undefined;
+          if (context==='Lyrics' && words[i]?.value==='\\lyricsto') {
+            i++; target=next().value.replace(/^"|"$/g,'');
+          }
+          if (words[i]?.value===mode) i++;
+          const lane=this.laneGroup(next(),scope,mode);
+          if (context==='Lyrics') this.lanes.lyrics.push({target,verse:id,words:lane.words,token:t});
+          else this.chordNames(lane.words,s,lane.scope.language,t);
+          break;
         }
         if (context === 'PianoStaff') {
           const group = words[i];
@@ -194,15 +227,37 @@ class Resolver {
           s.piano = { id: id ?? 'piano' + ++this.serial, hands };
         }
         if (context === 'StaffGroup') {
-          if (input.options.targetProfile !== 'extended') input.omit('Staff-group bracket omitted.', t.range);
+          if (!includesExtended(input.options)) input.omit('Staff-group bracket omitted.', t.range);
           else if (s.group) input.fail('unsupported', 'Nested staff groups require a richer target profile.', t.range);
           else s.group = { symbol: 'bracket', parts: [] };
         }
-        if (context === 'Staff') s.part = id ?? (s.part === 'staff' && !this.parts.has('staff') ? 'staff' : 'staff' + ++this.serial);
-        if (context === 'Voice' && id) s.voice = id;
+        if (context === 'TabStaff') s.instrument={...(s.instrument?.kind==='guitar'?s.instrument:standardGuitar()),view:'tab'};
+        if (context === 'DrumStaff') s.instrument={kind:'drums',map:[]};
+        if (context === 'Staff' || context === 'TabStaff' || context === 'DrumStaff') s.part = id ?? (s.part === 'staff' && !this.parts.has('staff') ? 'staff' : 'staff' + ++this.serial);
+        if (['Voice','TabVoice','DrumVoice'].includes(context) && id) s.voice = id;
+        if (words[i]?.value==='\\with') {
+          i++;
+          const settings=next();
+          if (settings.value!=='{') input.fail('syntax','Expected a context property block.',settings.range);
+          const consumed=this.stringTuning(settings.children!,s,scope.language,settings);
+          if (consumed!==settings.children!.length) input.fail('unsupported','Unexpected extra context settings.',settings.range);
+        }
         child();
-        s.part = oldPart; s.voice = oldVoice; s.piano = oldPiano; s.display = oldDisplay; s.group = oldGroup;
+        while (words[i]?.value==='\\addlyrics') i=this.one(words,i,s,scope,depth+1);
+        s.part = oldPart; s.voice = oldVoice; s.piano = oldPiano; s.display = oldDisplay; s.group = oldGroup; s.instrument = oldInstrument;
         break;
+      }
+      case '\\addlyrics': {
+        if (input.options.targetProfile!=='expressive') input.fail('unsupported','Lyrics need the expressive target.',t.range);
+        const lane=this.laneGroup(next(),scope,'\\lyricmode');
+        this.lanes.lyrics.push({verse:'lyrics'+ ++this.serial,words:lane.words,token:t});
+        break;
+      }
+      case '\\drummode': {
+        if (input.options.targetProfile!=='expressive') input.fail('unsupported','Drum mode needs the expressive target.',t.range);
+        if (!s.instrument) s.instrument={kind:'drums',map:[]};
+        if (s.instrument.kind!=='drums') input.fail('unsupported','Cannot mix pitched and drum music in one staff.',t.range);
+        child(); break;
       }
       case '\\change': {
         if (next().value !== 'Staff' || next().value !== '=') input.fail('unsupported', 'Expected a staff change.', t.range);
@@ -230,7 +285,7 @@ class Resolver {
         break;
       }
       case '\\key': {
-        if (s.at.compare(zero) && input.options.targetProfile !== 'extended')
+        if (s.at.compare(zero) && !includesExtended(input.options))
           input.fail('unsupported', 'Inline key changes need the extended target.', t.range);
         const p = readPitch(next(), { ...s, mode: 'absolute' }, scope.language, input);
         const tonic = p.step + ['bb', 'b', '', '#', '##'][p.alter + 2];
@@ -242,21 +297,26 @@ class Resolver {
         break;
       }
       case '\\clef': {
-        if (s.at.compare(zero) && input.options.targetProfile !== 'extended')
+        if (s.at.compare(zero) && !includesExtended(input.options))
           input.fail('unsupported', 'Inline clef changes need the extended target.', t.range);
-        const clef = next().value.replace(/^"|"$/g, '');
+        let clef = next().value.replace(/^"|"$/g, '');
+        if (s.instrument?.kind==='guitar' && (clef==='treble_8' || clef==='moderntab')) clef='treble';
         if (!['treble', 'bass', 'alto', 'tenor'].includes(clef)) input.fail('unsupported', 'Unsupported clef.', t.range);
         this.measure(s).changes.push({kind:'clef', at:s.at, value:clef, range:t.range});
         break;
       }
       case '\\transposition': {
         const tone = readPitch(next(), { ...s, mode: 'absolute' }, scope.language, input);
-        if (input.options.targetProfile !== 'extended') input.fail('unsupported', 'Instrument transposition needs the extended target.', t.range);
+        if (!includesExtended(input.options)) input.fail('unsupported', 'Instrument transposition needs the extended target.', t.range);
         this.measure(s).changes.push({kind:'sounds', at:s.at, value:tone.sounding - 60, range:t.range});
         break;
       }
       case '\\tempo': {
-        if (input.options.targetProfile !== 'extended') input.fail('unsupported', 'Tempo changes need the extended target.', t.range);
+        if (!includesExtended(input.options)) input.fail('unsupported', 'Tempo changes need the extended target.', t.range);
+        if (words[i]?.value.startsWith('"') && input.options.targetProfile==='expressive') {
+          input.omit('Descriptive tempo heading omitted.',words[i++].range);
+          if (!/^\d+$/.test(words[i]?.value ?? '')) break;
+        }
         if (!/^\d+$/.test(words[i]?.value ?? '')) input.fail('unsupported', 'Expected a metronome beat unit.', t.range);
         const [unit, end] = readRhythm(words, i, quarter, input);
         i = end;
@@ -266,6 +326,37 @@ class Resolver {
         if (!/^\d+$/.test(number.value) || !Number.isInteger(bpm) || bpm < 1 || bpm > 999)
           input.fail('unsupported', 'Expected a representable positive quarter-note BPM.', number.range);
         this.measure(s).tempos.push({bpm, at:s.at, range:t.range});
+        break;
+      }
+      case '\\stemUp': case '\\stemDown': case '\\stemNeutral':
+      case '\\voiceOne': case '\\voiceTwo': case '\\voiceThree': case '\\voiceFour':
+      case '\\slurUp': case '\\slurDown': case '\\tieDown':
+      case '\\mergeDifferentlyHeadedOn': case '\\mergeDifferentlyDottedOn':
+        if (input.options.targetProfile !== 'expressive') input.fail('unsupported','Source engraving directive outside this profile.',t.range);
+        if (command==='\\slurUp' || command==='\\slurDown') s.marks.side=command==='\\slurUp'?'above':'below';
+        else input.omit('Source engraving directive '+command+' omitted.',t.range);
+        break;
+      case '\\override': {
+        const signature=['TextScript','#',"'",'padding','=','#','2'];
+        if (input.options.targetProfile !== 'expressive' || signature.some((v,k)=>words[i+k]?.value!==v))
+          input.fail('unsupported','Unknown property override.',t.range);
+        i+=signature.length;
+        input.omit('Legacy text-script padding omitted.',[t.range[0],words[i-1].range[1]]);
+        break;
+      }
+      case '\\set': {
+        const prop=next();
+        if (s.instrument?.kind==='guitar' && ['TabStaff','Staff','stringTunings'].includes(prop.value)) {
+          i=index+1+this.stringTuning(words.slice(index+1),s,scope.language,prop);
+          break;
+        }
+        if (input.options.targetProfile!=='expressive' || next().value!=='=') input.fail('unsupported','Unknown setting.',prop.range);
+        if (prop.value==='fingeringOrientations') {
+          for (const literal of ['#',"'",'(']) if (next().value!==literal) input.fail('unsupported','Expected literal finger orientation.',prop.range);
+          const direction=next().value;
+          if (!['up','down','left','right'].includes(direction) || next().value!==')') input.fail('unsupported','Unknown finger orientation.',prop.range);
+          s.marks.fingerSide=direction==='up'?'above':direction==='down'?'below':direction as 'left'|'right';
+        } else input.fail('unsupported','Unsupported setting '+prop.value+'.',prop.range);
         break;
       }
       case '\\partial': {
@@ -286,10 +377,36 @@ class Resolver {
         s.tuplets = s.tuplets.slice(0, -1);
         break;
       }
-      case '\\grace': {
+      case '\\afterGrace': {
+        if (input.options.targetProfile!=='expressive') input.fail('unsupported','After-grace needs the expressive target.',t.range);
+        let share=new Time(1,4);
+        if (/^\d+\/\d+$/.test(words[i]?.value ?? '')) {
+          const ratio=next(), [n,d]=ratio.value.split('/').map(Number);
+          if (!Number.isSafeInteger(d) || d>1024 || n<=0 || n>=d) input.fail('unsupported','Invalid after-grace fraction.',ratio.range);
+          share=new Time(d-n,d);
+        }
+        const previous=s.lastEvent;
+        child();
+        const main=s.lastEvent;
+        if (!main || main===previous || main.grace || main.kind!=='attack') input.fail('unsupported','Expected one pitched after-grace anchor.',t.range);
+        const rhythm=s.rhythm;
+        s.collectGrace=[];
+        child();
+        if (!s.collectGrace.length) input.fail('syntax','Expected grace notes.',t.range);
+        main!.grace=s.collectGrace;
+        const expression=main!.expression ??= {};
+        expression.graceSide='after'; expression.graceSteal=share;
+        delete s.collectGrace; s.rhythm=rhythm;
+        break;
+      }
+      case '\\acciaccatura': case '\\appoggiatura': case '\\grace': {
+        if (command !== '\\grace' && input.options.targetProfile!=='expressive') input.fail('unsupported','Grace style requires the expressive target.',t.range);
+        s.graceSlashed=command==='\\acciaccatura';
         if (s.collectGrace || s.pendingGrace.length) input.fail('unsupported', 'Nested grace groups.', t.range);
         s.collectGrace = s.pendingGrace;
+        const previousRhythm=s.rhythm;
         child();
+        s.rhythm=previousRhythm;
         delete s.collectGrace;
         break;
       }
@@ -325,6 +442,78 @@ class Resolver {
     return i;
   }
 
+  /** Resolve a static lane variable in its lexical scope without interpreting other music modes. */
+  private laneGroup(token:Token, scope:Scope, mode:string) {
+    for (let level=0;level<64;level++) {
+      if (token.value==='{') return {words:token.children!,scope};
+      let binding:Scope|undefined=scope;
+      while (binding && '\\'+binding.name!==token.value) binding=binding.previous;
+      if (!binding?.value) break;
+      const value=binding.value, words=value.words[0]?.value===mode ? value.words.slice(1) : value.words;
+      if (words.length!==1) break;
+      token=words[0]; scope=value.scope;
+    }
+    return this.input.fail('unsupported','Expected a static '+mode+' group.',token.range);
+  }
+
+  /** ChordNames is a display lane. Its durations select anchor events without adding sounded pitches. */
+  private chordNames(words:Token[], s:State, language:string, source:Token) {
+    if (s.index || s.at.compare(zero)) this.input.fail('unsupported','Expected a chord lane at score start.',source.range);
+    let at=zero, rhythm=quarter;
+    const pitchName=(token:Token) => {
+      if (!token) this.input.fail('syntax','Missing chord root or bass.',source.range);
+      const p=readPitch(token,{...s,mode:'absolute'},language,this.input);
+      return p.step+['bb','b','','#','##'][p.alter+2];
+    };
+    for (let i=0;i<words.length;) {
+      const t=words[i++];
+      if (t.value==='|') continue;
+      const skip=t.value==='s' || t.value==='r', root=skip?'':pitchName(t);
+      [rhythm,i]=readRhythm(words,i,rhythm,this.input);
+      let quality='', bass:string|undefined;
+      if (words[i]?.value===':') {
+        const colon=words[i++];
+        let end=colon.range[1];
+        while (words[i]?.range[0]===end && /^[a-zA-Z0-9]+$/.test(words[i].value)) {
+          quality+=words[i].value; end=words[i++].range[1];
+        }
+        if (!/^(?:m|maj|aug|dim|sus)?(?:2|4|6|7|9|11|13)?$/.test(quality))
+          this.input.fail('unsupported','Unsupported chord quality '+quality+'.',colon.range);
+      }
+      if (words[i]?.value==='/') {i++;bass=pitchName(words[i++]);}
+      if (!skip) this.lanes.chords.push({at,harmony:{root,quality,bass},token:t});
+      at=at.plus(length(rhythm));
+    }
+  }
+
+  /** StringTuning takes an absolute, low-to-high pitch chord. Only named built-ins and literal data are read. */
+  private stringTuning(words:Token[], s:State, lang:string, t:Token) {
+    const input=this.input;
+    let i=0;
+    if (words[i]?.value==='TabStaff' || words[i]?.value==='Staff') {
+      if (words[++i]?.value!=='.') input.fail('unsupported','Expected stringTunings.',t.range);
+      i++;
+    }
+    if (s.instrument?.kind!=='guitar' || s.at.compare(zero) || s.index || words[i++]?.value!=='stringTunings' || words[i++]?.value!=='=')
+      return input.fail('unsupported','Expected static guitar stringTunings at the start of a staff.',t.range);
+    let tones:Token[];
+    if (words[i]?.value==='\\stringTuning' && words[i+1]?.value==='<') {
+      tones=words[i+1].children!; i+=2;
+    } else {
+      if (words[i++]?.value!=='#') return input.fail('unsupported','Expected a literal or built-in string tuning.',t.range);
+      const first=i++;
+      while (words[i]?.value==='-' && words[i+1]?.value.match(/^[a-z]+$/)) i+=2;
+      const name=words.slice(first,i).map(w=>w.value).join('');
+      const pitches:Record<string,string>={'guitar-tuning':"e, a, d g b e'",'guitar-drop-d-tuning':"d, a, d g b e'",
+        'guitar-open-g-tuning':"d, g, d g b d'",'guitar-dadgad-tuning':"d, a, d g a d'"};
+      if (!Object.hasOwn(pitches,name)) input.fail('unsupported','Unknown string tuning '+name+'.',t.range);
+      tones=pitches[name].split(' ').map(value=>({...t,value})); lang='nederlands';
+    }
+    if (tones.length<4 || tones.length>8) input.fail('unsupported','Expected four to eight guitar strings.',t.range);
+    s.instrument.tuning=tones.map(token=>readPitch(token,{...s,mode:'absolute'},lang,input)).reverse();
+    return i;
+  }
+
   /** Time branches from one origin. LilyPond resolves relative pitch and inherited duration in source order. */
   private simultaneous(token: Token, s: State, scope: Scope, depth: number) {
     const words = token.children!;
@@ -332,9 +521,9 @@ class Resolver {
     for (let i = 0; i < words.length;) {
       if (words[i].value === '\\\\') this.input.fail('syntax', 'Missing simultaneous branch.', words[i].range);
       const v: State = { ...s, voice: branch === 0 ? s.voice : branch === 1 ? 'lower' : 'voice' + (branch + 1),
-        pendingGrace: [], tie: undefined };
+        pendingGrace: [], tie: undefined, tieFrom:undefined, headTies:undefined, marks:{...s.marks,spans:new Map()} };
       i = this.one(words, i, v, scope, depth + 1);
-      if (v.tie || v.pendingGrace.length) this.input.fail('unsupported', 'Dangling branch attachment.', token.range);
+      if (v.tie || v.pendingGrace.length || v.headTies?.size || v.marks.spans.size) this.input.fail('unsupported', 'Dangling branch attachment.', token.range);
       s.rhythm = v.rhythm; s.anchor = v.anchor; s.last = v.last;
       if (v.index > longest.index || (v.index === longest.index && v.at.compare(longest.at) > 0)) longest = v;
       if (words[i]?.value === '\\\\') {
@@ -445,10 +634,13 @@ class Resolver {
   /** Resolve chord heads in order, then restore the first head as the next relative reference. */
   private note(words: Token[], i: number, s: State, language: string) {
     const t = words[i], input = this.input;
+    const expressive=input.options.targetProfile==='expressive', details: HeadDetail[]=[];
+    const tiedHeads: number[]=[], headRanges:TextRange[]=[];
     let heads: Pitch[] = [], kind: Event['kind'] = 'attack';
     if (/^\d+$/.test(t.value) || t.value === 'q') {
       if (!s.last.length) input.fail('unsupported', 'Repeated pitch has no preceding attack.', t.range);
       heads = s.last;
+      for (const h of s.lastDetails ?? []) details.push({drum:h.drum,string:h.string});
       if (t.value === 'q') i++;
     } else {
       i++;
@@ -456,13 +648,34 @@ class Resolver {
       else if (t.value === 's') kind = 'skip';
       else {
         const notes = t.value === '<' ? t.children! : [t];
-        if (!notes.length || notes.length > 16) input.fail('limit', 'Invalid number of chord heads.', t.range);
-        for (const item of notes) {
-          const p = readPitch(item, s, language, input);
-          heads.push(p); s.anchor = p;
+        if (!notes.length) input.fail('syntax','Empty chord.',t.range);
+        for (let j=0;j<notes.length;) {
+          const item=notes[j++], detail:HeadDetail={};
+          let p:Pitch;
+          if (s.instrument?.kind==='drums') {
+            const drum=drumByName(item.value);
+            if (!drum) return input.fail('unsupported','Unsupported LilyPond drum '+item.value+'.',item.range);
+            if (!s.instrument.map.some(d=>d.id===drum.id)) s.instrument.map.push(drum);
+            p={...pitch('C',0,4),sounding:drum.midi}; detail.drum=drum.id;
+          } else p=readPitch(item,s,language,input);
+          if (heads.length>=16) input.fail('limit','Chord exceeds 16 heads.',item.range);
+          heads.push(p); details.push(detail); headRanges.push(item.range); s.anchor=p;
+          if (expressive && t.value==='<') {
+            for (;;) {
+              if (notes[j]?.value==='~') { tiedHeads.push(heads.length-1); j++; continue; }
+              const end=headMark(notes,j,detail,s.marks.fingerSide,input);
+              if (end===j) break;
+              j=end;
+            }
+          }
         }
         s.anchor = heads[0];
       }
+    }
+    while (details.length<heads.length) details.push({});
+    if (expressive && heads.length===1) {
+      const j=headMark(words,i,details[0],s.marks.fingerSide,input);
+      if (j!==i) i=j;
     }
     const [rhythm, end] = readRhythm(words, i, s.rhythm, input);
     s.rhythm = rhythm; i = end;
@@ -484,24 +697,73 @@ class Resolver {
       range, file: t.file, uses: [...s.uses], tuplets: s.tuplets };
     if (s.pendingGrace.length) {
       if (!heads.length) input.fail('unsupported', 'Expected a pitched grace anchor.', range);
-      event.grace = s.pendingGrace; s.pendingGrace = [];
+      event.grace = s.pendingGrace;
+      if (expressive && s.graceSlashed) event.expression={graceSlashed:true};
+      s.graceSlashed=false; s.pendingGrace = [];
     }
-    if (s.tie) {
-      if (heads.length !== s.tie.length || s.tie.some((p, j) => p.step !== heads[j].step ||
-        p.alter !== heads[j].alter || p.octave !== heads[j].octave)) input.fail('unsupported', 'Only matching whole-event ties are qualified.', range);
-      event.tieStop = true; delete s.tie;
-    }
-    if (words[i]?.value === '~') {
-      if (!heads.length) input.fail('syntax', 'Cannot tie a silent event.', range);
-      s.tie = heads; event.tieStart = true; i++;
-    }
-    if (words[i]?.value === '-.') input.omitMark(words[i++].range);
-    if (/^\\(?:p{1,4}|f{1,4}|mp|mf)$/.test(words[i]?.value ?? '')) {
-      const mark = words[i++];
-      input.omit('Dynamic ' + mark.value + ' omitted.', mark.range);
+    if (expressive) {
+      const spelling=(p:Pitch)=>p.step+'/'+p.alter+'/'+p.octave;
+      if (s.headTies) {
+        for (const [name,id] of s.headTies) {
+          const j=heads.findIndex(p=>spelling(p)===name);
+          if (j<0) input.fail('timing','Missing tied destination '+name+'.',range);
+          details[j].tieEndId=id;
+        }
+        delete s.headTies;
+      }
+      if (s.tie && s.tieFrom) {
+        let count=0;
+        for (const [j,old] of s.tie.entries()) {
+          const dest=heads.findIndex(p=>spelling(p)===spelling(old));
+          if (dest<0) continue;
+          const id='tie'+ ++this.serial;
+          s.tieFrom.headDetails![j].tieStartId=id; details[dest].tieEndId=id; count++;
+        }
+        if (!count) input.fail('timing','No matching destination for a tie.',range);
+        delete s.tie; delete s.tieFrom;
+      }
+      for (const j of tiedHeads) {
+        const id='tie'+ ++this.serial;
+        (s.headTies ??= new Map()).set(spelling(heads[j]),id);
+        details[j].tieStartId=id;
+      }
+      event.headDetails=details;
+      if (t.value==='<') event.headRanges=headRanges;
+      for (;;) {
+        if (words[i]?.value==='~') {
+          if (!heads.length) input.fail('syntax','Cannot tie silence.',range);
+          s.tie=heads; s.tieFrom=event; i++; continue;
+        }
+        const headEnd=heads.length===1?headMark(words,i,details[0],s.marks.fingerSide,input):i;
+        if (headEnd!==i) {i=headEnd;continue;}
+        const end=afterNote(words,i,event,s.marks,input,()=> 's'+ ++this.serial);
+        if (end===i) break;
+        i=end;
+      }
+      event.range=[t.range[0],words[i-1].range[1]];
+      if (s.instrument?.kind==='guitar') {
+        frets(heads,details,s.instrument,input,t);
+        event.pitches=heads.map(p=>({...p,octave:p.octave+1}));
+        event.pitch=event.pitches[0];
+      }
+    } else {
+      if (s.tie) {
+        if (heads.length !== s.tie.length || s.tie.some((p, j) => p.step !== heads[j].step ||
+          p.alter !== heads[j].alter || p.octave !== heads[j].octave)) input.fail('unsupported', 'Only matching whole-event ties are qualified.', range);
+        event.tieStop = true; delete s.tie;
+      }
+      if (words[i]?.value === '~') {
+        if (!heads.length) input.fail('syntax', 'Cannot tie a silent event.', range);
+        s.tie = heads; event.tieStart = true; i++;
+      }
+      if (words[i]?.value === '-.') input.omitMark(words[i++].range);
+      if (/^\\(?:p{1,4}|f{1,4}|mp|mf)$/.test(words[i]?.value ?? '')) {
+        const mark = words[i++];
+        input.omit('Dynamic ' + mark.value + ' omitted.', mark.range);
+      }
     }
     bar.add(s.voice, event, input);
-    s.last = heads;
+    s.last = heads; s.lastDetails=details; s.lastEvent=event;
     if (endTime.compare(barLength) === 0) { s.index++; s.at = zero; } else s.at = endTime;
     return i;
   }
