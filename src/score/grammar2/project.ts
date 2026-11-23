@@ -121,6 +121,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       result.cautionary = true;
     }
     for (const mark of head.marks) {
+      if (mark.kind === 'sustain') result.sustain = mark.duration;
       if (mark.kind === 'prebend') result.prebend = { semitones: mark.semitones, release: mark.release };
       if (mark.kind === 'slideIn' || mark.kind === 'slideOut') result.openSlide = { edge: mark.kind === 'slideIn' ? 'in' : 'out', side: mark.side };
       if (mark.kind === 'write') {
@@ -162,7 +163,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     const positions = fretted ? steps.map(chord => chord.map(head => head.position!)) : undefined;
     if (positions?.some(chord => new Set(chord.map(head => head.str)).size !== chord.length))
       throw new ScoreError('measure', 'A grace chord may use each string once', locate(mark.range));
-    return { side: mark.side, slash: mark.slash, positions, fingerings: mark.fingerings,
+    return { side: mark.side, slash: mark.slash, ...(mark.steal && { steal: mark.steal }), positions, fingerings: mark.fingerings,
       pitches: steps.map((chord, i) => Array.isArray(mark.pitches[i]) ? chord.map(head => head.written) : chord[0].written) };
   }
 
@@ -312,7 +313,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
           depressed = next;
         } else {
           if (!depressed) throw new ScoreError('measure', 'Pedal up needs an earlier pedal down in this voice', range);
-          projected.spans.push({ kind: 'pedal', from: depressed.id, to: next.id, id: 'pedal-' + depressed.id, range });
+          projected.spans.push({ kind: 'pedal', ...(mark.onset && { onset: true }), from: depressed.id, to: next.id, id: 'pedal-' + depressed.id, range });
           depressed = undefined;
         }
       }
@@ -440,7 +441,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       const range = locate(mark.range);
       if (mark.kind === 'continuousBeam' || mark.kind === 'crescendo' || mark.kind === 'diminuendo' || mark.kind === 'tremolo') {
         if (!state.notation) throw new ScoreError('measure', 'This expression span needs a notation staff', range);
-        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, niente: mark.niente, strokes: mark.strokes, range, id: mark.kind + '-' + mark.first });
+        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, niente: mark.niente, strokes: mark.strokes, range, id: mark.kind + '-' + mark.first + (mark.name ? '-' + mark.name : '') });
         if (mark.kind === 'tremolo' || mark.kind === 'continuousBeam') {
           for (const v of voices) for (const event of v.events) if (indices.get(event.id) >= indices.get(mark.first) && indices.get(event.id) <= indices.get(mark.last)) {
             if (mark.kind === 'tremolo') event.tremolo = mark.strokes;
@@ -450,7 +451,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       } else if (mark.kind === 'slur' || mark.kind === 'palmMute') {
         if (mark.kind === 'palmMute' && mark.strings.some(n => n > state.strings))
           throw new ScoreError('measure', 'Mute outside the instrument tuning', range);
-        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, side: mark.side, strings: mark.strings, range, id: mark.kind + '-' + mark.first });
+        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, side: mark.side, strings: mark.strings, range, id: mark.kind + '-' + mark.first + (mark.name ? '-' + mark.name : '') });
       } else if (mark.kind === 'beam' || mark.kind === 'feather') {
         const first = indices.get(mark.first), last = indices.get(mark.last);
         const bar = voice.measures[voice.events[first].bar - 1];

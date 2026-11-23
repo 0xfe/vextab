@@ -421,6 +421,33 @@ Read `result.diagnostics` for source ranges and `result.publication.pages` for s
 | `slur below { C4 D4 E4 }` | Choose the side of a phrase slur. An unqualified slur uses the native placement. |
 | `map bell "Ride bell" line 4.5 head triangle stem up midi 53` | Declare a named hit inside a drums part. Use its ID as a note or chord head. Available shapes are normal, cross, circle-cross and triangle. |
 
+### Independent durations and named endpoints
+
+A chord shares its written note value. Use a head's `sustain` mark for a shorter
+sounding duration in whole notes. Use separate voices when the printed rhythms
+differ. Ties can join individual heads even when the chord order changes.
+
+```vextab
+staff {
+  :q (C4[tieStart c] E4[sustain 1/8])[slurStart phrase above]
+     (G4 C4[tieEnd c])[crescendoStart swell niente]
+     E4[slurEnd phrase] F4[hairpinEnd swell, dynamic f] |
+}
+```
+
+Here C4 sounds for two beats. E4 releases after half a beat. The slur
+ends on the third beat, and the crescendo reaches forte on the fourth.
+Use `diminuendoStart` for a falling hairpin. Slur, beam and hairpin names
+are local to a voice. `beamStart group` and `beamEnd group` join short
+events in one measure, including notes moved with `onStaff`. A named
+beam can start outside a tuplet and end inside it.
+
+Use `F4[grace before slashed steal=1/5 (D4 E4)]` to assign one fifth
+of F4's time to the grace group. `grace after` takes time at the end
+of its anchor. An explicit share overrides the performer's grace setting.
+On a piano part, `pedal up onset` lifts the sustain pedal when the marked
+event starts. `pedal up` lifts it when that event finishes.
+
 ### Playing expression
 
 Use `play { controls always position top-right inset 16 }` to place persistent playback buttons near the score’s visible top-right edge. The default is `controls hover controlSize large position bottom-center inset 12`. Use `controls off` to hide the buttons. [Sheet controls and embed settings](playback.md)

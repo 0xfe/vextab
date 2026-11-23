@@ -79,7 +79,7 @@ const durationPattern = /^:(w|h|q|1|2|4|8|16|32|64|128|256)(\.{0,2})$/;
 const notePattern = /^[A-G](?:bb|##|b|#|n)?[0-9]$/;
 const positionPattern = /^(x|0|[1-9]\d?)\/([1-8])$/;
 const builtInMarks = new Set([
-  'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'line', 'ink', 'label',
+  'sustain', 'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'line', 'ink', 'label',
   'tap', 'vibrato', 'brush', 'roll', 'stroke', 'rasgueado', 'symbol', 'write', 'staccato', 'fermata',
   'dynamic', 'harmony', 'onStaff', 'sharedStem', 'pedal', 'ossia', 'grace', 'ornament', 'verse', 'gliss', 'release', 'articulation', 'lyric', 'bend', 'prebend', 'finger',
 ]);
@@ -163,7 +163,7 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
   }
 
   function isEventMark(mark: HeadMark | EventMark): mark is EventMark {
-    return ['dynamic','harmony','onStaff','sharedStem','pedal','ossia','grace','ornament','slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
+    return ['spanEndpoint','dynamic','harmony','onStaff','sharedStem','pedal','ossia','grace','ornament','slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
   }
 
   /** JSON quoting handles embedded punctuation and escaped quotes in musical text. */
@@ -272,6 +272,18 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
     return style;
   }
 
+  /** Reduce exact author-supplied timing within the compiler precision budget. */
+  function readTiming(token: Token, value: string, share = false): string {
+    const match = /^([1-9]\d{0,9})\/([1-9]\d{0,9})$/.exec(value);
+    if (!match) error('Expected a positive fraction', token);
+    const [n, d] = match.slice(1).map(Number);
+    if (n > limits.fraction || d > limits.fraction) error('Timing fraction exceeds precision limit', token);
+    if (share && n >= d) error('Grace share must be smaller than one', token);
+    let a = n, b = d;
+    while (b) [a, b] = [b, a % b];
+    return (n / a) + '/' + (d / a);
+  }
+
   /** Each mark keeps the written token range even after pattern expansion. */
   function readMark(): HeadMark | EventMark {
     const mark = take();
@@ -285,6 +297,20 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
     if (mark.text === 'tieStart' || mark.text === 'tieEnd') {
       const name = identifier();
       return { kind: mark.text, name, range: range() };
+    }
+    if (mark.text === 'sustain') {
+      const token = take();
+      return { kind: 'sustain', duration: readTiming(token, token.text), range: range() };
+    }
+    if (['slurStart', 'slurEnd', 'beamStart', 'beamEnd', 'crescendoStart', 'diminuendoStart', 'hairpinEnd'].includes(mark.text)) {
+      const name = identifier();
+      const span = mark.text.startsWith('slur') ? 'slur' : mark.text.startsWith('beam') ? 'beam' : 'hairpin';
+      const edge = mark.text.endsWith('Start') ? 'start' : 'end';
+      const hairpin = mark.text === 'crescendoStart' ? 'crescendo' : mark.text === 'diminuendoStart' ? 'diminuendo' : undefined;
+      const side = mark.text === 'slurStart' && (peek() === 'above' || peek() === 'below') ? take().text as 'above' | 'below' : undefined;
+      const niente = !!hairpin && peek() === 'niente';
+      if (niente) take();
+      return { kind: 'spanEndpoint', name, span, edge, hairpin, side, niente, range: range() };
     }
     if (mark.text === 'frame') {
       expect('(');
@@ -357,7 +383,9 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
     if (mark.text === 'pedal') {
       const action = take();
       if (action.text !== 'down' && action.text !== 'up') error('Expected pedal down or up', action);
-      return { kind: 'pedal', action: action.text, range: range() };
+      const onset = action.text === 'up' && peek() === 'onset';
+      if (onset) take();
+      return { kind: 'pedal', action: action.text, ...(onset && { onset }), range: range() };
     }
     if (mark.text === 'ossia') {
       const duration = take();
@@ -385,6 +413,8 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
       if (side.text !== 'before' && side.text !== 'after') error('Expected before or after', side);
       const slash = peek() === 'slashed';
       if (slash) take();
+      const token = peek().startsWith('steal=') ? take() : undefined;
+      const steal = token && readTiming(token, token.text.slice(6), true);
       expect('(');
       while (peek() !== ')') {
         if (pitches.length >= 16) error('Expected up to 16 grace attacks');
@@ -412,7 +442,7 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
       }
       expect(')');
       if (!pitches.length) error('Expected a grace pitch', side);
-      return { kind: 'grace', side: side.text, pitches, ...(fingerings.length && { fingerings }), ...(slash && { slash }), range: range() };
+      return { kind: 'grace', side: side.text, pitches, ...(steal && { steal }), ...(fingerings.length && { fingerings }), ...(slash && { slash }), range: range() };
     }
     if (mark.text === 'harmony') {
       function chordPitch() {

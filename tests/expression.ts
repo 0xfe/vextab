@@ -17,6 +17,68 @@ function host() {
 }
 
 QUnit.module('Expressive notation and performance', () => {
+  QUnit.test('imported crossing endpoints, unequal chord releases and partial ties', assert => {
+    const score = parseScore('staff { (C4[tieStart c] E4[sustain 1/8])[slurStart a above] '
+      + '(G4 C4[tieEnd c])[crescendoStart b niente] E4[slurEnd a] F4[hairpinEnd b, dynamic f] | }');
+    for (const renderer of ['svg', 'canvas'] as const) {
+      const view = renderConductor(host(), score, { renderer });
+      assert.deepEqual(view.diagnostics, []);
+      const spans = view.composition.sheet.getContinuousLayout().fragments;
+      assert.deepEqual(spans.map(s => s.kind).sort(), ['crescendo', 'slur', 'tie']);
+      const [tie] = view.score.ties;
+      assert.deepEqual([tie.fromHead, tie.toHead], [0, 1], 'tie follows the reordered head');
+      const notes = scorePerformance(view.score, 60).events.map(e => e.notes);
+      assert.deepEqual(notes[0].map(n => [n.pitch, n.duration]), [[60, 2], [64, .5]]);
+      assert.deepEqual(notes[1].map(n => n.pitch), [67], 'other head attacks during the tie');
+      assert.deepEqual(notes.slice(1).map(chord => chord[0].velocity), [1, 50, 98]);
+    }
+    const part = renderScorePart(host(), score, 'notation');
+    assert.deepEqual(part.diagnostics, []);
+    const page = part.publication.pages[0].svg;
+    // Publication paints native paths into the physical page. Removing one span removes its ink.
+    for (const [start, end] of [['[slurStart a above]', '[slurEnd a]'], ['[crescendoStart b niente]', 'hairpinEnd b, '], ['[tieStart c]', '[tieEnd c]']]) {
+      const without = parseScore(score.source.replace(start, '').replace(end, ''));
+      const control = renderScorePart(host(), without, 'notation').publication.pages[0].svg;
+      assert.ok(page.querySelectorAll('path').length > control.querySelectorAll('path').length, 'printed ' + start);
+    }
+  });
+
+  QUnit.test('named beam crosses the physical staves in the screen and complete printed piano part', assert => {
+    const score = parseScore('meter 2/4 piano { upper treble { :8 G4[beamStart b] F4 E4[onStaff lower] D4[onStaff lower, beamEnd b] | } '
+      + 'lower bass { :h C3 | } }');
+    function check(notes: StemmableNote[]) {
+      assert.equal(notes.length, 4);
+      assert.ok(notes.every(n => n.getBeam() === notes[0].getBeam()));
+      assert.equal(notes[0].getBeam().getNotes().length, 4);
+      assert.deepEqual(notes.map(note => note.getStemDirection()), [-1, -1, 1, 1], 'stems reach toward the shared beam');
+      assert.notStrictEqual(notes[0].getStave(), notes[2].getStave(), 'third head is on the opposite hand');
+      assert.ok(notes[0].getBeam().getBoundingBox().getW() > 10, 'native beam has ink');
+    }
+    for (const renderer of ['svg', 'canvas'] as const) {
+      const view = renderConductor(host(), score, { renderer });
+      assert.deepEqual(view.diagnostics, []);
+      check(view.composition.notes[0][0][0] as StemmableNote[]);
+    }
+    const printed: StemmableNote[] = [];
+    const sheet = renderEdition(host(), score, 'conductor', {noteHooks: [(_opts, note) => {
+      if (note.getBeam()) printed.push(note);
+    }]});
+    assert.deepEqual(sheet.diagnostics, []);
+    check(printed.slice(-4));
+    assert.ok(sheet.publication.pages[0].svg.querySelector('.vf-beam'));
+  });
+
+  QUnit.test('authored grace shares and pedal lift on the written onset', assert => {
+    const score = parseScore('piano { upper treble { C4[pedal down] D4 E4[pedal up onset] F4[grace before steal=1/8 (G4)] | } '
+      + 'lower bass { :w rest | } }');
+    const notes = scorePerformance(renderConductor(host(), score).score, 60).events.flatMap(e => e.notes.map(n => [n.pitch, e.time, n.duration]));
+    assert.deepEqual(notes, [[60, 0, 2], [62, 1, 1], [64, 2, 1], [67, 3, .125], [65, 3.125, .875]]);
+    assert.throws(() => parseScore('staff { :w C4[slurStart a] | }'), /Missing end/);
+    assert.throws(() => parseScore('staff { :q C4[beamStart a] D4[beamEnd a] E4 F4 | }'), /Beam short notes/);
+    assert.throws(() => parseScore('staff { :q C4[sustain 1/2] D4 E4 F4 | }'), /sustain exceeds/);
+    assert.throws(() => parseScore('staff { :w C4[grace after steal=1/1 (D4)] | }'), /Grace share/);
+  });
+
   QUnit.test('named verses, elision, transposed harmony and a hairpin across a forced break', assert => {
     const score = parseScore(voice);
     for (const renderer of ['svg', 'canvas'] as const) {

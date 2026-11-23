@@ -34,10 +34,15 @@ export function decorateAttack(event: PlaybackEvent, attack: Attack, key: KeyMan
     if (pitches.length) {
       const duration = length * graceFraction;
       const before = attack.grace.side === 'before';
-      play(pitches, before ? start : start + principal.duration - duration, duration);
+      const graceOnset = before ? start : start + Math.max(0, principal.duration - duration);
+      play(pitches, graceOnset, duration);
       length -= duration;
       if (before) start += duration;
-      for (const note of event.notes) note.duration -= duration;
+      for (const note of event.notes) {
+        // A shorter chord member may already have released before an after-grace begins.
+        if (before) note.duration = Math.max(0, note.duration - duration);
+        else note.duration -= Math.min(duration, Math.max(0, note.duration - (graceOnset - event.time)));
+      }
     }
   }
   if (attack.ornament) {
@@ -51,7 +56,7 @@ export function decorateAttack(event: PlaybackEvent, attack: Attack, key: KeyMan
     play(figure, start, window);
     // Other chord heads sustain beneath the ornament on its principal head.
     if (event.notes.length > 1) out.push({ ...event, time: start, duration: length, notes: event.notes.slice(1) });
-    principal.duration -= window;
+    principal.duration = Math.max(0, principal.duration - window);
     out.push({ ...event, time: start + window, duration: length - window, notes: [principal] });
   } else out.push({ ...event, time: start, duration: length });
   return out;

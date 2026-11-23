@@ -207,6 +207,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
   const keys = new Map<string, KeyManager>();
   const pedals = (score.spans ?? []).filter(s => s.kind === 'pedal');
   const downs = new Map(pedals.map(s => [s.from, s.to]));
+  const onsetLifts = new Set(pedals.filter(s => s.onset).map(s => s.to));
   const held = new Map<string, number>();
   const windows: { start: number; end: number }[] = [];
   // A repeat jump or a partial playback selection releases any unfinished pedal.
@@ -248,7 +249,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
       const duration = elapsed(seconds(attack.onset, 1) + seconds(attack.duration, 1)) - elapsed(seconds(attack.onset, 1));
       if (downs.has(attack.id)) held.set(downs.get(attack.id), time);
       if (held.has(attack.id)) {
-        windows.push({ start: held.get(attack.id), end: time + duration });
+        windows.push({ start: held.get(attack.id), end: onsetLifts.has(attack.id) ? time : time + duration });
         held.delete(attack.id);
       }
       const notes: PlaybackNote[] = [];
@@ -258,21 +259,24 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
         decorations.set(attack.id, { attack, key: keys.get(key) });
       }
       attack.heads.forEach((head, i) => {
+        const headDuration = head.sustain
+          ? elapsed(seconds(attack.onset, 1) + seconds(head.sustain, 1)) - elapsed(seconds(attack.onset, 1))
+          : duration;
         const id = attack.id + ':' + i;
         const tie = prior.get(id);
         const tied = tie && sounding.get(tie.from + ':' + tie.fromHead);
         if (tied) {
           if (expressive) tied.note.holdRelease = true;
-          tied.note.duration = Math.max(tied.note.duration, time + duration - tied.start);
+          tied.note.duration = Math.max(tied.note.duration, time + headDuration - tied.start);
           if (tie.bend) {
             const { semitones, hold, release } = tie.bend;
             tied.note.bend = [...(tied.note.bend ?? []),
-              { time: time - tied.start + duration * hold[0] / hold[1], semitones },
-              { time: time - tied.start + duration * release[0] / release[1], semitones: 0 }];
+              { time: time - tied.start + headDuration * hold[0] / hold[1], semitones },
+              { time: time - tied.start + headDuration * release[0] / release[1], semitones: 0 }];
           }
           sounding.set(id, tied);
         } else {
-          const note = scoreNote(attack, head, duration);
+          const note = scoreNote(attack, head, headDuration);
           if (note) {
             const gliss = glissandi.get(id);
             const source = gliss && sounding.get(gliss.from + ':' + gliss.fromHead);
@@ -310,7 +314,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
     const word = decorations.get(String(event.source));
     if (!word) return [event];
     const grace = word.attack.grace;
-    const share = grace && take?.graceFraction(event.time, event.duration, grace.pitches.length, grace.slash);
+    const share = grace?.steal ? seconds(grace.steal, 1) : grace && take?.graceFraction(event.time, event.duration, grace.pitches.length, grace.slash);
     return decorateAttack(event, word.attack, word.key, share);
   }) : events;
   sounded.sort((a,b) => a.time - b.time);

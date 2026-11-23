@@ -19,6 +19,8 @@ export interface Head {
   range: SourceRange;
   written: string;
   marks?: HeadMark[]; // Bracketed fingering or accent attached to this head.
+  /** Explicit sounding length for this head, in whole notes. The attack keeps its written rhythm. */
+  sustain?: string;
   tiedBendStart?: boolean;
   glissFrom?: number;
   release?: { hold: [number, number]; release: [number, number] };
@@ -49,7 +51,7 @@ export interface Attack {
   dynamic?: import('./grammar2/model').Dynamic;
   displayHand?: PianoHand;
   sharedStem?: string;
-  grace?: { side: 'before' | 'after'; pitches: (string | string[])[]; fingerings?: import('./grammar2/model').GraceFingering[]; positions?: NonNullable<Head['position']>[][]; slash?: boolean };
+  grace?: { side: 'before' | 'after'; steal?: string; pitches: (string | string[])[]; fingerings?: import('./grammar2/model').GraceFingering[]; positions?: NonNullable<Head['position']>[][]; slash?: boolean };
   ossia?: { duration: string; notes: { key: string; ornament?: string }[] };
   ornament?: string;
   continuousBeam?: boolean;
@@ -161,7 +163,7 @@ export type ScoreSpan = { id: string; from: string; to: string; range: SourceRan
   { kind: 'lyric' | 'hyphen'; lane: string } |
   { kind: 'crescendo' | 'diminuendo' | 'continuousBeam' | 'tremolo'; niente?: boolean; strokes?: number } |
   { kind: 'volta'; label: string; firstBar: number; lastBar: number } |
-  { kind: 'palmMute'; strings: number[] } | { kind: 'slur'; side?: 'above' | 'below' } | { kind: 'pedal' } | { kind: 'hammer' | 'pull' | 'slide'; fromHead: number; toHead: number }
+  { kind: 'palmMute'; strings: number[] } | { kind: 'slur'; side?: 'above' | 'below' } | { kind: 'pedal'; onset?: boolean } | { kind: 'hammer' | 'pull' | 'slide'; fromHead: number; toHead: number }
 );
 
 export interface ParsedScore {
