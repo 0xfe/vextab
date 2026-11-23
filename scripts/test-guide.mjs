@@ -109,7 +109,7 @@ export async function testGuide(page, dist) {
     assert.equal(await chapter.locator('svg').count(), editors + extraStaff, hash);
   }
   await go('#demos');
-  assert.equal(await page.locator('#entries a').count(), 16);
+  assert.equal(await page.locator('#entries a').count(), 17);
   const routes = await page.locator('#picker option').evaluateAll(options => options.map(o => '#lesson/' + o.value));
   for (const hash of routes) {
     await go(hash);
@@ -120,10 +120,10 @@ export async function testGuide(page, dist) {
 
   // Rehearse and export the same source revision, including a single player's part.
   for (const [id, view] of [['sor-op35-no22', '0/tab'], ['joplin-maple-leaf', 'keys'], ['chopin-ballade-no3', 'keys'],
-    ['all-of-me', 'guitar/tab'], ['flamenco-tab', 'guitarra/notation'], ['pocket-change', 'keys'], ['handy-st-louis-blues', 'singer'], ['haydn-emperor-variation', 'cello']]) {
+    ['liszt-hungarian-rhapsody-no2', 'keys'], ['all-of-me', 'guitar/tab'], ['flamenco-tab', 'guitarra/notation'], ['pocket-change', 'keys'], ['handy-st-louis-blues', 'singer'], ['haydn-emperor-variation', 'cello']]) {
     await go('#lesson/' + id);
     assert.equal(await page.locator('#view').inputValue(), 'conductor');
-    if (id === 'chopin-ballade-no3') {
+    if (id === 'chopin-ballade-no3' || id === 'liszt-hungarian-rhapsody-no2') {
       // A font load or resize can replace the SVG. Measure the currently mounted drawing
       // in one browser task so WebKit never measures detached staves from the previous draw.
       const snapshot = await page.waitForFunction(() => {
@@ -139,18 +139,29 @@ export async function testGuide(page, dist) {
         return {
           width,
           counts: [...rows.values()],
+          // Each cross-system slur has two visible cubic fragments. A brace has four cubics.
+          slurFragments: [...drawing.querySelectorAll(':scope > path')].filter(p => (p.getAttribute('d').match(/C/g) ?? []).length === 2).length,
+          levelBeams: [...drawing.querySelectorAll('.vf-beam')].filter(group =>
+            Math.abs(group.querySelector(':scope > path').getBBox().height - 5) < 0.01).length,
           ossiaNotes: drawing.querySelectorAll('.vf-ossia .vf-stavenote').length,
           pedals: drawing.querySelectorAll('.vf-pedal').length,
           heading: drawing.querySelector('.vf-score-heading')?.textContent,
         };
       });
-      const ballade = await snapshot.jsonValue();
+      const engraving = await snapshot.jsonValue();
       await snapshot.dispose();
-      assert.deepEqual(ballade.counts, Array(8).fill(6));
-      assert.equal(ballade.ossiaNotes, 3);
-      assert.equal(ballade.pedals, 16);
-      assert.match(ballade.heading, /Fr.\sChopin,\sOp.\s47/);
-      assert.ok(ballade.width < 900);
+      assert.ok(engraving.width < 900);
+      if (id === 'chopin-ballade-no3') {
+        assert.deepEqual(engraving.counts, Array(8).fill(6));
+        assert.equal(engraving.ossiaNotes, 3);
+        assert.equal(engraving.pedals, 16);
+        assert.match(engraving.heading, /Fr.\sChopin,\sOp.\s47/);
+      } else {
+        assert.deepEqual(engraving.counts, [6, 6, 6, 6, 7, 7]);
+        assert.equal(engraving.slurFragments, 18);
+        assert.ok(engraving.levelBeams >= 19 && engraving.levelBeams < 38);
+        assert.equal(await svg.locator('.vf-stavenote').count(), 152);
+      }
     }
     if (id === 'pocket-change') {
       const mark = svg.locator('.vf-swing-mark');
@@ -170,6 +181,14 @@ export async function testGuide(page, dist) {
     assert.ok(await page.locator('#save-svg').isEnabled(), id + ' export: ' + await page.locator('#print-status').textContent());
     const pages = page.locator('#part svg:has(metadata)');
     assert.ok(await pages.count() > 0);
+    if (id === 'liszt-hungarian-rhapsody-no2') {
+      assert.equal(await pages.count(), 1);
+      assert.deepEqual(await pages.locator('[data-system]').evaluateAll(rows => rows.map(row => row.dataset.system)),
+        ['1', '7', '13']);
+      const measures = await pages.locator('metadata').evaluate(m => JSON.parse(m.textContent).measures);
+      assert.deepEqual(measures, Array.from({ length: 19 }, (_, i) => i + 1));
+      assert.equal(await page.locator('#print-status').textContent(), '');
+    }
     if (id === 'all-of-me' || id === 'flamenco-tab') {
       const bars = await pages.locator('metadata').evaluateAll(nodes => nodes.flatMap(n => JSON.parse(n.textContent).measures));
       const count = id === 'all-of-me' ? 17 : 16;

@@ -160,7 +160,7 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     // Explicit beams in this voice/bar own their stems alongside the alternating strokes.
     autoBeam: !voice.events.some(e => e.continuousBeam || e.tremolo) && !voice.beamGroups?.length && voice.beams && (staff !== 'tab' || voice.tabStems) && {
       groups: voice.beatGroups?.map(n => new Fraction(n, Number(measure.state.meter.split('/')[1]))),
-      stemDirection, beamRests: voice.beamRests, showStemlets: voice.stemlets, beamMiddleOnly: voice.middleRests },
+      stemDirection, flatBeams: voice.flatBeams, beamRests: voice.beamRests, showStemlets: voice.stemlets, beamMiddleOnly: voice.middleRests },
     tuplets: voice.tuplets.map(t => ({ start: t.start, count: t.count, options: { numNotes: t.numNotes, notesOccupied: t.notesOccupied } })),
   };
 }
@@ -416,7 +416,14 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
         if (staff === 'tab' && !voice.tabStems) continue;
         for (const group of voice.beamGroups ?? []) {
           const notes = voice.events.slice(group.start, group.end + 1).map(e => composition.getNote(view.eventId(staff, e.id)));
-          factory.Beam({ notes: notes as StemmableNote[], options: { feathered: group.feather } });
+          const stems = notes as StemmableNote[];
+          if (voice.flatBeams) {
+            // Keep every stem on the side of the first attack in a hand-grouped level beam.
+            const direction = stems[0].getStemDirection();
+            for (const stem of stems) stem.setStemDirection(direction);
+          }
+          const beam = factory.Beam({ notes: stems, options: { feathered: group.feather } });
+          if (voice.flatBeams) beam.renderOptions.flatBeams = true;
           for (const note of notes) for (const tuplet of note.getTupletStack()) beamedTuplets.add(tuplet);
         }
       }

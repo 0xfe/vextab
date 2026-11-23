@@ -1,5 +1,5 @@
 // Fit hands and adjacent piano systems against the horizontal extent of their engraved ink.
-import { Beam, Clef, FretHandFinger, KeySignature, Modifier, StaveNote, TimeSignature, measureEngraving,
+import { Beam, Clef, FretHandFinger, KeySignature, Modifier, Note, StaveNote, TimeSignature, measureEngraving,
   type Bounds, type ContinuousRow, type ContinuousSpan, type EasyScoreComposition, type SpanFragment } from 'vexflow';
 import { ossiaLift, ossiaReadings, pedalInk, placeOssia } from './score-details';
 
@@ -51,9 +51,10 @@ function profile(score: EasyScoreComposition, row: ContinuousRow, staff: number)
       if (mark instanceof KeySignature) for (const box of mark.getInkParts()) result.add(box);
     }
     for (const note of score.notes[bar - 1][staff].flat()) {
+      // Silent placeholders in an auxiliary voice contribute no ink to either hand.
+      if (note instanceof Note && note.renderOptions.draw === false) continue;
       if (!(note instanceof StaveNote)) return;
       if (note.getStave() !== stave) return;
-      if (note.renderOptions.draw === false) continue;
       if (ossiaReadings.has(note)) cues.push(note);
       const pedal = pedalInk(note);
       if (pedal) for (const part of pedal) result.add(part);

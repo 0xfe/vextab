@@ -24,7 +24,8 @@ function identity(score: ParsedScore, staff: string) {
 export function instrumentLabel(score: ParsedScore, stave: string, primary: boolean) {
   const { role, staff } = identity(score, stave);
   if (!primary && role === 'main') return {};
-  const labels = (a?: string, b?: string) => [a, b].filter(Boolean).join(' ') || undefined;
+  // An explicit empty stave label suppresses the default R.H. or L.H. on a solo piano system.
+  const labels = (a?: string, b?: string) => [a, b].filter(Boolean).join(' ') || (b === '' ? '' : undefined);
   const name = labels(primary && score.instrument?.name, staff?.name);
   const shortName = labels(primary && (score.instrument?.shortName ?? score.instrument?.name), staff?.shortName ?? staff?.name);
   if (name === undefined && shortName === undefined) return {};

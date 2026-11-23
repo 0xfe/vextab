@@ -24,6 +24,26 @@ function tabSlurs(source) {
     '.filter((n) => (n instanceof StaveNote || (kind === "slur" && n instanceof TabNote)) &&\n                    (n.getStave()');
   const failure = 'if (!fitSpan(fragment, obstacles))';
   source = replaceOnce(source, failure, `let fitted = fitSpan(fragment, obstacles);
+            if (!fitted && kind === 'slur' && !s.spec.guitarPhrase) {
+                const original = { x1: fragment.x1, y1: fragment.y1, x2: fragment.x2, y2: fragment.y2, rise: fragment.rise };
+                // Tie anchors reserve space beside dots. A slur on the head side of a chord can
+                // leave over its outside notehead, giving the arc room to clear the following attack.
+                const headEdge = note => {
+                    if (!(note instanceof StaveNote) || note.getKeys().length < 2 || note.getStemDirection() !== sign) return;
+                    return note.getHeadInk().reduce((a, b) => (above ? a.y < b.y : a.y + a.h > b.y + b.h) ? a : b);
+                };
+                const left = starts && headEdge(s.first.note), right = ends && headEdge(s.last.note);
+                if (left) {
+                    fragment.x1 = left.x + left.w;
+                    fragment.y1 = (above ? left.y : left.y + left.h) + sign * space * 0.35;
+                }
+                if (right) {
+                    fragment.x2 = right.x;
+                    fragment.y2 = (above ? right.y : right.y + right.h) + sign * space * 0.35;
+                }
+                if ((left || right) && fragment.x2 > fragment.x1) fitted = fitSpan(fragment, obstacles);
+                if (!fitted) Object.assign(fragment, original);
+            }
             if (!fitted && s.spec.guitarPhrase) {
                 const { x1, x2, y1, y2, rise } = fragment;
                 // Try the two head edges and a small inside offset. Lift past simultaneous dots only as a last resort.
@@ -55,8 +75,11 @@ function tabSlurs(source) {
 /** Give the row breaker and the formatter the same opening indent. The preview pass
  * routes curves at native coordinates; only the final pass contributes drawings and diagnostics. */
 function pianoLayout(source) {
+  // A brace reaches 14 px left of its stave. Group spacing supplies 9 px, and a named stave
+  // already reserves the remainder in its label column. Keep an unlabeled brace inside the page.
   source = replaceOnce(source, 'return (w ? w + 10 : 0) + this.groups.length * 9;',
-    'return (w ? w + 10 : 0) + this.groups.length * 9 + (measure === 0 ? this.options.firstSystemIndent ?? 0 : 0);');
+    `const braceOverhang = this.groups.some(group => group.type === 'brace') ? 5 : 0;
+        return (w ? w + 10 : braceOverhang) + this.groups.length * 9 + (measure === 0 ? this.options.firstSystemIndent ?? 0 : 0);`);
   source = replaceOnce(source, 'y += row.height + options.rowGap;', 'y = row.y + row.height + options.rowGap;');
   source = replaceOnce(source, 'layoutRow(units, options, y) {', `layoutRow(units, options, y) {
         const drawings = this.drawing.length, fragments = this.fragments.length, diagnostics = this.diagnostics.length;

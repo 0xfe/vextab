@@ -17,6 +17,7 @@ import workbench from './scores/embed-workbench.vextab';
 import sor from './scores/sor-op35-no22.vextab';
 import pocketChange from './scores/pocket-change.vextab';
 import chopin from './scores/chopin-ballade-no3.vextab';
+import liszt from './scores/liszt-hungarian-rhapsody-no2.vextab';
 import allOfMe from './scores/all-of-me.vextab';
 import solea from './scores/flamenco-tab.vextab';
 import joplin from './scores/joplin-maple-leaf.vextab';
@@ -66,6 +67,10 @@ export const lessons: Lesson[] = [
     goal:'In the first eight bars of Sor’s Op. 35 No. 22, listen for the half-note melody above the moving eighths. The bass sounds across the first barline.',
     edit:'Change finger 2 to finger 3 on the opening note. Switch to Guitar · TAB and find the new fingering beside the same fret on string two.',
     edition:{ credit:'Glen Larsen’s Mutopia engraving after N. Simrock (CC BY-SA 3.0). This adaptation uses editorial string choices and the original three voices. The adaptation shares the same license.', url:'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1850' } },
+  { id:'liszt-hungarian-rhapsody-no2', title:'Liszt · Hungarian Rhapsody No. 2', source:liszt, views:staff, demo:true,
+    goal:'In this passage from the Friska, the right hand plays a dotted eighth and a sixteenth against two even bass notes. Follow the accents across the barlines until the right hand changes to even eighths at “leggieriss.”',
+    edit:'Lower the tempo from 144 to 96 and play the opening bars. The bass plays its fourth note before the right hand lands its short final chord.',
+    edition:{ credit:'Franz Liszt, Hungarian Rhapsody No. 2, S.244/2. The nineteen-bar excerpt follows the Tempo giusto Vivace score reproduced by SE22 Piano School. The playback tempo is editorial.', url:'https://se22pianoschool.wordpress.com/wp-content/uploads/2011/08/screen-shot-2011-08-10-at-21-53-39.jpg' } },
   { id:'chopin-ballade-no3', title:'Chopin · Ballade No. 3', source:chopin, views:staff, demo:true,
     goal:'The opening 24 bars of Chopin’s A-flat major Ballade fit six to a system. In bars 2–4, follow the high E-flat while the voices underneath it move. The small staff below bar 3 offers another way to play the ornament.',
     edit:'Change the tempo from 132 to 96 and start at the opening. In bar 14, count the seven-note right-hand flourish against the bass. Listen for the hands to meet on the next downbeat.',

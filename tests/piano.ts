@@ -22,6 +22,27 @@ function bracePaths(element: Element): number {
 }
 
 QUnit.module('Piano grand staff', () => {
+  QUnit.test('Each hand can choose level beams and vertical fingerings follow pitch order', assert => {
+    const score = read('meter 2/4 piano { upper { voice melody stem down { :8 (C5[finger 3 above] G5[finger 5 above])[staccato above] E5 D5 F5 | } } lower { voice bass flatBeams on { :8 C3 G3 E3 G3 | } } }');
+    const [upper, lower] = score.measures[0].voices;
+    assert.notOk(upper.flatBeams);
+    assert.true(lower.flatBeams);
+    const root = host();
+    renderScore(root, score);
+    const marks = [...root.querySelectorAll<SVGTextElement>('.vf-stavenote text')];
+    // SVG text boxes include the entire em square. Compare the visible contours of the digits.
+    const context = document.createElement('canvas').getContext('2d');
+    const ink = (digit: string) => {
+      const mark = marks.find(text => text.textContent === digit);
+      const style = getComputedStyle(mark);
+      context.font = style.fontWeight + ' ' + style.fontSize + ' ' + style.fontFamily;
+      const metrics = context.measureText(digit), baseline = mark.y.baseVal[0].value;
+      return { top: baseline - metrics.actualBoundingBoxAscent, bottom: baseline + metrics.actualBoundingBoxDescent };
+    };
+    assert.ok(ink('5').bottom < ink('3').top, 'top finger clears the lower finger');
+    assert.throws(() => parseScore('staff { flatBeams diagonal :w C4 | }'), /on or off/);
+  });
+
   QUnit.test('Aligned beats, shared barlines, and braces survive reflow', assert => {
     const score = read(duet);
     for (const [width, rows] of [[650, 1], [225, 2]]) {
