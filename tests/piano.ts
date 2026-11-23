@@ -1,5 +1,6 @@
 // Exercise aligned piano timing, clefs and connectors, independent hand parts, and located diagnostics.
-import { VexFlow } from 'vexflow';
+import { VexFlow, type StaveNote } from 'vexflow';
+import consolation from '../guide/scores/liszt-consolation-no5.vextab';
 import { Div, parseScore, renderScore, renderScorePart } from '../src/browser';
 import { projectScoreV2 } from '../src/score/grammar2/project';
 import { scoreSurfaces } from '../src/playback/geometry';
@@ -41,6 +42,24 @@ QUnit.module('Piano grand staff', () => {
     };
     assert.ok(ink('5').bottom < ink('3').top, 'top finger clears the lower finger');
     assert.throws(() => parseScore('staff { flatBeams diagonal :w C4 | }'), /on or off/);
+  });
+
+  QUnit.test('Consolation chords keep the accompaniment below the held voices', assert => {
+    const model = parseScore(consolation);
+    const { composition, navigation } = renderScore(host(), model, { width: model.layout.width });
+    const notes = (bar: number, voice: string) => navigation.events
+      .filter(event => event.measure === bar && event.source.includes('.' + voice + '.'))
+      .map(event => composition.getNote(event.id) as StaveNote);
+    // The bass starts alone with up-stems; its six eighths run under another voice in the second system.
+    assert.deepEqual(notes(1, 'bass').map(n => n.getStemDirection()), [1, 1]);
+    const eighths = notes(7, 'bass'), quarters = notes(7, 'sustained');
+    assert.deepEqual(eighths.map(n => n.getStemDirection()), [-1, -1, -1, -1, -1, -1]);
+    assert.ok(eighths[0].getBeam() && eighths.every(n => n.getBeam() === eighths[0].getBeam()));
+    assert.deepEqual(quarters.map(n => n.getStemDirection()), [1, 1, 1]);
+    assert.deepEqual(quarters.map(n => n.getAbsoluteX()), [0, 2, 4].map(i => eighths[i].getAbsoluteX()));
+    const alto = notes(7, 'inner')[1], soprano = notes(7, 'melody')[2];
+    assert.deepEqual([alto.getKeys(), alto.getDuration(), alto.getStemDirection()], [['a/4'], 'q', -1]);
+    assert.deepEqual([soprano.getKeys(), soprano.getDuration(), soprano.getStemDirection()], [['c#/5'], '8', 1]);
   });
 
   QUnit.test('Aligned beats, shared barlines, and braces survive reflow', assert => {

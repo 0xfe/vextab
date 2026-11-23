@@ -109,10 +109,10 @@ function handsShareStave(measure: Measure) {
 }
 
 /** Both projections use the written duration, including dots before tuplet scaling. */
-function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources: Sources, index: number, voiceCount: number,
+function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources: Sources, firstVoice: boolean, voiceCount: number,
   sharedPianoStaff: boolean): EasyScoreVoiceSpec {
   let direction = voice.stem;
-  if (!direction && voiceCount > 1) direction = index === 0 ? 'up' : 'down';
+  if (!direction && voiceCount > 1) direction = firstVoice ? 'up' : 'down';
   if (!direction && sharedPianoStaff) direction = voice.hand === 'right' ? 'up' : 'down';
   const stemDirection = direction ? (direction === 'up' ? 1 : -1) : staff === 'tab' ? voice.tabDirection : undefined;
   const instrument = new FrettedInstrument(measure.state.tuning, measure.state.capo);
@@ -220,6 +220,8 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
             for (const event of voice.events) notationTieSides.set(event.id, voice.stem === 'up' ? 'above' : 'below');
           }
         }
+        // A piano voice filled with skips has no stems to oppose. Let a lone line use its natural direction.
+        const stemVoices = m.state.piano ? voices.filter(v => v.events.some(e => !e.silent)) : voices;
         const sharedPianoStaff = handsShareStave(m);
         const showMarks = staff === staves[0] || m.state.piano;
         const clef = staff === 'tab' ? 'tab' : staff === 'left' ? 'bass' : m.state.clef;
@@ -230,7 +232,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
           ...(showMarks && leadMarks({ ...m, voices }, staff === 'tab' ? 'tab' : 'notation',
             id => eventId(staff, id), publication || !staves.includes('tab'), publication, guitarChordLane)),
           voices: [
-            ...voices.map((v, index) => v.events.length ? voiceSpec(v, m, staff, sources, index, voices.length, sharedPianoStaff)
+            ...voices.map((v, index) => v.events.length ? voiceSpec(v, m, staff, sources, v === stemVoices[0], stemVoices.length, sharedPianoStaff)
               : { notes: [textLanes.anchor(eventId(staff, 'blank-' + m.number + '-' + index), null)] }),
             ...(staff === staves[0] ? m.text ?? [] : []).map(lane => ({
               notes: lane.map(cell => {
