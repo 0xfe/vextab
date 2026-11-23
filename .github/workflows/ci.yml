@@ -38,6 +38,12 @@ jobs:
           node issues/207/consumer.mjs
           node issues/208/check.mjs
           node issues/209/check-native.mjs
+          node issues/210/capacity.mjs
+          python3 issues/210/fetch-exporters.py
+          node issues/210/exporters.mjs
+          node issues/210/lilypond-upstream.mjs
+          node issues/210/movement.mjs
+          node issues/210/browser.mjs
       - run: npm run build
       - name: Pack the distribution and test the files consumers receive
         env:

@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 import { checkMeasuredConsumers } from '../../scripts/test-importer-measured.mjs';
 import { parseScore } from 'vextab/parse';
 
-const out = resolve('build/importer-m2');
+const out = resolve('build/importer-consumer');
 await mkdir(out, { recursive: true });
 const consumer = await mkdtemp(join(tmpdir(), 'vextab-import-consumer-'));
 const [pack] = JSON.parse(execFileSync('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', out],
@@ -36,7 +36,7 @@ function checkScore(text) {
 }
 
 let types = 'import { importMXL } from "vextab-import/mxl";\n'
-  + 'const compressed = await importMXL(new Uint8Array()); if (compressed.status === "exact") '
+  + 'const compressed = await importMXL(new Uint8Array(), {targetProfile:"extended", capacity:"large", selection:{parts:["P1"]}}); if (compressed.status === "exact") '
   + 'compressed.documents[0].text.toUpperCase();\n';
 for (const [entry, input] of Object.entries(inputs)) {
   const id = 'vextab-import/' + entry, name = names[entry];

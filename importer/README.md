@@ -19,15 +19,31 @@ if (lily.status === 'exact') console.log(lily.documents[0].text);
 | Entry | Measured-score preview |
 | --- | --- |
 | MusicXML | 4.0 partwise and timewise scores and selected 3.1 files. Accepts decoded text and UTF-8 or UTF-16 bytes. Reads persistent divisions, keys and meter, partial backups and forwards, written and elapsed rhythm, chords, rests, pickups, tuplets and basic ties. |
-| MXL | Accepts archive bytes and imports the first declared score from the container manifest. Stored and deflated members are supported, with a 1 MiB selected-score limit. The async entry uses the platform inflater. |
+| MXL | Accepts archive bytes and imports the first declared score from the container manifest. Stored and deflated members are supported, with a default 1 MiB XML limit. An explicit selection or the extended target admits up to 8 MiB of score XML. The async entry uses the platform inflater. |
 | LilyPond | Resolves static variables and virtual includes, simultaneous voices, named piano staves, absolute, relative and fixed pitch, inherited duration, pickups, tuplets and bounded repeats. Use `score` to select a zero-based score index or a `'print'` or `'midi'` score. Supply include text as `includes: { 'theme.ly': source }`. |
-| Output | Independent voices, chord heads, staff assignment, barline key and meter changes, and supported repeat forms. Score size follows the VexTab 6.2.3 default compiler profile. |
+| Output | Independent voices, chord heads, staff assignment, barline key and meter changes, and supported repeat forms. The default output targets VexTab 6.2.3. The extended profile targets 6.3.0. |
 
 **Strict conversion is the default.** A known loss fails strict conversion. With `{ mode: 'partial' }`, the reader may return editable music together with a warning at each known loss. Unknown music with unresolved timing fails in both modes. Check `result.diagnostics` before presenting partial output to a musician.
 
 Each result identifies the minimum target version. Each document lists the written measure labels and voice IDs for its imported staves. Pass `filename` for diagnostic labels and `sourceMap: true` to map generated tokens back to half-open UTF-16 offsets in the decoded source. Gaps reconstructed by the writer have no source token.
 
-The repertoire qualification covers a 42-measure Haydn quartet excerpt and the pickup and opening two bars of a Joplin piano score. Whole-work capacity and timed clef changes belong to M3. The issue notes detail the imported features, source editions and known losses. [MusicXML fixtures and Haydn comparison](../issues/208/README.md) · [LilyPond fixtures and native comparison](../issues/209/README.md) · [Roadmap](../doc/importer.md)
+## Import a movement or a part
+
+The full OpenScore Haydn archive contains four movements and restarts its printed measure numbers. Select the second movement by its **one-based, inclusive positions** in each source part. Add `parts: ['P4']` to select only the cello. LilyPond selects a score block with the separate `score` option.
+
+~~~js
+const result = await importMXL(archiveBytes, {
+  filename: 'haydn.mxl',
+  targetProfile: 'extended',
+  capacity: 'large',
+  mode: 'partial',
+  selection: { firstMeasure: 129, lastMeasure: 237 },
+});
+~~~
+
+The extended profile emits supported timed clefs, keys, tempo, instrument transposition, and brace or bracket groups. Inspect the diagnostics for omitted material. The host must support the declared target version and explicitly enable large capacity. For example, a VexTab 6.3.0 host can call `parseScore(result.documents[0].text, {capacity: 'large'})` after checking the result. A host mounting an editor can pass `{capacity: 'large'}` to `Div` or set `data-capacity="large"` on the element.
+
+The repertoire checks cover the complete 109-bar Haydn second movement and selected Joplin print and MIDI passages. The upstream regression suites also exercise source constructs that produce located diagnostics. [Whole-movement and exporter checks](../issues/210/README.md) · [LilyPond native and upstream comparisons](../issues/209/README.md) · [MusicXML feature fixtures](../issues/208/README.md) · [Roadmap](../doc/importer.md)
 
 ## Build and verify
 
