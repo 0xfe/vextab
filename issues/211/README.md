@@ -42,3 +42,11 @@ node issues/210/timing.mjs --joplin
 Named slurs, beams and hairpins pair within a logical voice. A piano voice can cross between staves. A chord head can release before its neighbors while another remains tied into the next event. Distinct written rhythms use separate voices. A grace group can borrow an explicit fraction of its principal’s elapsed time. MusicXML make-time grace notes and indefinite holds need a different time model.
 
 A drum needs a recognizable kit entry or an explicit MIDI assignment. Fretted MusicXML needs enough information to check the physical position against the sounding pitch. Partial mode preserves the music around a supported omission and reports it. Unresolved pitch or timing can still prevent conversion.
+
+In the Sor comparison, the opening bass B carries into the second bar under a moving eighth-note voice. The paired VexTab view shows the written fingerings and generated fret numbers. Its line breaks and automatic stems differ from the source engraving, and both staves of the paired view display the opening Allegretto heading. [Glen Larsen’s source edition after N. Simrock](https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1850)
+
+## Size and speed
+
+The package has independent MusicXML, MXL and LilyPond entry points. Each bundles only its own reader and the shared text writer. The package test enforces a 96 KiB tarball limit and gzip limits of 32 KiB for MusicXML, 40 KiB for MXL and 24 KiB for LilyPond. Fixtures, reference tools, Chrome and VexFlow belong to the test project and stay outside the importer package.
+
+On an Apple M3 with Node 26.13.1 and Chrome 158.0.8127.37, the complete Joplin first strain converted in 5.8 ms at p95 in Node and 4.8 ms in a Chrome worker. The public Node reparse took 3.4 ms at p95. These measurements use 21 fresh processes or worker realms and exclude input I/O. The separate Haydn benchmark starts with the original four-movement MXL and selects the second movement. [M0 budgets](../206/README.md)
