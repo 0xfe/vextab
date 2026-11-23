@@ -40,6 +40,8 @@ export interface Event {
 export class Measure {
   part = 'staff';
   staff = 1;
+  /** Explicit two-staff keyboard with independent owning and display staves. */
+  piano = false;
   clef = 'treble';
   pickup?: Time;
   fragment?: Time;

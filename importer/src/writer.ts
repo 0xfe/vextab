@@ -73,7 +73,7 @@ class Writer {
     }
   }
 
-  event(event: Event, key: string) {
+  event(event: Event, bar: Measure) {
     this.groups(event.tuplets ?? [], event.range);
     const dots = event.dots ?? 0;
     if (!Number.isSafeInteger(event.denominator) || event.denominator <= 0 || ![0,1,2].includes(dots))
@@ -83,13 +83,21 @@ class Writer {
     if (written.compare(event.elapsed)) this.input.fail('timing', 'Written duration differs from elapsed duration.', event.range);
     const heads = event.pitches ?? (event.pitch ? [event.pitch] : []);
     if (heads.length > 16) this.input.fail('limit', 'Chord exceeds 16 heads.', event.range);
-    const note = (p: Pitch) => spelling(p, key, this.input, event.range);
-    const names = heads.map(p => note(p) + (event.tieStop ? '[tie]' : ''));
-    let token = names.length > 1 ? '(' + names.join(' ') + ')' : names[0] ?? event.kind;
+    const note = (p: Pitch) => spelling(p, bar.key, this.input, event.range);
+    const marks: string[] = [];
+    const chord = heads.length > 1;
+    const names = heads.map(p => note(p) + (chord && event.tieStop ? '[tie]' : ''));
+    if (!chord && event.tieStop) marks.push('tie');
+    if (event.staff !== bar.staff) {
+      if (!bar.piano || ![1, 2].includes(event.staff)) this.input.fail('unsupported', 'Unknown display staff.', event.range);
+      if (event.kind !== 'skip') marks.push('onStaff ' + (event.staff === 1 ? 'upper' : 'lower'));
+    }
+    let token = chord ? '(' + names.join(' ') + ')' : names[0] ?? event.kind;
     if (event.grace?.length) {
       const grace = event.grace.map(chord => chord.length === 1 ? note(chord[0]) : '(' + chord.map(note).join(' ') + ')');
-      token += '[grace before (' + grace.join(' ') + ')]';
+      marks.push('grace before (' + grace.join(' ') + ')');
     }
+    if (marks.length) token += '[' + marks.join(', ') + ']';
     this.append(token, event.denominator, dots, event);
   }
 
@@ -113,7 +121,7 @@ class Writer {
     for (const e of (bar.voices.get(voice) ?? []).slice().sort((a,b) => a.at.compare(b.at))) {
       this.input.file = e.file ?? this.input.rootFile;
       this.silence(e.at.minus(cursor), e.range);
-      this.event(e, bar.key);
+      this.event(e, bar);
       cursor = e.at.plus(e.elapsed);
     }
     this.silence(length.minus(cursor), range);
@@ -174,13 +182,11 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
   writer.text = 'meter ' + meter(first) + '\n';
   if (first.pickup) writer.text += 'pickup ' + first.pickup.numerator + '/' + first.pickup.denominator + '\n';
   const staves: NonNullable<ImportedDocument['staves']> = [];
-  for (const measures of grouped.values()) {
-    const opening = measures[0], id = 'staff' + (staves.length + 1);
-    if ((opening.pickup ?? zero).compare(first.pickup ?? zero)) input.fail('unsupported', 'Staves must share the pickup.', range);
-    const target = grouped.size > 1 ? id : 'staff';
-    writer.text += (grouped.size > 1 ? 'staff ' + id : 'staff') + ' {\n';
+  /** Emit part-wide settings once. Piano settings apply to both hands. */
+  function settings(measures: Measure[]) {
+    const opening = measures[0];
     if (opening.name) writer.text += '  name ' + JSON.stringify(opening.name) + '\n';
-    if (opening.clef !== 'treble') writer.text += '  clef ' + opening.clef + '\n';
+    if (!opening.piano && opening.clef !== 'treble') writer.text += '  clef ' + opening.clef + '\n';
     writer.text += '  key ' + opening.key + '\n';
     for (const [i, bar] of measures.entries()) {
       const prev = i ? measures[i - 1] : first;
@@ -188,6 +194,12 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
       if (i && bar.key !== prev.key) writer.text += '  key ' + bar.key + ' at ' + (i + 1) + '\n';
       if (meter(bar) !== meter(prev)) writer.text += '  meter ' + meter(bar) + (i ? ' at ' + (i + 1) : '') + '\n';
     }
+  }
+
+  /** Source IDs can be arbitrary strings. Generate predictable legal voice names in first-appearance order. */
+  function voicesFor(measures: Measure[], target: string) {
+    const opening = measures[0];
+    if ((opening.pickup ?? zero).compare(first.pickup ?? zero)) input.fail('unsupported', 'Staves must share the pickup.', range);
     const ids = new Set(measures.flatMap(bar => [...bar.voices.keys()]));
     const voices = [...ids].map((source,i) => ({source, target: ['upper','lower'][i] ?? 'voice' + (i + 1)}));
     staves.push({ target, part: opening.part, staff: opening.staff, measures: measures.map(b => b.label), voices });
@@ -199,6 +211,36 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
         writer.bar(bar, voice.source, forms.has(i), !i);
       }
       writer.text += ' }\n';
+    }
+  }
+
+  const keyboards = new Set<string>();
+  for (const measures of grouped.values()) {
+    const opening = measures[0], id = 'staff' + (staves.length + 1);
+    if (opening.piano) {
+      if (keyboards.has(opening.part)) continue;
+      keyboards.add(opening.part);
+      const upper = grouped.get(JSON.stringify([opening.part, 1]));
+      const lower = grouped.get(JSON.stringify([opening.part, 2]));
+      if (!upper || !lower || upper.length !== lower.length)
+        return input.fail('unsupported', 'Piano hands must share a measure grid.', range);
+      for (const [i, bar] of upper.entries()) {
+        const bass = lower[i];
+        if (!bar.piano || !bass.piano || bar.clef !== 'treble' || bass.clef !== 'bass' || meter(bar) !== meter(bass)
+            || bar.key !== bass.key || bar.extent.compare(bass.extent))
+          input.fail('unsupported', 'Independent piano hand settings require a newer target profile.', bass.range ?? range);
+      }
+      writer.text += 'piano ' + id + ' {\n';
+      settings(upper);
+      for (const [hand, bars] of [['upper', upper], ['lower', lower]] as const) {
+        writer.text += '  ' + hand + ' {\n';
+        voicesFor(bars, id + '/' + hand);
+        writer.text += '  }\n';
+      }
+    } else {
+      writer.text += (grouped.size > 1 ? 'staff ' + id : 'staff') + ' {\n';
+      settings(measures);
+      voicesFor(measures, grouped.size > 1 ? id : 'staff');
     }
     writer.text += '}\n';
   }
