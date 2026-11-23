@@ -5,6 +5,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright-core';
 import { rendererMiB } from '../206/renderer-memory.mjs';
 
+const profile = process.argv.includes('--expressive') ? 'expressive' : 'extended';
 const archive = readFileSync(new URL('fixtures/haydn.mxl', import.meta.url));
 const bundle = readFileSync(new URL('../../importer/dist/mxl.js', import.meta.url));
 const browser = await chromium.launch(process.env.CHROME_BIN ? {executablePath:process.env.CHROME_BIN} : {channel:'chrome'});
@@ -21,7 +22,7 @@ try {
       onmessage = async ({data}) => {
         try {
           const archive = new Uint8Array(data);
-          const options = {mode:'partial', capacity:'large', targetProfile:'extended', selection:{firstMeasure:129, lastMeasure:237}};
+          const options = {mode:'partial', capacity:'large', targetProfile:${JSON.stringify(profile)}, selection:{firstMeasure:129, lastMeasure:237}};
           for (let i = 0; i < 21; i++) {
             const result = await importMXL(archive, options);
             if (!result.documents.length) throw Error('Missing imported movement');
@@ -49,5 +50,5 @@ try {
     await delay(5);
   } while (!done);
   assert.equal(await conversion, 'done');
-  console.log(JSON.stringify({baselineMiB, sampledPeakMiB, growthMiB:sampledPeakMiB - baselineMiB, samples}));
+  console.log(JSON.stringify({profile, baselineMiB, sampledPeakMiB, growthMiB:sampledPeakMiB - baselineMiB, samples}));
 } finally { await browser.close(); }
