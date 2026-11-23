@@ -132,12 +132,25 @@ function sustainNotes(events: PlaybackEvent[], windows: { start: number; end: nu
 }
 
 /** Translate meter, pickup and phrasing marks to seconds on this performed visit. */
-function performanceBar(measure: Measure, whole: number, slurEnds: Set<string>, elapsed: (position: number) => number): PerformanceBar {
+function performanceBar(measure: Measure, whole: number, slurEnds: Set<string>, elapsed: (position: number) => number,
+  endingQuarter?: number): PerformanceBar {
   const duration = elapsed(seconds(measure.span, 1)), quarter = whole / 4;
   const [count, unit] = measure.state.meter.split('/').map(Number);
   // A fractional pickup ends on the downbeat even if it starts halfway through a beat.
   const missing = Math.max(0, count / unit - seconds(measure.span, 1)) * 4;
   const beatOffset = Math.abs(missing - Math.round(missing)) > 1e-8 ? (missing % 1) * quarter : 0;
+  // A tempo inside this measure can move a quarter boundary and its intervening eighth independently.
+  // Project the written beats with the same piecewise clock as the note onsets and releases.
+  const beats: {end: number; eighth?: number}[] = [];
+  if (endingQuarter !== undefined) {
+    const span = seconds(measure.span, 1);
+    let start = 0, remaining = (1 - beatOffset / quarter) / 4;
+    while (start < span - 1e-12) {
+      const end = Math.min(start + remaining, span);
+      beats.push({ end: elapsed(end), ...(end - start >= .25 - 1e-12 && {eighth: elapsed(start + .125)}) });
+      start = end; remaining = .25;
+    }
+  }
   const fermatas: number[] = [];
   let phraseEnd = false;
   for (const voice of measure.voices) {
@@ -147,7 +160,7 @@ function performanceBar(measure: Measure, whole: number, slurEnds: Set<string>, 
       if (release >= duration - 1e-8 && slurEnds.has(attack.id)) phraseEnd = true;
     }
   }
-  return { duration, quarter, beatOffset, swingable: unit === 2 || unit === 4, fermatas, phraseEnd: phraseEnd || !!fermatas.length };
+  return { duration, quarter, beatOffset, ...(endingQuarter !== undefined && { beats, endingQuarter }), swingable: unit === 2 || unit === 4, fermatas, phraseEnd: phraseEnd || !!fermatas.length };
 }
 
 /** Conduct from the lead meter. A held beat in another part also holds the ensemble.
@@ -229,7 +242,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
     // Process by onset so an earlier attack in a later-written voice can start a named tie.
     const attacks = measure.voices.flatMap(v => v.events).map(attack => ({ attack, time: bar + elapsed(seconds(attack.onset, 1)) }));
     attacks.sort((a, b) => a.time - b.time);
-    if (bars && seconds(measure.span, whole) > 0) bars.push(performanceBar(measure, whole, slurEnds, elapsed));
+    if (bars && seconds(measure.span, whole) > 0) bars.push(performanceBar(measure, whole, slurEnds, elapsed, segments.length > 1 ? rate / 4 : undefined));
     const inBar = new Map<string, PlaybackEvent>();
     for (const { attack, time } of attacks) {
       const duration = elapsed(seconds(attack.onset, 1) + seconds(attack.duration, 1)) - elapsed(seconds(attack.onset, 1));

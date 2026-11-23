@@ -71,6 +71,29 @@ QUnit.module('Performers', () => {
     assert.throws(() => parseScore('play { swing maybe } staff { :w C4 | }'), /swing eighths or swing off/);
   });
 
+  QUnit.test('mid-bar tempo changes carry written eighths and quarters into swing', assert => {
+    const score = projectScoreV2(parseScore('play { tempo 120 tempo 60 at 1 + 1/2 } ' +
+      'staff { :8 C4 D4 E4 F4 G4 A4 B4 C5 | }'), 0);
+    const bars: PerformanceBar[] = [];
+    const literal = scorePerformance(score, 120, undefined, undefined, undefined, bars);
+    assert.deepEqual(literal.events.map(e => e.time), [0,.25,.5,.75,1,1.5,2,2.5]);
+    assert.strictEqual(createPerformer('robot').perform([literal], bars)[0], literal);
+    const swing = createPerformer('robot', 3, 'eighths');
+    const [played] = swing.perform([literal], bars);
+    assert.deepEqual(played.events.filter((_, i) => i % 2 === 0).map(e => e.time), [0,.5,1,2]);
+    assert.ok(Math.abs(played.events[5].time - 1.72) < 1e-8);
+    assert.ok(Math.abs(played.events[7].time - 2.72) < 1e-8);
+
+    // A tempo change on the eighth moves its written midpoint away from half the elapsed quarter.
+    const split = projectScoreV2(parseScore('meter 1/4 play { tempo 120 tempo 60 at 1 + 1/8 } staff { :8 C4 D4 | }'), 0);
+    const grid: PerformanceBar[] = [];
+    const unswung = scorePerformance(split, 120, undefined, undefined, undefined, grid);
+    const [swung] = swing.perform([unswung], grid);
+    assert.equal(unswung.events[1].time, .25);
+    assert.ok(swung.events[1].time > .4 && swung.events[1].time < .5);
+    assert.equal(swung.duration, .75);
+  });
+
   QUnit.test('the bebop head and the comp have independent touch on one piano', assert => {
     const model = parseScore(pocketChange);
     assert.equal(model.measureCount, 16);
