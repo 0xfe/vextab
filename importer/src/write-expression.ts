@@ -18,7 +18,9 @@ export class Names {
   }
 }
 
-function fraction(time: Time) { return time.numerator + '/' + time.denominator; }
+function fraction(time: Time) {
+  return time.numerator + '/' + time.denominator;
+}
 
 /** Head-specific marks stay inside the chord so a tie or fingering never affects a neighboring note. */
 export function headMarks(head: HeadDetail, names: Names) {
@@ -41,23 +43,32 @@ export function eventMarks(expression: Expression, names: Names) {
   const marks: string[] = [];
   if (expression.label !== undefined) marks.push('label ' + JSON.stringify(expression.label));
   for (const lyric of expression.lyrics ?? []) {
-    const fields = [lyric.verse ? 'verse ' + names.get('verse', lyric.verse) : 'lyric', JSON.stringify(lyric.text)];
+    const fields = [
+      lyric.verse ? 'verse ' + names.get('verse', lyric.verse) : 'lyric',
+      JSON.stringify(lyric.text),
+    ];
     if (lyric.elideWith !== undefined) fields.push('elide', JSON.stringify(lyric.elideWith));
     if (lyric.hyphen) fields.push('hyphen');
     if (lyric.extend) fields.push('extend=' + lyric.extend);
     marks.push(fields.join(' '));
   }
   if (expression.harmony) {
-    const {root, quality, bass} = expression.harmony;
+    const { root, quality, bass } = expression.harmony;
     marks.push('harmony ' + root + ' ' + JSON.stringify(quality) + (bass ? ' bass ' + bass : ''));
   }
   if (expression.frame) {
-    const {frets, barre, independent} = expression.frame;
-    marks.push((independent ? 'diagram (' : 'frame (') + frets.join(' ') + ')' + (barre ? ' barre=' + barre[0] + '/' + barre[1] + '..' + barre[2] : ''));
+    const { frets, barre, independent } = expression.frame;
+    marks.push(
+      (independent ? 'diagram (' : 'frame (') +
+        frets.join(' ') +
+        ')' +
+        (barre ? ' barre=' + barre[0] + '/' + barre[1] + '..' + barre[2] : ''),
+    );
   }
   if (expression.dynamic) marks.push('dynamic ' + expression.dynamic);
   for (const sign of expression.articulations ?? []) {
-    const kind = sign.kind === 'tenuto' ? 'articulation a-' : sign.kind === 'marcato' ? 'articulation a^' : sign.kind;
+    const kind =
+      sign.kind === 'tenuto' ? 'articulation a-' : sign.kind === 'marcato' ? 'articulation a^' : sign.kind;
     marks.push(kind + (sign.side ? ' ' + sign.side : ''));
   }
   if (expression.ornament) marks.push('ornament ' + expression.ornament);
@@ -78,7 +89,9 @@ export function eventMarks(expression: Expression, names: Names) {
 /** The grace group borrows from its principal. Chords within the group keep their head order. */
 export function graceMark(event: Event, spell: (p: Pitch) => string) {
   const expression = event.expression;
-  const pitches = event.grace!.map(chord => chord.length === 1 ? spell(chord[0]) : '(' + chord.map(spell).join(' ') + ')');
+  const pitches = event.grace!.map((chord) =>
+    chord.length === 1 ? spell(chord[0]) : '(' + chord.map(spell).join(' ') + ')',
+  );
   const args = ['grace', expression?.graceSide ?? 'before'];
   if (expression?.graceSlashed) args.push('slashed');
   if (expression?.graceSteal) args.push('steal=' + fraction(expression.graceSteal));
@@ -87,7 +100,7 @@ export function graceMark(event: Event, spell: (p: Pitch) => string) {
 
 /** Core guitar tunings are written one octave above their sounding open strings. */
 function tuning(pitches: Pitch[], input: Input, range: TextRange) {
-  const result = pitches.map(p => {
+  const result = pitches.map((p) => {
     if (!/^[A-G]$/.test(p.step) || Math.abs(p.alter) > 1 || p.octave < -1 || p.octave > 7)
       input.fail('unsupported', 'Open string exceeds the writable guitar tuning range.', range);
     return p.step + (p.alter < 0 ? 'b' : p.alter > 0 ? '#' : '') + (p.octave + 1);
@@ -100,8 +113,25 @@ function tuning(pitches: Pitch[], input: Input, range: TextRange) {
 /** Write drum labels literally and use generated IDs for their corresponding staff heads. */
 export function instrumentSettings(instrument: Instrument, names: Names, input: Input, range: TextRange) {
   if (instrument.kind === 'guitar') {
-    return [tuning(instrument.tuning, input, range), 'capo ' + instrument.capo, 'view ' + (instrument.view ?? 'both')];
+    return [
+      tuning(instrument.tuning, input, range),
+      'capo ' + instrument.capo,
+      'view ' + (instrument.view ?? 'both'),
+    ];
   }
-  return instrument.map.map(drum => 'map ' + names.get('hit', drum.id) + ' ' + JSON.stringify(drum.name) +
-    ' line ' + drum.line + ' head ' + drum.head + ' stem ' + drum.stem + ' midi ' + drum.midi);
+  return instrument.map.map(
+    (drum) =>
+      'map ' +
+      names.get('hit', drum.id) +
+      ' ' +
+      JSON.stringify(drum.name) +
+      ' line ' +
+      drum.line +
+      ' head ' +
+      drum.head +
+      ' stem ' +
+      drum.stem +
+      ' midi ' +
+      drum.midi,
+  );
 }
