@@ -8,17 +8,18 @@
   "sideEffects": false,
   "exports": {
     "./musicxml": { "types": "./dist/musicxml.d.ts", "default": "./dist/musicxml.js" },
+    "./mxl": { "types": "./dist/mxl.d.ts", "default": "./dist/mxl.js" },
     "./lilypond": { "types": "./dist/lilypond.d.ts", "default": "./dist/lilypond.js" }
   },
   "files": [
     "dist/musicxml.js", "dist/musicxml.d.ts", "dist/lilypond.js", "dist/lilypond.d.ts",
-    "dist/types.d.ts", "LICENSE", "THIRD-PARTY.txt"
+    "dist/mxl.js", "dist/mxl.d.ts", "dist/types.d.ts", "LICENSE", "THIRD-PARTY.txt"
   ],
   "engines": { "node": ">=22.18.0" },
   "scripts": {
     "build": "tsc -p tsconfig.json && node build.mjs",
     "prepack": "npm run build",
-    "test": "npm run build && node --test test/import.test.mjs"
+    "test": "npm run build && node --test test/*.test.mjs"
   },
   "devDependencies": { "esbuild": "0.28.2", "saxes": "6.0.0", "typescript": "7.0.2" }
 }
