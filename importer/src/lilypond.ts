@@ -17,7 +17,7 @@ export interface LilyPondOptions extends ImportOptions {
 /** All duration fields are lexical. Variables carry their own duration defaults. */
 interface Rhythm { denominator: number; dots: number }
 interface State {
-  part: string; voice: string; piano?: { id: string; hands: string[] }; display?: number; index: number; at: Time;
+  part: string; voice: string; group?: NonNullable<Measure['group']>; piano?: { id: string; hands: string[] }; display?: number; index: number; at: Time;
   mode: 'absolute' | 'relative' | 'fixed'; anchor: Pitch; fixed: number;
   rhythm: Rhythm; last: Pitch[]; tuplets: NonNullable<Event['tuplets']>;
   pendingGrace: Pitch[][]; collectGrace?: Pitch[][]; tie?: Pitch[]; uses: NonNullable<Event['uses']>;
@@ -86,6 +86,10 @@ class Resolver {
         bar.key = previous.key; bar.clef = previous.clef;
       }
       bar.part = s.piano?.id ?? s.part;
+      if (s.group) {
+        bar.group = s.group;
+        if (!s.group.parts.includes(bar.part)) s.group.parts.push(bar.part);
+      }
       if (s.piano) {
         bar.piano = true;
         bar.staff = s.piano.hands.indexOf(s.part) + 1;
@@ -104,12 +108,43 @@ class Resolver {
       last: [], tuplets: [], pendingGrace: [], uses: [] };
     this.sequence(expr.words, state, expr.scope, 0);
     if (state.pendingGrace.length || state.tie) this.input.fail('timing', 'Missing attachment target.', expr.words.at(-1)!.range);
+    for (const bars of this.parts.values()) this.resolveAttributes(bars);
     if (finalFragment) for (const bars of this.parts.values()) {
       const last = bars[bars.length - 1];
       if (!last.pickup && last.extent.compare(zero) > 0 && last.extent.compare(new Time(last.beats, last.beatType)) < 0)
         last.fragment = last.extent;
     }
     return [...this.parts.values()].flat();
+  }
+
+  /** Resolve staff declarations after all voices have contributed their own source-time cursors. */
+  private resolveAttributes(bars: Measure[]) {
+    let key = 'C', clef = bars[0].clef, sounds = 0;
+    for (const bar of bars) {
+      const ordered = bar.changes.sort((a, b) => a.at.compare(b.at));
+      const set = (change: Measure['changes'][number]) => {
+        if (change.kind === 'key') key = String(change.value);
+        if (change.kind === 'clef') clef = String(change.value);
+        if (change.kind === 'sounds') sounds = Number(change.value);
+      };
+      for (const change of ordered) if (!change.at.compare(zero)) set(change);
+      bar.key = key; bar.clef = clef; bar.sounds = sounds;
+      bar.changes = ordered.filter(c => c.at.compare(zero) !== 0);
+      for (const [voice, events] of bar.voices) {
+        let i = 0;
+        key = bar.key; sounds = bar.sounds;
+        bar.voices.set(voice, events.map(event => {
+          while (i < bar.changes.length && bar.changes[i].at.compare(event.at) <= 0) set(bar.changes[i++]);
+          if (!sounds && !bar.changes.length) return event;
+          const pitches = event.pitches?.map(p => ({ ...p, sounding: p.sounding + sounds }));
+          if (pitches?.some(p => p.sounding < 0 || p.sounding > 127))
+            this.input.fail('unsupported', 'Sounding instrument pitch outside MIDI range.', event.range);
+          return { ...event, key, pitches, pitch: pitches?.[0] };
+        }));
+      }
+      key = bar.key; clef = bar.clef; sounds = bar.sounds;
+      bar.changes.forEach(set);
+    }
   }
 
   /** Report the offending token in the original definition or virtual file. */
@@ -139,7 +174,7 @@ class Resolver {
         const context = next().value;
         if (!['Staff', 'PianoStaff', 'StaffGroup', 'Voice'].includes(context))
           input.fail('unsupported', 'Unsupported context ' + context + '.', t.range);
-        const oldPart = s.part, oldVoice = s.voice, oldPiano = s.piano, oldDisplay = s.display;
+        const oldPart = s.part, oldVoice = s.voice, oldPiano = s.piano, oldDisplay = s.display, oldGroup = s.group;
         let id: string | undefined;
         if (words[i]?.value === '=') {
           i++; const label = next();
@@ -158,11 +193,15 @@ class Resolver {
           if (hands.length !== 2 || hands[0] === hands[1]) input.fail('unsupported', 'Expected two distinct piano hands.', t.range);
           s.piano = { id: id ?? 'piano' + ++this.serial, hands };
         }
-        if (context === 'StaffGroup') input.omit('Staff-group bracket omitted.', t.range);
+        if (context === 'StaffGroup') {
+          if (input.options.targetProfile !== 'extended') input.omit('Staff-group bracket omitted.', t.range);
+          else if (s.group) input.fail('unsupported', 'Nested staff groups require a richer target profile.', t.range);
+          else s.group = { symbol: 'bracket', parts: [] };
+        }
         if (context === 'Staff') s.part = id ?? (s.part === 'staff' && !this.parts.has('staff') ? 'staff' : 'staff' + ++this.serial);
         if (context === 'Voice' && id) s.voice = id;
         child();
-        s.part = oldPart; s.voice = oldVoice; s.piano = oldPiano; s.display = oldDisplay;
+        s.part = oldPart; s.voice = oldVoice; s.piano = oldPiano; s.display = oldDisplay; s.group = oldGroup;
         break;
       }
       case '\\change': {
@@ -191,20 +230,38 @@ class Resolver {
         break;
       }
       case '\\key': {
-        boundary();
         const p = readPitch(next(), { ...s, mode: 'absolute' }, scope.language, input);
         const tonic = p.step + ['bb', 'b', '', '#', '##'][p.alter + 2];
         const mode = next().value;
-        if (mode === '\\major' && keys.includes(tonic)) this.measure(s).key = tonic;
-        else if (mode === '\\minor' && minorKeys.includes(tonic + 'm')) this.measure(s).key = tonic + 'm';
-        else input.fail('unsupported', 'Unqualified key signature.', t.range);
+        const key = mode === '\\major' && keys.includes(tonic) ? tonic :
+          mode === '\\minor' && minorKeys.includes(tonic + 'm') ? tonic + 'm' : undefined;
+        if (!key) return input.fail('unsupported', 'Unqualified key signature.', t.range);
+        this.measure(s).changes.push({kind:'key', at:s.at, value:key, range:t.range});
         break;
       }
       case '\\clef': {
-        boundary();
         const clef = next().value.replace(/^"|"$/g, '');
         if (!['treble', 'bass', 'alto', 'tenor'].includes(clef)) input.fail('unsupported', 'Unsupported clef.', t.range);
-        this.measure(s).clef = clef;
+        this.measure(s).changes.push({kind:'clef', at:s.at, value:clef, range:t.range});
+        break;
+      }
+      case '\\transposition': {
+        const tone = readPitch(next(), { ...s, mode: 'absolute' }, scope.language, input);
+        if (input.options.targetProfile !== 'extended') input.fail('unsupported', 'Instrument transposition needs the extended target.', t.range);
+        this.measure(s).changes.push({kind:'sounds', at:s.at, value:tone.sounding - 60, range:t.range});
+        break;
+      }
+      case '\\tempo': {
+        if (input.options.targetProfile !== 'extended') input.fail('unsupported', 'Tempo changes need the extended target.', t.range);
+        if (!/^\d+$/.test(words[i]?.value ?? '')) input.fail('unsupported', 'Expected a metronome beat unit.', t.range);
+        const [unit, end] = readRhythm(words, i, quarter, input);
+        i = end;
+        if (next().value !== '=') input.fail('syntax', 'Expected a metronome assignment.', t.range);
+        const number = next(), duration = length(unit);
+        const bpm = Number(number.value) * 4 * Number(duration.numerator) / Number(duration.denominator);
+        if (!/^\d+$/.test(number.value) || !Number.isInteger(bpm) || bpm < 1 || bpm > 999)
+          input.fail('unsupported', 'Expected a representable positive quarter-note BPM.', number.range);
+        this.measure(s).tempos.push({bpm, at:s.at, range:t.range});
         break;
       }
       case '\\partial': {
