@@ -24,7 +24,9 @@ export interface ImportDiagnostic {
 export interface ImportedDocument {
   text: string;
   source: { file: string; part: string; measure: string; voices: { source: string; target: string }[] };
-  sourceMap?: { generated: TextRange; original: TextRange }[];
+  /** Stable generated staff IDs with their source part, staff and written measure labels. */
+  staves?: { target: string; part: string; staff: number; measures: string[]; voices: { source: string; target: string }[] }[];
+  sourceMap?: { generated: TextRange; original: TextRange; file?: string; uses?: { file: string; range: TextRange }[] }[];
 }
 
 /** A fatal failure never returns a misleading partial document. */
