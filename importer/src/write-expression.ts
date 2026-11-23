@@ -49,8 +49,8 @@ export function eventMarks(expression: Expression, names: Names) {
     marks.push('harmony ' + root + ' ' + JSON.stringify(quality) + (bass ? ' bass ' + bass : ''));
   }
   if (expression.frame) {
-    const {frets, barre} = expression.frame;
-    marks.push('frame (' + frets.join(' ') + ')' + (barre ? ' barre=' + barre[0] + '/' + barre[1] + '..' + barre[2] : ''));
+    const {frets, barre, independent} = expression.frame;
+    marks.push((independent ? 'diagram (' : 'frame (') + frets.join(' ') + ')' + (barre ? ' barre=' + barre[0] + '/' + barre[1] + '..' + barre[2] : ''));
   }
   if (expression.dynamic) marks.push('dynamic ' + expression.dynamic);
   for (const sign of expression.articulations ?? []) {

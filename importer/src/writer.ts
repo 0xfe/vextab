@@ -246,7 +246,7 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
   function settings(measures: Measure[], hand=false) {
     const opening=measures[0];
     if (!hand && opening.name) writer.text+='  name '+JSON.stringify(opening.name)+'\n';
-    if ((!opening.piano && opening.clef!=='treble') || hand && opening.clef!==(opening.staff===1?'treble':'bass'))
+    if (opening.instrument?.kind !== 'drums' && ((!opening.piano && opening.clef!=='treble') || hand && opening.clef!==(opening.staff===1?'treble':'bass')))
       writer.text+='  clef '+opening.clef+'\n';
     writer.text+='  key '+opening.key+'\n';
     if (opening.instrument) {

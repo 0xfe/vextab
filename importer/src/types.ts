@@ -4,7 +4,7 @@ export type TextRange = readonly [start: number, end: number];
 /** Strict conversion stops on any known loss. Partial mode can omit explicit, timing-neutral marks. */
 export interface ImportOptions {
   mode?: 'strict' | 'partial';
-  /** Enable timed staff state and ensemble syntax supported by VexTab 6.3.0. */
+  /** Select standard (6.2.3), extended staff state (6.3.0), or expressive notation (6.4.0). */
   targetProfile?: 'standard' | 'extended' | 'expressive';
   /** Large target capacity also requires an extended-capacity consuming host. */
   capacity?: 'default' | 'large';

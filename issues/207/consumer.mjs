@@ -36,7 +36,7 @@ function checkScore(text) {
 }
 
 let types = 'import { importMXL } from "vextab-import/mxl";\n'
-  + 'const compressed = await importMXL(new Uint8Array(), {targetProfile:"extended", capacity:"large", selection:{parts:["P1"]}}); if (compressed.status === "exact") '
+  + 'const compressed = await importMXL(new Uint8Array(), {targetProfile:"expressive", capacity:"large", selection:{parts:["P1"]}}); if (compressed.status === "exact") '
   + 'compressed.documents[0].text.toUpperCase();\n';
 for (const [entry, input] of Object.entries(inputs)) {
   const id = 'vextab-import/' + entry, name = names[entry];

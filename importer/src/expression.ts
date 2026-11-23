@@ -25,7 +25,7 @@ export interface Syllable { text:string; verse?:string; hyphen?:boolean; extend?
 /** Attach expression to a measured event, keeping all literal strings separate from grammar tokens. */
 export interface Expression {
   lyrics?:Syllable[]; harmony?:{root:string; quality:string; bass?:string};
-  frame?:{frets:(number|'x')[]; barre?:[number,number,number]};
+  frame?:{independent?:boolean; frets:(number|'x')[]; barre?:[number,number,number]};
   dynamic?:'ppp'|'pp'|'p'|'mp'|'mf'|'f'|'ff'|'fff';
   articulations?:{kind:'accent'|'staccato'|'tenuto'|'fermata'|'marcato';side?:Side}[];
   ornament?:'tr'|'turn'|'turn_inverted'|'mordent'|'mordent_inverted';
