@@ -1,5 +1,5 @@
 // Normalize partwise and timewise MusicXML to exact measured voices in source part order.
-import { convert, Input, keys, Measure, meter, pitch } from './score.js';
+import { convert, Input, keys, minorKeys, Measure, meter, pitch } from './score.js';
 import { Time, zero } from './time.js';
 import type { Event } from './score.js';
 import type { ImportOptions, ImportResult, TextRange } from './types.js';
@@ -57,24 +57,7 @@ function attributes(node: Element, state: PartState, cursor: Time, input: Input)
       const mode = scalar(child, 'mode', input, 'major');
       if (!/^-?[0-7]$/.test(fifths) || !['major', 'minor'].includes(mode))
         input.fail('unsupported', 'Unsupported key signature.', child.range);
-      const minor = [
-        'Abm',
-        'Ebm',
-        'Bbm',
-        'Fm',
-        'Cm',
-        'Gm',
-        'Dm',
-        'Am',
-        'Em',
-        'Bm',
-        'F#m',
-        'C#m',
-        'G#m',
-        'D#m',
-        'A#m',
-      ];
-      state.key = (mode === 'minor' ? minor : keys)[7 + +fifths];
+      state.key = (mode === 'minor' ? minorKeys : keys)[7 + +fifths];
     } else if (child.name === 'time') {
       shape(child, input, ['beats', 'beat-type'], ['symbol']);
       const temp = new Measure();
