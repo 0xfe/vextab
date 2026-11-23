@@ -1,19 +1,9 @@
 // Sample total Chrome renderer RSS on macOS/Linux in a separate pass from latency tests.
-import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { rendererMiB } from './renderer-memory.mjs';
 import { writeFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright-core';
 import { workloads, output } from './workloads.mjs';
-
-/** ps reports resident KiB. Include the page and any worker renderer processes owned by this Chrome. */
-async function rendererMiB(session) {
-  const { processInfo } = await session.send('SystemInfo.getProcessInfo');
-  const ids = processInfo.filter(p => p.type === 'renderer').map(p => p.id);
-  assert.ok(ids.length);
-  const rows = execFileSync('ps', ['-o', 'rss=', '-p', ids.join(',')], { encoding: 'utf8' });
-  return rows.trim().split(/\s+/).reduce((total, value) => total + Number(value), 0) / 1024;
-}
 
 const results = {};
 for (const test of workloads().filter(t => ['excerpt', 'quartet', 'archive', 'rag'].includes(t.name))) {

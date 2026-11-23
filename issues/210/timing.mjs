@@ -12,6 +12,7 @@ const options = { targetProfile:'extended', capacity:'large', mode:'partial', se
 if (process.argv.includes('--sample')) {
   const archive = readFileSync(file);
   const {parseScore} = await import('vextab/parse');
+  const rssBefore = process.resourceUsage().maxRSS;
   const start = performance.now();
   const {importMXL} = await import('../../importer/dist/mxl.js');
   const loaded = performance.now();
@@ -22,7 +23,8 @@ if (process.argv.includes('--sample')) {
   const parsed = parseScore(doc.text, {capacity:'large'});
   const finished = performance.now();
   assert.deepEqual(parsed.parts.map(p => p.measureCount), [109,109,109,109]);
-  console.log(JSON.stringify([loaded-start, emitted-loaded, finished-emitted]));
+  const peakGrowthMiB = (process.resourceUsage().maxRSS - rssBefore) / 1024;
+  console.log(JSON.stringify([loaded-start, emitted-loaded, finished-emitted, peakGrowthMiB]));
 } else {
   const count = 21;
   /** Sort each column independently. Use nearest-rank median and p95. */
@@ -73,6 +75,6 @@ if (process.argv.includes('--sample')) {
       return rows;
     }, {base64: readFileSync(file).toString('base64'), options, count});
     console.log(JSON.stringify({cpu:cpus()[0].model,node:process.version,chrome:browser.version(),samples:count,
-      nodeLoadConvertReparseMs:report(node), workerLoadConvertMs:report(workers)}, null, 2));
+      nodeLoadConvertReparseMs:report(node).slice(0,3), nodePeakRssGrowthMiB:report(node)[3], workerLoadConvertMs:report(workers)}, null, 2));
   } finally { await browser.close(); }
 }
