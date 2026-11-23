@@ -1,6 +1,7 @@
 // Translate resolved source events into editable VexTab grammar v2 within the public compiler limits.
 import type { Event, Input, Measure, Pitch } from './score.js';
-import { keys, minorKeys } from './score.js';
+import { eventMarks, graceMark, headMarks, instrumentSettings, Names } from './write-expression.js';
+import { includesExtended, keys, minorKeys } from './score.js';
 import { Time, zero } from './time.js';
 import type { ImportedDocument, TextRange } from './types.js';
 
@@ -20,6 +21,7 @@ type Tuplet = NonNullable<Event['tuplets']>[number];
 class Writer {
   text = '';
   map: NonNullable<ImportedDocument['sourceMap']> = [];
+  readonly names = new Names();
   events = 0;
   rhythm = '';
   tuplets: Tuplet[] = [];
@@ -88,21 +90,36 @@ class Writer {
     }
     if (written.compare(event.elapsed)) this.input.fail('timing', 'Written duration differs from elapsed duration.', event.range);
     const heads = event.pitches ?? (event.pitch ? [event.pitch] : []);
-    if (heads.length > 16) this.input.fail('limit', 'Chord exceeds 16 heads.', event.range);
+    const count = Math.max(heads.length, event.headDetails?.length ?? 0);
+    if (count > 16) this.input.fail('limit', 'Chord exceeds 16 heads.', event.range);
+    if ((event.expression || event.headDetails) && this.input.options.targetProfile !== 'expressive')
+      this.input.fail('unsupported', 'Expressive notation requires the VexTab 6.4.0 target.', event.range);
     const note = (p: Pitch) => spelling(p, event.key ?? bar.key, this.input, event.range);
-    const marks: string[] = [];
-    const chord = heads.length > 1;
-    const names = heads.map(p => note(p) + (chord && event.tieStop ? '[tie]' : ''));
-    if (!chord && event.tieStop) marks.push('tie');
+    const marks = event.expression ? eventMarks(event.expression, this.names) : [];
+    const tokens: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const detail = event.headDetails?.[i];
+      const decorations = detail ? headMarks(detail, this.names) : [];
+      if (event.tieStop && !detail?.tieStop && !detail?.tieEndId) decorations.push('tie');
+      let token: string;
+      if (detail?.drum) {
+        token = this.names.get('hit', detail.drum);
+      } else if (detail?.fret !== undefined && detail.string !== undefined) {
+        token = detail.fret + '/' + detail.string;
+        if (heads[i] && detail.fret !== 'x') decorations.unshift('write ' + note(heads[i]));
+      } else if (heads[i]) {
+        token = note(heads[i]);
+      } else return this.input.fail('unsupported', 'Missing note pitch or instrument position.', event.range);
+      if (count === 1) marks.unshift(...decorations);
+      else if (decorations.length) token += '[' + decorations.join(', ') + ']';
+      tokens.push(token);
+    }
     if (event.staff !== bar.staff) {
       if (!bar.piano || ![1, 2].includes(event.staff)) this.input.fail('unsupported', 'Unknown display staff.', event.range);
       if (event.kind !== 'skip') marks.push('onStaff ' + (event.staff === 1 ? 'upper' : 'lower'));
     }
-    let token = chord ? '(' + names.join(' ') + ')' : names[0] ?? event.kind;
-    if (event.grace?.length) {
-      const grace = event.grace.map(chord => chord.length === 1 ? note(chord[0]) : '(' + chord.map(note).join(' ') + ')');
-      marks.push('grace before (' + grace.join(' ') + ')');
-    }
+    let token = count > 1 ? '(' + tokens.join(' ') + ')' : tokens[0] ?? event.kind;
+    if (event.grace?.length) marks.push(graceMark(event, note));
     if (marks.length) token += '[' + marks.join(', ') + ']';
     this.append(token, event.denominator, dots, event);
   }
@@ -204,7 +221,7 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
   writer.text = 'meter ' + meter(first) + '\n';
   if (first.pickup) writer.text += 'pickup ' + first.pickup.numerator + '/' + first.pickup.denominator + '\n';
   const staves: NonNullable<ImportedDocument['staves']> = [];
-  const extended=input.options.targetProfile==='extended';
+  const extended = includesExtended(input.options);
   /** Express measure-local positions exactly. The first bar is one. */
   function anchor(index:number, at:Time) {
     return ' at '+(index+1)+(at.numerator?' + '+at.numerator+'/'+at.denominator:'');
@@ -232,6 +249,11 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
     if ((!opening.piano && opening.clef!=='treble') || hand && opening.clef!==(opening.staff===1?'treble':'bass'))
       writer.text+='  clef '+opening.clef+'\n';
     writer.text+='  key '+opening.key+'\n';
+    if (opening.instrument) {
+      if (input.options.targetProfile !== 'expressive') input.fail('unsupported', 'Instrument mapping requires the expressive target.', opening.range ?? range);
+      for (const field of instrumentSettings(opening.instrument, writer.names, input, opening.range ?? range))
+        writer.text += '  ' + field + '\n';
+    }
     if (opening.sounds) writer.text+='  sounds '+opening.sounds+' at 1\n';
     const current={clef:opening.clef,key:opening.key,sounds:opening.sounds} as Record<string,string|number>;
     for (const [i,bar] of measures.entries()) {
@@ -298,9 +320,10 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
         writer.text += '  }\n';
       }
     } else {
-      writer.text += (grouped.size > 1 ? 'staff ' + id : 'staff') + ' {\n';
+      const kind = opening.instrument?.kind ?? 'staff';
+      writer.text += kind + (grouped.size > 1 ? ' ' + id : '') + ' {\n';
       settings(measures);
-      voicesFor(measures, grouped.size > 1 ? id : 'staff');
+      voicesFor(measures, grouped.size > 1 ? id : kind);
     }
     writer.text += '}\n';
   }

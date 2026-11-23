@@ -1,6 +1,6 @@
 // Bounded, non-resolving XML decoder and located element helpers used by MusicXML and its container.
 import { SaxesParser } from 'saxes';
-import { Input, sourceLimit } from './score.js';
+import { includesExtended, Input, sourceLimit } from './score.js';
 import type { MusicXMLOptions, TextRange } from './types.js';
 
 /** Keep exact element ranges while interpreting this bounded measure in document order. */
@@ -15,7 +15,7 @@ export interface Element {
 const largeXMLLimit = 8 * 1024 * 1024;
 /** A caller can select a small target from a larger source, independently of the host capacity. */
 export function xmlLimit(options: MusicXMLOptions) {
-  return options.selection || options.targetProfile === 'extended' ? largeXMLLimit : sourceLimit;
+  return options.selection || includesExtended(options) ? largeXMLLimit : sourceLimit;
 }
 
 /** Recognize the UTF encodings supported by the XML byte stream. */
@@ -101,7 +101,7 @@ export function readTree(
     // For unselected music keep the clock needed by global playback directions, plus inherited state.
     const excluded = selected && !selected.has(part);
     const prefix = ordinal < first;
-    const keepClock = input.options.targetProfile === 'extended' && (excluded || prefix);
+    const keepClock = includesExtended(input.options) && (excluded || prefix);
     if (selection && (excluded || prefix || ordinal > last)) {
       let drop = false;
       if (content) {

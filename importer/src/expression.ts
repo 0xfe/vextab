@@ -30,5 +30,6 @@ export interface Expression {
   articulations?:{kind:'accent'|'staccato'|'tenuto'|'fermata'|'marcato';side?:Side}[];
   ornament?:'tr'|'turn'|'turn_inverted'|'mordent'|'mordent_inverted';
   pedal?:('down'|'up')[]; spans?:SpanPoint[];
-  graceSide?:'before'|'after'; graceSlashed?:boolean;
+  graceSide?:'before'|'after'; graceSlashed?:boolean; graceSteal?:Time;
+  pedalUpAtOnset?:boolean;
 }
