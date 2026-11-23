@@ -4,6 +4,10 @@ export type TextRange = readonly [start: number, end: number];
 /** Strict conversion stops on any known loss. Partial mode can omit explicit, timing-neutral marks. */
 export interface ImportOptions {
   mode?: 'strict' | 'partial';
+  /** Enable timed staff state and ensemble syntax supported by VexTab 6.3.0. */
+  targetProfile?: 'standard' | 'extended';
+  /** Large target capacity also requires an extended-capacity consuming host. */
+  capacity?: 'default' | 'large';
   filename?: string;
   sourceMap?: boolean;
 }
@@ -31,9 +35,14 @@ export interface ImportedDocument {
 
 /** A fatal failure never returns a misleading partial document. */
 export type ImportResult = {
-  target: { language: 2; minimumVersion: '6.2.3' };
+  target: { language: 2; minimumVersion: '6.2.3' | '6.3.0'; capacity?: 'large' };
   diagnostics: ImportDiagnostic[];
 } & (
   | { status: 'exact' | 'partial'; documents: [ImportedDocument] }
   | { status: 'failed'; documents: [] }
 );
+
+/** MusicXML part IDs and inclusive, one-based ordinal bars. Printed labels may repeat. */
+export interface MusicXMLOptions extends ImportOptions {
+  selection?: { parts?: readonly string[]; firstMeasure?: number; lastMeasure?: number };
+}

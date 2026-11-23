@@ -22,6 +22,8 @@ export function pitch(step: string, alter: number, octave: number): Pitch {
 export interface Event {
   kind: 'attack' | 'rest' | 'skip';
   staff: number;
+  /** Active signature on the displaying staff at this onset. */
+  key?: string;
   dots?: number;
   pitches?: Pitch[];
   tuplets?: { actual: number; normal: number; id: string }[];
@@ -45,6 +47,10 @@ export class Measure {
   /** Explicit two-staff keyboard with independent owning and display staves. */
   piano = false;
   clef = 'treble';
+  sounds = 0;
+  changes: { kind:'clef'|'key'|'sounds'; value:string|number; at:Time; range:TextRange }[] = [];
+  tempos: { bpm:number; at:Time; range:TextRange }[] = [];
+  group?: { symbol:'brace'|'bracket'; parts:string[] };
   pickup?: Time;
   fragment?: Time;
   range?: TextRange;
@@ -108,8 +114,10 @@ export class Input {
 /** A source error or unknown musical expression blocks both modes; only enumerated losses may pass. */
 export function convert(options: ImportOptions, filename: string, read: (input: Input) => [Measure | Measure[], TextRange]): ImportResult {
   const input = new Input(options.filename ?? filename, options);
-  const common = { target: { language: 2, minimumVersion: '6.2.3' } as const, diagnostics: input.diagnostics };
+  const common = { target: targetVersion(options), diagnostics: input.diagnostics };
   try {
+    if (options.capacity==='large' && options.targetProfile!=='extended')
+      input.fail('limit','Large capacity requires the extended VexTab 6.3.0 target and a large-capacity host.',[0,0]);
     const [bar, range] = read(input);
     const document = writeScore(Array.isArray(bar) ? bar : [bar], input, range);
     return { ...common, status: input.diagnostics.length ? 'partial' : 'exact', documents: [document] };
@@ -125,4 +133,10 @@ export function meter(beats: string, unit: string, bar: Measure, input: Input, r
     input.fail('unsupported', 'Unsupported meter.', range);
   bar.beats = Number(beats);
   bar.beatType = Number(unit);
+}
+
+/** Report the host features the caller opted into, including on conversion failure. */
+export function targetVersion(options:ImportOptions):ImportResult['target'] {
+  return {language:2,minimumVersion:options.targetProfile==='extended'?'6.3.0':'6.2.3',
+    ...(options.capacity==='large' && {capacity:'large' as const})};
 }

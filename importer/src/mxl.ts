@@ -1,8 +1,8 @@
 // Read the two selected ZIP members with the platform inflater and explicit archive budgets.
 import { importMusicXML } from './musicxml.js';
-import { Input, sourceLimit } from './score.js';
-import { readTree, sourceText } from './xml.js';
-import type { ImportOptions, ImportResult } from './types.js';
+import { Input, targetVersion } from './score.js';
+import { readTree, sourceText, xmlLimit } from './xml.js';
+import type { MusicXMLOptions, ImportResult } from './types.js';
 
 interface Member {
   offset: number;
@@ -17,6 +17,7 @@ const decoder = new TextDecoder('utf-8', { fatal: true });
 
 /** Internal failures describe archive structure independently of any XML member location. */
 class ArchiveError extends Error {}
+class ArchiveLimit extends ArchiveError {}
 function check(condition: unknown, message: string): asserts condition {
   if (!condition) throw new ArchiveError(message);
 }
@@ -73,14 +74,16 @@ function directory(data: Uint8Array, view: DataView) {
   return { members: result, start };
 }
 
-/** PKZIP's standard CRC-32 checks that stored and inflated bytes match the declared member. */
+/** A 1 KiB lookup table keeps CRC-32 verification linear in expanded source bytes. */
+const crcTable = Uint32Array.from({length:256},(_,i)=>{
+  let crc=i;
+  for (let bit=0;bit<8;bit++) crc=(crc>>>1)^(crc&1?0xedb88320:0);
+  return crc;
+});
 function crc32(bytes: Uint8Array) {
-  let crc = 0xffffffff;
-  for (const byte of bytes) {
-    crc ^= byte;
-    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
-  }
-  return (crc ^ 0xffffffff) >>> 0;
+  let crc=0xffffffff;
+  for (let i=0;i<bytes.length;i++) crc=(crc>>>8)^crcTable[(crc^bytes[i])&255];
+  return (crc^0xffffffff)>>>0;
 }
 
 /** Enforce actual output size as deflate chunks arrive, including when the header understates it. */
@@ -92,7 +95,8 @@ async function extract(
   limit: number,
 ) {
   const entry = index.members.get(name);
-  check(entry && entry.size <= limit, 'Missing or oversized ' + name + '.');
+  check(entry,'Missing MXL member '+name+'.');
+  if (entry.size>limit) throw new ArchiveLimit(name+' declares '+entry.size+' expanded bytes; limit is '+limit+'. Select a part or measure range, or opt into the extended profile for larger XML.');
   const { offset, method, flags, compressed, size } = entry;
   check(
     offset + 30 <= index.start &&
@@ -139,7 +143,7 @@ async function extract(
 }
 
 /** The first declared rootfile designates the score, independently of ZIP member order. */
-export async function importMXL(data: Uint8Array, options: ImportOptions = {}): Promise<ImportResult> {
+export async function importMXL(data: Uint8Array, options: MusicXMLOptions = {}): Promise<ImportResult> {
   const archive = options.filename ?? 'score.mxl';
   const input = new Input(archive + '!/' + directoryName, options);
   try {
@@ -155,7 +159,7 @@ export async function importMXL(data: Uint8Array, options: ImportOptions = {}): 
       'Missing MusicXML rootfile declaration.',
     );
     const name = root.attributes['full-path'];
-    return importMusicXML(await extract(data, view, index, name, sourceLimit), {
+    return importMusicXML(await extract(data, view, index, name, xmlLimit(options)), {
       ...options,
       filename: archive + '!/' + name,
     });
@@ -163,12 +167,12 @@ export async function importMXL(data: Uint8Array, options: ImportOptions = {}): 
     const diagnostics = input.diagnostics;
     if (!diagnostics.length)
       diagnostics.push({
-        code: 'syntax',
+        code: error instanceof ArchiveLimit ? 'limit' : 'syntax',
         severity: 'error',
         file: archive,
         range: [0, 0],
         message: error instanceof Error ? error.message : 'Invalid MXL archive.',
       });
-    return { status: 'failed', documents: [], diagnostics, target: { language: 2, minimumVersion: '6.2.3' } };
+    return { status: 'failed', documents: [], diagnostics, target: targetVersion(options) };
   }
 }
