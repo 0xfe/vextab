@@ -6,11 +6,12 @@ import { fileURLToPath } from 'node:url';
 import { cpus } from 'node:os';
 
 const joplin = process.argv.includes('--joplin');
+const expressive = joplin || process.argv.includes('--expressive');
 const entry = joplin ? 'lilypond' : 'mxl';
 const method = joplin ? 'importLilyPond' : 'importMXL';
 const file = new URL(joplin ? '../211/fixtures/joplin-first.ly' : 'fixtures/haydn.mxl', import.meta.url);
 const options = joplin ? {targetProfile:'expressive', mode:'partial'} :
-  {targetProfile:'extended', capacity:'large', mode:'partial', selection:{firstMeasure:129,lastMeasure:237}};
+  {targetProfile:expressive ? 'expressive' : 'extended', capacity:'large', mode:'partial', selection:{firstMeasure:129,lastMeasure:237}};
 
 /** Time conversion and public reparse separately. File I/O is outside the measurement. */
 if (process.argv.includes('--sample')) {
@@ -39,7 +40,7 @@ if (process.argv.includes('--sample')) {
     });
   }
   const node = Array.from({length:count}, () =>
-    JSON.parse(execFileSync(process.execPath, [import.meta.filename,'--sample', ...(joplin ? ['--joplin'] : [])], {encoding:'utf8'})));
+    JSON.parse(execFileSync(process.execPath, [import.meta.filename,'--sample', ...process.argv.slice(2)], {encoding:'utf8'})));
   const {chromium} = await import('playwright-core');
   const browser = await chromium.launch(process.env.CHROME_BIN ? {executablePath:process.env.CHROME_BIN} : {channel:'chrome'});
   try {
@@ -79,7 +80,7 @@ if (process.argv.includes('--sample')) {
       }
       return rows;
     }, {base64: readFileSync(file).toString('base64'), options, count, method, joplin});
-    console.log(JSON.stringify({entry, cpu:cpus()[0].model,node:process.version,chrome:browser.version(),samples:count,
+    console.log(JSON.stringify({entry, profile:options.targetProfile, cpu:cpus()[0].model,node:process.version,chrome:browser.version(),samples:count,
       nodeLoadConvertReparseMs:report(node).slice(0,3), nodePeakRssGrowthMiB:report(node)[3], workerLoadConvertMs:report(workers)}, null, 2));
   } finally { await browser.close(); }
 }
