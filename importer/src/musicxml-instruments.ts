@@ -133,6 +133,13 @@ export function drumHead(node: Element, unpitched: Element, state: InstrumentSta
 /** Validate physical assignments after applying the active transposition. Never guess missing strings or tuning. */
 export function checkPositions(e: Event, state: InstrumentState, input: Input) {
   const inst = state.staffs[e.staff - 1];
+  if (
+    e.expression?.ornament &&
+    (!e.pitch || inst?.kind === 'drums' || (inst?.kind === 'guitar' && inst.view === 'tab'))
+  ) {
+    input.omit('The ornament needs a pitched notation anchor.', e.range);
+    delete e.expression.ornament;
+  }
   if (!e.pitch) return;
   if (state.tab.has(e.staff) && inst?.kind !== 'guitar')
     input.fail('unsupported', 'TAB staff is missing its open-string tuning.', e.range);
@@ -143,10 +150,11 @@ export function checkPositions(e: Event, state: InstrumentState, input: Input) {
     if (inst?.kind === 'drums' && !head.drum)
       input.fail('unsupported', 'Mixed pitched and unpitched attacks on one percussion staff.', range);
     if (inst?.kind !== 'guitar') {
-      if (head.string !== undefined || head.fret !== undefined || head.bend !== undefined)
+      if (head.fret !== undefined || head.bend !== undefined)
         input.fail('unsupported', 'Fretted position needs the source open-string tuning.', range);
       continue;
     }
+    if (head.fret === undefined && head.bend === undefined && inst.view === 'notation') continue;
     if (head.string === undefined || typeof head.fret !== 'number')
       input.fail('unsupported', 'Fretted note is missing its explicit string or fret.', range);
     const open = inst.tuning[head.string! - 1];

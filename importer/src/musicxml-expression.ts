@@ -67,7 +67,8 @@ export function expression(e: Event) {
 function headDetail(e: Event) {
   return (e.headDetails ??= [{}])[0];
 }
-function span(e: Event, point: SpanPoint) {
+export type SourceSpan = SpanPoint & { range?: TextRange };
+export function span(e: Event, point: SourceSpan) {
   (expression(e).spans ??= []).push(point);
 }
 const art = {
@@ -81,12 +82,13 @@ const ornaments = {
   'trill-mark': 'tr',
   turn: 'turn',
   'inverted-turn': 'turn_inverted',
-  mordent: 'mordent',
-  'inverted-mordent': 'mordent_inverted',
+  // MusicXML calls the sign with a vertical stroke a mordent. VexFlow uses the opposite name.
+  mordent: 'mordent_inverted',
+  'inverted-mordent': 'mordent',
 } as const;
 
 function articulation(node: Element, e: Event, input: Input) {
-  const kind = art[node.name as keyof typeof art];
+  const kind = Object.hasOwn(art, node.name) ? art[node.name as keyof typeof art] : undefined;
   if (!kind) return omitElement(node, input);
   const inverted = node.name === 'fermata' && node.attributes.type === 'inverted';
   if (node.text.trim() && node.text.trim() !== 'normal')
@@ -98,8 +100,7 @@ function articulation(node: Element, e: Event, input: Input) {
 function lyric(node: Element, e: Event, state: NotationState, input: Input) {
   attributesExcept(node, ['number'], input);
   childrenExcept(node, ['syllabic', 'elision', 'text', 'extend'], input);
-  const number = node.attributes.number;
-  const verse = number;
+  const verse = node.attributes.number;
   const words = node.children.filter((c) => c.name === 'text');
   const sy = node.children
     .filter((c) => c.name === 'syllabic')
@@ -137,9 +138,13 @@ function lyric(node: Element, e: Event, state: NotationState, input: Input) {
 }
 function technical(node: Element, detail: HeadDetail, info: HeadInfo, input: Input) {
   const name = node.name;
-  if (name === 'string' || name === 'fret')
+  if (name === 'string' || name === 'fret') {
+    if (detail[name] !== undefined)
+      input.fail('unsupported', 'Ambiguous repeated ' + name + ' on one head.', node.range);
+    attributesExcept(node, name === 'string' ? ['placement'] : [], input);
     detail[name] = numberIn(node.text.trim(), name === 'string' ? 1 : 0, name === 'string' ? 8 : 99, node, input);
-  else if (name === 'fingering') {
+    if (name === 'string') detail.stringSide = side(node, input);
+  } else if (name === 'fingering') {
     const value = node.text.trim();
     if (!/^[0-5Tpimac]$/.test(value) || detail.finger) return omitElement(node, input);
     attributesExcept(node, ['placement'], input);
@@ -180,7 +185,13 @@ export function noteMarks(node: Element, e: Event, state: NotationState, input: 
         omitElement(mark, input);
         continue;
       }
-      span(e, { kind: 'slur', id: mark.attributes.number ?? '1', edge, side: side(mark, input) });
+      span(e, {
+        kind: 'slur',
+        id: mark.attributes.number ?? '1',
+        edge,
+        side: side(mark, input),
+        range: mark.range,
+      });
     } else if (mark.name === 'technical') {
       for (const child of mark.children) technical(child, detail, info, input);
     } else if (mark.name === 'slide') technical(mark, detail, info, input);
@@ -189,7 +200,9 @@ export function noteMarks(node: Element, e: Event, state: NotationState, input: 
     } else if (mark.name === 'fermata') articulation(mark, e, input);
     else if (mark.name === 'ornaments') {
       for (const child of mark.children) {
-        const kind = ornaments[child.name as keyof typeof ornaments];
+        const kind = Object.hasOwn(ornaments, child.name)
+          ? ornaments[child.name as keyof typeof ornaments]
+          : undefined;
         if (!kind || expression(e).ornament) {
           omitElement(child, input);
           continue;
@@ -209,7 +222,8 @@ export function noteMarks(node: Element, e: Event, state: NotationState, input: 
         omitElement(child, input);
         continue;
       }
-      if (value !== 'continue') span(e, { kind: 'beam', id: '1', edge: value === 'begin' ? 'start' : 'stop' });
+      if (value !== 'continue')
+        span(e, { kind: 'beam', id: '1', edge: value === 'begin' ? 'start' : 'stop', range: child.range });
     }
     if (child.name === 'accidental') {
       const sign = ['flat-flat', 'flat', 'natural', 'sharp', 'double-sharp'][(e.pitch?.alter ?? 0) + 2];
@@ -262,8 +276,12 @@ export function graceNote(
     input.fail('unsupported', 'Mixed styling or individually timed attacks in a grace group.', grace.range);
   if (chord) {
     if (!group.pitches.length) input.fail('syntax', 'Grace chord member without a first head.', node.range);
+    if (group.pitches.at(-1)!.length >= 16) input.fail('limit', 'Grace chord exceeds 16 heads.', node.range);
     group.pitches.at(-1)!.push(p);
-  } else group.pitches.push([p]);
+  } else {
+    if (group.pitches.length >= 16) input.fail('limit', 'Grace group exceeds 16 attacks.', node.range);
+    group.pitches.push([p]);
+  }
   for (const c of node.children)
     if (!['grace', 'chord', 'pitch', 'voice', 'staff'].includes(c.name))
       input.omit('Omitted grace-note ' + c.name + '.', c.range);
@@ -271,6 +289,8 @@ export function graceNote(
 function attachGrace(e: Event | undefined, g: GraceGroup, input: Input) {
   if (!e?.pitch || e.grace)
     return input.fail('unsupported', 'Grace group needs a single pitched principal.', g.range);
+  if (e.headDetails?.some((h) => h.drum))
+    input.fail('unsupported', 'A percussion hit cannot anchor pitched grace notes.', g.range);
   e.grace = g.pitches;
   Object.assign(expression(e), { graceSide: g.side, graceSlashed: g.slashed, graceSteal: g.steal });
 }
@@ -303,25 +323,37 @@ export function appendHead(first: Event, head: Event, state: NotationState, inpu
       input.omit('Attached a chord-member slur to the chord attack.', head.range);
   }
 }
-/** Resolve ties by written head and physical string, and guitar gestures by their numbered start and end. */
-function resolveVoice(
-  events: { event: Event; at: Time; bar: Measure }[],
-  voice: string,
-  state: NotationState,
-  input: Input,
-) {
+interface VoiceEvent {
+  event: Event;
+  at: Time;
+  bar: Measure;
+}
+function context(input: Input, bar: Measure, voice: string) {
+  input.context = { part: bar.part, measure: bar.label, voice };
+}
+/** Match ties by written pitch and string across changes of chord order. Resolve technical spans on that string. */
+function resolveHeads(events: VoiceEvent[], voice: string, state: NotationState, input: Input) {
   const ties = new Map<string, { id: string; until: Time; range: TextRange }>();
   const gestures = new Map<string, { index: number; detail: HeadDetail; range: TextRange }>();
-  const extensions = new Map<string, { syllable: Syllable; index: number; range: TextRange; implicit: boolean }>();
-  const hyphens = new Map<string, { syllable: Syllable; range: TextRange }>();
-  const spans = new Map<string, { point: SpanPoint; range: TextRange }>();
-  let pedalDown: TextRange | undefined;
   for (const [index, { event, at, bar }] of events.entries()) {
-    input.context = { part: bar.part, measure: bar.label, voice };
+    context(input, bar, voice);
     for (const [i, detail] of (event.headDetails ?? []).entries()) {
       const p = (event.pitches ?? [event.pitch])[i],
         info = state.heads.get(detail)!;
       if (!p) continue;
+      const share = event.expression?.graceSteal;
+      if (detail.releaseAfter && share && event.expression?.graceSide === 'before') {
+        const borrowed = new Time(
+          event.elapsed.numerator * share.numerator,
+          event.elapsed.denominator * share.denominator,
+        );
+        if (detail.releaseAfter.compare(borrowed) <= 0)
+          input.fail(
+            'timing',
+            'Grace share exhausts the shorter chord head.',
+            event.headRanges?.[i] ?? event.range,
+          );
+      }
       const key = JSON.stringify([p.step, p.alter, p.octave, detail.string, detail.drum]);
       const range = event.headRanges?.[i] ?? event.range;
       if (info.stop) {
@@ -347,6 +379,7 @@ function resolveVoice(
           if (
             !prior ||
             prior.index !== index - 1 ||
+            events[prior.index].at.plus(events[prior.index].event.elapsed).compare(at) !== 0 ||
             prior.detail.string !== detail.string ||
             typeof a !== 'number' ||
             typeof b !== 'number' ||
@@ -357,34 +390,17 @@ function resolveVoice(
         } else input.omit('Unmatched or unsupported guitar gesture boundary.', mark.range);
       }
     }
-    for (const action of event.expression?.pedal ?? []) {
-      if (action === 'down') {
-        if (pedalDown) input.fail('unsupported', 'Sustain pedal pressed twice in one voice.', event.range);
-        pedalDown = event.range;
-      } else {
-        if (!pedalDown)
-          input.fail('unsupported', 'Pedal up lacks an earlier pedal down in this voice.', event.range);
-        pedalDown = undefined;
-      }
-    }
-    // Pair using the source number; allocate a target-safe identity unique to this specific span.
-    for (const point of event.expression?.spans ?? []) {
-      const key = (point.kind === 'diminuendo' ? 'crescendo' : point.kind) + '/' + point.id;
-      if (point.edge === 'start') {
-        if (spans.has(key))
-          input.fail('unsupported', 'Overlapping starts for one numbered ' + point.kind + '.', event.range);
-        point.id = 's' + event.range[0] + 'x' + (event.expression!.spans!.indexOf(point) + 1);
-        spans.set(key, { point, range: event.range });
-      } else {
-        const open = spans.get(key);
-        if (!open)
-          input.fail('unsupported', 'Unmatched ' + point.kind + ' endpoint in selected voice.', event.range);
-        point.id = open!.point.id;
-        point.kind = open!.point.kind;
-        if (point.niente) open!.point.niente = true;
-        spans.delete(key);
-      }
-    }
+  }
+  for (const tie of ties.values())
+    input.fail('unsupported', 'Head tie extends beyond the selected voice.', tie.range);
+  for (const item of gestures.values()) input.omit('Fretted gesture lacks a following destination.', item.range);
+}
+/** Extenders count events in their own lyric lane, including intervening untexted notes. */
+function resolveLyrics(events: VoiceEvent[], voice: string, state: NotationState, input: Input) {
+  const extensions = new Map<string, { syllable: Syllable; index: number; range: TextRange; implicit: boolean }>();
+  const hyphens = new Map<string, { syllable: Syllable; range: TextRange }>();
+  for (const [index, { event, bar }] of events.entries()) {
+    context(input, bar, voice);
     for (const syllable of event.expression?.lyrics ?? []) {
       const lane = syllable.verse ?? '';
       const prior = extensions.get(lane);
@@ -416,12 +432,6 @@ function resolveVoice(
       }
     }
   }
-  if (pedalDown) input.fail('unsupported', 'Open sustain pedal at the end of the selected voice.', pedalDown);
-  for (const tie of ties.values())
-    input.fail('unsupported', 'Head tie extends beyond the selected voice.', tie.range);
-  for (const item of gestures.values()) input.omit('Fretted gesture lacks a following destination.', item.range);
-  for (const item of spans.values())
-    input.fail('unsupported', 'Unclosed ' + item.point.kind + ' in selected voice.', item.range);
   for (const { syllable, range } of hyphens.values()) {
     input.omit('Lyric hyphen lacks a following syllable in this selection.', range);
     delete syllable.hyphen;
@@ -434,6 +444,76 @@ function resolveVoice(
     for (const l of event.expression?.lyrics ?? [])
       if (l.extend && (l.extend > 99 || l.hyphen))
         input.fail('unsupported', 'Unrepresentable lyric extender length or simultaneous hyphen.', event.range);
+}
+/** Drop both endpoints in partial mode if the target cannot express the complete span. */
+function dropSpan(point: SourceSpan, event: Event, reason: string, input: Input) {
+  input.omit(reason, point.range ?? event.range);
+  const list = event.expression!.spans!;
+  const i = list.indexOf(point);
+  if (i >= 0) list.splice(i, 1);
+}
+/** Source numbers distinguish overlapping spans. A beam joins adjacent short notes in one written bar. */
+function resolveSpans(events: VoiceEvent[], voice: string, input: Input) {
+  const spans = new Map<string, { point: SourceSpan; index: number }>();
+  let pedalDown: TextRange | undefined;
+  for (const [index, { event, bar }] of events.entries()) {
+    context(input, bar, voice);
+    for (const action of event.expression?.pedal ?? []) {
+      if (action === 'down') {
+        if (pedalDown) input.fail('unsupported', 'Sustain pedal pressed twice in one voice.', event.range);
+        pedalDown = event.range;
+      } else {
+        if (!pedalDown)
+          input.fail('unsupported', 'Pedal up lacks an earlier pedal down in this voice.', event.range);
+        pedalDown = undefined;
+      }
+    }
+
+    for (const [ordinal, point] of [...(event.expression?.spans ?? [])].entries()) {
+      const key = (point.kind === 'diminuendo' ? 'crescendo' : point.kind) + '/' + point.id;
+      const open = spans.get(key);
+      if (point.edge === 'start') {
+        if (open)
+          dropSpan(
+            open.point,
+            events[open.index].event,
+            'Omitted ' + point.kind + ' start without a matching stop.',
+            input,
+          );
+        point.id = 's' + event.range[0] + 'x' + ordinal;
+        spans.set(key, { point, index });
+      } else {
+        if (!open) {
+          dropSpan(point, event, 'Omitted unmatched ' + point.kind + ' endpoint in selected voice.', input);
+          continue;
+        }
+        spans.delete(key);
+        const invalid =
+          open.index === index ||
+          (point.kind === 'beam' &&
+            (events[open.index].bar !== bar ||
+              events.slice(open.index, index + 1).some(({ event }) => event.denominator < 8)));
+        if (invalid) {
+          dropSpan(
+            open.point,
+            events[open.index].event,
+            'Span needs distinct anchors; a beam needs short notes within one bar.',
+            input,
+          );
+          dropSpan(point, event, 'Omitted corresponding ' + point.kind + ' endpoint.', input);
+          continue;
+        }
+        point.id = open.point.id;
+        point.kind = open.point.kind;
+        if (point.niente) open.point.niente = true;
+      }
+    }
+  }
+  if (pedalDown) input.fail('unsupported', 'Open sustain pedal at the end of the selected voice.', pedalDown);
+  for (const { point, index } of spans.values()) {
+    context(input, events[index].bar, voice);
+    dropSpan(point, events[index].event, 'Omitted unclosed ' + point.kind + ' in selected voice.', input);
+  }
 }
 export function finishNotation(bars: Measure[], state: NotationState, input: Input) {
   finishGrace(state, input);
@@ -450,5 +530,9 @@ export function finishNotation(bars: Measure[], state: NotationState, input: Inp
     }
     staffs.set(bar.staff, start.plus(bar.extent));
   }
-  for (const { voice, events } of lanes.values()) resolveVoice(events, voice, state, input);
+  for (const { voice, events } of lanes.values()) {
+    resolveHeads(events, voice, state, input);
+    resolveLyrics(events, voice, state, input);
+    resolveSpans(events, voice, input);
+  }
 }

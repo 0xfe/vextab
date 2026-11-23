@@ -3,7 +3,7 @@ import type { Expression } from './expression.js';
 import type { Event, Input, Measure } from './score.js';
 import { Time } from './time.js';
 import { one, scalar, type Element } from './xml.js';
-import { attributesExcept, expression, numberIn, omitElement } from './musicxml-expression.js';
+import { attributesExcept, expression, numberIn, omitElement, span } from './musicxml-expression.js';
 
 interface Anchor {
   node: Element;
@@ -49,7 +49,10 @@ function chordPitch(node: Element, input: Input) {
   return step + (alter < 0 ? 'b' : alter > 0 ? '#' : '');
 }
 function frame(node: Element, e: Event, input: Input) {
-  const count = numberIn(scalar(node, 'frame-strings', input), 4, 8, node, input);
+  const count = Number(scalar(node, 'frame-strings', input));
+  if (!Number.isInteger(count) || count < 4 || count > 8)
+    return input.omit('Diagram requires four to eight strings.', node.range);
+  attributesExcept(node, [], input);
   const frets: (number | 'x')[] = Array(count).fill('x');
   const ends: { fret: number; string: number; type: string }[] = [];
   for (const c of node.children) {
@@ -73,11 +76,11 @@ function frame(node: Element, e: Event, input: Input) {
     Number(scalar(node, 'frame-frets', input, '4')) !== 4
   )
     return input.omit('Frame extent differs from the target four-fret diagram.', node.range);
-  if (
-    !e.headDetails?.every((h) => h.string !== undefined && h.fret === frets[count - h.string]) ||
-    frets.some((f, i) => f !== 'x' && !e.headDetails?.some((h) => h.string === count - i && h.fret === f))
-  )
-    return input.omit('Chord frame needs matching explicit played string and fret positions.', node.range);
+  if (frets.every((f) => f === 'x')) return input.omit('Empty chord diagram.', node.range);
+  const independent =
+    !e.headDetails?.length ||
+    !e.headDetails.every((h) => h.string !== undefined && h.fret === frets[count - h.string]) ||
+    frets.some((f, i) => f !== 'x' && !e.headDetails?.some((h) => h.string === count - i && h.fret === f));
   let barre: [number, number, number] | undefined;
   if (ends.length) {
     const [lo, hi] = [...ends].sort((a, b) => b.string - a.string);
@@ -90,7 +93,7 @@ function frame(node: Element, e: Event, input: Input) {
       return input.omit('Unsupported chord-frame barre endpoints.', node.range);
     barre = [lo.fret, lo.string, hi.string];
   }
-  expression(e).frame = { frets, barre };
+  expression(e).frame = { frets, barre, independent };
 }
 /** Read mark positions in divisions at the moment the source direction was encountered. */
 export function addDirection(node: Element, at: Time, divisions: number, pending: Directions, input: Input) {
@@ -111,12 +114,31 @@ export function addDirection(node: Element, at: Time, divisions: number, pending
       kind = one(node, 'kind', input, true),
       bass = one(node, 'bass', input, true);
     if (!root || !kind) return input.omit('Harmony needs a single explicit root and chord kind.', node.range);
-    const quality = kind.attributes.text ?? qualities[kind.text.trim()];
+    const label = kind.attributes.text;
+    let quality = label ?? (Object.hasOwn(qualities, kind.text.trim()) ? qualities[kind.text.trim()] : undefined);
+    attributesExcept(kind, ['text'], input);
+    for (const degree of node.children.filter((c) => c.name === 'degree')) {
+      const value = scalar(degree, 'degree-value', input),
+        alter = scalar(degree, 'degree-alter', input),
+        type = scalar(degree, 'degree-type', input);
+      if (
+        quality === undefined ||
+        !/^([1-9]|1[0-3])$/.test(value) ||
+        !['-1', '0', '1'].includes(alter) ||
+        !['add', 'alter', 'subtract'].includes(type)
+      ) {
+        omitElement(degree, input);
+        continue;
+      }
+      const sign = +alter < 0 ? 'b' : +alter > 0 ? '#' : '',
+        action = type === 'subtract' ? 'no' : type === 'add' ? 'add' : '';
+      quality += '(' + action + sign + value + ')';
+    }
     if (quality === undefined) return input.omit('Unsupported harmony kind ' + kind.text.trim() + '.', kind.range);
     const harmony = { root: chordPitch(root, input), quality, bass: bass && chordPitch(bass, input) };
     const diagram = one(node, 'frame', input, true);
     for (const c of node.children)
-      if (!['root', 'kind', 'bass', 'frame', 'offset', 'staff'].includes(c.name)) omitElement(c, input);
+      if (!['root', 'kind', 'bass', 'frame', 'offset', 'staff', 'degree'].includes(c.name)) omitElement(c, input);
     queue(node, (e) => {
       if (expression(e).harmony) return input.omit('Multiple harmony labels at one attack.', node.range);
       expression(e).harmony = harmony;
@@ -131,7 +153,18 @@ export function addDirection(node: Element, at: Time, divisions: number, pending
       continue;
     }
     for (const mark of type.children) {
-      if (mark.name === 'dynamics') {
+      if (mark.name === 'words') {
+        attributesExcept(mark, [], input);
+        if (!mark.text.trim() || mark.children.length) {
+          omitElement(mark, input);
+          continue;
+        }
+        queue(mark, (e) => {
+          if (expression(e).label !== undefined)
+            return input.omit('Multiple direction texts at one attack.', mark.range);
+          expression(e).label = mark.text;
+        });
+      } else if (mark.name === 'dynamics') {
         attributesExcept(mark, [], input);
         for (const dynamic of mark.children) {
           if (!['ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff'].includes(dynamic.name)) {
@@ -151,7 +184,8 @@ export function addDirection(node: Element, at: Time, divisions: number, pending
           continue;
         }
         queue(mark, (e) =>
-          (expression(e).spans ??= []).push({
+          span(e, {
+            range: mark.range,
             kind: type === 'diminuendo' ? 'diminuendo' : 'crescendo',
             id: mark.attributes.number ?? '1',
             edge: type === 'stop' ? 'stop' : 'start',

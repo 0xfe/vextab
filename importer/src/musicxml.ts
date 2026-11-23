@@ -830,8 +830,18 @@ function readPart(
   const partBars: Measure[] = [];
   for (let i = 0; i < records.length; i++) partBars.push(...measure(records[i], state, i, input));
 
-  if (input.options.targetProfile === 'expressive') finishNotation(partBars, state.notation, input);
-  else validateTies(partBars, input);
+  if (input.options.targetProfile === 'expressive') {
+    for (const bar of partBars) {
+      const instrument = state.instruments.staffs[bar.staff - 1];
+      if (instrument && !bar.instrument) {
+        if ([...bar.voices.values()].some((events) => events.some((e) => e.pitch)))
+          input.fail('unsupported', 'Instrument kind changes after the first pitched attack.', bar.range ?? range);
+        // A part may begin with several bars of rest before its first percussion hit declares its display map.
+        bar.instrument = instrument;
+      }
+    }
+    finishNotation(partBars, state.notation, input);
+  } else validateTies(partBars, input);
   // An unpaired first backward repeat in MusicXML starts at the beginning of the work.
   for (const staff of new Set(partBars.map((bar) => bar.staff))) {
     const staffBars = partBars.filter((bar) => bar.staff === staff);
