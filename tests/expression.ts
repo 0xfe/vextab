@@ -17,6 +17,52 @@ function host() {
 }
 
 QUnit.module('Expressive notation and performance', () => {
+  QUnit.test('a harmony diagram has its own strings on a melody note or rest', assert => {
+    const spec = '[harmony C "m7", diagram (x 3 1 3 1 3) barre=1/4..2]';
+    const score = parseScore('meter 2/4 staff { E4' + spec + ' rest' + spec + ' | }');
+    const target = host();
+    const view = renderConductor(target, score);
+    const page = renderScorePart(host(), score, 'notation').publication.pages[0].svg;
+    for (const root of [target, page]) {
+      const diagrams = [...root.querySelectorAll('.vf-fret-diagram')];
+      assert.equal(diagrams.length, 2);
+      for (const diagram of diagrams) {
+        assert.equal(diagram.getAttribute('aria-label'), 'Chord frame, low to high: x, 3, 1, 3, 1, 3, barre at fret 1');
+        assert.ok(diagram.querySelectorAll('path').length >= 12, 'grid, frets and barre are drawn');
+      }
+    }
+    assert.deepEqual(scorePerformance(view.score, 60).events.flatMap(e => e.notes.map(n => n.pitch)), [64]);
+    assert.throws(() => renderConductor(host(), parseScore('meter 1/4 staff { E4' + spec.replace('diagram', 'frame') + ' | }')), /Frame disagrees/);
+  });
+
+  QUnit.test('each expanded phrase owns its partial tie, slur and hairpin across a tempo change', assert => {
+    const score = parseScore('play { tempo 60 tempo 120 at 1 + 1/8 } '
+      + 'pattern start { (C4[tieStart t] E4[sustain 3/16])[slurStart s] } '
+      + 'pattern stop { (C4[tieEnd t, sustain 1/8] F4)[crescendoStart h] } '
+      + 'pattern pair { use start use stop E4[slurEnd s] G4[hairpinEnd h] | } '
+      + 'staff { times 2 { use pair } }');
+    const view = renderConductor(host(), score);
+    assert.equal(new Set(view.score.ties.map(tie => tie.id)).size, 2);
+    const spans = view.composition.sheet.getContinuousLayout().fragments;
+    for (const kind of ['tie','slur','crescendo']) assert.equal(spans.filter(s => s.kind === kind).length, 2, kind);
+    const notes = scorePerformance(view.score, 60).events.flatMap(e => e.notes.map(n => [e.time, n.pitch, n.duration]));
+    assert.deepEqual(notes.filter(n => n[1] === 60 || n[1] === 65), [[0,60,1], [.75,65,.5], [2.25,60,.75], [2.75,65,.5]]);
+    assert.deepEqual(notes[1], [0, 64, .625], 'the short head traverses both tempo segments');
+    assert.throws(() => parseScore('staff { :8 beam { C4[beamStart b] D4 E4[beamEnd b] } F4 :h G4 | }'), /only one beam/);
+  });
+
+  QUnit.test('grace borrows score time and preserves early releases in chord order', assert => {
+    function notes(source: string) {
+      const view = renderConductor(host(), parseScore(source));
+      return scorePerformance(view.score, 60).events.flatMap(e => e.notes.map(n => [e.time, n.pitch, n.duration]));
+    }
+    const input = 'meter 1/4 staff { :q (C4[sustain 1/16] E4)[grace after steal=1/4 (B4)] | }';
+    assert.deepEqual(notes(input), [[0,60,.25], [0,64,.75], [.75,71,.25]]);
+    assert.throws(() => parseScore(input.replace('after', 'before')), /consume the entire sounding head/);
+    assert.deepEqual(notes('play { tempo 60 tempo 120 at 1 + 1/8 } meter 1/4 staff { :q C4[grace before steal=1/2 (B4)] | }'),
+      [[0,71,.5], [.5,60,.25]]);
+  });
+
   QUnit.test('imported crossing endpoints, unequal chord releases and partial ties', assert => {
     const score = parseScore('staff { (C4[tieStart c] E4[sustain 1/8])[slurStart a above] '
       + '(G4 C4[tieEnd c])[crescendoStart b niente] E4[slurEnd a] F4[hairpinEnd b, dynamic f] | }');
