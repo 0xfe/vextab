@@ -305,10 +305,12 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
     writer.text += '}\n';
   }
   if (extended) {
-    const seen=new Set<NonNullable<Measure['group']>>();
+    const seen=new Set<string>();
     for (const bar of bars) {
-      if (!bar.group || seen.has(bar.group)) continue;
-      seen.add(bar.group);
+      if (!bar.group) continue;
+      const key=JSON.stringify([bar.group.symbol,bar.group.parts]);
+      if (seen.has(key)) continue;
+      seen.add(key);
       const members=new Set(staves.filter(staff=>bar.group!.parts.includes(staff.part)).map(staff=>staff.target.split('/')[0]));
       if (members.size>1) writer.text+='group '+bar.group.symbol+' ('+[...members].join(' ')+')\n';
     }

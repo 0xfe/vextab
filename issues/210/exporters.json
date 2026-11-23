@@ -1,0 +1,50 @@
+[
+  {
+    "file": "testChangeTranspose.xml",
+    "url": "https://raw.githubusercontent.com/musescore/MuseScore/ac9d3bcd3df7a19d16d7ef505db9e2b54235c022/src/importexport/musicxml/tests/data/testChangeTranspose.xml",
+    "credit": "Leon Vinken; MuseScore regression suite; fetched at test time",
+    "exporter": "MuseScore 0.7.0",
+    "version": "4.0",
+    "sha256": "879cd9d54495ece9d3b9808757411dcd55c1ce78acb8ba448fe05c3f41ca4865"
+  },
+  {
+    "file": "testTuplets1.xml",
+    "url": "https://raw.githubusercontent.com/musescore/MuseScore/ac9d3bcd3df7a19d16d7ef505db9e2b54235c022/src/importexport/musicxml/tests/data/testTuplets1.xml",
+    "credit": "Leon Vinken; MuseScore regression suite; fetched at test time",
+    "exporter": "MuseScore 0.7.0",
+    "version": "4.0",
+    "sha256": "cef57f9b25402c2148fcd5bc507277b7c6040d3376608f5112b3d7cf0762697e"
+  },
+  {
+    "file": "testIncompleteTuplet.xml",
+    "url": "https://raw.githubusercontent.com/musescore/MuseScore/ac9d3bcd3df7a19d16d7ef505db9e2b54235c022/src/importexport/musicxml/tests/data/testIncompleteTuplet.xml",
+    "credit": "Leon Vinken; MuseScore regression suite; fetched at test time",
+    "exporter": "MuseScore 0.7.0",
+    "version": "4.0",
+    "sha256": "d5c60f9d87f32fb5d761a98613944652d8ea31c314cb09b8de4d62465fd416e1"
+  },
+  {
+    "file": "testLyricsVoice2a.xml",
+    "url": "https://raw.githubusercontent.com/musescore/MuseScore/ac9d3bcd3df7a19d16d7ef505db9e2b54235c022/src/importexport/musicxml/tests/data/testLyricsVoice2a.xml",
+    "credit": "Leon Vinken; MuseScore regression suite; fetched at test time",
+    "exporter": "MuseScore 0.7.0",
+    "version": "4.0",
+    "sha256": "e5df8c3f6c4d8085d0ec5efb68d3008722f6a98f4ea89d4b9c29862acf9fd9bd"
+  },
+  {
+    "file": "testTablature1.xml",
+    "url": "https://raw.githubusercontent.com/musescore/MuseScore/ac9d3bcd3df7a19d16d7ef505db9e2b54235c022/src/importexport/musicxml/tests/data/testTablature1.xml",
+    "credit": "Leon Vinken; MuseScore regression suite; fetched at test time",
+    "exporter": "MuseScore 0.7.0",
+    "version": "4.0",
+    "sha256": "976fb7d88389f6d7df9044a0cf8bda02a52f90ba64bf28939335835e48c7960a"
+  },
+  {
+    "file": "prayer_of_a_tired_child.musicxml",
+    "url": "https://raw.githubusercontent.com/cuthbertLab/music21/0ea1e00570b76048b8332da50f2f90ef1fbed906/music21/corpus/beach/prayer_of_a_tired_child.musicxml",
+    "credit": "Amy Beach; Michael Scott Cuthbert engraving, 2017, CC BY-SA according to source",
+    "exporter": "Finale v25 for Mac",
+    "version": "3.1",
+    "sha256": "fed47b8946dbe79dbd1e0f529b41c3a377695a03003d3350ec50f622e6e18c60"
+  }
+]
