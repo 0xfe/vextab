@@ -5,13 +5,16 @@ import processor from 'spessasynth_lib/dist/spessasynth_processor.min.js?guide-c
 import samples from './florestan-subset.sf2';
 
 /** Bundling the worklet and bank also lets a downloaded guide play from disk. */
-export async function loadInstrument(audio: AudioContext) {
+export async function loadInstrument(audio: AudioContext, lifetime: AbortSignal) {
+  lifetime.throwIfAborted();
   if (!audio.audioWorklet) throw new Error('Playback needs HTTPS or localhost.');
   // A data URL also resolves in an AudioWorklet on a file: page with an opaque origin.
   await audio.audioWorklet.addModule('data:text/javascript;charset=utf-8,' + encodeURIComponent(processor));
+  lifetime.throwIfAborted();
   const synth = new WorkletSynthesizer(audio);
+  lifetime.addEventListener('abort', () => synth.destroy(), { once: true });
   synth.connect(audio.destination);
-  await synth.soundBankManager.addSoundBank(new Uint8Array(samples).buffer, 'Florestan');
-  await synth.isReady;
+  // Both promises can reject if navigation destroys a synth that is still loading.
+  await Promise.all([synth.isReady, synth.soundBankManager.addSoundBank(new Uint8Array(samples).buffer, 'Florestan')]);
   return createSpessaSynthPlayback(synth);
 }

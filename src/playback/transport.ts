@@ -69,6 +69,10 @@ export class PlaybackTransport {
   play(plugin: PlaybackPlugin, program: number, music: Performance, started: (elapsed: () => number) => void, leadIn = 0): Promise<void> {
     this.stop();
     const request = this.request = new AbortController();
+    // A document in the back/forward cache retains timers, controls and pending instrument loads.
+    // End this run on navigation so returning to the score starts at the first note on a fresh clock.
+    // Capture runs before the page owner disconnects its shared synthesizer.
+    globalThis.addEventListener?.('pagehide', () => this.stop(), { capture: true, signal: request.signal });
     return new Promise((resolve, reject) => {
       request.signal.addEventListener('abort', () => resolve(), { once: true });
       const fail = (error: unknown) => {

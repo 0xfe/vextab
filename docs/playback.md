@@ -46,6 +46,8 @@ async function mountScore() {
 
 Use a plain host element for manual mounting. The adapter resumes the context on Play and waits for the synth's readiness. Reserve the supplied MIDI channels for VexTab. Straight notes share channels. A bent string or an overlapping unison needs a separate channel. The default pool uses the 15 melodic channels of the first MIDI port. Stop releases only notes owned by the session. Dispose the returned embed when removing it and close the audio context when the host has finished using it.
 
+Navigating away stops playback. The guide also closes its audio context on `pagehide` because browsers can restore a page from the back/forward cache with an audio clock that runs slowly. When you return and press Play, the guide reconnects the SoundFont to a fresh context. If your application supplies a synthesizer, its owner can follow the same lifecycle when releasing and reopening the audio output.
+
 The default large panel includes Play, tempo and **Auto-scroll**. Auto-scroll starts on and keeps the active stave or system visible, including inside a scrolling embed. Select the three horizontal lines to turn it off. Select the three downward chevrons to resume. It follows repeats and uses immediate scrolling when the reader prefers reduced motion.
 
 The optional `controlSize auto` uses two small round buttons for short examples. A score that reaches 80% of the viewport height or overflows its viewport or scroll container gets a single translucent green panel showing Play and the current tempo. Resizing the window can switch styles. Force either with `play { controlSize mini }` or `play { controlSize large }`, JavaScript `size`, or `data-playback-size` on the embed.
@@ -97,7 +99,7 @@ const playback: PlaybackPlugin = {
 - `program` is a General MIDI program from 0 to 127. `pitch` is a MIDI note number with middle C at 60. Velocity runs from 1 to 127.
 - VexTab dispatches `playNote` at the attack. The instrument schedules the release after `duration` seconds. Optional bend points specify a time in seconds from that attack and a linear pitch offset in semitones.
 - A session may expose a `currentTime` getter in seconds to use its audio clock for onsets and the cursor. Otherwise VexTab uses the browser's monotonic clock.
-- Honour the abort signal during asynchronous preparation. Stop, redraw and disposal invalidate pending playback. An already-open session receives `stop()` on cancellation, error or completion.
+- Honour the abort signal during asynchronous preparation. Stop, redraw, disposal and navigation away from the page invalidate pending playback. An already-open session receives `stop()` on cancellation, error or completion.
 - `player.play()` resolves on completion or Stop and rejects on instrument errors. UI controls also show errors beside the score.
 
 Existing applications that construct `new Player(artist)` and provide a MIDI.js global retain their legacy soundfont path. Passing a plugin selects it explicitly. [SpessaSynth documentation](https://spessasus.github.io/spessasynth_lib/)

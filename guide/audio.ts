@@ -2,27 +2,43 @@
 import type { DivOptions } from '../src/div';
 import type { PlaybackPlugin } from '../src/playback/transport';
 
-let audio: AudioContext;
-let instrument: Promise<PlaybackPlugin>;
+/** One visit shares the context, worklet and sample bank across all scores. */
+interface GuideInstrument {
+  audio: AudioContext;
+  ready: Promise<PlaybackPlugin>;
+  dispose(): void;
+}
+
+let instrument: GuideInstrument | undefined;
 
 // The public-domain subset has a piano at GM 2 and a nylon-string guitar at 24.
 const presets = new Set([2, 10, 12, 19, 21, 24, 38, 40, 45, 55, 61, 75, 87, 90, 97, 109, 116]);
 
-/** Resume during the click, including on repeat visits after the browser suspends audio. */
+/** A restored page needs a new audio device clock, even when the old context reports running. */
+function openInstrument(): GuideInstrument {
+  if (instrument && instrument.audio.state !== 'closed') return instrument;
+  instrument?.dispose();
+  const audio = new AudioContext();
+  const lifetime = new AbortController();
+  function dispose() {
+    if (instrument?.audio === audio) instrument = undefined;
+    // Destroy the old worklet before closing its port, including a bank load still in flight.
+    lifetime.abort();
+    if (audio.state !== 'closed') void audio.close();
+  }
+  window.addEventListener('pagehide', dispose, { signal: lifetime.signal });
+  const ready = import(/* webpackChunkName: "guide-instrument" */ './audio/instrument')
+    .then(module => module.loadInstrument(audio, lifetime.signal))
+    .catch(error => { dispose(); throw error; });
+  instrument = { audio, ready, dispose };
+  return instrument;
+}
+
+/** Resume during the Play gesture. The next visit opens its own graph on demand. */
 const playback: PlaybackPlugin = {
   async open(program, signal) {
-    if (!audio || audio.state === 'closed') audio = new AudioContext();
-    const resumed = audio.resume();
-    instrument ??= import(/* webpackChunkName: "guide-instrument" */ './audio/instrument')
-      .then(module => module.loadInstrument(audio))
-      .catch(async error => {
-        const failed = audio;
-        audio = undefined;
-        instrument = undefined;
-        await failed.close();
-        throw error;
-      });
-    const [, plugin] = await Promise.all([resumed, instrument]);
+    const { audio, ready } = openInstrument();
+    const [, plugin] = await Promise.all([audio.resume(), ready]);
     signal.throwIfAborted();
     // The subset stores its acoustic piano at GM 2. The bowed strings share the violin sample. Other missing presets use guitar.
     const preset = program === 0 ? 2 : program >= 40 && program <= 43 ? 40 : program;

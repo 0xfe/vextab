@@ -102,6 +102,23 @@ export async function testGuideAudio(browser, dist) {
     await button.click();
     await page.locator('.chapter-example .vextab-stop').click();
     await button.waitFor();
+    // Exercise a second run on the same graph: history navigation must retire active and idle audio.
+    for (const playing of [true, false]) {
+      await button.click();
+      await page.waitForFunction(audible);
+      if (!playing) await page.locator('.chapter-example .vextab-stop').click();
+      await page.evaluate(() => {
+        window.previousAudio = window.guideMeter.context;
+        window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }));
+      });
+      await button.waitFor();
+      await page.waitForFunction(() => window.previousAudio.state === 'closed');
+      await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+      await button.click();
+      await page.waitForFunction(() => window.guideMeter.context !== window.previousAudio);
+      await page.waitForFunction(audible);
+      await page.locator('.chapter-example .vextab-stop').click();
+    }
     await page.goto(url + '#lesson/guitar-duet');
     await page.evaluate(() => document.fonts.ready);
     const part = page.locator('#part svg:has(metadata)');
