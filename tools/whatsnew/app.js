@@ -50,6 +50,17 @@
     else if (dialog.open) dialog.close();
   }
   document.addEventListener('click', (event) => {
+    const releaseLink = event.target.closest('[data-commits]');
+    if (releaseLink) {
+      $('commit-query').value = '';
+      $('commit-release').value = releaseLink.dataset.commits;
+      $('commit-release').dispatchEvent(new Event('change'));
+    }
+    // A release bookmark must still lead somewhere after a search has hidden its chapter.
+    if (event.target.closest('a[href^="#release-"]') && $('search').value) {
+      $('search').value = '';
+      $('search').dispatchEvent(new Event('input'));
+    }
     const a = event.target.closest('[data-plate]');
     if (!a) return;
     event.preventDefault();
@@ -151,13 +162,13 @@
     },
     (item) => [item.name, item.change, item.before, item.after].join(' ')
   );
-  paged(
+  const resetCommits = paged(
     data.commits,
     'commit-query',
     'commit-list',
     'commit-more',
     (c) => {
-      const row = detail(c.subject, c.date + ' · ' + c.hash.slice(0, 8));
+      const row = detail(c.subject, c.release + ' · ' + c.date + ' · ' + c.hash.slice(0, 8));
       row.append(
         make('p', c.body || (c.merge ? 'This merge includes ' : 'This commit touches ') + c.paths.length + ' paths.')
       );
@@ -171,8 +182,10 @@
       row.append(paths);
       return row;
     },
-    (c) => [c.hash, c.date, c.subject, c.body, ...c.paths].join(' ')
+    (c) => [c.hash, c.release, c.date, c.subject, c.body, ...c.paths].join(' '),
+    (c) => !$('commit-release').value || c.release === $('commit-release').value
   );
+  $('commit-release').onchange = resetCommits;
   const menu = $('menu');
   if (matchMedia('(max-width:800px)').matches) menu.open = false;
   const nav = [...menu.querySelectorAll('a')];

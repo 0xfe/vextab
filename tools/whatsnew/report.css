@@ -288,6 +288,30 @@ select {
   font-size: 1rem;
   margin: 0;
 }
+.edition-meta {
+  align-items: baseline;
+  margin: 7px 0 16px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.release-change {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.release-change p {
+  max-width: 68ch;
+}
+.release-change .sample {
+  flex: 0 0 32%;
+  margin: 0;
+}
+.commit-filter {
+  display: block;
+  max-width: 15em;
+  margin-bottom: 1em;
+}
 .change p {
   font-size: 0.92rem;
   margin: 4px 0 6px;
@@ -467,6 +491,12 @@ dialog figcaption {
   }
 }
 @media (max-width: 520px) {
+  .release-change {
+    display: block;
+  }
+  .release-change .sample {
+    margin-top: 8px;
+  }
   .mast {
     gap: 8px;
   }

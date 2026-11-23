@@ -71,28 +71,58 @@ function chapters(d, section) {
     .join('');
 }
 
+/** Keep version bookmarks stable when a later release moves to the top of the page. */
+const editionId = (tag) => 'release-' + slug(tag);
+
+/** Link the musical example to the same full-size viewer used in the visual index. */
+function releaseSample(figures, id) {
+  if (!id) return '';
+  const sample = figures.find((entry) => entry.id === id);
+  if (!sample) throw new Error('Unknown release exhibit: ' + id);
+  return `<a class="sample open-score" href="#plate-${esc(id)}" data-plate="${esc(id)}">
+    <img loading="lazy" src="${esc(sample.right)}" alt="${esc(sample.name)}"><span>${esc(sample.name)} ↗</span></a>`;
+}
+
+/** Render dated release chapters as static HTML so their contents links also work offline. */
+function releaseChapter(d, edition) {
+  const { tag, date, url, count, highlights, note } = edition;
+  const heading = tag === 'Unreleased' ? tag : tag === d.base ? 'Baseline · ' + tag : 'New in ' + tag;
+  const source = tag === 'Unreleased' ? 'View revision' : 'Release record';
+  const rows = highlights.map(({ title, body, hash, figure }) => {
+    return `<div class="change release-change" data-search="${esc([tag, title, body].join(' '))}"><div><h4>${esc(title)}</h4>
+      ${body ? '<p>' + esc(body) + '</p>' : ''}<div class="refs">${anchor(repo + '/commit/' + hash, 'Commit ' + hash.slice(0, 7))}</div></div>
+      ${releaseSample(d.figures, figure)}</div>`;
+  });
+  if (note) rows.push('<p class="change" data-search="' + esc(tag + ' ' + note) + '">' + esc(note) + '</p>');
+  return `<article class="chapter edition" id="${editionId(tag)}"><h3>${esc(heading)}</h3>
+    <div class="refs edition-meta"><time datetime="${esc(date)}">${esc(date)}</time>${anchor(url, source)}
+    ${edition.compare ? anchor(edition.compare, 'Compare changes') : ''}
+    ${count ? '<a href="#commit-history" data-commits="' + esc(tag) + '">' + count + (count === 1 ? ' commit' : ' commits') + '</a>' : ''}</div>${rows.join('')}</article>`;
+}
+
 export function renderReport(d) {
-  const sections = groups(d.topics, 0),
-    count = d.topics.reduce((n, row) => n + row[2].length, 0);
-  const nav = ['Quality metrics', ...sections, 'Visual index', 'API inventory', 'Documentation', 'Commit history', 'Method'];
+  const sections = groups(d.topics, 0);
+  const nav = ['Release notes', ...sections, 'Quality metrics', 'Visual index', 'API inventory', 'Documentation', 'Commit history', 'Method'];
   const lead = d.figures.find((f) => f.id === 'drop-d-turnaround');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="An illustrated, searchable account of VexTab changes since 4.0.0."><title>VexTab · What's New?</title><link rel="stylesheet" href="assets/report.css"><script src="assets/app.js" defer></script></head><body>
 <a class="skip" href="#main">Skip to report</a><header class="mast"><a href="#main" class="wordmark">VexTab</a><span>Engineering reports</span><a class="download" href="changes.json" download>Download data ↓</a></header>
 <div class="shell"><aside><nav aria-label="Report sections"><details id="menu" open><summary>Contents</summary>${nav.map((t) => anchor('#' + slug(t), t.replace(' and accessibility', ' & accessibility'))).join('')}</details></nav></aside>
-<main id="main"><div class="hero"><div class="dateline">Change report <span> / </span> ${esc(d.date)}</div><h1>What's New?</h1><p>Explore features and fixes since VexTab 4.0.0, with side-by-side scores and links to the changes behind them.</p><div class="range">${anchor(repo + '/releases/tag/4.0.0', '4.0.0')} <span>→</span> ${anchor(repo + '/commit/' + d.head, d.head.slice(0, 8))}</div></div>
+<main id="main"><div class="hero"><div class="dateline">Change report <span> / </span> ${esc(d.date)}</div><h1>What's New?</h1><p>See what changed in each VexTab release since 4.0.0. Open a score to inspect the notation, or follow a release into its commit history.</p><div class="range">${anchor(repo + '/releases/tag/4.0.0', '4.0.0')} <span>→</span> ${anchor(repo + '/commit/' + d.head, d.head.slice(0, 8))}</div></div>
 <a class="cover open-score" data-plate="${lead.id}" href="#plate-${lead.id}"><img src="${lead.right}" alt="Opening of the Drop D Turnaround guitar study"><span>${esc(lead.name)} <b>Explore the score ↗</b></span></a>
 <div class="stats">${[
     [d.commits.length, 'commits'],
-    [count, 'change summaries'],
+    [d.editions.filter((entry) => entry.tag !== 'Unreleased').length, 'versions'],
     [d.figures.length, 'visual exhibits'],
     [d.api.length, 'declaration changes'],
   ]
     .map(([n, label]) => '<div><strong>' + n + '</strong><span>' + label + '</span></div>')
     .join('')}</div>
-<section class="release"><h2>Release trail</h2><p>The range includes the tagged releases below and subsequent changes through the selected commit. The commit history gives the exact endpoint for each change.</p><div class="tags">${d.releases.map((r) => '<a href="' + repo + '/releases/tag/' + r.tag + '"><strong>' + r.tag + '</strong><small>' + r.date + '</small></a>').join('')}</div></section>
-<section id="quality-metrics"><h2>Quality metrics</h2><p>Each snapshot ran its own QUnit suite. Coverage counts executable lines in the compiled library. A changing suite and library also change the denominator.</p><div class="tags">${d.quality.map(q => '<a href="../reports/' + q.hash + '/index.html"><strong>' + esc(q.hash === d.before ? '4.0.0' : q.hash.slice(0, 8)) + '</strong><small>' + q.tests + ' tests passed · ' + q.lines.hit + '/' + q.lines.total + ' lines covered · ' + (q.gzip / 1024).toFixed(1) + ' KiB gzip</small></a>').join('')}</div></section>
+<section id="release-notes"><h2>Release notes</h2><p>Choose a version to jump to its highlights, or search by version, instrument or feature. The score images show how the examples render at the revision named in the viewer.</p>
+<nav class="tags" aria-label="Jump to release">${d.editions.map((r) => '<a href="#' + editionId(r.tag) + '"><strong>' + esc(r.tag) + '</strong><small>' + esc(r.date) + '</small></a>').join('')}</nav>
 <label class="search">Find a change <input id="search" type="search" placeholder="Search features, fixes, tools…" autocomplete="off"></label><p id="matches" role="status"></p>
+${d.editions.map((edition) => releaseChapter(d, edition)).join('')}</section>
 ${sections.map((section) => '<section class="category" id="' + slug(section) + '"><h2>' + esc(section) + '</h2>' + chapters(d, section) + '</section>').join('')}
+<section id="quality-metrics"><h2>Quality metrics</h2><p>Each snapshot ran its own QUnit suite. Coverage counts executable lines in the compiled library. A changing suite and library also change the denominator.</p><div class="tags">${d.quality.map(q => '<a href="../reports/' + q.hash + '/index.html"><strong>' + esc(q.hash === d.before ? '4.0.0' : q.hash.slice(0, 8)) + '</strong><small>' + q.tests + ' tests passed · ' + q.lines.hit + '/' + q.lines.total + ' lines covered · ' + (q.gzip / 1024).toFixed(1) + ' KiB gzip</small></a>').join('')}</div></section>
 <section id="visual-index"><h2>Visual index</h2><p>Open an exhibit at full size. Paired images identify both versions. Each new example has its own current rendering.</p><div class="filters"><label>Find an exhibit<input id="figure-query" type="search" placeholder="Title or notation family"></label><label>Evidence<select id="figure-type"><option>All exhibits</option>${groups(
     d.figures,
     'status'
@@ -102,7 +132,7 @@ ${sections.map((section) => '<section class="category" id="' + slug(section) + '
 <p id="figure-count" role="status"></p><div class="tiles" id="figures"></div><button class="more" id="more" type="button">Show more exhibits</button></section>
 <section id="api-inventory"><h2>API inventory</h2><p>Public TypeScript declarations compared by exported name and member. Expand a row for the exact signatures. An added overload or a spelling change can appear here alongside a behavioral change.</p><label class="search">Find a declaration<input type="search" id="api-query" placeholder="Class, member or signature"></label><div id="api-list"></div><button class="more" id="api-more">Show more declarations</button></section>
 <section id="documentation"><h2>Documentation</h2><p>Open a guide from the revision that contains it. The inventory includes added, modified, moved and removed Markdown files and HTML guide or tutorial pages between the two endpoints.</p><details><summary>${d.docs.length} documentation files</summary><ul class="doclist">${d.docs.map((r) => '<li><code>' + esc(r.status) + '</code>' + anchor(repo + '/blob/' + (r.status === 'D' ? d.before : d.head) + '/' + (r.newPath || r.path), r.newPath ? r.path + ' → ' + r.newPath : r.path) + '</li>').join('')}</ul></details></section>
-<section id="commit-history"><h2>Commit history</h2><p>Every commit reachable from the endpoint after the 4.0.0 tag, including merges, release preparation, dependency updates and follow-up corrections. Expand for the author’s description and changed paths.</p><label class="search">Find a commit<input type="search" id="commit-query" placeholder="Subject, SHA, date or file"></label><div id="commit-list"></div><button class="more" id="commit-more">Show more commits</button></section>
+<section id="commit-history"><h2>Commit history</h2><p>Every commit reachable from the endpoint after the 4.0.0 tag, including merges, release preparation, dependency updates and follow-up corrections. Expand for the author’s description and changed paths.</p><label class="search">Find a commit<input type="search" id="commit-query" placeholder="Subject, SHA, date or file"></label><label class="commit-filter">Release<select id="commit-release"><option value="">All releases</option>${d.editions.filter((e) => e.count).map((e) => '<option>' + esc(e.tag) + '</option>').join('')}</select></label><div id="commit-list"></div><button class="more" id="commit-more">Show more commits</button></section>
 <section id="method"><h2>Method and limits</h2><p>Both browser bundles were rebuilt from committed source with each revision’s locked dependencies. The paired examples use identical VexTab input, SVG rendering, width and browser settings. Current-only studies use the score layout API. Large studies show their opening. The render inventory records the input, revision and image checksum for every capture. Browser: Chromium ${esc(d.version)}.</p>
 <p>The declaration comparison uses the browser entry and public members. Both endpoints use the same TypeScript declaration emitter because the baseline did not ship declarations. Signature changes can reflect type inference. The commit and documentation inventories cover the entire Git range. The illustrated chapters are a curated selection.</p>
 <div class="refs">${anchor(repo + '/compare/4.0.0...' + d.head, 'Full source comparison')}${anchor('render-inventory.json', 'Complete render inventory')}${anchor('changes.json', 'Report data')}</div></section>

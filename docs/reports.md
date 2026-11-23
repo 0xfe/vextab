@@ -36,9 +36,11 @@ Each measurement runs in a detached local clone. It uses the revision’s source
 
 ## What's New?
 
-The report compares **4.0.0** with the committed HEAD. Search the chapters, commits or public browser API signatures. Open a score for side-by-side engravings. Shared examples use the same VexTab text and fixed SVG renderer. Current studies use the flow renderer and the score sources from the endpoint’s guide.
+The report opens with the newest release. Choose a version to read its highlights, see a score or browse the commits it shipped. Changes after the latest tag appear under **Unreleased** until the next tag includes them. The 4.0.0 chapter establishes the baseline, and the npm records cover two early patches without release tags. The topic chapters, visual index and API inventory cover the whole range from 4.0.0 to the committed HEAD.
 
-`changes.json` contains chapters, the release trail, documentation changes, public declaration changes, commit history and quality summaries. `render-inventory.json` records the exact score, revision, viewport crop and PNG checksum for each capture. The baseline did not ship public declarations, so both endpoints use the same pinned TypeScript declaration emitter. Edit `tools/whatsnew/catalog.mjs` to curate chapters and exhibits.
+`changes.json` includes release chapters in `editions` and records the first release containing each commit in `commits[].release`. To add a highlight, write its summary in `tools/whatsnew/releases.mjs` beside the commit that introduced it. The build uses Git ancestry to put the entry in its release, even when the work came from a feature branch. New releases without editorial highlights show commit subjects.
+
+Edit `tools/whatsnew/catalog.mjs` to curate the cumulative topic chapters and score exhibits. Shared examples use identical VexTab text and renderer settings at both endpoints. Repertoire studies show the current engraving. `render-inventory.json` records the source, revision, crop and PNG checksum for every image. The API inventory uses the same TypeScript declaration emitter for both endpoints because the baseline did not ship declarations.
 
 ## Publish
 

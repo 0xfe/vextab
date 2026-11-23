@@ -37,6 +37,30 @@ try {
   await page.goto(pathToFileURL(join(directory, 'index.html')).href);
   assert.equal(await page.title(), "VexTab · What's New?");
   assert.equal(await page.locator('h1').innerText(), "What's New?");
+  const releaseLinks = page.getByRole('navigation', { name: 'Jump to release' }).getByRole('link');
+  assert.deepEqual(await releaseLinks.locator('strong').allTextContents(), data.editions.map((edition) => edition.tag));
+  assert.equal(data.editions.reduce((n, edition) => n + edition.count, 0), data.commits.length);
+  for (const edition of data.editions) {
+    const chapter = page.locator(await releaseLinks.filter({ hasText: edition.tag }).getAttribute('href'));
+    assert.ok(await chapter.locator('.change').count(), 'Empty release chapter: ' + edition.tag);
+    if (!edition.hash) continue; // The npm-only patch has no commits on the main ancestry path.
+    const reachable = new Set(git(root, 'rev-list', data.base + '..' + edition.hash).split('\n'));
+    for (const change of edition.highlights) assert.ok(reachable.has(change.hash), change.title);
+  }
+  await page.locator('#search').fill('6.2.0 chord');
+  assert.match(await page.locator('.edition:visible').innerText(), /Chord-melody guitar/);
+  await releaseLinks.filter({ hasText: '6.1.0' }).click();
+  assert.ok(page.url().endsWith('#release-6-1-0'));
+  await page.locator('#release-6-1-0 [data-commits]').click();
+  assert.equal(await page.locator('#commit-release').inputValue(), '6.1.0');
+  const summaries = await page.locator('#commit-list summary').allTextContents();
+  assert.equal(summaries.length, Math.min(24, data.editions.find((e) => e.tag === '6.1.0').count));
+  assert.ok(summaries.every((s) => s.includes('6.1.0')));
+  await page.locator('#commit-release').selectOption('');
+  await page.locator('#release-6-2-0 [data-plate="chopin-ballade-no3"]').click();
+  assert.equal(await page.locator('dialog[open] h2').innerText(), 'Ballade No. 3');
+  await page.keyboard.press('Escape');
+  await page.locator('dialog').waitFor({ state: 'hidden' });
   await page.locator('#search').fill('guitar');
   assert.ok(await page.locator('.change:visible').count());
   await page.locator('#api-query').fill('parseScore');
@@ -51,6 +75,7 @@ try {
   await page.keyboard.press('Escape');
   await page.locator('dialog').waitFor({ state: 'hidden' });
   await page.setViewportSize({ width: 375, height: 800 });
+  await page.locator('#search').fill('');
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile report overflows');
   await page.locator('#quality-metrics a').last().click();
   assert.equal(await page.locator('#coverage').count(), 1);

@@ -12,6 +12,10 @@ export const studies = [
   ['drop-d-turnaround', 'Drop D Turnaround'],
   ['slow-river', 'Slow River'],
   ['guitar-duet', 'Guitar duet'],
+  ['joplin-maple-leaf', 'Maple Leaf Rag'],
+  ['chopin-ballade-no3', 'Ballade No. 3'],
+  ['all-of-me', 'All of Me'],
+  ['flamenco-tab', 'Soleá'],
 ];
 // Each section below supplies its own first editable example from the committed guide.
 export const features = ['piano', 'drum-kit', 'score-colours', 'pre-bends', 'fingerings'];
