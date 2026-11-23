@@ -134,6 +134,8 @@ The M2 alpha tarball measured 50,640 bytes packed and 149,015 bytes unpacked. Gz
 
 [M3 qualification](../issues/210/README.md) extends the comparison to all 109 bars of Haydn’s second movement and adds direct regression inputs from MuseScore and LilyPond, plus a Finale export. The VexTab 6.3.0 host profile carries timed staff settings, transposition and grouping through the editor, conductor, print and playback. Both the importer and the host explicitly select large capacity.
 
+[M4 qualification](../issues/211/README.md) compares the imported Joplin first strain against the published MIDI and the opening of the Sor study against native LilyPond. MusicXML controls also open, print and play individual chord-head ties, overlapping expression, cross-staff beams, vocal underlay, kit hits and a fretted chord. The expressive target requires VexTab 6.4.0.
+
 | Milestone | Deliverable and dependencies | Exit test |
 | --- | --- | --- |
 | **M0 · Establish the contract** | Pin target grammar, both source profiles and reference tools. Add the corpus manifest and a matrix of features versus parse, engraving, print and playback. Collect histograms of document size, source features and required compiler limits. Prototype XML streaming, ZIP extraction and LilyPond tokenization on common and large cases. Measure dependency graphs, memory and latency. | Record reproducible baselines and numeric budgets per entry and runner. Show the Haydn size failure under the default profile. Decide bounded whole-score capacity and caller-selected extraction behavior before promising complete works. |

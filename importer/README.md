@@ -48,3 +48,17 @@ The repertoire checks cover the complete 109-bar Haydn second movement and selec
 ## Build and verify
 
 From the repository root run `npm ci --prefix importer` and `npm test --prefix importer`. Run `npm pack` inside `importer/` to build the installable tarball. The package contains the typed format entries and bundled-code notices. Once the root development build is available, `node issues/207/consumer.mjs` installs that tarball into a fresh project and checks the public exports in Node and Chrome workers.
+
+## Expressive imports
+
+Pass `targetProfile: 'expressive'` for a VexTab 6.4.0 host. This profile includes timed staff changes and adds individual chord-head ties and releases, numbered slurs and hairpins, explicit beams, vocal syllables, harmony, grace groups and instrument-specific notation. A melody can carry lyrics and a chord symbol at the same onset. A drum head carries a kit identity and a MIDI key. A guitar head retains its physical string and fret as well as its written pitch.
+
+~~~js
+const result = importMusicXML(xml, { targetProfile: 'expressive', mode: 'partial' });
+if (result.status !== 'failed') {
+  const editableScore = result.documents[0].text;
+  // Present result.diagnostics alongside the score when the status is partial.
+}
+~~~
+
+For a LilyPond guitar edition on a conventional staff, request `guitar: true` to produce paired notation and TAB. Source-assigned strings take precedence. The reader chooses playable positions for the remaining notes. [Repertoire, test cases and known limits](../issues/211/README.md)
