@@ -3,6 +3,52 @@ import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+/** Incoming carousel slides cross a clipped stage while their layout sizes stay constant. */
+async function checkSlidingSheet(page) {
+  await page.evaluate(() => {
+    document.body.innerHTML = '<div id="stage"><div id="slide"><div id="score"></div></div></div>';
+    document.querySelector('#stage').style.cssText = 'width:480px;overflow:hidden;margin:0 auto';
+    document.querySelector('#slide').style.cssText = 'width:440px;margin:0 auto';
+    const host = document.querySelector('#score');
+    host.dataset.width = '440';
+    host.textContent = 'play { controls always } staff { :w C4 | }';
+    window.embedded = new window.VexTabDiv.Div(host);
+    window.scrollTo(0, 0);
+  });
+  // The panel belongs in the middle of the intersection between the slide and the stage.
+  const centered = () => {
+    const stage = document.querySelector('#stage').getBoundingClientRect();
+    const sheet = document.querySelector('.vextab-sheet').getBoundingClientRect();
+    const panel = document.querySelector('.vextab-control-panel').getBoundingClientRect();
+    const left = Math.max(sheet.left, stage.left), right = Math.min(sheet.right, stage.right);
+    return Math.abs(panel.left + panel.right - left - right) < 3;
+  };
+  // Revisit the same sheet from both directions, including an interrupted slide.
+  for (const direction of [1, -1]) {
+    await page.evaluate(async direction => {
+      const slide = document.querySelector('#slide');
+      const animation = window.slideAnimation = slide.animate([
+        { transform: 'translateX(' + direction * 110 + '%)' }, { transform: 'translateX(0)' },
+      ], { duration: 300, easing: 'linear' });
+      await animation.ready;
+      // Hold a known clipped position so the assertion does not race the compositor.
+      animation.pause();
+      animation.currentTime = 170;
+    }, direction);
+    await page.waitForFunction(centered);
+    await page.evaluate(async direction => {
+      const animation = window.slideAnimation;
+      if (direction < 0) animation.cancel();
+      else {
+        animation.play();
+        await animation.finished;
+      }
+    }, direction);
+    await page.waitForFunction(centered);
+  }
+  await page.evaluate(() => window.embedded.dispose());
+}
+
 /** Both control styles follow the visible music and remain operable during scroll and resize. */
 export async function testSheetControls(browser, dist) {
   const page = await browser.newPage({ viewport: { width: 1024, height: 600 }, hasTouch: true });
@@ -102,6 +148,7 @@ export async function testSheetControls(browser, dist) {
     await page.getByRole('button', { name: 'Stop', exact: true }).click();
     await page.evaluate(() => window.embedded.dispose());
     assert.equal(await page.locator('.vextab-sheet-controls').count(), 0);
+    await checkSlidingSheet(page);
     // A toolbar and several small, differently placed controls can coexist on the same page.
     const results = await page.evaluate(() => {
       document.body.replaceChildren();

@@ -23,9 +23,16 @@ export function followVisibleSheet(sheet: HTMLElement, surface: Element, overlay
   const panel = controls.querySelector<HTMLElement>('.vextab-control-panel');
   const viewport = window.visualViewport;
   let frame = 0;
+  let lastBounds: DOMRect;
+  let visible = false;
   function place() {
     frame = 0;
     const rect = surface.getBoundingClientRect(), origin = overlay.getBoundingClientRect();
+    // Transforms move a carousel slide without resizing or scrolling it. Once its
+    // intersection changes, follow the surface through the last moving frame.
+    if (visible && (!lastBounds || rect.left !== lastBounds.left || rect.top !== lastBounds.top ||
+      rect.right !== lastBounds.right || rect.bottom !== lastBounds.bottom)) schedule();
+    lastBounds = rect;
     if (!origin.width || !origin.height) return;
     const sx = overlay.offsetWidth / origin.width, sy = overlay.offsetHeight / origin.height;
     const vx = viewport?.offsetLeft ?? 0, vy = viewport?.offsetTop ?? 0;
@@ -63,8 +70,11 @@ export function followVisibleSheet(sheet: HTMLElement, surface: Element, overlay
   function schedule() { if (!frame) frame = requestAnimationFrame(place); }
   // Keep scroll work proportional to visible sheets, including on long tutorial pages.
   let events: AbortController;
+  // Intermediate thresholds also wake a slide that resumes while still partially visible.
   const observe = new IntersectionObserver(entries => {
-    if (entries[entries.length - 1].isIntersecting) {
+    visible = entries[entries.length - 1].isIntersecting;
+    if (visible) {
+      lastBounds = undefined;
       if (!events) {
         events = new AbortController();
         const options = { signal: events.signal, passive: true };
@@ -79,7 +89,7 @@ export function followVisibleSheet(sheet: HTMLElement, surface: Element, overlay
       events = undefined;
       controls.style.inset = '0';
     }
-  });
+  }, { threshold: [0, 0.25, 0.5, 0.75, 1] });
   const sizes = new ResizeObserver(schedule);
   for (const target of [sheet, ...parents.map(p => p.element)]) sizes.observe(target);
   observe.observe(surface);
