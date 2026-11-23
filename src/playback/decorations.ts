@@ -32,12 +32,19 @@ export function decorateAttack(event: PlaybackEvent, attack: Attack, key: KeyMan
     const pitches = attack.grace.pitches.map(step => (Array.isArray(step) ? step : [step])
       .map(pitch => midiPitch(pitch) + shift).filter(p => p >= 0 && p <= 127)).filter(step => step.length);
     if (pitches.length) {
-      const duration = length * graceFraction;
       const before = attack.grace.side === 'before';
-      play(pitches, before ? start : start + principal.duration - duration, duration);
+      // An unmeasured group can borrow less when a chord member releases early.
+      const available = before && !attack.grace.steal ? Math.min(length, ...event.notes.map(note => note.duration)) : length;
+      const duration = available * graceFraction;
+      const graceOnset = before ? start : start + length - duration;
+      play(pitches, graceOnset, duration);
       length -= duration;
       if (before) start += duration;
-      for (const note of event.notes) note.duration -= duration;
+      for (const note of event.notes) {
+        // A shorter chord member may already have released before an after-grace begins.
+        if (before) note.duration = Math.max(0, note.duration - duration);
+        else note.duration -= Math.min(duration, Math.max(0, note.duration - (graceOnset - event.time)));
+      }
     }
   }
   if (attack.ornament) {
@@ -47,11 +54,11 @@ export function decorateAttack(event: PlaybackEvent, attack: Attack, key: KeyMan
     const patterns = { tr: [main, up, main, up], mordent: [main, up], mordent_inverted: [main, down],
       turn: [up, main, down], turn_inverted: [down, main, up] };
     const figure: number[] = patterns[attack.ornament];
-    const window = length / 2;
+    const window = Math.min(length, principal.duration) / 2;
     play(figure, start, window);
     // Other chord heads sustain beneath the ornament on its principal head.
     if (event.notes.length > 1) out.push({ ...event, time: start, duration: length, notes: event.notes.slice(1) });
-    principal.duration -= window;
+    principal.duration = Math.max(0, principal.duration - window);
     out.push({ ...event, time: start + window, duration: length - window, notes: [principal] });
   } else out.push({ ...event, time: start, duration: length });
   return out;

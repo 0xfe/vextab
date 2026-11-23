@@ -434,8 +434,15 @@ function prepareScreen(parsed: ParsedScore, view: Projection, composition: EasyS
       for (const voice of voicesFor(m, staff)) {
         if (staff === 'tab' && !voice.tabStems) continue;
         for (const group of voice.beamGroups ?? []) {
-          const notes = voice.events.slice(group.start, group.end + 1).map(e => composition.getNote(view.eventId(staff, e.id)));
-          factory.Beam({ notes: notes as StemmableNote[], options: { feathered: group.feather } });
+          const members = voice.events.slice(group.start, group.end + 1);
+          const notes = members.map(event => composition.getNote(view.eventId(staff, event.id)) as StemmableNote);
+          // A beam between the hands needs opposing stems. Determine the destination from
+          // the score because publication lays out fresh staves for every printed edition.
+          const hands = members.map(event => event.displayHand ?? voice.hand);
+          if (voice.hand && hands.some(hand => hand !== hands[0])) {
+            notes.forEach((note, index) => note.setStemDirection(hands[index] === 'right' ? -1 : 1));
+          }
+          factory.Beam({ notes, options: { feathered: group.feather } });
           for (const note of notes) for (const tuplet of note.getTupletStack()) beamedTuplets.add(tuplet);
         }
       }

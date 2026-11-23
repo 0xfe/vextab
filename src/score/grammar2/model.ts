@@ -14,8 +14,8 @@ export type ExpansionFrame = { range: TextRange } & (
   { pattern: string } | { iteration: number } | { tuplet: string }
 );
 
-/** A finger or a hammer belongs to one head. Accents belong to a whole attack. */
-export type HeadMark = { kind: 'tieStart' | 'tieEnd'; name: string; range: TextRange } | { kind: 'write'; pitch: string; range: TextRange } | { kind: 'sign'; code: string; position: 'above' | 'below'; range: TextRange } | { kind: 'bend'; semitones: number; rise: [number, number]; hold?: [number, number]; release?: [number, number]; range: TextRange } |
+/** Fingering, technique and sounding duration (whole notes) belong to an individual head. */
+export type HeadMark = { kind: 'sustain'; duration: string; range: TextRange } | { kind: 'tieStart' | 'tieEnd'; name: string; range: TextRange } | { kind: 'write'; pitch: string; range: TextRange } | { kind: 'sign'; code: string; position: 'above' | 'below'; range: TextRange } | { kind: 'bend'; semitones: number; rise: [number, number]; hold?: [number, number]; release?: [number, number]; range: TextRange } |
   { kind: 'slideIn' | 'slideOut'; side: 'above' | 'below'; range: TextRange } |
   { kind: 'prebend'; semitones: number; release: boolean; range: TextRange } |
 { kind: 'release'; hold: [number, number]; release: [number, number]; range: TextRange } |
@@ -29,16 +29,21 @@ export interface LaneStyle extends TextStyle { line?: number; align?: 'left' | '
 export interface TextLane { name: string; style: LaneStyle; voice: ScoreVoice }
 export type Dynamic = 'ppp' | 'pp' | 'p' | 'mp' | 'mf' | 'f' | 'ff' | 'fff';
 export type ExpressiveSpan = 'crescendo' | 'diminuendo' | 'continuousBeam' | 'feather' | 'tremolo';
-export type EventMark =
+/** Named endpoints let independent musical spans intersect on a voice's written timeline. */
+export interface SpanEndpoint {
+  kind: 'spanEndpoint'; span: 'slur' | 'beam' | 'hairpin'; name: string; edge: 'start' | 'end';
+  hairpin?: 'crescendo' | 'diminuendo'; side?: 'above' | 'below'; niente?: boolean; range: TextRange;
+}
+export type EventMark = SpanEndpoint |
   { kind: 'dynamic'; value: Dynamic; range: TextRange } |
   { kind: 'harmony'; root: string; quality: string; bass?: string; range: TextRange } |
   { kind: 'onStaff'; hand: 'upper' | 'lower'; range: TextRange } |
   { kind: 'sharedStem'; name: string; range: TextRange } |
-  { kind: 'grace'; side: 'before' | 'after'; pitches: (GracePitch | GracePitch[])[]; fingerings?: GraceFingering[]; slash?: boolean; range: TextRange } |
-  { kind: 'pedal'; action: 'down' | 'up'; range: TextRange } |
+  { kind: 'grace'; side: 'before' | 'after'; pitches: (GracePitch | GracePitch[])[]; fingerings?: GraceFingering[]; slash?: boolean; steal?: string; range: TextRange } |
+  { kind: 'pedal'; action: 'down' | 'up'; onset?: boolean; range: TextRange } |
   { kind: 'ossia'; duration: string; notes: { pitch: string; ornament?: string }[]; range: TextRange } |
   { kind: 'ornament'; value: string; range: TextRange } | { kind: 'slash'; range: TextRange } | { kind: 'line'; value: number; range: TextRange } | { kind: 'text'; text: string; glyph?: boolean; style?: LaneStyle; range: TextRange } | { kind: 'ink'; value: string; range: TextRange } |
-{ kind: 'frame'; frets: (number | 'x')[]; barre?: [number, number, number]; range: TextRange } |
+{ kind: 'frame' | 'diagram'; frets: (number | 'x')[]; barre?: [number, number, number]; range: TextRange } |
 { kind: 'label'; text: string; style: TextStyle; range: TextRange } |
 { kind: 'stroke' | 'brush' | 'roll' | 'rasgueado'; direction: 'up' | 'down'; range: TextRange } |
 { kind: 'tap' | 'vibrato'; wide: boolean; range: TextRange } | { kind: 'accent'; range: TextRange } |
@@ -84,11 +89,11 @@ export interface VoiceMeasure {
 }
 
 /** A written tuplet can contain another tuplet or cross a measure boundary. */
-export type VoiceSpan =
+export type VoiceSpan = { name?: string } & (
   | { kind: ExpressiveSpan; first: string; last: string; niente?: boolean; feather?: 'left' | 'right'; strokes?: number; range: TextRange }
   | { kind: 'tuplet'; ratio: string; first: string; last: string; range: TextRange }
   | { kind: 'palmMute' | 'slur' | 'beam'; side?: 'above' | 'below'; first: string; last: string; strings: number[]; range: TextRange } |
-  { kind: 'hammer' | 'pull' | 'slide'; from: HeadRef; to: HeadRef; range: TextRange };
+  { kind: 'hammer' | 'pull' | 'slide'; from: HeadRef; to: HeadRef; range: TextRange });
 
 /** Measure numbers in written order. Endings identify their inclusive bar ranges. */
 export interface WrittenRepeat { first: number; bodyEnd: number; endings: { first: number; last: number }[]; range: TextRange }

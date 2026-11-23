@@ -406,6 +406,7 @@ Read `result.diagnostics` for source ranges and `result.publication.pages` for s
 | `C4[verse one "ev" hyphen, verse two "I" elide "am"]` | Attach independent named underlays to one attack. A hyphen finds the next syllable of its verse. `extend=2` carries a word through two following events in the same voice, including across a bar. |
 | `C4[harmony C "m7" bass Bb]` | Specify root, quality and optional slash bass. Score transposition spells both pitches. |
 | `crescendo niente { :q C4[dynamic p] D4 E4 F4[dynamic f] }` | Draw a native hairpin. `niente` marks the closed end. Dynamics range from ppp through fff. Diminuendos use the same syntax. |
+| `E4[harmony C "m7", diagram (x 3 1 3 1 3) barre=1/4..2]` | Draw an independent low-to-high guitar grip for the chord above a melody note or rest. Only the written notes sound. A `frame` requires the chord’s actual frets and strings. |
 | `Ab3[onStaff lower]` and `C5[sharedStem opening]` | In a piano part, move a written note or rest to the named hand’s stave. A shared stem joins simultaneously marked upper and lower notes with the same name. The original hand retains playback and source ownership. |
 | `continuousBeam { :8 C5 D5 E5 F5 }` and `feather right { :16 C5 D5 E5 F5 }` | Carry a beam across bars or systems, or fan a single-bar group toward the specified end. A feathered beam preserves the authored durations. |
 | `tuplet 3:2 { :q C5 tuplet 3:2 { :8 D5 E5 F5 } :q G5 }` | Multiply each nested ratio on the voice clock. The example occupies one half note. |
@@ -420,6 +421,35 @@ Read `result.diagnostics` for source ranges and `result.publication.pages` for s
 | `C3[pedal down] E3 G3[pedal up]` | Depress the piano sustain pedal at the start of C3 and lift at the end of G3. Pair the marks in one voice. Both hands sustain. |
 | `slur below { C4 D4 E4 }` | Choose the side of a phrase slur. An unqualified slur uses the native placement. |
 | `map bell "Ride bell" line 4.5 head triangle stem up midi 53` | Declare a named hit inside a drums part. Use its ID as a note or chord head. Available shapes are normal, cross, circle-cross and triangle. |
+
+### Independent durations and named endpoints
+
+A chord shares its written note value. Use a head's `sustain` mark for a shorter
+sounding duration in whole notes. Use separate voices when the printed rhythms
+differ. Ties can join individual heads even when the chord order changes.
+
+```vextab
+staff {
+  :q (C4[tieStart c] E4[sustain 1/8])[slurStart phrase above]
+     (G4 C4[tieEnd c])[crescendoStart swell niente]
+     E4[slurEnd phrase] F4[hairpinEnd swell, dynamic f] |
+}
+```
+
+Here C4 sounds for two beats. E4 releases after half a beat. The slur
+ends on the third beat, and the crescendo reaches forte on the fourth.
+Use `diminuendoStart` for a falling hairpin. Slur, beam and hairpin names
+are local to a voice. `beamStart group` and `beamEnd group` join short
+events in one measure, including notes moved with `onStaff`. A named
+beam can start outside a tuplet and end inside it.
+
+Use `F4[grace before slashed steal=1/5 (D4 E4)]` to assign one fifth
+of F4's time to the grace group. `grace after` takes time at the end
+of its anchor. An explicit share follows the written tempo changes and overrides the performer's grace setting.
+A before-grace must leave sounding time for each head. Each expansion of a
+self-contained phrase owns its named ties and expressive spans.
+On a piano part, `pedal up onset` lifts the sustain pedal when the marked
+event starts. `pedal up` lifts it when that event finishes.
 
 ### Playing expression
 

@@ -121,6 +121,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       result.cautionary = true;
     }
     for (const mark of head.marks) {
+      if (mark.kind === 'sustain') result.sustain = mark.duration;
       if (mark.kind === 'prebend') result.prebend = { semitones: mark.semitones, release: mark.release };
       if (mark.kind === 'slideIn' || mark.kind === 'slideOut') result.openSlide = { edge: mark.kind === 'slideIn' ? 'in' : 'out', side: mark.side };
       if (mark.kind === 'write') {
@@ -162,7 +163,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     const positions = fretted ? steps.map(chord => chord.map(head => head.position!)) : undefined;
     if (positions?.some(chord => new Set(chord.map(head => head.str)).size !== chord.length))
       throw new ScoreError('measure', 'A grace chord may use each string once', locate(mark.range));
-    return { side: mark.side, slash: mark.slash, positions, fingerings: mark.fingerings,
+    return { side: mark.side, slash: mark.slash, ...(mark.steal && { steal: mark.steal }), positions, fingerings: mark.fingerings,
       pitches: steps.map((chord, i) => Array.isArray(mark.pitches[i]) ? chord.map(head => head.written) : chord[0].written) };
   }
 
@@ -250,33 +251,66 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         (heads[0].marks ??= []).push({ position: 'above' });
       }
     }
-    const diagram = event.marks.find(m => m.kind === 'frame');
-    if (diagram?.kind === 'frame') {
+    const diagram = event.marks.find(m => m.kind === 'frame' || m.kind === 'diagram');
+    if (diagram?.kind === 'frame' || diagram?.kind === 'diagram') {
       const delta = interval?.semitones ?? 0;
       const frets = diagram.frets.map(fret => fret === 'x' ? fret : fret + delta);
       const barre = diagram.barre;
       const detail = barre && barre[0] + delta !== 0 ? ' barre=' + (barre[0] + delta) + ':' + barre[1] + '-' + barre[2] : '';
       const range = locate(diagram.range);
-      result.frame = { range, spec: frame(frets.join(',') + detail, result, state, range) };
+      if (diagram.kind === 'diagram' && event.kind !== 'attack' && event.kind !== 'rest')
+        throw new ScoreError('measure', 'Anchor the chord diagram to a note or rest', range);
+      result.frame = { range, spec: frame(frets.join(',') + detail, result, state, range, diagram.kind) };
     }
     return result;
   }
 
-  type Endpoint = { event: Attack; index: number; bar: number; hand?: string; range: SourceRange };
-  const starts = new Map<string, Endpoint>(), ends = new Map<string, Endpoint>();
+  type Endpoint = { event: Attack; index: number; bar: number; hand?: string; range: SourceRange; scope: string; start: boolean };
+  const tieEndpoints = new Map<string, Endpoint[]>();
 
-  /** Labels connect nonadjacent heads by name even when the destination voice is written first. */
+  /** Two uses of a self-contained phrase each own its ties. Tuplets can start or end within a tie. */
+  function tieScope(event: ScoreEvent): string {
+    return event.trace.flatMap(frame => {
+      if ('pattern' in frame) return ['p' + frame.range[0]];
+      if ('iteration' in frame) return ['r' + frame.range[0] + ':' + frame.iteration];
+      return [];
+    }).join('/');
+  }
+
+  /** Named heads may be written in different voices and in either document order. */
+  function connectTie(name: string, points: Endpoint[], expanded: boolean) {
+    const start = points.find(point => point.start), end = points.find(point => !point.start);
+    const duplicate = points.find(point => point !== start && point !== end);
+    if (duplicate) throw new ScoreError('measure', 'Duplicate tie endpoint ' + name, duplicate.range);
+    if (!start || !end) throw new ScoreError('measure', 'Unpaired tie ' + name, (start ?? end).range);
+    const first = start.event.heads[start.index], last = end.event.heads[end.index];
+    const later = start.bar < end.bar || (start.bar === end.bar &&
+      new Fraction().parse(start.event.onset).lessThan(new Fraction().parse(end.event.onset)));
+    if (!later || first.sounding === null || first.written !== last.written || first.sounding !== last.sounding ||
+      first.position?.str !== last.position?.str || start.hand !== end.hand)
+      throw new ScoreError('measure', 'Named tie needs a later matching head on the same staff', end.range);
+    const id = 'named-tie-' + name + (expanded ? '-' + start.event.id : '');
+    projected.ties.push({ id, from: start.event.id, fromHead: start.index, to: end.event.id, toHead: end.index, range: end.range });
+  }
+
+  /** Preserve a single cross-scope pair. Repeated pairs must resolve within each individual expansion. */
   function connectNamedTies() {
-    for (const name of new Set([...starts.keys(), ...ends.keys()])) {
-      const start = starts.get(name), end = ends.get(name);
-      if (!start || !end) throw new ScoreError('measure', 'Unpaired tie ' + name, (start ?? end).range);
-      const first = start.event.heads[start.index], last = end.event.heads[end.index];
-      const later = start.bar < end.bar || (start.bar === end.bar &&
-        new Fraction().parse(start.event.onset).lessThan(new Fraction().parse(end.event.onset)));
-      if (!later || first.sounding === null || first.written !== last.written || first.sounding !== last.sounding ||
-        first.position?.str !== last.position?.str || start.hand !== end.hand)
-        throw new ScoreError('measure', 'Named tie needs a later matching head on the same staff', end.range);
-      projected.ties.push({ id: 'named-tie-' + name, from: start.event.id, fromHead: start.index, to: end.event.id, toHead: end.index, range: end.range });
+    for (const [name, points] of tieEndpoints) {
+      if (points.length <= 2) { connectTie(name, points, false); continue; }
+      const scopes = new Map<string, Endpoint[]>([['', []]]);
+      const parent = (scope: string) => scope.slice(0, Math.max(0, scope.lastIndexOf('/')));
+      for (const point of points) {
+        for (let scope = point.scope; !scopes.has(scope); scope = parent(scope)) scopes.set(scope, []);
+        scopes.get(point.scope).push(point);
+      }
+      // A start and end can live in separate subpatterns called by the same repeated phrase.
+      // A child with only one endpoint hands it to its containing expansion.
+      for (const scope of [...scopes.keys()].sort((a, b) => b.length - a.length)) {
+        const group = scopes.get(scope);
+        if (!group.length) continue;
+        if (group.length === 1 && scope) scopes.get(parent(scope)).push(group[0]);
+        else connectTie(name, group, true);
+      }
     }
   }
 
@@ -312,7 +346,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
           depressed = next;
         } else {
           if (!depressed) throw new ScoreError('measure', 'Pedal up needs an earlier pedal down in this voice', range);
-          projected.spans.push({ kind: 'pedal', from: depressed.id, to: next.id, id: 'pedal-' + depressed.id, range });
+          projected.spans.push({ kind: 'pedal', ...(mark.onset && { onset: true }), from: depressed.id, to: next.id, id: 'pedal-' + depressed.id, range });
           depressed = undefined;
         }
       }
@@ -320,9 +354,10 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       event.heads.forEach((head, i) => {
         for (const mark of head.marks) {
           if (mark.kind !== 'tieStart' && mark.kind !== 'tieEnd') continue;
-          const points = mark.kind === 'tieStart' ? starts : ends;
-          if (points.has(mark.name)) throw new ScoreError('measure', 'Duplicate tie endpoint ' + mark.name, locate(mark.range));
-          points.set(mark.name, { event: next, index: i, bar: event.bar, hand, range: locate(mark.range) });
+          const points = tieEndpoints.get(mark.name) ?? [];
+          if (!points.length) tieEndpoints.set(mark.name, points);
+          points.push({ event: next, index: i, bar: event.bar, hand, range: locate(mark.range),
+            scope: tieScope(event), start: mark.kind === 'tieStart' });
         }
         const gliss = next.heads[i].glissFrom;
         if (gliss !== undefined) {
@@ -440,7 +475,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       const range = locate(mark.range);
       if (mark.kind === 'continuousBeam' || mark.kind === 'crescendo' || mark.kind === 'diminuendo' || mark.kind === 'tremolo') {
         if (!state.notation) throw new ScoreError('measure', 'This expression span needs a notation staff', range);
-        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, niente: mark.niente, strokes: mark.strokes, range, id: mark.kind + '-' + mark.first });
+        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, niente: mark.niente, strokes: mark.strokes, range, id: mark.kind + '-' + mark.first + (mark.name ? '-' + mark.name : '') });
         if (mark.kind === 'tremolo' || mark.kind === 'continuousBeam') {
           for (const v of voices) for (const event of v.events) if (indices.get(event.id) >= indices.get(mark.first) && indices.get(event.id) <= indices.get(mark.last)) {
             if (mark.kind === 'tremolo') event.tremolo = mark.strokes;
@@ -450,7 +485,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       } else if (mark.kind === 'slur' || mark.kind === 'palmMute') {
         if (mark.kind === 'palmMute' && mark.strings.some(n => n > state.strings))
           throw new ScoreError('measure', 'Mute outside the instrument tuning', range);
-        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, side: mark.side, strings: mark.strings, range, id: mark.kind + '-' + mark.first });
+        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, side: mark.side, strings: mark.strings, range, id: mark.kind + '-' + mark.first + (mark.name ? '-' + mark.name : '') });
       } else if (mark.kind === 'beam' || mark.kind === 'feather') {
         const first = indices.get(mark.first), last = indices.get(mark.last);
         const bar = voice.measures[voice.events[first].bar - 1];

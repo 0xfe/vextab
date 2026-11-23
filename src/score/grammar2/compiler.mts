@@ -1,5 +1,6 @@
 // Compile finite phrases on a separate measure grid for each instrument.
 /// <reference lib="es2020.bigint" />
+import { resolveSpanEndpoints, validateBeam } from './span-endpoints.mts';
 import { duplicateMark } from './marks.mts';
 import { limits, readScore, type DiagnosticCode, type Fail, type Fraction, type Node, type TimedNode,
   type PartSyntax, type StaffSyntax, type VoiceSyntax } from './reader.mts';
@@ -116,6 +117,17 @@ export function compile(source: string, capacity?: ScoreCapacity): ScoreV2 {
         const duplicate = duplicateMark(head.marks);
         if (duplicate) fail('syntax', duplicate.reason, duplicate.range, trace);
         for (const mark of head.marks) {
+          if (mark.kind === 'sustain') {
+            const [n, d] = asFraction(mark.duration);
+            if (n * length[1] > length[0] * d)
+              fail('syntax', 'Head sustain exceeds this attack; write a separate voice or tie', mark.range, trace);
+            const grace = node.marks?.find(m => m.kind === 'grace');
+            if (grace?.kind === 'grace' && grace.steal && grace.side === 'before') {
+              const [a, b] = asFraction(grace.steal);
+              if (n * length[1] * b <= length[0] * d * a)
+                fail('syntax', 'Before-grace would consume the entire sounding head', grace.range, trace);
+            }
+          }
           if (['bend', 'prebend', 'slideIn', 'slideOut'].includes(mark.kind) && (!('fret' in head) || typeof head.fret !== 'number'))
             fail('instrument', 'This technique needs a pitched fret', mark.range, trace);
         }
@@ -212,9 +224,7 @@ export function compile(source: string, capacity?: ScoreCapacity): ScoreV2 {
             if (!members.length || (node.kind !== 'palmMute' && members.length < 2))
               fail('syntax', 'This span needs more notes', node.range, trace);
             if (node.kind === 'palmMute' && part.kind !== 'guitar') fail('instrument', 'Palm mute needs a guitar', node.range, trace);
-            if (node.kind === 'beam' && (members[0].bar !== members[members.length - 1].bar ||
-              members.some(e => Number(e.writtenDuration.split('/')[0]) * 4 >= Number(e.writtenDuration.split('/')[1]))))
-              fail('syntax', 'Beam short notes within one bar', node.range, trace);
+            if (node.kind === 'beam') validateBeam(events, start, events.length - 1, node.range, trace, fail);
             spans.push({ kind: node.kind, first: members[0].id, last: members[members.length - 1].id, side: node.side, strings: node.strings ?? [], range: node.range });
             break;
           }
@@ -262,6 +272,7 @@ export function compile(source: string, capacity?: ScoreCapacity): ScoreV2 {
       const last = events[events.length - 1];
       fail('bar-length', 'End the final measure with |', last.range, last.trace);
     }
+    resolveSpanEndpoints(result, fail);
     if (!measures.length) fail('bar-length', 'Expected at least one measure', voice.range);
     if (clock.voiceLength !== undefined && clock.voiceLength !== measures.length) fail('alignment', 'Every voice in a part must cover the same number of bars', voice.range);
     clock.voiceLength = measures.length;
