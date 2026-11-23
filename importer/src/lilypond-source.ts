@@ -18,7 +18,7 @@ interface Movement extends Expression { print: boolean; midi: boolean; midiSetti
 
 /** Tokenize once per virtual file. Strings and comments protect their internal delimiters. */
 function tokenize(source: string, input: Input): Token[] {
-  const words = /\s+|%\{[\s\S]*?%\}|%(?!\{)[^\r\n]*|"(?:\\.|[^"\\])*"|\\\\|\\[A-Za-z][A-Za-z-]*|\\.|<<|>>|-\.|->|--|__|[A-Za-z]+[',]*|\d+\/\d+|\d+|./guy;
+  const words = /\s+|%\{[\s\S]*?%\}|%(?!\{)[^\r\n]*|"(?:\\.|[^"\\])*"|\\\\|\\[A-Za-z][A-Za-z-]*|\\.|<<|>>|-\.|->|--|__|[\p{L}\p{M}]+[',]*|\d+\/\d+|\d+|./guy;
   const groups: Token[][] = [[]], openings: Token[] = [];
   const close: Record<string, string> = { '{': '}', '<<': '>>', '<': '>' };
   let count = 0;
@@ -59,6 +59,7 @@ export function expressionEnd(words: Token[], start: number, input: Input): numb
         i++;
         if (words[i]?.value === '=') i += 2;
         if (words[i]?.value === '\\with') i += 2;
+        if (words[i]?.value === '\\lyricsto') i+=2;
         break;
       case '\\relative':
         if (words[i] && !words[i].children && !words[i].value.startsWith('\\')) i++;
