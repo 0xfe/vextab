@@ -67,7 +67,7 @@ function hammerSource(head: Head, previous: ScoreEvent | undefined, kind: 'hamme
 export function compile(source: string, capacity?: ScoreCapacity): ScoreV2 {
   const budgets = capacityLimits(capacity);
   const fail: Fail = (code, reason, range, trace = []) => { throw new ScoreV2Error(code, reason, source, range, trace); };
-  const { tempoRanges, editions, patterns, parts, scoreMeters, pickup, pickupRange, playback, measureNumbers, layout, transpose: scoreTranspose } = readScore(source, fail, budgets);
+  const { groups, tempoRanges, editions, patterns, parts, scoreMeters, pickup, pickupRange, playback, measureNumbers, layout, transpose: scoreTranspose } = readScore(source, fail, budgets);
   const meterText = scoreMeters[1]?.value ?? '4/4';
   const firstLength = pickup && fractionText(rational(...pickup, fail, pickupRange, []));
   const quarter: Fraction = [BigInt(1), BigInt(4)];
@@ -306,6 +306,19 @@ export function compile(source: string, capacity?: ScoreCapacity): ScoreV2 {
     }
   }
 
+  /** Sort and validate attribute anchors against the actual measure spans, including pickups. */
+  function track<T extends import('./model.js').WrittenPosition>(entries: T[], spans: string[]) {
+    const scaled = (a: string, b: string) => {
+      const [an, ad] = asFraction(a), [bn, bd] = asFraction(b);
+      return Number(an * bd - bn * ad);
+    };
+    entries.sort((a, b) => a.bar - b.bar || scaled(a.at, b.at));
+    for (const e of entries) {
+      if (!spans[e.bar - 1] || scaled(e.at, spans[e.bar - 1]) >= 0)
+        fail('alignment', 'Timed setting lies outside its written measure', e.range);
+    }
+  }
+
   const compiled = parts.map((part, index) => {
     const { lanes, ...instrument } = part;
     const clock: PartClock = { bars: [], meters: { ...part.meters } };
@@ -326,6 +339,23 @@ export function compile(source: string, capacity?: ScoreCapacity): ScoreV2 {
     for (const n of Object.keys(part.keys ?? {})) {
       if (Number(n) > measureCount) fail('alignment', 'Key change lies beyond the score', part.range);
     }
+    for (const staff of staves) {
+      const changes = [...(part.staffChanges ?? []), ...(staff.staffChanges ?? [])];
+      if (!changes.length) continue;
+      track(changes, clock.bars);
+      const seen = new Set<string>();
+      const onsets = staff.voices.map(v => new Set(v.events.map(e => e.bar + ':' + e.at)));
+      for (const e of changes) {
+        for (const field of ['key','clef','sounds'] as const) if (e[field] !== undefined) {
+          const id = field + ':' + e.bar + ':' + e.at;
+          if (seen.has(id)) fail('alignment', 'Duplicate timed ' + field, e.range);
+          seen.add(id);
+        }
+        if ((e.key || e.clef) && e.at !== '0/1' && (onsets.some(set => !set.has(e.bar + ':' + e.at)) || text?.length))
+          fail('alignment', 'Inline clef and key changes need a shared music-voice onset without a separate text lane', e.range);
+      }
+      staff.staffChanges = changes;
+    }
     applyMeters(clock, staves.flatMap(staff => staff.voices), text?.map(lane => lane.voice) ?? []);
     return { ...instrument, ...(Object.keys(clock.meters).length && { meters: clock.meters }), measureCount, staves, ...(text && { text }) };
   });
@@ -335,6 +365,21 @@ export function compile(source: string, capacity?: ScoreCapacity): ScoreV2 {
   }
   for (const [bar, range] of tempoRanges) {
     if (bar > measureCount) fail('alignment', 'Tempo change lies beyond the score', range);
+  }
+  if (playback?.tempoChanges) {
+    for (const part of compiled) track(playback.tempoChanges, part.staves[0].voices[0].measures.map(m => m.span));
+    const seen = new Set<string>();
+    for (const e of playback.tempoChanges) {
+      const id = e.bar + ':' + e.at;
+      if (seen.has(id)) fail('alignment', 'Duplicate timed tempo', e.range);
+      seen.add(id);
+    }
+  }
+  const partIndices = new Map(compiled.map((part, i) => [part.id, i]));
+  for (const group of groups) {
+    const first = partIndices.get(group.parts[0]);
+    if (first === undefined || group.parts.some((name, i) => partIndices.get(name) !== first + i))
+      fail('alignment', 'Group members must be adjacent named parts in score order', group.range);
   }
   for (const edition of editions) {
     const target = compiled.find(p => p.id === edition.part);
@@ -350,5 +395,5 @@ export function compile(source: string, capacity?: ScoreCapacity): ScoreV2 {
         fail('alignment', 'Missing cue instrument or measure', cue.range);
     }
   }
-  return { language: 2, ...(editions.length && { editions }), ...(scoreTranspose && { transpose: scoreTranspose }), ...(layout && { layout }), ...(playback && { playback }), ...(measureNumbers !== undefined && { measureNumbers }), source, meter: meterText, meterRange: scoreMeters[1]?.range, ...(pickup && { pickup: firstLength }), measureCount, parts: compiled };
+  return { language: 2, ...(groups.length && { groups }), ...(editions.length && { editions }), ...(scoreTranspose && { transpose: scoreTranspose }), ...(layout && { layout }), ...(playback && { playback }), ...(measureNumbers !== undefined && { measureNumbers }), source, meter: meterText, meterRange: scoreMeters[1]?.range, ...(pickup && { pickup: firstLength }), measureCount, parts: compiled };
 }
