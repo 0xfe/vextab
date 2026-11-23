@@ -64,19 +64,23 @@ try {
     for (const [entry, name] of Object.entries(names)) {
       if (path === '/' + entry + '.js') return route.fulfill({ contentType: 'text/javascript', path: use.resolve('vextab-import/' + entry) });
       if (path === '/' + entry + '-worker.js') return route.fulfill({ contentType: 'text/javascript',
-        body: 'import {' + name + '} from "./' + entry + '.js"; onmessage = ({data}) => postMessage(' + name + '(data));' });
+        body: 'import {' + name + '} from "./' + entry + '.js"; onmessage = ({data}) => postMessage(' + name + '(data.input,data.options));' });
     }
     return route.abort();
   });
   await page.goto('http://consumer.test/');
   await page.addScriptTag({ path: resolve('dist/main.dev.js') });
-  for (const [entry, input] of Object.entries(inputs)) {
-    const result = await page.evaluate(({ entry, input }) => new Promise((done, fail) => {
+  // Each worker loads only its installed entry, including when it emits the newer grammar.
+  async function importInWorker(entry, input, options) {
+    return page.evaluate(({ entry, input, options }) => new Promise((done, fail) => {
       const worker = new Worker('/' + entry + '-worker.js', { type: 'module' });
       worker.onerror = e => { worker.terminate(); fail(Error(e.message)); };
       worker.onmessage = ({data}) => { worker.terminate(); done(data); };
-      worker.postMessage(input);
-    }), { entry, input });
+      worker.postMessage({input, options});
+    }), { entry, input, options });
+  }
+  for (const [entry, input] of Object.entries(inputs)) {
+    const result = await importInWorker(entry, input);
     checkScore(result.documents[0].text);
     const observed = await page.evaluate(({ entry, text }) => {
       const main = document.querySelector('main');
@@ -88,6 +92,18 @@ try {
       return editor.getScore().measures[0].voices.map(v => v.events.map(e => e.heads.map(h => h.sounding)));
     }, { entry, text: result.documents[0].text });
     assert.deepEqual(observed, [[['f#/4'], ['f/4']], [[], ['c/4']]]);
+  }
+  const expressiveSources = {
+    musicxml: await readFile(new URL('../211/fixtures/song.musicxml', import.meta.url), 'utf8'),
+    lilypond: await readFile(new URL('../211/fixtures/joplin-first.ly', import.meta.url), 'utf8'),
+  };
+  for (const [entry, source] of Object.entries(expressiveSources)) {
+    const result = await importInWorker(entry, source, {targetProfile:'expressive', mode:'partial'});
+    assert.equal(result.target.minimumVersion, '6.4.0');
+    assert.ok(result.documents.length, JSON.stringify(result.diagnostics.at(-1)));
+    const model = parseScore(result.documents[0].text);
+    assert.equal(model.parts[0].measureCount, entry === 'musicxml' ? 1 : 18);
+    assert.ok(model.parts[0].staves[0].voices[0].spans.some(span => span.kind === 'crescendo'));
   }
   await page.locator('main').screenshot({ path: join(out, 'imported-voices.png') });
   await checkMeasuredConsumers(browser, use, out);

@@ -11,9 +11,11 @@ An importer targeting VexTab 6.4.0 can preserve a tie on one chord head, place l
 | [Acoustic snare](fixtures/kit.musicxml) | A cross head appears on both surfaces. MusicXML’s one-based unpitched key 39 reaches the player as GM note 38. |
 | [Guitar double stop](fixtures/guitar.musicxml) | The capo is on fret two. Both heads occupy fret one relative to the capo, on strings one and two. The playback plugin receives G4 and D4. |
 | [Joplin · Maple Leaf Rag](fixtures/joplin-first.ly) | Both endings of the first strain produce 552 attacks. Compare every sounding pitch, onset and release with the published Mutopia MIDI, preserving multiplicity for simultaneous notes. |
-| [Sor · Op. 35 No. 22](fixtures/sor-opening.ly) | The first eight bars retain three voices and a bass tie. Compare pitches, onsets and releases with native LilyPond for each voice, then inspect the fingerings, printed edition and guitar TAB. Strings supplied by the editor take precedence over inferred positions. |
+| [Sor · Op. 35 No. 22](fixtures/sor-opening.ly) | The first eight bars retain three voices and a bass tie. Compare pitches, onsets and releases with native LilyPond for each voice, then inspect the fingerings, printed edition and guitar TAB. Strings specified in the source edition take precedence over inferred positions. |
 
-The four short MusicXML cases are repository-authored controls. The Joplin and Sor excerpts retain the musical text of the source editions. The repertoire test operates on imported VexTab, through the same public parser that hosts use.
+The four short MusicXML cases are repository-authored controls. The Joplin and Sor excerpts retain the musical text of the source editions. Five unchanged community MusicXML fixtures exercise crossing slurs, elisions, diagrams, explicit TAB and percussion without a MIDI map. Two historical MuseScore files and a Finale v25 passage cover differences between exporters. [Upstream results and source rights](xml/README.md) · [LilyPond editions, reference generation and mode coverage](LILYPOND.md)
+
+The repertoire test operates on imported VexTab, through the same public parser that hosts use.
 
 ## Reproduce
 
@@ -24,6 +26,9 @@ npm ci
 npm ci --prefix importer
 npm run build-dev
 npm test --prefix importer
+python3 issues/210/fetch-exporters.py
+node issues/211/musicxml.mjs
+node issues/210/movement.mjs --expressive
 node issues/211/browser.mjs
 node issues/211/check-lily-repertoire.mjs
 node issues/211/sor-proof.mjs

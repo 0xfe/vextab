@@ -78,4 +78,3 @@ try {
 } finally {
   rmSync(work,{recursive:true,force:true});
 }
-

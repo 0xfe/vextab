@@ -44,6 +44,8 @@ jobs:
           node issues/210/lilypond-upstream.mjs
           node issues/210/movement.mjs
           node issues/210/browser.mjs
+          node issues/210/movement.mjs --expressive
+          node issues/211/musicxml.mjs
           node issues/211/browser.mjs
           node issues/211/check-lily-repertoire.mjs
           node issues/211/sor-proof.mjs

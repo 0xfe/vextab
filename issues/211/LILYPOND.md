@@ -42,4 +42,3 @@ git diff --exit-code -- issues/211/fixtures
 - `DrumStaff` and `\drummode` retain chord membership, source aliases, MIDI keys and the default kit’s head shape and line for the mapped instruments. Partial mode reports the omitted open or stopped signs of the explicitly opened or closed hi-hat. Other kit styles and unmapped sounds produce a located error.
 - `TabStaff` selects a TAB view. Standard, drop-D, open-G, DADGAD and literal `\stringTuning` chords use sounding open-string pitches. An optional `guitar: {capo: 2}` sets a caller-supplied capo. Single-note guitar glissandi require the same physical string.
 - Grace note groups retain their order and slash style. `\afterGrace` retains the written placement fraction, including the default three-quarters point. Non-eighth grace durations receive a normalization diagnostic. Unresolved span endpoints and unplayable explicit string constraints fail conversion.
-

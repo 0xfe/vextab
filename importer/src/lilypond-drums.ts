@@ -30,4 +30,3 @@ add('ridecymbal','cymr',51,5,'cross');
 add('ridebell','rb',53,5);
 add('cowbell','cb',56,5,'triangle');
 export const drumByName = (name:string) => kit.get(name);
-
