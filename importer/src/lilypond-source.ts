@@ -159,7 +159,7 @@ export function selectScore(source: string, options: LilyPondOptions, input: Inp
             scope = { previous: scope, language: scope.language, name, value: { words: words.slice(i, end), scope } };
             i = end;
           } else {
-            const commands = ['\\new', '\\context', '\\relative', '\\fixed', '\\absolute', '\\unfoldRepeats', '\\repeat', '\\tuplet', '\\drummode'];
+            const commands = ['\\new', '\\context', '\\relative', '\\fixed', '\\absolute', '\\unfoldRepeats', '\\repeat', '\\tuplet', '\\drummode', '\\chordmode'];
             if (!token.children && !commands.includes(name)) {
               let binding: Scope | undefined = scope;
               while (binding && ('\\' + binding.name) !== name) binding = binding.previous;

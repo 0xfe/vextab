@@ -23,6 +23,7 @@ export interface LilyPondOptions extends ImportOptions {
 /** All duration fields are lexical. Variables carry their own duration defaults. */
 interface Rhythm { denominator: number; dots: number }
 interface State {
+  chordMode?:boolean;
   marks:Attachments; instrument?:Instrument; headTies?:Map<string,string>;
   label?:string; slideFrom?:number; lastEvent?:Event; lastDetails?:HeadDetail[]; tieFrom?:Event; graceSlashed?:boolean;
   part: string; voice: string; group?: NonNullable<Measure['group']>; piano?: { id: string; hands: string[] }; display?: number; index: number; at: Time;
@@ -65,6 +66,47 @@ function readRhythm(words: Token[], start: number, previous: Rhythm, input: Inpu
   while (words[i]?.value === '.') { dots++; i++; }
   if (dots > 2) input.fail('unsupported', 'At most two augmentation dots are supported.', token.range);
   return [{ denominator: Number(token.value), dots }, i];
+}
+
+/** One chord literal serves both printed chord symbols and played chord-mode events. */
+function chordLiteral(words:Token[], start:number, previous:Rhythm, state:State, language:string, input:Input) {
+  const token=words[start];
+  const silence=token.value==='r' || token.value==='s';
+  const absolute:State={...state,mode:'fixed',fixed:4};
+  const root=silence ? undefined : readPitch(token,absolute,language,input);
+  const [rhythm, end]=readRhythm(words,start+1,previous,input);
+  let i=end, quality='', bass:Pitch|undefined;
+  const modifier=words[i];
+  if (modifier?.value===':') {
+    let to=modifier.range[1];
+    i++;
+    while (words[i]?.range[0]===to && /^[a-zA-Z0-9]+$/.test(words[i].value)) {
+      quality+=words[i].value; to=words[i++].range[1];
+    }
+    if (!/^(?:m|maj|aug|dim|sus)?(?:2|4|6|7|9|11|13)?$/.test(quality))
+      input.fail('unsupported','Unsupported chord quality '+quality+'.',modifier.range);
+  }
+  const slash=words[i];
+  if (slash?.value==='/') {
+    const bassToken=words[i+1];
+    if (!bassToken) input.fail('syntax','Expected a slash bass after the chord.',slash.range);
+    bass=readPitch(bassToken,absolute,language,input); i+=2;
+  }
+  return {root,rhythm,end:i,quality,bass,modifier,slash};
+}
+
+/** LilyPond roots begin in octave four. Build spelled thirds, including diminished and augmented fifths. */
+function soundingChord(root:Pitch, quality:string, token:Token, input:Input):Pitch[] {
+  const intervals:Record<string,number[]>={'':[0,4,7],m:[0,3,7],dim:[0,3,6],aug:[0,4,8],
+    '7':[0,4,7,10],maj7:[0,4,7,11],m7:[0,3,7,10],dim7:[0,3,6,9]};
+  if (!Object.hasOwn(intervals,quality)) return input.fail('unsupported','Unsupported sounding chord quality '+quality+'.',token.range);
+  return intervals[quality].map((semitones,index)=>{
+    const degree=letters.indexOf(root.step)+2*index;
+    const step=letters[degree%7], octave=root.octave+Math.floor(degree/7);
+    const alter=root.sounding+semitones-pitch(step,0,octave).sounding;
+    if (Math.abs(alter)>2 || octave>9) input.fail('unsupported','Chord head exceeds the written pitch range.',token.range);
+    return pitch(step,alter,octave);
+  });
 }
 
 /** Convert the written length and all enclosing tuplets to one exact elapsed fraction. */
@@ -252,6 +294,14 @@ class Resolver {
         const lane=this.laneGroup(next(),scope,'\\lyricmode');
         const target=this.parts.get(s.part)?.some(b=>b.voices.has(s.voice)) ? s.voice : undefined;
         this.lanes.lyrics.push({part:s.piano?.id ?? s.part,target,verse:'lyrics'+ ++this.serial,words:lane.words,token:t});
+        break;
+      }
+      case '\\chordmode': {
+        if (input.options.targetProfile!=='expressive') input.fail('unsupported','Sounding chord mode needs the expressive target.',t.range);
+        if (s.instrument?.kind==='drums') input.fail('unsupported','Chord mode needs a pitched staff.',t.range);
+        const previous=s.chordMode, anchor=s.anchor;
+        s.chordMode=true; child();
+        s.chordMode=previous; s.anchor=anchor;
         break;
       }
       case '\\drummode': {
@@ -464,28 +514,14 @@ class Resolver {
   private chordNames(words:Token[], s:State, language:string, source:Token) {
     if (s.index || s.at.compare(zero)) this.input.fail('unsupported','Expected a chord lane at score start.',source.range);
     let at=zero, rhythm=quarter;
-    const pitchName=(token:Token) => {
-      if (!token) this.input.fail('syntax','Missing chord root or bass.',source.range);
-      const p=readPitch(token,{...s,mode:'absolute'},language,this.input);
-      return p.step+['bb','b','','#','##'][p.alter+2];
-    };
+    const name=(p:Pitch) => p.step+['bb','b','','#','##'][p.alter+2];
     for (let i=0;i<words.length;) {
-      const t=words[i++];
-      if (t.value==='|') continue;
-      const skip=t.value==='s' || t.value==='r', root=skip?'':pitchName(t);
-      [rhythm,i]=readRhythm(words,i,rhythm,this.input);
-      let quality='', bass:string|undefined;
-      if (words[i]?.value===':') {
-        const colon=words[i++];
-        let end=colon.range[1];
-        while (words[i]?.range[0]===end && /^[a-zA-Z0-9]+$/.test(words[i].value)) {
-          quality+=words[i].value; end=words[i++].range[1];
-        }
-        if (!/^(?:m|maj|aug|dim|sus)?(?:2|4|6|7|9|11|13)?$/.test(quality))
-          this.input.fail('unsupported','Unsupported chord quality '+quality+'.',colon.range);
-      }
-      if (words[i]?.value==='/') {i++;bass=pitchName(words[i++]);}
-      if (!skip) this.lanes.chords.push({at,harmony:{root,quality,bass},token:t});
+      const token=words[i];
+      if (token.value==='|') { i++; continue; }
+      const chord=chordLiteral(words,i,rhythm,s,language,this.input);
+      rhythm=chord.rhythm; i=chord.end;
+      if (chord.root) this.lanes.chords.push({at,harmony:{root:name(chord.root),quality:chord.quality,
+        bass:chord.bass && name(chord.bass)},token});
       at=at.plus(length(rhythm));
     }
   }
@@ -656,7 +692,14 @@ class Resolver {
     const expressive=input.options.targetProfile==='expressive', details: HeadDetail[]=[];
     const tiedHeads: number[]=[], headRanges:TextRange[]=[];
     let heads: Pitch[] = [], kind: Event['kind'] = 'attack';
-    if (/^\d+$/.test(t.value) || t.value === 'q') {
+    let chordRhythm:Rhythm|undefined;
+    if (s.chordMode && /^[a-h]/.test(t.value)) {
+      const chord=chordLiteral(words,i,s.rhythm,s,language,input);
+      if (chord.bass) input.fail('unsupported','Inversions and slash basses in sounding chord mode need explicit voicing.',chord.slash.range);
+      heads=soundingChord(chord.root!,chord.quality,chord.modifier ?? t,input);
+      chordRhythm=chord.rhythm;
+      i=chord.end;
+    } else if (/^\d+$/.test(t.value) || t.value === 'q') {
       if (!s.last.length) input.fail('unsupported', 'Repeated pitch has no preceding attack.', t.range);
       heads = s.last;
       for (const h of s.lastDetails ?? []) details.push({drum:h.drum,string:h.string});
@@ -697,7 +740,7 @@ class Resolver {
       const j=headMark(words,i,details[0],s.marks.fingerSide,input);
       if (j!==i) i=j;
     }
-    const [rhythm, end] = readRhythm(words, i, s.rhythm, input);
+    const [rhythm, end] = chordRhythm ? [chordRhythm,i] as const : readRhythm(words, i, s.rhythm, input);
     s.rhythm = rhythm; i = end;
     const range: TextRange = [t.range[0], words[i - 1].range[1]];
     if (s.collectGrace) {

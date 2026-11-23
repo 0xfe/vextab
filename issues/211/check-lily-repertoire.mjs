@@ -34,13 +34,13 @@ function reference(name) {
 
 try {
   const {projectScoreV2, measureVisits, scorePerformance} = player();
-  for (const name of ['joplin-first','sor-opening']) {
+  for (const name of ['joplin-first','sor-opening','chord-mode']) {
     const guitar = name === 'sor-opening', source = readFileSync(join(fixtures,name+'.ly'),'utf8');
     const result = importLilyPond(source,{targetProfile:'expressive',mode:'partial',guitar});
-    assert.equal(result.status,'partial',JSON.stringify(result.diagnostics));
+    assert.equal(result.status,name==='chord-mode'?'exact':'partial',JSON.stringify(result.diagnostics));
     const text = result.documents[0].text, model = parseScore(text), score = projectScoreV2(model);
     const visits = measureVisits(score, true);
-    assert.equal(visits.length,guitar ? 8 : 33);
+    assert.equal(visits.length,{'sor-opening':8,'joplin-first':33,'chord-mode':3}[name]);
     // At 60 BPM one whole note is 4 seconds. The stored reference uses 1,536 ticks per whole.
     const events = scorePerformance(score,60,undefined,visits).events;
     const ticks = seconds => Math.round(384 * seconds);
@@ -60,7 +60,7 @@ try {
       assert.match(text,/write E#5/);
       assert.match(text,/label "Allegretto\."/);
       assert.match(text,/beamStart/);
-    } else {
+    } else if (name==='joplin-first') {
       // The edition's MIDI score requests an explicitly unfolded copy of the same written strain.
       const unfolded=importLilyPond(source,{targetProfile:'expressive',mode:'partial',score:'midi'});
       assert.equal(unfolded.status,'partial',JSON.stringify(unfolded.diagnostics));
