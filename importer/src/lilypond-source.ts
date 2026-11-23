@@ -18,7 +18,7 @@ interface Movement extends Expression { print: boolean; midi: boolean; midiSetti
 
 /** Tokenize once per virtual file. Strings and comments protect their internal delimiters. */
 function tokenize(source: string, input: Input): Token[] {
-  const words = /\s+|%\{[\s\S]*?%\}|%(?!\{)[^\r\n]*|"(?:\\.|[^"\\])*"|\\\\|\\[A-Za-z][A-Za-z-]*|\\.|<<|>>|-\.|[A-Za-z]+[',]*|\d+\/\d+|\d+|./guy;
+  const words = /\s+|%\{[\s\S]*?%\}|%(?!\{)[^\r\n]*|"(?:\\.|[^"\\])*"|\\\\|\\[A-Za-z][A-Za-z-]*|\\.|<<|>>|-\.|->|--|__|[A-Za-z]+[',]*|\d+\/\d+|\d+|./guy;
   const groups: Token[][] = [[]], openings: Token[] = [];
   const close: Record<string, string> = { '{': '}', '<<': '>>', '<': '>' };
   let count = 0;
@@ -58,13 +58,15 @@ export function expressionEnd(words: Token[], start: number, input: Input): numb
       case '\\new': case '\\context':
         i++;
         if (words[i]?.value === '=') i += 2;
+        if (words[i]?.value === '\\with') i += 2;
         break;
       case '\\relative':
         if (words[i] && !words[i].children && !words[i].value.startsWith('\\')) i++;
         break;
-      case '\\fixed': case '\\tuplet': case '\\times': i++; break;
+      case '\\lyricsto': case '\\fixed': case '\\tuplet': case '\\times': i++; break;
       case '\\repeat': i += 2; break;
       case '\\applyMusic': i += 4; break;
+      case '\\drummode': case '\\chordmode': case '\\lyricmode':
       case '\\unfoldRepeats': case '\\absolute': case '\\grace': break;
       default:
         // A single note or chord definition may include its duration outside the token.
@@ -73,6 +75,7 @@ export function expressionEnd(words: Token[], start: number, input: Input): numb
           while (words[i]?.value === '.') i++;
         }
         if (words[i]?.value === '\\alternative' && words[i + 1]?.value === '{') i += 2;
+        while (words[i]?.value==='\\addlyrics' && words[i+1]?.value==='{') i+=2;
         return i;
     }
   }
@@ -107,7 +110,7 @@ export function selectScore(source: string, options: LilyPondOptions, input: Inp
       const value = arg?.value ?? '';
       switch (name) {
         case '\\version':
-          if (!/^"2\.(24|26)\.\d+"$/.test(value) && !['"2.14.2"', '"2.17.11"', '"2.16.0"', '"2.19.21"', '"2.23.0"'].includes(value))
+          if (!/^"2\.(24|26)\.\d+"$/.test(value) && !['"2.14.2"', '"2.17.11"', '"2.16.0"', '"2.16.1"', '"2.19.21"', '"2.23.0"'].includes(value))
             input.fail('unsupported', 'Unqualified LilyPond source version.', token.range);
           i++; break;
         case '\\language':
@@ -155,7 +158,7 @@ export function selectScore(source: string, options: LilyPondOptions, input: Inp
             scope = { previous: scope, language: scope.language, name, value: { words: words.slice(i, end), scope } };
             i = end;
           } else {
-            const commands = ['\\new', '\\context', '\\relative', '\\fixed', '\\absolute', '\\unfoldRepeats', '\\repeat', '\\tuplet'];
+            const commands = ['\\new', '\\context', '\\relative', '\\fixed', '\\absolute', '\\unfoldRepeats', '\\repeat', '\\tuplet', '\\drummode'];
             if (!token.children && !commands.includes(name)) {
               let binding: Scope | undefined = scope;
               while (binding && ('\\' + binding.name) !== name) binding = binding.previous;
