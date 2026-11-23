@@ -17,4 +17,4 @@ VexTab 5 was an experimental release. It and earlier releases used grammar v1 by
 
 Run `npx vextab-migrate old.vextab > new.vextab` with VexTab 6 installed. The converter checks the result and identifies constructs that need manual editing. To keep using an existing v1 score, set `data-language="1"` on its embed or pass `{ language: 1 }` to `parseScore`. Fixed-layout Artist integrations use `new VexTab(artist, { language: 1 })`.
 
-[Try the guide](https://vexflow.com/vextab/guide/) · [Language reference](https://vexflow.com/vextab/guide/#reference/grammar-v2) · [Illustrated changes](https://vexflow.com/vextab/reports/ai2026/) · [Migration guide](https://github.com/0xfe/vextab/blob/6.0.0/docs/migrate-scores.md) · [Playback plugins](https://github.com/0xfe/vextab/blob/6.0.0/docs/playback.md)
+[Try the guide](https://vexflow.com/vextab/guide/) · [Language reference](https://vexflow.com/vextab/guide/#reference/grammar-v2) · [What's New?](https://vexflow.com/vextab/reports/whatsnew/) · [Migration guide](https://github.com/0xfe/vextab/blob/6.0.0/docs/migrate-scores.md) · [Playback plugins](https://github.com/0xfe/vextab/blob/6.0.0/docs/playback.md)

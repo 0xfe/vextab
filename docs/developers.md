@@ -31,7 +31,7 @@ The development server watches the source. Open the [project index](http://127.0
 
 ## Engineering reports
 
-Generate the quality archive from VexTab 4.0.0 onward and the illustrated AI2026 change report. Both open locally in a browser. [Build and publication commands](reports.md)
+Generate the quality archive to track how VexTab has changed since 4.0.0. The accompanying **What's New?** report illustrates those changes with scores you can compare side by side. Both reports open locally in a browser. [Build and publication commands](reports.md)
 
 ## Upload the user guide
 

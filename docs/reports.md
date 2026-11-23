@@ -6,11 +6,11 @@ Use a full clone with release tags, the Node version in `.nvmrc`, npm and Chrome
 npm ci
 npm run report:setup
 npm run report:history
-npm run improvements:build
-npm run improvements:verify
+npm run whatsnew:build
+npm run whatsnew:verify
 ```
 
-Open **build/reports/index.html** for the quality archive and **build/improvements/index.html** for AI2026. Both work offline. The first build needs registry access to install the dependencies locked by each historical revision. Subsequent builds reuse matching installs in `build/report-cache/`. The reporting tools have a separate lockfile in `tools/`.
+Open `build/reports/index.html` for the quality archive or `build/whatsnew/index.html` for **What's New?**. Both work offline. The first build needs registry access to install the dependencies locked by each historical revision. Subsequent builds reuse matching installs in `build/report-cache/`. The reporting tools have a separate lockfile in `tools/`.
 
 The **Engineering reports** GitHub Actions workflow runs on numeric release tags and on manual dispatch. Download its artifact and keep the two report directories together to follow links between them. Website publication is a separate command.
 
@@ -34,11 +34,11 @@ Each measurement runs in a detached local clone. It uses the revision’s source
 | Bundle size | Raw, gzip level 9 and Brotli bytes of the fresh production `main.prod.js` and `div.prod.js` bundles. |
 | Dependencies | Root manifest ranges and lockfile versions, licenses, install locations and duplicate versions. |
 
-## Illustrated history (AI2026)
+## What's New?
 
 The report compares **4.0.0** with the committed HEAD. Search the chapters, commits or public browser API signatures. Open a score for side-by-side engravings. Shared examples use the same VexTab text and fixed SVG renderer. Current studies use the flow renderer and the score sources from the endpoint’s guide.
 
-`changes.json` contains chapters, the release trail, documentation changes, public declaration changes, commit history and quality summaries. `render-inventory.json` records the exact score, revision, viewport crop and PNG checksum for each capture. The baseline did not ship public declarations, so both endpoints use the same pinned TypeScript declaration emitter. Edit `tools/improvements/catalog.mjs` to curate chapters and exhibits.
+`changes.json` contains chapters, the release trail, documentation changes, public declaration changes, commit history and quality summaries. `render-inventory.json` records the exact score, revision, viewport crop and PNG checksum for each capture. The baseline did not ship public declarations, so both endpoints use the same pinned TypeScript declaration emitter. Edit `tools/whatsnew/catalog.mjs` to curate chapters and exhibits.
 
 ## Publish
 
@@ -46,9 +46,9 @@ Use the authenticated Google Cloud CLI account for the VexFlow website. Preview 
 
 ```sh
 npm run report:upload -- --history --dry-run
-npm run improvements:upload -- --dry-run
+npm run whatsnew:upload -- --dry-run
 ```
 
-Remove `--dry-run` to publish. Upload the quality archive first so both endpoint links work when AI2026 goes live. Quality pages go under `gs://vexflow.com/vextab/reports/` at immutable commit and release URLs. The publisher merges the archive index with a generation precondition. Omit `--history` to publish only HEAD or pass `--commit=<ref>` for one earlier measurement.
+Remove `--dry-run` to publish. Upload the quality archive first so both endpoint links work when the new report goes live. Quality pages go under `gs://vexflow.com/vextab/reports/` at immutable commit and release URLs. The publisher merges the archive index with a generation precondition. Omit `--history` to publish only HEAD or pass `--commit=<ref>` for one earlier measurement.
 
-AI2026 goes under `gs://vexflow.com/vextab/reports/ai2026/`. The uploader stages the reviewed local report, uploads content-versioned assets with a one-year cache, then publishes short-cache JSON and HTML. Use `--rebuild` to regenerate and verify it before uploading.
+Publish [What's New?](https://vexflow.com/vextab/reports/whatsnew/) under `gs://vexflow.com/vextab/reports/whatsnew/`. The uploader stages the reviewed local report, uploads content-versioned assets with a one-year cache, then publishes short-cache JSON and HTML. Use `--rebuild` to regenerate and verify it before uploading. After it verifies the new index in the bucket, the uploader replaces the former `ai2026/index.html` with a redirect that preserves query strings and section links.

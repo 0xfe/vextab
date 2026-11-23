@@ -33,6 +33,40 @@ export async function validate(directory, jsonFiles = []) {
   }
   return manifest;
 }
+/** Print the upload plan or run one Cloud Storage operation, optionally capturing its bytes. */
+function run(command, dryRun, args, captureBytes = 0) {
+  if (dryRun) {
+    console.log([command, ...args].join(' '));
+    return '';
+  }
+  const result = spawnSync(command, args, {
+    stdio: captureBytes ? 'pipe' : 'inherit',
+    maxBuffer: Math.max(1024 * 1024, captureBytes),
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0)
+    throw new Error(`gcloud failed (${result.status ?? result.signal}). HTML publication stopped.`);
+  return result.stdout;
+}
+
+/** Publish a mutable page or JSON download, then check its stored bytes against the reviewed file. */
+export async function uploadFile(path, destination, checksum, { command, dryRun }) {
+  run(command, dryRun, [
+    'storage',
+    'cp',
+    path,
+    destination,
+    '--predefined-acl=publicRead',
+    '--cache-control=public,max-age=60,must-revalidate',
+    path.endsWith('.json') ? '--content-type=application/json' : '--content-type=text/html',
+  ]);
+  if (!dryRun) {
+    const { size } = await stat(path);
+    if (hash(run(command, dryRun, ['storage', 'cat', destination], size + 1)) !== checksum)
+      throw new Error(`Uploaded file differs from the build (${destination}). Check for a concurrent upload.`);
+  }
+}
+
 /** Upload immutable assets, then short-lived downloads and pages. Verify each stable URL after writing it. */
 export async function upload({
   destination,
@@ -43,7 +77,7 @@ export async function upload({
   jsonFiles = [],
 } = {}) {
   if (!/^gs:\/\/[a-z0-9][a-z0-9._-]+\/(?:[a-zA-Z0-9_-]+\/)+$/.test(destination))
-    throw new Error('Use a bucket and nonempty prefix, such as gs://vexflow.com/vextab/reports/ai2026/.');
+    throw new Error('Use a bucket and nonempty prefix, such as gs://vexflow.com/vextab/reports/whatsnew/.');
   const original = await validate(directory, jsonFiles);
   const staging = await mkdtemp(join(tmpdir(), 'vextab-static-upload-'));
   try {
@@ -53,21 +87,7 @@ export async function upload({
       await copyFile(join(directory, file), join(staging, file));
     }
     const manifest = await validate(staging, jsonFiles);
-    const run = (args, captureBytes = 0) => {
-      if (dryRun) {
-        console.log([command, ...args].join(' '));
-        return '';
-      }
-      const result = spawnSync(command, args, {
-        stdio: captureBytes ? 'pipe' : 'inherit',
-        maxBuffer: Math.max(1024 * 1024, captureBytes),
-      });
-      if (result.error) throw result.error;
-      if (result.status !== 0)
-        throw new Error(`gcloud failed (${result.status ?? result.signal}). HTML publication stopped.`);
-      return result.stdout;
-    };
-    run([
+    run(command, dryRun, [
       'storage',
       'rsync',
       join(staging, 'assets/'),
@@ -78,20 +98,7 @@ export async function upload({
       '--cache-control=public,max-age=31536000,immutable',
     ]);
     for (const page of [...jsonFiles, 'all.html', 'index.html'].filter((name) => manifest.files[name])) {
-      run([
-        'storage',
-        'cp',
-        join(staging, page),
-        destination + page,
-        '--predefined-acl=publicRead',
-        '--cache-control=public,max-age=60,must-revalidate',
-        page.endsWith('.json') ? '--content-type=application/json' : '--content-type=text/html',
-      ]);
-      if (!dryRun) {
-        const size = (await stat(join(staging, page))).size;
-        if (hash(run(['storage', 'cat', destination + page], size + 1)) !== manifest.files[page])
-          throw new Error(`Uploaded file differs from the build (${page}). Check for a concurrent upload.`);
-      }
+      await uploadFile(join(staging, page), destination + page, manifest.files[page], { command, dryRun });
     }
     console.log(
       dryRun ? 'Dry run complete. No files uploaded.' : `Published ${destination}${publicURL ? ` → ${publicURL}` : ''}`

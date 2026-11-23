@@ -37,7 +37,7 @@ guitar { :q 0/1 2/1 3/1 2/1 | }</div>
 <script src="./div.prod.js"></script>
 ```
 
-See the [interactive guide](https://vexflow.com/vextab/guide/) and [integration reference](https://vexflow.com/vextab/guide/#reference) for typed imports, keyboard controls, print, and migration from fixed layout. The [developer guide](docs/developers.md) covers testing and releases. [Engineering reports](https://vexflow.com/vextab/reports/) track code quality and illustrate changes since VexTab 4.0.0. [GitHub Release downloads](https://github.com/0xfe/vextab/releases) · [Security and score limits](SECURITY.md) · [Illustrated change report](https://vexflow.com/vextab/reports/ai2026/)
+See the [interactive guide](https://vexflow.com/vextab/guide/) and [integration reference](https://vexflow.com/vextab/guide/#reference) for typed imports, keyboard controls, print, and migration from fixed layout. The [developer guide](docs/developers.md) covers testing and releases. Compare engravings and explore new features since VexTab 4.0.0 in [What's New?](https://vexflow.com/vextab/reports/whatsnew/), or inspect a release’s test coverage and bundle sizes in the [quality archive](https://vexflow.com/vextab/reports/). [GitHub Release downloads](https://github.com/0xfe/vextab/releases) · [Security and score limits](SECURITY.md)
 
 ## License
 

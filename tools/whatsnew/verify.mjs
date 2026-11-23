@@ -8,7 +8,7 @@ import { launchBrowser } from '../reports/coverage.mjs';
 import { base, git, revision, root } from '../reports/snapshot.mjs';
 import { savedReport } from '../reports/build.mjs';
 
-const directory = join(root, 'build/improvements');
+const directory = join(root, 'build/whatsnew');
 const data = JSON.parse(await readFile(join(directory, 'changes.json'), 'utf8'));
 const inventory = JSON.parse(await readFile(join(directory, 'render-inventory.json'), 'utf8'));
 assert.equal(data.before, revision(base));
@@ -35,6 +35,8 @@ try {
   const errors = [];
   page.on('pageerror', (err) => errors.push(err.message));
   await page.goto(pathToFileURL(join(directory, 'index.html')).href);
+  assert.equal(await page.title(), "VexTab · What's New?");
+  assert.equal(await page.locator('h1').innerText(), "What's New?");
   await page.locator('#search').fill('guitar');
   assert.ok(await page.locator('.change:visible').count());
   await page.locator('#api-query').fill('parseScore');
@@ -59,6 +61,22 @@ try {
   await page.getByRole('link', { name: 'Report archive' }).click();
   await page.locator('input[type=search]').fill(data.head.slice(0, 12));
   assert.equal(await page.locator('tbody tr:visible').count(), 1);
+  // Serve the old bookmark and its new destination locally to exercise the real browser navigation.
+  const site = 'https://vexflow.com/vextab/reports/';
+  const oldURL = site + 'ai2026/';
+  const newURL = site + 'whatsnew/';
+  const bookmark = '?q=chords#figures';
+  const redirect = await readFile(new URL('./redirect.html', import.meta.url), 'utf8');
+  await page.route(oldURL + '**', (route) => route.fulfill({ contentType: 'text/html', body: redirect }));
+  await page.route(newURL + '**', (route) => route.fulfill({ contentType: 'text/html', body: '<main></main>' }));
+  await page.goto(oldURL + bookmark, { waitUntil: 'commit' });
+  await page.waitForURL(newURL + bookmark);
+  const fallback = await browser.newPage({ javaScriptEnabled: false, offline: true });
+  await fallback.route(oldURL, (route) => route.fulfill({ contentType: 'text/html', body: redirect }));
+  await fallback.goto(oldURL);
+  assert.equal(await fallback.locator('link[rel=canonical]').getAttribute('href'), newURL);
+  const link = fallback.getByRole('link', { name: "What's New?" });
+  assert.equal(await link.evaluate((anchor) => anchor.href), newURL);
   assert.deepEqual(errors, []);
   console.log('Verified both report pages, archive search, JSON download and ' + images.length + ' score images.');
 } finally {

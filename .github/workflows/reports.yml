@@ -25,12 +25,12 @@ jobs:
       - run: npm ci
       - run: npm run report:setup
       - run: npm run report:history
-      - run: npm run improvements:build
-      - run: npm run improvements:verify
+      - run: npm run whatsnew:build
+      - run: npm run whatsnew:verify
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: vextab-engineering-reports
           path: |
             build/reports/
-            build/improvements/
+            build/whatsnew/
           if-no-files-found: error

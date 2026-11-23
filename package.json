@@ -63,9 +63,9 @@
         "report": "node tools/reports/cli.mjs build",
         "report:history": "node tools/reports/cli.mjs history",
         "report:upload": "node tools/reports/cli.mjs upload",
-        "improvements:build": "node tools/improvements/build.mjs",
-        "improvements:verify": "node tools/improvements/verify.mjs",
-        "improvements:upload": "node tools/improvements/upload.mjs"
+        "whatsnew:build": "node tools/whatsnew/build.mjs",
+        "whatsnew:verify": "node tools/whatsnew/verify.mjs",
+        "whatsnew:upload": "node tools/whatsnew/upload.mjs"
     },
     "homepage": "http://www.vexflow.com/vextab/",
     "keywords": [

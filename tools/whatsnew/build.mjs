@@ -1,4 +1,4 @@
-// Build the AI2026 illustrated engineering history from the actual baseline and endpoint bundles.
+// Build the What's New? report from the actual baseline and endpoint bundles.
 import { createHash } from 'node:crypto';
 import { copyFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -12,8 +12,8 @@ import { renderReport } from './page.mjs';
 
 const head = revision('HEAD'),
   before = revision(base);
-const output = join(root, 'build/improvements');
-const tool = join(root, 'tools/improvements');
+const output = join(root, 'build/whatsnew');
+const tool = join(root, 'tools/whatsnew');
 const figures = [],
   inventory = [];
 
@@ -117,7 +117,7 @@ async function endpoint(browser, stage, hash, current) {
 }
 
 await mkdir(join(root, 'build'), { recursive: true });
-const stage = await mkdtemp(join(root, 'build/improvements-stage-'));
+const stage = await mkdtemp(join(root, 'build/whatsnew-stage-'));
 try {
   await mkdir(join(stage, 'assets'));
   const browser = await launchBrowser();
