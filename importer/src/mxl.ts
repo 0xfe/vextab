@@ -1,7 +1,7 @@
 // Read the two selected ZIP members with the platform inflater and explicit archive budgets.
 import { importMusicXML } from './musicxml.js';
 import { Input, targetVersion } from './score.js';
-import { readTree, sourceText, xmlLimit } from './xml.js';
+import { readTree, xmlLimit } from './xml.js';
 import type { MusicXMLOptions, ImportResult } from './types.js';
 
 interface Member {
@@ -75,15 +75,27 @@ function directory(data: Uint8Array, view: DataView) {
 }
 
 /** A 1 KiB lookup table keeps CRC-32 verification linear in expanded source bytes. */
-const crcTable = Uint32Array.from({length:256},(_,i)=>{
-  let crc=i;
-  for (let bit=0;bit<8;bit++) crc=(crc>>>1)^(crc&1?0xedb88320:0);
+const crcTable = Uint32Array.from({ length: 256 }, (_, i) => {
+  let crc = i;
+  for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
   return crc;
 });
 function crc32(bytes: Uint8Array) {
-  let crc=0xffffffff;
-  for (let i=0;i<bytes.length;i++) crc=(crc>>>8)^crcTable[(crc^bytes[i])&255];
-  return (crc^0xffffffff)>>>0;
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 255];
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+/** Node 22.18+ exposes built-ins without a bundler import. One bounded zlib chunk avoids
+ * allocating a second copy of large members. Browsers use their streaming inflater below.
+ */
+function inflateNode(packed: Uint8Array, size: number) {
+  type Zlib = {
+    inflateRawSync: (data: Uint8Array, options: { maxOutputLength: number; chunkSize: number }) => Uint8Array;
+  };
+  const platform = globalThis as { process?: { getBuiltinModule?: (name: string) => Zlib | undefined } };
+  const zlib = platform.process?.getBuiltinModule?.('node:zlib');
+  return zlib?.inflateRawSync(packed, { maxOutputLength: Math.max(1, size), chunkSize: Math.max(64, size + 1) });
 }
 
 /** Enforce actual output size as deflate chunks arrive, including when the header understates it. */
@@ -95,8 +107,16 @@ async function extract(
   limit: number,
 ) {
   const entry = index.members.get(name);
-  check(entry,'Missing MXL member '+name+'.');
-  if (entry.size>limit) throw new ArchiveLimit(name+' declares '+entry.size+' expanded bytes; limit is '+limit+'. Select a part or measure range, or opt into the extended profile for larger XML.');
+  check(entry, 'Missing MXL member ' + name + '.');
+  if (entry.size > limit)
+    throw new ArchiveLimit(
+      name +
+        ' declares ' +
+        entry.size +
+        ' expanded bytes; limit is ' +
+        limit +
+        '. Select a part or measure range, or opt into the extended profile for larger XML.',
+    );
   const { offset, method, flags, compressed, size } = entry;
   check(
     offset + 30 <= index.start &&
@@ -119,6 +139,14 @@ async function extract(
     output = packed;
   } else {
     check(method === 8, 'Only stored and deflated ZIP members are supported.');
+    const direct = inflateNode(packed, size);
+    if (direct) {
+      check(
+        direct.length === size && crc32(direct) === entry.checksum,
+        'Inflated member length or checksum differs.',
+      );
+      return direct;
+    }
     const reader = new Blob([new Uint8Array(packed)])
       .stream()
       .pipeThrough(new DecompressionStream('deflate-raw'))
@@ -150,7 +178,7 @@ export async function importMXL(data: Uint8Array, options: MusicXMLOptions = {})
     const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     const index = directory(data, view);
     const bytes = await extract(data, view, index, directoryName, 65536);
-    const container = readTree(sourceText(bytes, input), input);
+    const container = readTree(bytes, input);
     const root = container.children
       .find((c) => c.name === 'rootfiles')
       ?.children.find((c) => c.name === 'rootfile');
