@@ -8,13 +8,24 @@ import { importMXL } from '../../importer/dist/mxl.js';
 const expected = JSON.parse(execFileSync('python3', ['issues/210/movement-oracle.py'], { encoding: 'utf8' }));
 const file = readFileSync(new URL('fixtures/haydn.mxl', import.meta.url));
 const selection = { firstMeasure: 129, lastMeasure: 237 };
-const options = { mode: 'partial', targetProfile: 'extended', capacity: 'large' };
+const expressive = process.argv.includes('--expressive');
+const options = { mode: 'partial', targetProfile: expressive ? 'expressive' : 'extended', capacity: 'large' };
 const imported = await importMXL(file, { ...options, selection });
 assert.equal(imported.status, 'partial', JSON.stringify(imported.diagnostics.at(-1)));
 const document = imported.documents[0];
 const score = parseScore(document.text, { capacity: 'large' });
 assert.equal(score.parts.length, 4);
-assert.equal(imported.diagnostics.filter((d) => d.message === 'Omitted MusicXML grace.').length, 18);
+if (expressive) {
+  const marks = score.parts.flatMap((p) =>
+    p.staves.flatMap((s) => s.voices.flatMap((v) => v.events.flatMap((e) => e.marks))),
+  );
+  assert.equal(marks.filter((m) => m.kind === 'grace').flatMap((m) => m.pitches).length, 18);
+  assert.ok(
+    imported.diagnostics.some(
+      (d) => d.part === 'P1' && d.measure === '15' && d.message.includes('unmatched slur'),
+    ),
+  );
+} else assert.equal(imported.diagnostics.filter((d) => d.message === 'Omitted MusicXML grace.').length, 18);
 let observed = 0;
 for (const [p, part] of score.parts.entries()) {
   assert.equal(part.measureCount, 109);
