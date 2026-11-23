@@ -4,6 +4,8 @@ import { duplicateMark } from './marks.mts';
 import { limits, readScore, type DiagnosticCode, type Fail, type Fraction, type Node, type TimedNode,
   type PartSyntax, type StaffSyntax, type VoiceSyntax } from './reader.mts';
 import type { ExpansionFrame, Head, HeadRef, ScoreEvent, ScoreV2, ScoreVoice, TextRange, WrittenMeter } from './model.js';
+import { capacityLimits, type ScoreCapacity } from './capacity.mts';
+
 export { limits };
 
 /** V2 diagnostics keep selection offsets and the invocation stack that led to a bad event. */
@@ -62,9 +64,10 @@ function hammerSource(head: Head, previous: ScoreEvent | undefined, kind: 'hamme
 }
 
 /** Every invocation has fresh budgets and IDs. No parsing or expansion state survives an edit. */
-export function compile(source: string): ScoreV2 {
+export function compile(source: string, capacity?: ScoreCapacity): ScoreV2 {
+  const budgets = capacityLimits(capacity);
   const fail: Fail = (code, reason, range, trace = []) => { throw new ScoreV2Error(code, reason, source, range, trace); };
-  const { tempoRanges, editions, patterns, parts, scoreMeters, pickup, pickupRange, playback, measureNumbers, layout, transpose: scoreTranspose } = readScore(source, fail);
+  const { tempoRanges, editions, patterns, parts, scoreMeters, pickup, pickupRange, playback, measureNumbers, layout, transpose: scoreTranspose } = readScore(source, fail, budgets);
   const meterText = scoreMeters[1]?.value ?? '4/4';
   const firstLength = pickup && fractionText(rational(...pickup, fail, pickupRange, []));
   const quarter: Fraction = [BigInt(1), BigInt(4)];
@@ -72,7 +75,7 @@ export function compile(source: string): ScoreV2 {
   let steps = 0, eventCount = 0;
 
   function spend(range: TextRange, trace: ExpansionFrame[]) {
-    if (++steps > limits.steps) fail('work-limit', 'Phrase expansion exceeded its work budget', range, trace);
+    if (++steps > budgets.steps) fail('work-limit', 'Phrase expansion exceeds ' + budgets.steps + ' work steps', range, trace);
   }
 
   /** One voice owns one clock. Patterns and tuplets temporarily change its rhythmic environment. */
@@ -102,7 +105,7 @@ export function compile(source: string): ScoreV2 {
 
     /** Advance this voice by one timed event and resolve references to earlier heads. */
     function emit(node: TimedNode, duration: Fraction, rhythmRange: TextRange | undefined, scale: Fraction, trace: ExpansionFrame[]) {
-      if (++eventCount > limits.events) fail('event-limit', 'Too many expanded attacks, rests or skips', node.range, trace);
+      if (++eventCount > budgets.events) fail('event-limit', 'Score exceeds ' + budgets.events + ' expanded attacks, rests or skips', node.range, trace);
       const length = rational(duration[0] * scale[0], duration[1] * scale[1], fail, node.range, trace);
       const duplicate = duplicateMark(node.marks ?? []);
       if (duplicate) fail('syntax', duplicate.reason, duplicate.range, trace);

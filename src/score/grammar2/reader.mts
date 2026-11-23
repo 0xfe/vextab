@@ -3,11 +3,9 @@ import { isControlPosition, isControlSize } from '../../playback/control-options
 import { isPerformerName } from '../../playback/profiles.mts';
 import type { GraceFingering, GracePitch, EventMark, Head, HeadMark, PartKind, PartSettings, WrittenMeter, StaffName, TextStyle, LaneStyle, TextBoundary, TextRange, ExpansionFrame, InstrumentIdentity } from './model.js';
 
-/** One compilation shares these budgets across all parts, voices and pattern calls. */
-export const limits = Object.freeze({
-  bytes: 65536, tokens: 8192, depth: 24, repetitions: 32,
-  events: 4096, heads: 16, steps: 32768, fraction: 2147483647,
-});
+import { limits, type capacityLimits } from './capacity.mts';
+export { limits };
+type Budgets = ReturnType<typeof capacityLimits>;
 
 export type DiagnosticCode = 'syntax' | 'source-limit' | 'token-limit' | 'depth-limit' | 'fraction-limit'
   | 'work-limit' | 'event-limit' | 'hammer' | 'instrument' | 'alignment' | 'bar-length';
@@ -29,11 +27,11 @@ export interface StaffSyntax extends Omit<InstrumentIdentity, 'name'> { displayN
 export interface PartSyntax extends PartSettings, InstrumentIdentity { lanes?: { voice: VoiceSyntax; style: LaneStyle }[]; kind: PartKind; range: TextRange; staves: StaffSyntax[] }
 
 /** Comments consume the rest of the line. Punctuation has the same meaning across line breaks. */
-function tokenize(source: string, fail: Fail): Token[] {
-  if (source.length > limits.bytes || new TextEncoder().encode(source).length > limits.bytes) fail('source-limit', 'Score exceeds 64 KiB', [0, 0]);
+function tokenize(source: string, fail: Fail, budgets: Budgets): Token[] {
+  if (source.length > budgets.bytes || new TextEncoder().encode(source).length > budgets.bytes) fail('source-limit', 'Score exceeds ' + budgets.bytes / 1024 + ' KiB', [0, 0]);
   const tokens: Token[] = [];
   function emit(text: string, range: TextRange) {
-    if (tokens.length === limits.tokens) fail('token-limit', 'Too many input tokens', range);
+    if (tokens.length === budgets.tokens) fail('token-limit', 'Score exceeds ' + budgets.tokens + ' input tokens', range);
     tokens.push({ text, range });
   }
   const commentTail = /[^\r\n]*/y;
@@ -65,7 +63,7 @@ function tokenize(source: string, fail: Fail): Token[] {
 }
 
 /** Map decoded JSON-string offsets back to written UTF-16 positions, including escapes. */
-function aliasTokens(value: string, definition: Token, fail: Fail): Token[] {
+function aliasTokens(value: string, definition: Token, fail: Fail, budgets: Budgets): Token[] {
   const offsets = [definition.range[0] + 1];
   for (let i = 1; i < definition.text.length - 1;) {
     if (definition.text[i] !== '\\') i++;
@@ -73,7 +71,7 @@ function aliasTokens(value: string, definition: Token, fail: Fail): Token[] {
     offsets.push(definition.range[0] + i);
   }
   const written = ([start, end]: TextRange): TextRange => [offsets[start], offsets[end]];
-  return tokenize(value, (code, reason, range) => fail(code, reason, written(range)))
+  return tokenize(value, (code, reason, range) => fail(code, reason, written(range)), budgets)
     .map(token => ({ text: token.text, range: written(token.range) }));
 }
 
@@ -91,10 +89,10 @@ function isPartKind(name: string): name is PartKind {
 }
 
 /** Parse a bounded syntax tree. A pattern may refer only to already completed definitions. */
-export function readScore(source: string, fail: Fail) {
+export function readScore(source: string, fail: Fail, budgets: Budgets = limits) {
   let drums = new Set(standardDrums);
   const tempoRanges = new Map<number, TextRange>();
-  let tokens = tokenize(source, fail);
+  let tokens = tokenize(source, fail, budgets);
   let cursor = 0, depth = 0;
   const peek = (): string => tokens[Math.min(cursor, tokens.length - 1)].text;
   const take = (): Token => {
@@ -502,7 +500,7 @@ export function readScore(source: string, fail: Fail) {
       const definition = tokens[cursor];
       const value = literal();
       const outer = tokens, next = cursor;
-      tokens = aliasTokens(value, definition, fail);
+      tokens = aliasTokens(value, definition, fail, budgets);
       cursor = 0;
       try {
         const mark = readMark();

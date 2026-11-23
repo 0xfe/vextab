@@ -2,6 +2,9 @@
 
 **VexTab 6 reads grammar v2 by default.** This document records the language design and distinguishes runnable examples from proposals. See the [guide](https://vexflow.com/vextab/guide/) for released syntax and the [migration guide](migrate-scores.md) for the v1 reader.
 
+For a large score, the host can call `parseScore(source, { capacity: 'large' })`, `new VexTab({ capacity: 'large' })` or `new Div(element, { capacity: 'large' })`. An embed can set `data-capacity="large"`. The resulting document goes directly to the editor, conductor, print renderer or player. The default permits 64 KiB of source, 8,192 tokens, 4,096 events and 32,768 compiler steps. The large profile permits 1 MiB, 131,072 tokens, 32,768 events and 524,288 steps respectively. The host chooses the profile for every edit. Both profiles enforce the same limits on expression depth, ratios, chord heads and repeat counts.
+
+
 **Design goals.** Keep the compact fret/string pair. Give each voice a sequence, each chord one attack, and each technique a typed attachment. Use named musical phrases and bounded repetition for reuse. A shared score model should drive engraving, reading, parts, and playback.
 
 A first guitar score fits on one line. Play four quarter notes on the high E string in standard tuning.

@@ -18,7 +18,7 @@ export {
   Player,
 };
 
-export { parseScore, ScoreError, ScoreV2Error, type ScoreV2, type ParsedScore, type SourceRange } from './score/parse';
+export { parseScore, ScoreError, ScoreV2Error, type ScoreCapacity, type ScoreV2, type ParsedScore, type SourceRange } from './score/parse';
 export { renderScore, renderConductor, renderEdition, renderScorePart, type Part } from './score/layout';
 
 export * from './playback/performer';
