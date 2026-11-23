@@ -50,3 +50,13 @@ In the Sor comparison, the opening bass B carries into the second bar under a mo
 The package has independent MusicXML, MXL and LilyPond entry points. Each bundles only its own reader and the shared text writer. The package test enforces a 96 KiB tarball limit and gzip limits of 32 KiB for MusicXML, 40 KiB for MXL and 24 KiB for LilyPond. Fixtures, reference tools, Chrome and VexFlow belong to the test project and stay outside the importer package.
 
 On an Apple M3 with Node 26.13.1 and Chrome 158.0.8127.37, the complete Joplin first strain converted in 5.8 ms at p95 in Node and 4.8 ms in a Chrome worker. The public Node reparse took 3.4 ms at p95. These measurements use 21 fresh processes or worker realms and exclude input I/O. The separate Haydn benchmark starts with the original four-movement MXL and selects the second movement. [M0 budgets](../206/README.md)
+
+The alpha tarball is 88,616 bytes packed and 261,918 bytes installed. On the same runner, expressive MXL conversion took 84.14 ms at p95 in Node and 76.70 ms in a Chrome worker. Node public reparse took 13.13 ms at p95. Node peak RSS growth through reparse was 39.45 MiB at p95.
+
+**Chrome worker memory remains above the release target.** One conversion grew renderer RSS by 33.14 MiB. The same worker doing 21 consecutive conversions grew by 173.52 MiB on the combined branch. Seven isolated runs measured 165.02–166.06 MiB. The budget is 128 MiB. The browser reader streams inflated chunks directly into SAX, releases completed partwise measures, and verifies length and checksum before returning a document. The sustained-worker gate and its reproduction steps are tracked under M5. [Memory qualification issue](https://github.com/0xfe/vextab/issues/214)
+
+~~~sh
+node issues/210/timing.mjs --expressive
+node issues/210/memory.mjs --expressive --once
+node issues/210/memory.mjs --expressive
+~~~
