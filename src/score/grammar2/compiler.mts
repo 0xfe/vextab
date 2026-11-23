@@ -364,7 +364,15 @@ export function compile(source: string): ScoreV2 {
     if (bar > measureCount) fail('alignment', 'Tempo change lies beyond the score', range);
   }
   if (playback?.tempoChanges) {
-    for (const part of compiled) track(playback.tempoChanges, part.staves[0].voices[0].measures.map(m => m.span));
+    const reference = compiled[0].staves[0].voices[0].measures;
+    for (const part of compiled) {
+      const bars = part.staves[0].voices[0].measures;
+      track(playback.tempoChanges, bars.map(m => m.span));
+      // A global bar-relative tempo must denote the same absolute instant in each part.
+      const last = playback.tempoChanges[playback.tempoChanges.length - 1];
+      for (let i = 0; i < last.bar - 1; i++) if (bars[i].span !== reference[i].span)
+        fail('alignment', 'Share the written bar grid before a global inline tempo', last.range);
+    }
     const seen = new Set<string>();
     for (const e of playback.tempoChanges) {
       const id = e.bar + ':' + e.at;
