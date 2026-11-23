@@ -10,7 +10,7 @@ export interface Drum { id:string; name:string; line:number; head:'normal'|'cros
 export type Instrument = Guitar | { kind:'drums'; map:Drum[] };
 /** Head details index the authored pitches or drum positions in their original order. */
 export interface HeadDetail {
-  string?:number; fret?:number|'x'; drum?:string; tieStop?:boolean;
+  string?:number; stringSide?:Side|'left'|'right'; fret?:number|'x'; drum?:string; tieStop?:boolean;
   tieStartId?:string; tieEndId?:string;
   finger?:{value:string; side:Side|'left'|'right'}; forcedAccidental?:boolean;
   gesture?:'hammer'|'pull'|'slide'; bend?:number;

@@ -26,6 +26,8 @@ export function headMarks(head: HeadDetail, names: Names) {
   if (head.tieStop && !head.tieEndId) marks.push('tie');
   if (head.tieEndId) marks.push('tieEnd ' + names.get('tie', head.tieEndId));
   if (head.tieStartId) marks.push('tieStart ' + names.get('tie', head.tieStartId));
+  if (head.string !== undefined && (head.fret === undefined || head.stringSide))
+    marks.push('stringNumber ' + head.string + (head.stringSide ? ' ' + head.stringSide : ''));
   if (head.finger) marks.push('finger ' + head.finger.value + ' ' + head.finger.side);
   if (head.forcedAccidental) marks.push('showSign');
   if (head.gesture) marks.push(head.gesture);
