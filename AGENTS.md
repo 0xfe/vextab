@@ -25,6 +25,8 @@ Keep any issue-specific files (like repro tests or notes) in the issues/ directo
 
 If an issue is labeled ai_todo, remove it after completion.
 
+If you're fixing a bug, add a comment when you figure out the root cause of the bug, and how you worked it out. After the bug is fixed, explain how you fixed it.
+
 ### Issue Triaging
 
 If I ask you to triage issues, then go through all open issues and assign a priority and a type (bug/feature/etc.) and any relevant labels (if necessary). Also add a "triaged" label, and a short comment with any further thoughts/observations/next steps. Mention that you're a bot.
