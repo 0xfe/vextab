@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright-core';
+import { checkArchiveIntegrity } from './mxl-integrity.mjs';
 import { importMusicXML } from '../../importer/dist/musicxml.js';
 
 const output = resolve('build/importer-m4');
@@ -85,5 +86,8 @@ function check(id, score) {
 
 try {
   await proof('extended');
-  if (!process.argv.includes('--before-only')) await proof('expressive');
+  if (!process.argv.includes('--before-only')) {
+    await checkArchiveIntegrity(browser);
+    await proof('expressive');
+  }
 } finally { await browser.close(); }
