@@ -5,7 +5,7 @@ export type TextRange = readonly [start: number, end: number];
 export interface ImportOptions {
   mode?: 'strict' | 'partial';
   /** Enable timed staff state and ensemble syntax supported by VexTab 6.3.0. */
-  targetProfile?: 'standard' | 'extended';
+  targetProfile?: 'standard' | 'extended' | 'expressive';
   /** Large target capacity also requires an extended-capacity consuming host. */
   capacity?: 'default' | 'large';
   filename?: string;
@@ -35,7 +35,7 @@ export interface ImportedDocument {
 
 /** A fatal failure never returns a misleading partial document. */
 export type ImportResult = {
-  target: { language: 2; minimumVersion: '6.2.3' | '6.3.0'; capacity?: 'large' };
+  target: { language: 2; minimumVersion: '6.2.3' | '6.3.0' | '6.4.0'; capacity?: 'large' };
   diagnostics: ImportDiagnostic[];
 } & (
   | { status: 'exact' | 'partial'; documents: [ImportedDocument] }
