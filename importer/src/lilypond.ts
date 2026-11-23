@@ -10,6 +10,8 @@ export type { ImportedDocument, ImportDiagnostic, ImportOptions, ImportResult, T
 export interface LilyPondOptions extends ImportOptions {
   includes?: Readonly<Record<string, string>>;
   score?: number | 'print' | 'midi';
+  /** Retain a source's short final bar as an explicit VexTab fragment. */
+  finalFragment?: boolean;
 }
 
 /** All duration fields are lexical. Variables carry their own duration defaults. */
@@ -96,12 +98,17 @@ class Resolver {
   }
 
   /** Every indexed bar comes from an actual event or timing directive. Reject dangling attachments. */
-  resolve(expr: Expression) {
+  resolve(expr: Expression, finalFragment = false) {
     const state: State = { part: 'staff', voice: 'upper', index: 0, at: zero,
       mode: 'absolute', anchor: pitch('F', 0, 3), fixed: 3, rhythm: quarter,
       last: [], tuplets: [], pendingGrace: [], uses: [] };
     this.sequence(expr.words, state, expr.scope, 0);
     if (state.pendingGrace.length || state.tie) this.input.fail('timing', 'Missing attachment target.', expr.words.at(-1)!.range);
+    if (finalFragment) for (const bars of this.parts.values()) {
+      const last = bars[bars.length - 1];
+      if (!last.pickup && last.extent.compare(zero) > 0 && last.extent.compare(new Time(last.beats, last.beatType)) < 0)
+        last.fragment = last.extent;
+    }
     return [...this.parts.values()].flat();
   }
 
@@ -349,11 +356,18 @@ class Resolver {
       for (let k = 0; k < items.length;) {
         if (items[k].value === '\\volta') {
           k++;
-          if (items[k++]?.value !== String(endings.length + 1)) input.fail('unsupported', 'Expected consecutive pass numbers.', choices.range);
+          const pass = items[k++];
+          if (pass?.value !== String(endings.length + 1) || items[k]?.value === ',')
+            input.fail('unsupported', 'Expected one consecutive pass number per written ending.', pass?.range ?? choices.range);
         }
         const item = items[k++];
-        if (item?.value !== '{') input.fail('unsupported', 'Expected a sequential alternative.', choices.range);
-        endings.push(item);
+        if (!item) input.fail('syntax', 'Missing alternative music.', choices.range);
+        if (item.value === '{') endings.push(item);
+        else {
+          const [ , end] = readRhythm(items, k, s.rhythm, input);
+          endings.push({ ...item, value: '{', children: items.slice(k - 1, end) });
+          k = end;
+        }
       }
       if (endings.length !== +n) input.fail('unsupported', 'Expected one ending per pass.', choices.range);
       for (const [j, ending] of endings.entries()) {
@@ -436,7 +450,7 @@ class Resolver {
 export function importLilyPond(source: string, options: LilyPondOptions = {}): ImportResult {
   return convert(options, 'score.ly', input => {
     const file = input.file;
-    const bars = new Resolver(input).resolve(selectScore(source, options, input));
+    const bars = new Resolver(input).resolve(selectScore(source, options, input), options.finalFragment);
     input.file = file;
     return [bars, [0, source.length]];
   });

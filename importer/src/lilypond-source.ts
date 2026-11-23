@@ -107,7 +107,7 @@ export function selectScore(source: string, options: LilyPondOptions, input: Inp
       const value = arg?.value ?? '';
       switch (name) {
         case '\\version':
-          if (!/^"2\.(24|26)\.\d+"$/.test(value) && value !== '"2.14.2"')
+          if (!/^"2\.(24|26)\.\d+"$/.test(value) && !['"2.14.2"', '"2.17.11"', '"2.16.0"', '"2.23.0"'].includes(value))
             input.fail('unsupported', 'Unqualified LilyPond source version.', token.range);
           i++; break;
         case '\\language':
