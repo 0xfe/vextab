@@ -29,6 +29,13 @@ jobs:
       - run: npm test
         env:
           CHROME_BIN: /usr/bin/google-chrome
+      - name: Verify the standalone importer and its packed Node and worker consumers
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+        run: |
+          npm ci --prefix importer --ignore-scripts
+          npm test --prefix importer
+          node issues/207/consumer.mjs
       - run: npm run build
       - name: Pack the distribution and test the files consumers receive
         env:

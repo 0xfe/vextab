@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list><score-part id="P1"><part-name/></score-part></part-list>
+  <part id="P1"><measure number="1">
+    <attributes>
+      <divisions>1</divisions><key><fifths>1</fifths></key>
+      <time><beats>2</beats><beat-type>4</beat-type></time>
+    </attributes>
+    <note><pitch><step>F</step><alter>1</alter><octave>4</octave></pitch><duration>1</duration><voice>1</voice><type>quarter</type></note>
+    <note><pitch><step>F</step><octave>4</octave></pitch><duration>1</duration><voice>1</voice><type>quarter</type></note>
+    <backup><duration>1</duration></backup>
+    <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><voice>2</voice><type>quarter</type></note>
+  </measure></part>
+</score-partwise>

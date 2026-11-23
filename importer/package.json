@@ -1,0 +1,24 @@
+{
+  "name": "vextab-import",
+  "version": "0.1.0-alpha.1",
+  "description": "Convert MusicXML and LilyPond source to editable VexTab",
+  "license": "LicenseRef-LICENSE",
+  "repository": { "type": "git", "url": "https://github.com/0xfe/vextab.git", "directory": "importer" },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./musicxml": { "types": "./dist/musicxml.d.ts", "default": "./dist/musicxml.js" },
+    "./lilypond": { "types": "./dist/lilypond.d.ts", "default": "./dist/lilypond.js" }
+  },
+  "files": [
+    "dist/musicxml.js", "dist/musicxml.d.ts", "dist/lilypond.js", "dist/lilypond.d.ts",
+    "dist/types.d.ts", "LICENSE", "THIRD-PARTY.txt"
+  ],
+  "engines": { "node": ">=22.18.0" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node build.mjs",
+    "prepack": "npm run build",
+    "test": "npm run build && node --test test/import.test.mjs"
+  },
+  "devDependencies": { "esbuild": "0.28.2", "saxes": "6.0.0", "typescript": "7.0.2" }
+}
