@@ -339,8 +339,10 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
     }
   }
   const large=input.options.capacity==='large', bytes=large?1048576:65536, tokenLimit=large?131072:8192;
-  if (new TextEncoder().encode(writer.text).length > bytes) input.fail('limit','Generated score exceeds '+bytes+' UTF-8 bytes. Select fewer measures or a larger capacity.',range);
-  const tokens = writer.text.match(/"(?:\\.|[^"\\])*"|[{}()[\],|]|[^\s{}()[\],|"]+/gu);
+  // A UTF-16 unit needs at most three UTF-8 bytes; a token consumes at least one unit.
+  // Small scores therefore need neither a second byte buffer nor an array of all their tokens.
+  if (writer.text.length > bytes || (writer.text.length * 3 > bytes && new TextEncoder().encode(writer.text).length > bytes)) input.fail('limit','Generated score exceeds '+bytes+' UTF-8 bytes. Select fewer measures or a larger capacity.',range);
+  const tokens = writer.text.length > tokenLimit && writer.text.match(/"(?:\\.|[^"\\])*"|[{}()[\],|]|[^\s{}()[\],|"]+/gu);
   if (tokens && tokens.length > tokenLimit) input.fail('limit','Generated score exceeds '+tokenLimit+' target tokens. Select fewer measures or a larger capacity.',range);
   return { text: writer.text, source: {file: input.rootFile, part: first.part, measure: first.label, voices: staves[0].voices},
     staves, ...(input.options.sourceMap && { sourceMap: writer.map }) };
