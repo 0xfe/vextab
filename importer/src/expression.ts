@@ -24,6 +24,7 @@ export interface SpanPoint {
 export interface Syllable { text:string; verse?:string; hyphen?:boolean; extend?:number; elideWith?:string }
 /** Attach expression to a measured event, keeping all literal strings separate from grammar tokens. */
 export interface Expression {
+  label?:string;
   lyrics?:Syllable[]; harmony?:{root:string; quality:string; bass?:string};
   frame?:{independent?:boolean; frets:(number|'x')[]; barre?:[number,number,number]};
   dynamic?:'ppp'|'pp'|'p'|'mp'|'mf'|'f'|'ff'|'fff';

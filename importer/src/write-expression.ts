@@ -39,6 +39,7 @@ export function headMarks(head: HeadDetail, names: Names) {
 /** Preserve syllabification, verse identity and original lyric text independently. */
 export function eventMarks(expression: Expression, names: Names) {
   const marks: string[] = [];
+  if (expression.label !== undefined) marks.push('label ' + JSON.stringify(expression.label));
   for (const lyric of expression.lyrics ?? []) {
     const fields = [lyric.verse ? 'verse ' + names.get('verse', lyric.verse) : 'lyric', JSON.stringify(lyric.text)];
     if (lyric.elideWith !== undefined) fields.push('elide', JSON.stringify(lyric.elideWith));
