@@ -1,6 +1,7 @@
 // Shared measured music, source diagnostics and conversion entry point.
 import type { ImportDiagnostic, ImportOptions, ImportResult, TextRange } from './types.js';
 
+import type { Expression, HeadDetail, Instrument } from './expression.js';
 import { writeScore } from './writer.js';
 import { Time, zero } from './time.js';
 
@@ -29,6 +30,8 @@ export interface Event {
   tuplets?: { actual: number; normal: number; id: string }[];
   tieStart?: boolean;
   tieStop?: boolean;
+  headDetails?: HeadDetail[];
+  expression?: Expression;
   headRanges?: TextRange[];
   grace?: Pitch[][];
   file?: string;
@@ -46,6 +49,7 @@ export class Measure {
   staff = 1;
   /** Explicit two-staff keyboard with independent owning and display staves. */
   piano = false;
+  instrument?: Instrument;
   clef = 'treble';
   sounds = 0;
   changes: { kind:'clef'|'key'|'sounds'; value:string|number; at:Time; range:TextRange }[] = [];
@@ -116,7 +120,7 @@ export function convert(options: ImportOptions, filename: string, read: (input: 
   const input = new Input(options.filename ?? filename, options);
   const common = { target: targetVersion(options), diagnostics: input.diagnostics };
   try {
-    if (options.capacity==='large' && options.targetProfile!=='extended')
+    if (options.capacity==='large' && !includesExtended(options))
       input.fail('limit','Large capacity requires the extended VexTab 6.3.0 target and a large-capacity host.',[0,0]);
     const [bar, range] = read(input);
     const document = writeScore(Array.isArray(bar) ? bar : [bar], input, range);
@@ -137,6 +141,11 @@ export function meter(beats: string, unit: string, bar: Measure, input: Input, r
 
 /** Report the host features the caller opted into, including on conversion failure. */
 export function targetVersion(options:ImportOptions):ImportResult['target'] {
-  return {language:2,minimumVersion:options.targetProfile==='extended'?'6.3.0':'6.2.3',
+  return {language:2,minimumVersion:options.targetProfile==='expressive'?'6.4.0':options.targetProfile==='extended'?'6.3.0':'6.2.3',
     ...(options.capacity==='large' && {capacity:'large' as const})};
+}
+
+/** Both newer profiles can encode the staff state and larger documents introduced in M3. */
+export function includesExtended(options: ImportOptions) {
+  return options.targetProfile === 'extended' || options.targetProfile === 'expressive';
 }
