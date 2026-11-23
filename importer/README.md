@@ -1,22 +1,34 @@
 # vextab-import
 
-Convert a measured MusicXML or LilyPond passage into editable VexTab grammar v2. The M1 preview reads one complete measure on one concert-pitch staff, with one or two voices. Each format is a separate module that runs in Node 22.18+ or a browser worker.
+Convert measured MusicXML, compressed MXL or static LilyPond into editable VexTab grammar v2. Import the entry for the format you use. Each entry runs in Node 22.18+ and modern browser workers. Conversion is independent of the renderer.
 
 ~~~js
+import { importMusicXML } from 'vextab-import/musicxml';
+import { importMXL } from 'vextab-import/mxl';
 import { importLilyPond } from 'vextab-import/lilypond';
 
-const result = importLilyPond(String.raw`{ \key g \major \time 2/4 fis'4 f' }`);
-if (result.status === 'exact') console.log(result.documents[0].text);
+const xml = importMusicXML(xmlTextOrBytes);
+const compressed = await importMXL(new Uint8Array(archiveBytes));
+const lily = importLilyPond(String.raw`\relative c' { \time 2/4 <c e g>4 d8 e | f2 | }`);
+
+if (lily.status === 'exact') console.log(lily.documents[0].text);
 ~~~
 
-Use `importMusicXML` from `vextab-import/musicxml` for a decoded XML string or UTF-8 bytes. Both functions accept `{ filename, mode, sourceMap }`. The result names the minimum compatible VexTab version (6.2.3). Source and diagnostic ranges are half-open UTF-16 offsets in the decoded input. Each document lists the source voice IDs and their generated names in first-appearance order. Event mappings cover explicit notes, rests and skips. Gaps reconstructed from a MusicXML backup carry no source token.
+## Coverage
 
-| Input | M1 coverage |
+| Entry | Measured-score preview |
 | --- | --- |
-| MusicXML 4.0 / 3.1 partwise | Matching part definition and ID, part name, one measure, opening integer divisions, simple meter, major key, treble clef, note/rest, independent voice IDs and partial backups. |
-| LilyPond | A single brace expression or `\new Staff { … }`, optional 2.24.x/2.26.x declaration, Dutch absolute pitches, major key and simple meter. Two simultaneous voice blocks use an explicit voice separator and an explicit first duration in the second block. |
-| Rhythm and pitch | Undotted whole through 256th notes, inherited LilyPond durations, visible rests, silent gaps, single/double alterations. The two voices share a complete measure. |
+| MusicXML | 4.0 partwise and timewise scores and selected 3.1 files. Accepts decoded text and UTF-8 or UTF-16 bytes. Reads persistent divisions, keys and meter, partial backups and forwards, written and elapsed rhythm, chords, rests, pickups, tuplets and basic ties. |
+| MXL | Accepts archive bytes and imports the first declared score from the container manifest. Stored and deflated members are supported, with a 1 MiB selected-score limit. The async entry uses the platform inflater. |
+| LilyPond | Resolves static variables and virtual includes, simultaneous voices, named piano staves, absolute, relative and fixed pitch, inherited duration, pickups, tuplets and bounded repeats. Use `score` to select a zero-based score index or a `'print'` or `'midi'` score. Supply include text as `includes: { 'theme.ly': source }`. |
+| Output | Independent voices, chord heads, staff assignment, barline key and meter changes, and supported repeat forms. Score size follows the VexTab 6.2.3 default compiler profile. |
 
-Strict mode is the default. Unsupported music or an incomplete measure returns `failed` and an empty document list. With `mode: 'partial'`, a recognized staccato mark can be omitted with a warning and the event’s timing retained. Both modes fail on an unknown expression whose timing or meaning cannot be determined. MXL archives, multiple measures, chords, tuplets, relative LilyPond pitches, includes and transposing instruments belong to subsequent milestones.
+**Strict conversion is the default.** A known loss fails strict conversion. With `{ mode: 'partial' }`, the reader may return editable music together with a warning at each known loss. Unknown music with unresolved timing fails in both modes. Check `result.diagnostics` before presenting partial output to a musician.
 
-From the repository root, run `npm ci --prefix importer` and `npm test --prefix importer`. Run `npm pack` inside the package to build a local tarball. The package builds its own typed, self-contained entry points and includes the notices for bundled code. VexTab uses the importer only in integration tests.
+Each result identifies the minimum target version. Each document lists the written measure labels and voice IDs for its imported staves. Pass `filename` for diagnostic labels and `sourceMap: true` to map generated tokens back to half-open UTF-16 offsets in the decoded source. Gaps reconstructed by the writer have no source token.
+
+The repertoire qualification covers a 42-measure Haydn quartet excerpt and the pickup and opening two bars of a Joplin piano score. Whole-work capacity and timed clef changes belong to M3. The issue notes detail the imported features, source editions and known losses. [MusicXML fixtures and Haydn comparison](../issues/208/README.md) · [LilyPond fixtures and native comparison](../issues/209/README.md) · [Roadmap](../doc/importer.md)
+
+## Build and verify
+
+From the repository root run `npm ci --prefix importer` and `npm test --prefix importer`. Run `npm pack` inside `importer/` to build the installable tarball. The package contains the typed format entries and bundled-code notices. Once the root development build is available, `node issues/207/consumer.mjs` installs that tarball into a fresh project and checks the public exports in Node and Chrome workers.

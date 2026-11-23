@@ -128,6 +128,8 @@ Set a hard gate of **zero importer modules or bytes** in the ordinary VexTab pro
 
 The [M1 preview package](../importer/README.md) converts the two-voice measure above through independent, typed entry points. The [packed-consumer test](../issues/207/consumer.mjs) checks the parser timeline and projected sounding pitches from both worker outputs.
 
+The measured readers now also cover multi-bar sources. The [MusicXML qualification](../issues/208/README.md) compares the 42-bar quartet against all 772 principal events. The [LilyPond qualification](../issues/209/README.md) compares the selected print and MIDI passages with native LilyPond 2.26.0. The [packed multi-bar control](../scripts/test-importer-measured.mjs) reparses a chord and triplet from all three installed entry points and engraves each worker’s output.
+
 | Milestone | Deliverable and dependencies | Exit test |
 | --- | --- | --- |
 | **M0 · Establish the contract** | Pin target grammar, both source profiles and reference tools. Add the corpus manifest and a matrix of features versus parse, engraving, print and playback. Collect histograms of document size, source features and required compiler limits. Prototype XML streaming, ZIP extraction and LilyPond tokenization on common and large cases. Measure dependency graphs, memory and latency. | Record reproducible baselines and numeric budgets per entry and runner. Show the Haydn size failure under the default profile. Decide bounded whole-score capacity and caller-selected extraction behavior before promising complete works. |
