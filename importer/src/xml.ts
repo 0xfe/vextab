@@ -1,7 +1,7 @@
 // Bounded, non-resolving XML decoder and located element helpers used by MusicXML and its container.
 import { SaxesParser } from 'saxes';
 import { Input, sourceLimit } from './score.js';
-import type { TextRange } from './types.js';
+import type { MusicXMLOptions, TextRange } from './types.js';
 
 /** Keep exact element ranges while interpreting this bounded measure in document order. */
 export interface Element {
@@ -12,10 +12,17 @@ export interface Element {
   range: [number, number];
 }
 
+const largeXMLLimit=8*1024*1024;
+/** A caller can select a small target from a larger source, independently of the host capacity. */
+export function xmlLimit(options:MusicXMLOptions) {
+  return options.selection || options.targetProfile==='extended' ? largeXMLLimit : sourceLimit;
+}
+
 /** Decode the supported byte representation without substituting replacement characters. */
 export function sourceText(data: string | Uint8Array, input: Input) {
-  if ((typeof data === 'string' ? data.length : data.byteLength) > sourceLimit)
-    input.fail('limit', 'MusicXML exceeds the input budget.', [0, 0]);
+  const size=typeof data==='string'?data.length:data.byteLength, limit=xmlLimit(input.options);
+  if (size>limit) input.fail('limit','MusicXML input has '+size+' '+(typeof data==='string'?'UTF-16 units':'bytes')+
+    '; limit is '+limit+'. Select a part or measure range, or opt into the extended profile for larger XML.',[0,0]);
   if (typeof data === 'string') return data;
   const utf16 =
     (data[0] === 255 && data[1] === 254) || (data[0] === 60 && data[1] === 0)
@@ -36,9 +43,13 @@ export function sourceText(data: string | Uint8Array, input: Input) {
 }
 
 /** Let saxes handle XML syntax, entities and offsets. No external document is loaded. */
-export function readTree(source: string, input: Input): Element {
+export function readTree(source: string, input: Input, selection?:MusicXMLOptions['selection'],onRootChild?:(node:Element,root:Element)=>void): Element {
   const parser = new SaxesParser();
-  const stack: Element[] = [];
+  const stack: (Element|undefined)[] = [];
+  const selected=selection?.parts && new Set(selection.parts);
+  let part='', ordinal=0;
+  const first=selection?.firstMeasure ?? 1, last=selection?.lastMeasure ?? Infinity;
+  const nodeLimit=xmlLimit(input.options)>sourceLimit?400000:65536;
   let root: Element | undefined,
     start = 0,
     count = 0;
@@ -58,8 +69,21 @@ export function readTree(source: string, input: Input): Element {
     start = source.lastIndexOf('<', parser.position - 1);
   });
   parser.on('opentag', (tag) => {
-    if (stack.length >= 32 || ++count > 65536)
+    if (stack.length >= 32 || ++count > nodeLimit)
       input.fail('limit', 'XML element budget exceeded.', [start, parser.position]);
+    const parent=stack[stack.length-1];
+    if (stack.length && !parent) { stack.push(undefined); return; }
+    if (tag.name==='part' && (parent?.name==='score-partwise' || parent?.name==='measure')) {
+      part=tag.attributes.id;
+      if (parent.name==='score-partwise') ordinal=0;
+    }
+    if (tag.name==='measure' && (parent?.name==='part' || parent?.name==='score-timewise')) ordinal++;
+    const content=parent && (root?.name==='score-partwise'?parent.name==='measure':parent.name==='part');
+    // Keep preceding attributes and tempos for carry-in. Never allocate unselected note subtrees.
+    if (selection && content && (selected && !selected.has(part) || ordinal>last ||
+        ordinal<first && !['attributes','direction','sound'].includes(tag.name))) {
+      stack.push(undefined); return;
+    }
     const node: Element = {
       name: tag.name,
       attributes: tag.attributes,
@@ -67,17 +91,21 @@ export function readTree(source: string, input: Input): Element {
       text: '',
       range: [start, parser.position],
     };
-    if (stack.length) stack[stack.length - 1].children.push(node);
+    if (parent) parent.children.push(node);
     else root = node;
     stack.push(node);
   });
   function text(value: string) {
-    if (stack.length) stack[stack.length - 1].text += value;
+    const current=stack[stack.length-1]; if (current) current.text+=value;
   }
   parser.on('text', text);
   parser.on('cdata', text);
   parser.on('closetag', () => {
-    stack.pop()!.range[1] = parser.position;
+    const current=stack.pop();
+    if (current) {
+      current.range[1]=parser.position;
+      if (root && stack.length===1) onRootChild?.(current,root);
+    }
   });
   parser.write(source).close();
   if (!root) return input.fail('syntax', 'Missing MusicXML root.', [0, source.length]);

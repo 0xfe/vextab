@@ -2,10 +2,10 @@
 import { convert, Input, keys, minorKeys, Measure, meter, pitch } from './score.js';
 import { Time, zero } from './time.js';
 import type { Event } from './score.js';
-import type { ImportOptions, ImportResult, TextRange } from './types.js';
+import type { MusicXMLOptions, ImportResult, TextRange } from './types.js';
 import { one, readTree, scalar, shape, sourceText } from './xml.js';
 import type { Element } from './xml.js';
-export type { ImportedDocument, ImportDiagnostic, ImportOptions, ImportResult, TextRange } from './types.js';
+export type { ImportedDocument, ImportDiagnostic, ImportOptions, MusicXMLOptions, ImportResult, TextRange } from './types.js';
 
 /** Independent state persists at bar boundaries even if divisions change within a measure. */
 interface PartState {
@@ -16,6 +16,10 @@ interface PartState {
   beats: number;
   beatType: number;
   clefs: string[];
+  staffKeys: (string|undefined)[];
+  sounds: number[];
+  tempo?: number;
+  group?: Measure['group'];
   piano: boolean;
   ownership: Map<string, number>;
   pickup?: Time;
@@ -43,21 +47,39 @@ function elapsed(node: Element, divisions: number, input: Input) {
 }
 
 /** Attributes take effect at the cursor; the measured profile supports divisions changes inside a bar. */
-function attributes(node: Element, state: PartState, cursor: Time, input: Input) {
-  shape(node, input, ['divisions', 'key', 'time', 'clef', 'staves']);
+function attributes(node: Element, state: PartState, cursor: Time, input: Input, bars:Measure[] = []) {
+  const mid=cursor.compare(zero)!==0;
+  const extended=input.options.targetProfile==='extended';
+  function change(kind:'key'|'clef'|'sounds',value:string|number,number:string|undefined,source:Element) {
+    const staffs=number ? [integer(number,source.range,input)] : state.clefs.map((_,i)=>i+1);
+    for (const staff of staffs) {
+      if (staff>state.clefs.length) input.fail('syntax','State for an undeclared staff.',source.range);
+      if (mid) {
+        bars[staff-1].changes.push({kind,value,at:cursor,range:source.range});
+        continue;
+      }
+      if (kind==='key') state.staffKeys[staff-1]=String(value);
+      else if (kind==='clef') state.clefs[staff-1]=String(value);
+      else state.sounds[staff-1]=Number(value);
+    }
+  }
+  shape(node, input, ['divisions','key','time','clef','staves','transpose','instruments','measure-style','staff-details']);
   for (const child of node.children) {
     if (child.name === 'divisions') {
       state.divisions = integer(scalar(node, 'divisions', input), child.range, input);
       continue;
     }
-    if (cursor.compare(zero)) input.fail('unsupported', 'Mid-measure ' + child.name + ' change.', child.range);
+    if (mid && (!extended || !['clef','key','transpose'].includes(child.name))) input.fail('unsupported', 'Mid-measure ' + child.name + ' change.', child.range);
     if (child.name === 'key') {
-      shape(child, input, ['fifths', 'mode']);
+      shape(child, input, ['fifths', 'mode'], ['number']);
       const fifths = scalar(child, 'fifths', input);
       const mode = scalar(child, 'mode', input, 'major');
       if (!/^-?[0-7]$/.test(fifths) || !['major', 'minor'].includes(mode))
         input.fail('unsupported', 'Unsupported key signature.', child.range);
-      state.key = (mode === 'minor' ? minorKeys : keys)[7 + +fifths];
+      const value=(mode==='minor'?minorKeys:keys)[7 + +fifths];
+      if (child.attributes.number && !extended) input.fail('unsupported','Staff-local key needs extended target.',child.range);
+      if (!mid && !child.attributes.number) state.key=value;
+      change('key',value,child.attributes.number,child);
     } else if (child.name === 'time') {
       shape(child, input, ['beats', 'beat-type'], ['symbol']);
       const temp = new Measure();
@@ -72,15 +94,32 @@ function attributes(node: Element, state: PartState, cursor: Time, input: Input)
       if (count > 1 && !(count === 2 && state.piano))
         input.omit('Independent output staves omit the source part grouping.', child.range);
       while (state.clefs.length < count) state.clefs.push('treble');
-    } else {
-      shape(child, input, ['sign', 'line'], ['number']);
+    } else if (child.name==='transpose') {
+      if (!extended) input.fail('unsupported','Instrument transposition needs the extended target.',child.range);
+      shape(child,input,['diatonic','chromatic','octave-change'],['number']);
+      const chromatic=scalar(child,'chromatic',input);
+      const octave=scalar(child,'octave-change',input,'0');
+      if (![chromatic,octave].every(n=>/^-?\d+$/.test(n)) || Math.abs(+chromatic + 12 * +octave)>127)
+        input.fail('unsupported','Unsupported sounding transposition.',child.range);
+      change('sounds',+chromatic + 12 * +octave,child.attributes.number,child);
+    } else if (child.name==='clef') {
+      shape(child,input,['sign','line','clef-octave-change'],['number']);
+      const octave=one(child,'clef-octave-change',input,true);
+      if (octave) input.omit('Omitted the octave indication on the clef; retained source pitch and octave.',octave.range);
       const number = integer(child.attributes.number ?? '1', child.range, input);
       const code = scalar(child, 'sign', input) + scalar(child, 'line', input);
       const clef = ({ G2: 'treble', F4: 'bass', C3: 'alto', C4: 'tenor' } as Record<string, string>)[code];
+      if (code.startsWith('TAB') && extended) {
+        input.omit('Converted TAB to pitched staff; fret display is outside the measured profile.',child.range);
+        change('clef','treble',String(number),child); continue;
+      }
       if (!clef || number > state.clefs.length)
         input.fail('unsupported', 'Unsupported clef or staff.', child.range);
-      state.clefs[number - 1] = clef;
-    }
+      change('clef',clef,String(number),child);
+    } else if (child.name==='measure-style') {
+      if (child.children.some(c=>c.name!=='multiple-rest')) input.fail('unsupported','Unresolved measure-style playback.',child.range);
+      omit(child,input);
+    } else omit(child,input);
   }
 }
 
@@ -92,7 +131,8 @@ function rhythm(node: Element, duration: Time, input: Input) {
   let actual = 1,
     normal = 1;
   if (ratio) {
-    shape(ratio, input, ['actual-notes', 'normal-notes']);
+    shape(ratio,input,['actual-notes','normal-notes','normal-type','normal-dot']);
+    for (const c of ratio.children) if (c.name==='normal-type' || c.name==='normal-dot') omit(c,input);
     actual = integer(scalar(ratio, 'actual-notes', input), ratio.range, input);
     normal = integer(scalar(ratio, 'normal-notes', input), ratio.range, input);
   }
@@ -235,6 +275,7 @@ function note(
       'type',
       'staff',
       'notations',
+      'instrument','lyric',
       'dot',
       'beam',
       'stem',
@@ -247,6 +288,7 @@ function note(
   );
   if (node.attributes['default-x'] || node.attributes['default-y'])
     input.omit('Omitted engraved note position.', node.range);
+  for (const c of node.children) if (c.name==='lyric' || c.name==='instrument') omit(c,input);
   if (!voice) input.fail('syntax', 'Empty voice ID.', node.range);
   const staff = integer(scalar(node, 'staff', input, '1'), node.range, input);
   if (!state.ownership.has(voice)) state.ownership.set(voice, staff);
@@ -354,7 +396,8 @@ function measure(data: BarInput, state: PartState, index: number, input: Input) 
         staff: i + 1,
         label,
         name: state.name,
-        key: state.key,
+        key: state.staffKeys[i] ?? state.key,
+        sounds:state.sounds[i] ?? 0, group:state.group,
         beats: state.beats,
         beatType: state.beatType,
         clef: state.clefs[i],
@@ -380,9 +423,9 @@ function measure(data: BarInput, state: PartState, index: number, input: Input) 
       previous = undefined;
       if (child.name === 'attributes') {
         const before = state.divisions;
-        attributes(child, state, cursor, input);
+        attributes(child,state,cursor,input,bars);
         if (before !== state.divisions) lastDivisionChange = cursor;
-        synchronize();
+        if (!cursor.compare(zero)) synchronize();
       } else if (child.name === 'backup' || child.name === 'forward') {
         shape(child, input, child.name === 'forward' ? ['duration', 'voice', 'staff'] : ['duration']);
         const delta = elapsed(child, state.divisions, input);
@@ -401,7 +444,17 @@ function measure(data: BarInput, state: PartState, index: number, input: Input) 
           )
         )
           input.fail('unsupported', 'Sound navigation changes the performed measure sequence.', sound.range);
-        omit(child, input);
+        if (sound?.attributes.tempo && input.options.targetProfile==='extended') {
+          const tempo=Number(sound.attributes.tempo);
+          if (!Number.isInteger(tempo) || tempo<1 || tempo>999) input.fail('unsupported','Tempo exceeds supported integer range.',sound.range);
+          const offset=scalar(child,'offset',input,'0');
+          if (!/^-?\d+$/.test(offset) || +offset && !state.divisions) input.fail('unsupported','Invalid tempo offset.',child.range);
+          const at=+offset?cursor.plus(new Time(+offset,4*state.divisions)):cursor;
+          bars[0].tempos.push({bpm:tempo,at,range:sound.range});
+          state.tempo=tempo;
+          if ((child!==sound && child.children.some(c=>!['sound','offset'].includes(c.name))) ||
+              Object.keys(sound.attributes).some(name=>name!=='tempo') || sound.children.length) omit(child,input);
+        } else omit(child, input);
       } else input.fail('unsupported', 'Unsupported measure content ' + child.name + '.', child.range);
     }
     if (cursor.compare(extent) > 0) extent = cursor;
@@ -415,6 +468,26 @@ function measure(data: BarInput, state: PartState, index: number, input: Input) 
       c.children.some((s) => s.name === 'bar-style' && ['light-light', 'light-heavy'].includes(s.text.trim())),
   );
   for (const bar of bars) {
+    bar.changes.sort((a,b)=>a.at.compare(b.at));
+    for (const change of bar.changes) {
+      if (change.at.compare(extent)>=0) input.fail('unsupported','Staff change outside this measure.',change.range);
+      if (change.kind==='clef') state.clefs[bar.staff-1]=String(change.value);
+      else if (change.kind==='key') state.staffKeys[bar.staff-1]=String(change.value);
+      else state.sounds[bar.staff-1]=Number(change.value);
+    }
+    for (const t of bar.tempos) if (t.at.compare(zero)<0 || t.at.compare(extent)>=0)
+      input.fail('unsupported','Tempo outside this measure.',t.range);
+    for (const events of bar.voices.values()) for (const event of events) {
+      const display=bars[event.staff-1];
+      let key=display.key, sounds=display.sounds;
+      for (const change of display.changes) {
+        if (change.at.compare(event.at)>0) continue;
+        if (change.kind==='key') key=String(change.value);
+        else if (change.kind==='sounds') sounds=Number(change.value);
+      }
+      event.key=key;
+      for (const p of event.pitches ?? (event.pitch?[event.pitch]:[])) p.sounding+=sounds;
+    }
     if (!bar.voices.size) bar.voices.set('1', []);
     bar.extent = length;
     const complement = boundary && state.pickup && extent.plus(state.pickup).compare(length) === 0;
@@ -462,8 +535,93 @@ function validateTies(bars: Measure[], input: Input) {
     input.fail('unsupported', 'Tie extends beyond the selected score.', event.range);
 }
 
+/** Build the ordered part registry once, sharing a group identity across its members. */
+function definitions(list:Element,input:Input) {
+  const states=new Map<string,PartState>();
+  let activeGroup: Measure['group'];
+  for (const def of list.children) {
+    if (def.name === 'part-group') {
+      if (input.options.targetProfile==='extended') {
+        if (def.attributes.type==='start') {
+          if (activeGroup) input.fail('unsupported','Nested staff groups.',def.range);
+          const glyph=one(def,'group-symbol',input,true);
+          const symbol=glyph?.text.trim() ?? 'bracket';
+          if (glyph && Object.keys(glyph.attributes).length) input.omit('Omitted group-symbol positioning.',glyph.range);
+          if (symbol!=='brace' && symbol!=='bracket') input.fail('unsupported','Unsupported staff group symbol.',def.range);
+          activeGroup={symbol:symbol as 'brace'|'bracket',parts:[]};
+          for (const c of def.children) if (c.name!=='group-symbol') omit(c,input);
+        } else if (def.attributes.type==='stop' && activeGroup) activeGroup=undefined;
+        else input.fail('syntax','Unmatched staff group boundary.',def.range);
+      } else omit(def,input);
+      continue;
+    }
+    const id = def.attributes.id;
+    if (def.name !== 'score-part' || !id || states.has(id))
+      input.fail('syntax', 'Invalid or duplicate part definition.', def.range);
+    activeGroup?.parts.push(id);
+    const name = one(def, 'part-name', input)!;
+    for (const c of def.children) if (c !== name) omit(c, input);
+    const piano = def.children.some(
+      (c) =>
+        c.name === 'score-instrument' &&
+        c.children.some(
+          (i) => i.name === 'instrument-sound' && /^keyboard\.(?:piano|fortepiano)(?:\.|$)/.test(i.text.trim()),
+        ),
+    );
+    states.set(id,{
+      id,
+      name: name.text.trim(),
+      divisions: 0,
+      key: 'C',
+      beats: 4,
+      beatType: 4,
+      clefs: ['treble'],staffKeys:[],sounds:[],group:activeGroup,
+      piano,
+      ownership: new Map(),
+      reserved: new Set(),
+      lanes: new Map(),
+    });
+  }
+  if (activeGroup) input.fail('syntax','Unclosed staff group.',list.range);
+  if (!states.size) input.fail('syntax', 'Missing part definitions.', list.range);
+  return states;
+}
+
+/** Normalize a selected part and discard its XML elements before processing the next part. */
+function readPart(all:BarInput[],state:PartState,input:Input,selection:MusicXMLOptions['selection'],range:TextRange) {
+    const first=selection?.firstMeasure ?? 1, last=selection?.lastMeasure ?? all.length;
+    if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first<1 || last<first || last>all.length)
+      input.fail('syntax','Invalid inclusive one-based measure selection.',range);
+    for (const prior of all.slice(0,first-1)) for (const child of prior.children) {
+      if (child.name==='attributes') attributes(child,state,zero,input);
+      else {
+        const tempo=(child.name==='sound'?child:child.children.find(c=>c.name==='sound'))?.attributes.tempo;
+        if (tempo) state.tempo=Number(tempo);
+      }
+    }
+    const inheritedTempo=state.tempo;
+    const records=all.slice(first-1,last);
+    if (!records.length) input.fail('syntax', 'Missing part ' + state.id + '.', range);
+    for (const record of records)
+      for (const child of record.children)
+        if (child.name === 'note') state.reserved.add(scalar(child, 'voice', input, '1'));
+    const partBars: Measure[] = [];
+    for (let i = 0; i < records.length; i++) partBars.push(...measure(records[i], state, i, input));
+    if (input.options.targetProfile==='extended' && inheritedTempo && !partBars[0].tempos.some(t=>!t.at.compare(zero)))
+      partBars[0].tempos.push({bpm:inheritedTempo,at:zero,range:records[0].measure.range});
+    validateTies(partBars, input);
+    // An unpaired first backward repeat in MusicXML starts at the beginning of the work.
+    for (const staff of new Set(partBars.map((bar) => bar.staff))) {
+      const staffBars = partBars.filter((bar) => bar.staff === staff);
+      const first = staffBars.find((bar) => bar.repeatStart || bar.repeatEnd);
+      if (first?.repeatEnd && !first.repeatStart) staffBars[0].repeatStart = 2;
+    }
+  return partBars;
+
+}
+
 /** Normalize each representation to ordered part-measure records before interpreting music. */
-function readScore(root: Element, input: Input): [Measure[], TextRange] {
+function readScore(root: Element, input: Input, selection?:MusicXMLOptions['selection'], resolved?:Map<string,Measure[]>,registry?:Map<string,PartState>): [Measure[], TextRange] {
   if (
     !['score-timewise', 'score-partwise'].includes(root.name) ||
     !['3.1', '4.0'].includes(root.attributes.version)
@@ -486,41 +644,18 @@ function readScore(root: Element, input: Input): [Measure[], TextRange] {
       omit(child, input);
     else input.fail('unsupported', 'Unsupported score content ' + child.name + '.', child.range);
   }
-  const data = new Map<string, BarInput[]>(),
-    states: PartState[] = [];
-  for (const def of list.children) {
-    if (def.name === 'part-group') {
-      omit(def, input);
-      continue;
+  const states=registry ?? definitions(list,input);
+  const data=new Map([...states.keys()].map(id=>[id,[] as BarInput[]]));
+  if (resolved) {
+    if (selection?.parts && (!selection.parts.length || selection.parts.some(id=>!states.has(id))))
+      input.fail('syntax','The selected part IDs must exist in the part list.',list.range);
+    const all:Measure[]=[];
+    for (const state of states.values()) {
+      if (!resolved.has(state.id)) input.fail('syntax','Missing score part.',list.range);
+      all.push(...resolved.get(state.id)!);
     }
-    const id = def.attributes.id;
-    if (def.name !== 'score-part' || !id || data.has(id))
-      input.fail('syntax', 'Invalid or duplicate part definition.', def.range);
-    const name = one(def, 'part-name', input)!;
-    for (const c of def.children) if (c !== name) omit(c, input);
-    const piano = def.children.some(
-      (c) =>
-        c.name === 'score-instrument' &&
-        c.children.some(
-          (i) => i.name === 'instrument-sound' && /^keyboard\.(?:piano|fortepiano)(?:\.|$)/.test(i.text.trim()),
-        ),
-    );
-    states.push({
-      id,
-      name: name.text.trim(),
-      divisions: 0,
-      key: 'C',
-      beats: 4,
-      beatType: 4,
-      clefs: ['treble'],
-      piano,
-      ownership: new Map(),
-      reserved: new Set(),
-      lanes: new Map(),
-    });
-    data.set(id, []);
+    return [all,root.range];
   }
-  if (!states.length) input.fail('syntax', 'Missing part definitions.', list.range);
   for (const block of root.children.filter((c) => c.name === structural)) {
     if (timewise) {
       const seen = new Set<string>();
@@ -541,29 +676,37 @@ function readScore(root: Element, input: Input): [Measure[], TextRange] {
     }
   }
   const bars = [];
-  for (const state of states) {
-    const records = data.get(state.id)!;
-    if (!records.length) input.fail('syntax', 'Missing part ' + state.id + '.', list.range);
-    for (const record of records)
-      for (const child of record.children)
-        if (child.name === 'note') state.reserved.add(scalar(child, 'voice', input, '1'));
-    const partBars: Measure[] = [];
-    for (let i = 0; i < records.length; i++) partBars.push(...measure(records[i], state, i, input));
-    validateTies(partBars, input);
-    // An unpaired first backward repeat in MusicXML starts at the beginning of the work.
-    for (const staff of new Set(partBars.map((bar) => bar.staff))) {
-      const staffBars = partBars.filter((bar) => bar.staff === staff);
-      const first = staffBars.find((bar) => bar.repeatStart || bar.repeatEnd);
-      if (first?.repeatEnd && !first.repeatStart) staffBars[0].repeatStart = 2;
-    }
-    bars.push(...partBars);
+  if (selection?.parts && (!selection.parts.length || selection.parts.some(id=>!data.has(id))))
+    input.fail('syntax','The selected part IDs must exist in the part list.',list.range);
+  for (const state of states.values()) {
+    if (selection?.parts && !selection.parts.includes(state.id)) continue;
+    bars.push(...readPart(data.get(state.id)!,state,input,selection,root.range));
   }
   return [bars, root.range];
 }
 
 /** Convert decoded text, UTF-8 bytes or BOM/signature-detected UTF-16 into editable VexTab. */
-export function importMusicXML(source: string | Uint8Array, options: ImportOptions = {}): ImportResult {
-  return convert(options, 'score.musicxml', (input) =>
-    readScore(readTree(sourceText(source, input), input), input),
-  );
+export function importMusicXML(source: string | Uint8Array, options: MusicXMLOptions = {}): ImportResult {
+  return convert(options,'score.musicxml',input=>{
+    const resolved=new Map<string,Measure[]>();
+    let registry:Map<string,PartState>|undefined;
+    const root=readTree(sourceText(source,input),input,options.selection,(node,root)=>{
+      if (root.name!=='score-partwise') return;
+      if (node.name==='part-list') {
+        registry=definitions(node,input);
+      } else if (node.name==='part') {
+        const id=node.attributes.id,state=registry?.get(id);
+        if (!state || resolved.has(id)) input.fail('syntax','Unmatched or duplicate part ID.',node.range);
+        shape(node,input,['measure'],['id']);
+        if (!node.children.length) input.fail('syntax','Empty part.',node.range);
+        const selected=!options.selection?.parts || options.selection.parts.includes(id);
+        const bars=selected?readPart(node.children.map(measure=>({measure,children:measure.children})),
+          state!,input,options.selection,node.range):[];
+        resolved.set(id,bars);
+        node.children=[];
+      }
+    });
+    input.context={};
+    return readScore(root,input,options.selection,root.name==='score-partwise'?resolved:undefined,registry);
+  });
 }

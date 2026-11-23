@@ -42,7 +42,8 @@ class Writer {
 
   append(token: string, denominator: number, dots: number, event?: Event) {
     const range = event?.range ?? this.range;
-    if (++this.events > 4096) this.input.fail('limit', 'Generated score exceeds 4,096 events.', range);
+    const limit=this.input.options.capacity==='large'?32768:4096;
+    if (++this.events > limit) this.input.fail('limit','Generated score exceeds '+limit+' events. Select fewer measures or a larger target capacity.',range);
     const base = ({ 1: 'w', 2: 'h', 4: 'q' } as Record<number, string>)[denominator] ?? denominator;
     if (![1,2,4,8,16,32,64,128,256].includes(denominator) || ![0,1,2].includes(dots))
       this.input.fail('unsupported', 'Unsupported written duration.', range);
@@ -88,7 +89,7 @@ class Writer {
     if (written.compare(event.elapsed)) this.input.fail('timing', 'Written duration differs from elapsed duration.', event.range);
     const heads = event.pitches ?? (event.pitch ? [event.pitch] : []);
     if (heads.length > 16) this.input.fail('limit', 'Chord exceeds 16 heads.', event.range);
-    const note = (p: Pitch) => spelling(p, bar.key, this.input, event.range);
+    const note = (p: Pitch) => spelling(p, event.key ?? bar.key, this.input, event.range);
     const marks: string[] = [];
     const chord = heads.length > 1;
     const names = heads.map(p => note(p) + (chord && event.tieStop ? '[tie]' : ''));
@@ -123,13 +124,29 @@ class Writer {
     if (bar.fragment) this.text += ' fragment {';
     this.rhythm = '';
     let cursor = zero;
+    const visual=bar.changes.filter(change=>change.kind!=='sounds').sort((a,b)=>a.at.compare(b.at));
+    // Split unoccupied intervals at every inline glyph so each voice has a target onset.
+    let next=0;
+    const silenceTo=(end:Time,range:TextRange)=>{
+      while (next<visual.length && visual[next].at.compare(end)<=0) {
+        const at=visual[next++].at;
+        this.silence(at.minus(cursor),range);cursor=at;
+      }
+      this.silence(end.minus(cursor),range);cursor=end;
+    };
     for (const e of (bar.voices.get(voice) ?? []).slice().sort((a,b) => a.at.compare(b.at))) {
       this.input.file = e.file ?? this.input.rootFile;
-      this.silence(e.at.minus(cursor), e.range);
-      this.event(e, bar);
-      cursor = e.at.plus(e.elapsed);
+      silenceTo(e.at,e.range);
+      const end=e.at.plus(e.elapsed);
+      if (next<visual.length && visual[next].at.compare(end)<0) {
+        if (e.kind!=='skip') this.input.fail('unsupported','Inline '+visual[next].kind+' crosses a sustained voice event.',visual[next].range);
+        silenceTo(end,e.range);
+      } else {
+        this.event(e,bar);
+        cursor=end;
+      }
     }
-    this.silence(length.minus(cursor), range);
+    silenceTo(length,range);
     this.groups([], range);
     this.text += bar.repeatEnd && !structured ? ' bar repeatEnd' : ' |';
     if (bar.fragment) this.text += ' }';
@@ -187,17 +204,50 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
   writer.text = 'meter ' + meter(first) + '\n';
   if (first.pickup) writer.text += 'pickup ' + first.pickup.numerator + '/' + first.pickup.denominator + '\n';
   const staves: NonNullable<ImportedDocument['staves']> = [];
-  /** Emit part-wide settings once. Piano settings apply to both hands. */
-  function settings(measures: Measure[]) {
-    const opening = measures[0];
-    if (opening.name) writer.text += '  name ' + JSON.stringify(opening.name) + '\n';
-    if (!opening.piano && opening.clef !== 'treble') writer.text += '  clef ' + opening.clef + '\n';
-    writer.text += '  key ' + opening.key + '\n';
-    for (const [i, bar] of measures.entries()) {
-      const prev = i ? measures[i - 1] : first;
-      if (i && bar.clef !== prev.clef) input.fail('unsupported', 'A timed clef change needs a newer target profile.', bar.range ?? range);
-      if (i && bar.key !== prev.key) writer.text += '  key ' + bar.key + ' at ' + (i + 1) + '\n';
-      if (meter(bar) !== meter(prev)) writer.text += '  meter ' + meter(bar) + (i ? ' at ' + (i + 1) : '') + '\n';
+  const extended=input.options.targetProfile==='extended';
+  /** Express measure-local positions exactly. The first bar is one. */
+  function anchor(index:number, at:Time) {
+    return ' at '+(index+1)+(at.numerator?' + '+at.numerator+'/'+at.denominator:'');
+  }
+  const tempos=new Map<string,{index:number; bpm:number; at:Time}>();
+  for (const measures of grouped.values()) for (const [index,bar] of measures.entries()) {
+    for (const tempo of bar.tempos) {
+      const key=anchor(index,tempo.at);
+      const prior=tempos.get(key);
+      if (prior && prior.bpm!==tempo.bpm) input.fail('unsupported','Conflicting simultaneous score tempos.',tempo.range);
+      tempos.set(key,{index,bpm:tempo.bpm,at:tempo.at});
+    }
+  }
+  if (tempos.size) {
+    writer.text+='play {\n';
+    for (const tempo of [...tempos.values()].sort((a,b)=>a.index-b.index || a.at.compare(b.at))) {
+      writer.text+='  tempo '+tempo.bpm+anchor(tempo.index,tempo.at)+'\n';
+    }
+    writer.text+='}\n';
+  }
+  /** Declare opening settings and compare each later bar to the preceding bar's *ending* state. */
+  function settings(measures: Measure[], hand=false) {
+    const opening=measures[0];
+    if (!hand && opening.name) writer.text+='  name '+JSON.stringify(opening.name)+'\n';
+    if ((!opening.piano && opening.clef!=='treble') || hand && opening.clef!==(opening.staff===1?'treble':'bass'))
+      writer.text+='  clef '+opening.clef+'\n';
+    writer.text+='  key '+opening.key+'\n';
+    if (opening.sounds) writer.text+='  sounds '+opening.sounds+' at 1\n';
+    const current={clef:opening.clef,key:opening.key,sounds:opening.sounds} as Record<string,string|number>;
+    for (const [i,bar] of measures.entries()) {
+      for (const kind of ['key','clef','sounds'] as const) {
+        if (bar[kind]===current[kind]) continue;
+        if (!extended && kind!=='key') input.fail('unsupported','Timed '+kind+' requires the extended target.',bar.range ?? range);
+        writer.text+='  '+kind+' '+bar[kind]+anchor(i,zero)+'\n';
+        current[kind]=bar[kind];
+      }
+      const prev=i?measures[i-1]:first;
+      if (!hand && meter(bar)!==meter(prev)) writer.text+='  meter '+meter(bar)+(i?' at '+(i+1):'')+'\n';
+      for (const change of bar.changes) {
+        if (!extended) input.fail('unsupported','Inline staff state requires the extended target.',change.range);
+        writer.text+='  '+change.kind+' '+change.value+anchor(i,change.at)+'\n';
+        current[change.kind]=change.value;
+      }
     }
   }
 
@@ -231,14 +281,19 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
         return input.fail('unsupported', 'Piano hands must share a measure grid.', range);
       for (const [i, bar] of upper.entries()) {
         const bass = lower[i];
-        if (!bar.piano || !bass.piano || bar.clef !== 'treble' || bass.clef !== 'bass' || meter(bar) !== meter(bass)
-            || bar.key !== bass.key || bar.extent.compare(bass.extent))
+        if (!bar.piano || !bass.piano || (!extended && (bar.clef !== 'treble' || bass.clef !== 'bass')) || meter(bar) !== meter(bass)
+            || !extended && bar.key !== bass.key || bar.extent.compare(bass.extent))
           input.fail('unsupported', 'Independent piano hand settings require a newer target profile.', bass.range ?? range);
       }
       writer.text += 'piano ' + id + ' {\n';
-      settings(upper);
+      if (extended) {
+        if (opening.name) writer.text+='  name '+JSON.stringify(opening.name)+'\n';
+        for (const [i,bar] of upper.entries()) if (meter(bar)!==meter(i?upper[i-1]:first))
+          writer.text+='  meter '+meter(bar)+(i?' at '+(i+1):'')+'\n';
+      } else settings(upper);
       for (const [hand, bars] of [['upper', upper], ['lower', lower]] as const) {
         writer.text += '  ' + hand + ' {\n';
+        if (extended) settings(bars,true);
         voicesFor(bars, id + '/' + hand);
         writer.text += '  }\n';
       }
@@ -249,9 +304,19 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
     }
     writer.text += '}\n';
   }
-  if (new TextEncoder().encode(writer.text).length > 65536) input.fail('limit', 'Generated text exceeds 64 KiB.', range);
+  if (extended) {
+    const seen=new Set<NonNullable<Measure['group']>>();
+    for (const bar of bars) {
+      if (!bar.group || seen.has(bar.group)) continue;
+      seen.add(bar.group);
+      const members=new Set(staves.filter(staff=>bar.group!.parts.includes(staff.part)).map(staff=>staff.target.split('/')[0]));
+      if (members.size>1) writer.text+='group '+bar.group.symbol+' ('+[...members].join(' ')+')\n';
+    }
+  }
+  const large=input.options.capacity==='large', bytes=large?1048576:65536, tokenLimit=large?131072:8192;
+  if (new TextEncoder().encode(writer.text).length > bytes) input.fail('limit','Generated score exceeds '+bytes+' UTF-8 bytes. Select fewer measures or a larger capacity.',range);
   const tokens = writer.text.match(/"(?:\\.|[^"\\])*"|[{}()[\],|]|[^\s{}()[\],|"]+/gu);
-  if (tokens && tokens.length > 8192) input.fail('limit', 'Generated score exceeds 8,192 target tokens.', range);
+  if (tokens && tokens.length > tokenLimit) input.fail('limit','Generated score exceeds '+tokenLimit+' target tokens. Select fewer measures or a larger capacity.',range);
   return { text: writer.text, source: {file: input.rootFile, part: first.part, measure: first.label, voices: staves[0].voices},
     staves, ...(input.options.sourceMap && { sourceMap: writer.map }) };
 }
