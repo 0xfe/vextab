@@ -28,28 +28,29 @@ function encoding(data: Uint8Array) {
 }
 
 /** Let saxes handle XML syntax, entities and offsets. No external document is loaded. */
-export function readTree(
-  source: string | Uint8Array,
+export function treeReader(
+  size: number,
+  asText: boolean,
   input: Input,
   selection?: MusicXMLOptions['selection'],
   onRootChild?: (node: Element, root: Element) => void,
   onPartMeasure?: (measure: Element, part: Element, ordinal: number) => void,
-): Element {
-  const size = source.length,
-    limit = xmlLimit(input.options);
+) {
+  const limit = xmlLimit(input.options);
   if (size > limit)
     input.fail(
       'limit',
       'MusicXML input has ' +
         size +
         ' ' +
-        (typeof source === 'string' ? 'UTF-16 units' : 'bytes') +
+        (asText ? 'UTF-16 units' : 'bytes') +
         '; limit is ' +
         limit +
         '. Select a part or measure range, or opt into the extended profile for larger XML.',
       [0, 0],
     );
-  const decoder = typeof source === 'string' ? undefined : new TextDecoder(encoding(source), { fatal: true });
+  let decoder: TextDecoder | undefined;
+  let prefix: Uint8Array | undefined;
   let block = '',
     offset = 0,
     priorOpening = 0;
@@ -65,8 +66,8 @@ export function readTree(
     start = 0,
     count = 0;
   const here = (): TextRange => [
-    Math.max(0, Math.min(parser.position - 1, source.length)),
-    Math.min(parser.position, source.length),
+    Math.max(0, Math.min(parser.position - 1, size)),
+    Math.min(parser.position, size),
   ];
   parser.on('error', (e) => input.fail('syntax', e.message, here()));
   parser.on('xmldecl', (decl) => {
@@ -183,21 +184,50 @@ export function readTree(
     block = next;
     parser.write(block);
   }
-  for (let i = 0; i < size; i += 16384) {
-    if (typeof source === 'string') write(source.slice(i, i + 16384));
-    else {
-      let decoded: string;
-      try {
-        decoded = decoder!.decode(source.subarray(i, i + 16384), { stream: i + 16384 < size });
-      } catch {
-        return input.fail('encoding', 'Invalid XML byte encoding.', [offset, offset]);
-      }
-      write(decoded);
+  function decode(bytes?: Uint8Array, stream = false) {
+    let decoded: string;
+    try {
+      decoded = decoder!.decode(bytes, { stream });
+    } catch {
+      return input.fail('encoding', 'Invalid XML byte encoding.', [offset, offset]);
     }
+    write(decoded);
   }
-  parser.close();
-  if (!root) return input.fail('syntax', 'Missing MusicXML root.', [0, source.length]);
-  return root;
+  function bytes(chunk: Uint8Array) {
+    if (!chunk.length) return;
+    if (!decoder) {
+      if (prefix) {
+        const joined = new Uint8Array(prefix.length + chunk.length);
+        joined.set(prefix);
+        joined.set(chunk, prefix.length);
+        chunk = joined;
+        prefix = undefined;
+      }
+      if (chunk.length < 2) {
+        prefix = chunk;
+        return;
+      }
+      decoder = new TextDecoder(encoding(chunk), { fatal: true });
+    }
+    for (let i = 0; i < chunk.length; i += 16384) decode(chunk.subarray(i, i + 16384), true);
+  }
+  function finish(): Element {
+    if (prefix) {
+      decoder = new TextDecoder('utf-8', { fatal: true });
+      decode(prefix);
+    } else if (decoder) decode();
+    parser.close();
+    if (!root) return input.fail('syntax', 'Missing MusicXML root.', [0, size]);
+    return root;
+  }
+  return { write, bytes, finish };
+}
+
+/** Feed a complete plain document through the same decoder as a streamed ZIP member. */
+export function feedTree(reader: ReturnType<typeof treeReader>, source: string | Uint8Array) {
+  if (typeof source === 'string')
+    for (let i = 0; i < source.length; i += 16384) reader.write(source.slice(i, i + 16384));
+  else reader.bytes(source);
 }
 
 /** Reject unrecognized children and attributes before any construct can be silently discarded. */

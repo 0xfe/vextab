@@ -1,7 +1,7 @@
 // Read the two selected ZIP members with the platform inflater and explicit archive budgets.
-import { importMusicXML } from './musicxml.js';
-import { Input, targetVersion } from './score.js';
-import { readTree, xmlLimit } from './xml.js';
+import { musicXMLReader } from './musicxml-reader.js';
+import { convertPrepared, Input, targetVersion } from './score.js';
+import { treeReader, xmlLimit } from './xml.js';
 import type { MusicXMLOptions, ImportResult } from './types.js';
 
 interface Member {
@@ -80,10 +80,9 @@ const crcTable = Uint32Array.from({ length: 256 }, (_, i) => {
   for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
   return crc;
 });
-function crc32(bytes: Uint8Array) {
-  let crc = 0xffffffff;
+function updateCRC(crc: number, bytes: Uint8Array) {
   for (let i = 0; i < bytes.length; i++) crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 255];
-  return (crc ^ 0xffffffff) >>> 0;
+  return crc;
 }
 
 /** Node 22.18+ exposes built-ins without a bundler import. One bounded zlib chunk avoids
@@ -98,8 +97,8 @@ function inflateNode(packed: Uint8Array, size: number) {
   return zlib?.inflateRawSync(packed, { maxOutputLength: Math.max(1, size), chunkSize: Math.max(64, size + 1) });
 }
 
-/** Enforce actual output size as deflate chunks arrive, including when the header understates it. */
-async function extract(
+/** Check the central entry, local header and path before inflation starts. */
+function member(
   data: Uint8Array,
   view: DataView,
   index: ReturnType<typeof directory>,
@@ -133,41 +132,64 @@ async function extract(
     'Invalid member bounds.',
   );
   const packed = data.subarray(start, start + compressed);
-  let output: Uint8Array;
-  if (method === 0) {
-    check(compressed === size, 'Stored member size differs.');
-    output = packed;
-  } else {
-    check(method === 8, 'Only stored and deflated ZIP members are supported.');
-    const direct = inflateNode(packed, size);
-    if (direct) {
-      check(
-        direct.length === size && crc32(direct) === entry.checksum,
-        'Inflated member length or checksum differs.',
-      );
-      return direct;
-    }
-    const reader = new Blob([new Uint8Array(packed)])
-      .stream()
-      .pipeThrough(new DecompressionStream('deflate-raw'))
-      .getReader();
-    output = new Uint8Array(size);
-    let used = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        check(used + value.length <= size, 'Inflated member exceeds its declared size.');
-        output.set(value, used);
-        used += value.length;
-      }
-    } finally {
-      await reader.cancel().catch(() => {});
-    }
-    check(used === size, 'Incomplete deflated member.');
+  check(method === 0 || method === 8, 'Only stored and deflated ZIP members are supported.');
+  if (method === 0) check(compressed === size, 'Stored member size differs.');
+  return { packed, entry };
+}
+
+/** Verify CRC and actual expansion length before allowing parsed content to escape the archive reader. */
+async function consume(source: ReturnType<typeof member>, write: (chunk: Uint8Array) => void) {
+  const { entry, packed } = source;
+  function verify(size: number, crc: number) {
+    check(
+      size === entry.size && (crc ^ 0xffffffff) >>> 0 === entry.checksum,
+      'Inflated member length or checksum differs.',
+    );
   }
-  check(crc32(output) === entry.checksum, 'Member checksum differs.');
-  return output;
+  const direct = entry.method === 0 ? packed : inflateNode(packed, entry.size);
+  if (direct) {
+    verify(direct.length, updateCRC(0xffffffff, direct));
+    write(direct);
+    return;
+  }
+  // Backpressure limits the inflater's native output queue. A densely compressed member must not expand
+  // into a single full-size staging buffer before the SAX parser gets its first measure.
+  let offset = 0;
+  const compressed = new ReadableStream<Uint8Array<ArrayBuffer>>({
+    pull(controller) {
+      if (offset === packed.length) {
+        controller.close();
+        return;
+      }
+      const next = Math.min(offset + 4096, packed.length);
+      controller.enqueue(new Uint8Array(packed.subarray(offset, next)));
+      offset = next;
+    },
+  });
+  const reader = compressed.pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  let size = 0,
+    crc = 0xffffffff;
+  let parseFailure: { error: unknown } | undefined;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.length;
+      check(size <= entry.size, 'Inflated member exceeds its declared size.');
+      crc = updateCRC(crc, value);
+      if (!parseFailure) {
+        try {
+          write(value);
+        } catch (error) {
+          parseFailure = { error };
+        }
+      }
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+  verify(size, crc);
+  if (parseFailure) throw parseFailure.error;
 }
 
 /** The first declared rootfile designates the score, independently of ZIP member order. */
@@ -177,8 +199,10 @@ export async function importMXL(data: Uint8Array, options: MusicXMLOptions = {})
   try {
     const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     const index = directory(data, view);
-    const bytes = await extract(data, view, index, directoryName, 65536);
-    const container = readTree(bytes, input);
+    const metadata = member(data, view, index, directoryName, 65536);
+    const containerReader = treeReader(metadata.entry.size, false, input);
+    await consume(metadata, containerReader.bytes);
+    const container = containerReader.finish();
     const root = container.children
       .find((c) => c.name === 'rootfiles')
       ?.children.find((c) => c.name === 'rootfile');
@@ -187,12 +211,22 @@ export async function importMXL(data: Uint8Array, options: MusicXMLOptions = {})
       'Missing MusicXML rootfile declaration.',
     );
     const name = root.attributes['full-path'];
-    return importMusicXML(await extract(data, view, index, name, xmlLimit(options)), {
-      ...options,
-      filename: archive + '!/' + name,
-    });
+    const score = member(data, view, index, name, xmlLimit(options));
+    const scoreInput = new Input(archive + '!/' + name, options);
+    let reader: ReturnType<typeof musicXMLReader> | undefined;
+    const getReader = () => (reader ??= musicXMLReader(score.entry.size, false, scoreInput, options));
+    try {
+      await consume(score, (chunk) => getReader().tree.bytes(chunk));
+    } catch (error) {
+      if (error instanceof ArchiveError) throw error;
+      // Structured MusicXML failures retain their source file and range. Runtime inflater errors go to the outer archive handler.
+      return convertPrepared(scoreInput, () => {
+        throw error;
+      });
+    }
+    return convertPrepared(scoreInput, () => getReader().finish());
   } catch (error) {
-    const diagnostics = input.diagnostics;
+    const diagnostics = error instanceof ArchiveError ? [] : input.diagnostics;
     if (!diagnostics.length)
       diagnostics.push({
         code: error instanceof ArchiveLimit ? 'limit' : 'syntax',

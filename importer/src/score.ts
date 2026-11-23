@@ -118,11 +118,17 @@ export class Input {
 /** A source error or unknown musical expression blocks both modes; only enumerated losses may pass. */
 export function convert(options: ImportOptions, filename: string, read: (input: Input) => [Measure | Measure[], TextRange]): ImportResult {
   const input = new Input(options.filename ?? filename, options);
+  return convertPrepared(input, () => read(input));
+}
+
+/** Commit a normalized score only after every input byte, including an archive member checksum, is verified. */
+export function convertPrepared(input: Input, read: () => [Measure | Measure[], TextRange]): ImportResult {
+  const options = input.options;
   const common = { target: targetVersion(options), diagnostics: input.diagnostics };
   try {
     if (options.capacity==='large' && !includesExtended(options))
       input.fail('limit','Large capacity requires the extended VexTab 6.3.0 target and a large-capacity host.',[0,0]);
-    const [bar, range] = read(input);
+    const [bar, range] = read();
     const document = writeScore(Array.isArray(bar) ? bar : [bar], input, range);
     return { ...common, status: input.diagnostics.length ? 'partial' : 'exact', documents: [document] };
   } catch (error) {
