@@ -230,6 +230,8 @@ class Resolver {
         break;
       }
       case '\\key': {
+        if (s.at.compare(zero) && input.options.targetProfile !== 'extended')
+          input.fail('unsupported', 'Inline key changes need the extended target.', t.range);
         const p = readPitch(next(), { ...s, mode: 'absolute' }, scope.language, input);
         const tonic = p.step + ['bb', 'b', '', '#', '##'][p.alter + 2];
         const mode = next().value;
@@ -240,6 +242,8 @@ class Resolver {
         break;
       }
       case '\\clef': {
+        if (s.at.compare(zero) && input.options.targetProfile !== 'extended')
+          input.fail('unsupported', 'Inline clef changes need the extended target.', t.range);
         const clef = next().value.replace(/^"|"$/g, '');
         if (!['treble', 'bass', 'alto', 'tenor'].includes(clef)) input.fail('unsupported', 'Unsupported clef.', t.range);
         this.measure(s).changes.push({kind:'clef', at:s.at, value:clef, range:t.range});

@@ -452,6 +452,6 @@ staff reed {
 staff horn { :h C3 | C3 | }
 ```
 
-Bar numbers start at one and include pickups. The optional offset is a fraction of a whole note measured from the beginning of that written bar. Settings persist until changed. A sounding interval specifies semitones added to the written pitch. Put a hand-specific declaration inside the corresponding piano hand. An inline clef or key uses a shared onset in every music voice on that stave. A separate text lane with an inline visual change currently produces an alignment diagnostic. A tempo change can fall inside a held note. Its release follows both tempo segments.
+Bar numbers start at one and include pickups. The optional offset is a fraction of a whole note measured from the beginning of that written bar. Settings persist until changed. A sounding interval specifies semitones added to the written pitch. Put a hand-specific declaration inside the corresponding piano hand. An inline clef or key uses a shared onset in every music voice on that stave. A separate text lane with an inline visual change currently produces an alignment diagnostic. A tempo change can fall inside a held note. Its release follows both tempo segments. Global inline tempos require a shared bar grid through the referenced position.
 
 A top-level `group brace (a b)` or `group bracket (a b c)` names consecutive parts in written order. The conductor and its printed edition use those groups. Part extraction keeps the selected instrument's own staves.

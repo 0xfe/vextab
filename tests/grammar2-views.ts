@@ -29,6 +29,11 @@ QUnit.module('Grammar v2 score views', () => {
     assert.equal(score.measures[1].staffState.notation.key, 'G');
     assert.throws(() => parseScore('staff { clef bass at 1 + 1/8 :w F4 | }'), /shared music-voice onset/);
     assert.throws(() => parseScore('play { tempo 60 at 1 + 1/1 } staff { :w C4 | }'), /outside its written measure/);
+    const shifted = renderScore(host(), parseScore('transpose +2 staff { key G at 1 + 1/4 :q C4 F4 C4 F4 | }'),
+      { renderer:'svg', width:550 }).score;
+    assert.equal(shifted.measures[0].staffState.notation.changes[0].key, 'A');
+    assert.throws(() => parseScore('play { tempo 80 at 2 + 1/8 } staff a { meter 2/4 :h C4 | C4 | } ' +
+      'staff b { meter 3/4 :h. C4 | C4 | }'), /Share the written bar grid/);
     assert.throws(() => parseScore('group bracket (b a) staff a { :w C4 | } staff b { :w C3 | }'), /adjacent named parts/);
   });
 
