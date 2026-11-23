@@ -137,7 +137,15 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     if (staff === 'tab') {
       return { id, tab: { ...rhythm, keys, notation, positions: event.heads.map(h => ({ ...h.position! })) }, drawStem: voice.tabStems && !['w', '1'].includes(event.base) };
     }
-    const writtenClef = destination === 'left' ? 'bass' : destination === 'right' ? 'treble' : clef;
+    let writtenClef = event.writtenClef ?? clef;
+    if (destination && destination !== voice.hand) {
+      const display = measure.staffState?.[destination];
+      writtenClef = display?.clef ?? (destination === 'left' ? 'bass' : 'treble');
+      for (const change of display?.changes ?? []) {
+        if (new Fraction().parse(change.at).greaterThan(new Fraction().parse(event.onset))) break;
+        writtenClef = change.clef ?? writtenClef;
+      }
+    }
     const note = { ...rhythm, keys, notation, clef: writtenClef, type: event.slash ? 's' : 'n', autoStem: !direction };
     if (event.tremolo) {
       // Decide once before layout. An automatic second endpoint can otherwise flip across the middle line.
@@ -154,8 +162,18 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
       ...(event.grace && { grace: { side: event.grace.side, slur: true, beam: event.grace.pitches.length > 1,
         notes: event.grace.pitches.map(key => ({ keys: Array.isArray(key) ? key : [key], duration: event.grace.slash ? '8' : '16', slash: event.grace.slash, clef: writtenClef })) } }) };
   });
+  // VexFlow compares every voice's changes and emits glyphs only in the first.
+  const visual = new Map<string, { clef?: string; key?: string }>();
+  if (staff !== 'tab') for (const change of measure.staffState?.[staff]?.changes ?? []) {
+    if (!change.clef && !change.key) continue;
+    visual.set(change.at, { ...visual.get(change.at), ...(change.clef && {clef: change.clef}), ...(change.key && {key: change.key}) });
+  }
+  const withChanges = visual.size ? notes.flatMap((note, i) => {
+    const change = visual.get(voice.events[i].onset);
+    return change ? [{ change }, note] : [note];
+  }) : notes;
   return {
-    notes, stem: direction ?? 'auto',
+    notes: withChanges, stem: direction ?? 'auto',
     // The native auto-beamer reads divided tremolo ticks as shorter beamable notes.
     // Explicit beams in this voice/bar own their stems alongside the alternating strokes.
     autoBeam: !voice.events.some(e => e.continuousBeam || e.tremolo) && !voice.beamGroups?.length && voice.beams && (staff !== 'tab' || voice.tabStems) && {
@@ -222,9 +240,10 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
         }
         const sharedPianoStaff = handsShareStave(m);
         const showMarks = staff === staves[0] || m.state.piano;
-        const clef = staff === 'tab' ? 'tab' : staff === 'left' ? 'bass' : m.state.clef;
+        const local = staff === 'tab' ? undefined : m.staffState?.[staff];
+        const clef = local?.clef ?? (staff === 'tab' ? 'tab' : staff === 'left' ? 'bass' : m.state.clef);
         return {
-          guitarChordLane, clef, key: m.state.key, time: m.state.meterSign ?? m.state.meter, span: m.span === '0/1' ? '1/1' : m.span,
+          guitarChordLane, clef, key: local?.key ?? m.state.key, time: m.state.meterSign ?? m.state.meter, span: m.span === '0/1' ? '1/1' : m.span,
           showTimeSignature: m.state.showTime && !(staff === 'tab' && staves.includes('notation')),
           endBarline: writtenEndBar(m),
           ...(showMarks && leadMarks({ ...m, voices }, staff === 'tab' ? 'tab' : 'notation',

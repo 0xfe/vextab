@@ -432,3 +432,23 @@ await player.play();
 Written order is the default. Performed order revisits repeat bodies and selects successive endings. Equal bar grids share an authored repeat across instruments. Repeated attacks retain their written source IDs. A display staff, printed cue or paired guitar TAB adds no playback voice.
 
 Dynamics set attack velocity. Hairpins interpolate between endpoint velocities in their own voice. An unmarked open end uses a 24-step change and niente uses the softest sounding velocity. Glissandi and tied bends supply timed pitch ramps to the playback plugin. Grace pitches share a quarter of the principal attack’s time. The five ornamental signs use short diatonic figures in the written key and resolve to the principal. These are playback interpretations of unmeasured signs. [Complete musical examples and controls](../issues/199/README.md)
+
+### Staff changes and ensemble groups
+
+```text
+meter 2/4
+play { tempo 120 tempo 80 at 2 + 1/8 }
+group bracket (reed horn)
+staff reed {
+  sounds -2
+  clef bass at 1 + 1/4
+  key G at 1 + 1/4
+  sounds -3 at 2
+  :q F4 F4 | :h F4 |
+}
+staff horn { :h C3 | C3 | }
+```
+
+Bar numbers start at one and include pickups. The optional offset is a fraction of a whole note measured from the beginning of that written bar. Settings persist until changed. A sounding interval specifies semitones added to the written pitch. Put a hand-specific declaration inside the corresponding piano hand. An inline clef or key uses a shared onset in every music voice on that stave. A separate text lane with an inline visual change currently produces an alignment diagnostic. A tempo change can fall inside a held note. Its release follows both tempo segments.
+
+A top-level `group brace (a b)` or `group bracket (a b c)` names consecutive parts in written order. The conductor and its printed edition use those groups. Part extraction keeps the selected instrument's own staves.

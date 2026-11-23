@@ -68,6 +68,12 @@ export interface ScoreEvent {
   marks: EventMark[];
 }
 
+/** Attribute changes use written bar numbers and exact offsets in whole notes. */
+export interface WrittenPosition { bar: number; at: string; range: TextRange }
+export interface StaffChange extends WrittenPosition { clef?: string; key?: string; sounds?: number }
+export interface TempoChange extends WrittenPosition { bpm: number }
+export interface StaffGroup { type: 'brace' | 'bracket'; parts: string[]; range: TextRange }
+
 /** A written time signature retains its display form and source token. */
 export interface WrittenMeter { value: string; sign?: string; range: TextRange }
 
@@ -96,12 +102,13 @@ export interface ScoreVoice {
 }
 /** Stable authored key, display labels and semitone distance from written to sounding pitch. */
 export interface InstrumentIdentity { id?: string; name?: string; shortName?: string; sounds?: number }
-export interface ScoreStaff extends Omit<InstrumentIdentity, 'name'> { displayName?: string; name: StaffName; range: TextRange; voices: ScoreVoice[] }
+export interface ScoreStaff extends Omit<InstrumentIdentity, 'name'> { staffChanges?: StaffChange[]; displayName?: string; name: StaffName; range: TextRange; voices: ScoreVoice[] }
 /** Optional front matter shared by the screen engraving and its printed edition. */
 export interface ScoreHeading { align?: 'center'; title?: string; dedication?: string; tempo?: string; composer?: string }
 export interface ScoreLayout { font?: 'Bravura' | 'Petaluma'; heading?: ScoreHeading; spacing?: 'optical'; firstSystemIndent?: number; width?: number; scale?: number; rowGap?: number; staffDistance?: number; top?: number }
 /** Instrument declarations apply to every voice of the part. */
 export interface PartSettings {
+  staffChanges?: StaffChange[];
   program?: number;
   drums?: { id: string; label: string; line: number; head: 'normal' | 'cross' | 'circle-cross' | 'triangle'; stem: 'up' | 'down'; midi: number }[];
   meters?: Record<number, WrittenMeter>;
@@ -133,8 +140,9 @@ export interface Edition {
 
 /** V2 parts share a playback origin. measureCount is the largest local bar count. */
 export interface ScoreV2 {
+  groups?: StaffGroup[];
   editions?: Edition[];
-  playback?: { enabled: boolean; controls?: import('../../playback/control-options.mts').SheetControls; tempos?: Record<number, number>; tempo?: number; swing?: import('../../playback/profiles.mts').SwingSetting; performer?: import('../../playback/profiles.mts').PerformerName; instrument?: string };
+  playback?: { enabled: boolean; controls?: import('../../playback/control-options.mts').SheetControls; tempos?: Record<number, number>; tempoChanges?: TempoChange[]; tempo?: number; swing?: import('../../playback/profiles.mts').SwingSetting; performer?: import('../../playback/profiles.mts').PerformerName; instrument?: string };
   transpose?: number; measureNumbers?: boolean; layout?: ScoreLayout;
   language: 2; source: string; meter: string; meterRange?: TextRange; pickup?: string; measureCount: number; parts: ScorePart[];
 }

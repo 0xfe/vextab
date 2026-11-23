@@ -78,7 +78,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     hideClef: part.clef === 'none', clef: part.kind === 'drums' ? 'percussion' : part.clef === 'none' ? 'treble' : part.clef ?? 'treble', pickup: score.pickup, fragment: false,
   };
   const measures: Measure[] = [];
-  const projected: ParsedScore = { ...(instrument && { instrument }), source: score.source, measures, ties: [], spans: [], playback: score.playback, layout: score.layout, measureNumbers: score.measureNumbers ?? false };
+  const projected: ParsedScore = { ...(score.groups && { groups: score.groups }), ...(instrument && { instrument }), source: score.source, measures, ties: [], spans: [], playback: score.playback, layout: score.layout, measureNumbers: score.measureNumbers ?? false };
   projected.program = part.program;
   const kit = part.drums?.length ? new PercussionMap([...PercussionMap.kit, ...part.drums]) : drumKit;
   if (part.kind === 'drums') state.kit = kit;
@@ -281,13 +281,28 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   }
 
   /** Build one measure voice at a time. Ties follow the preceding attack of this voice. */
-  function addVoice(voice: ScoreVoice, staffSounds: number, hand?: 'right' | 'left') {
+  function addVoice(voice: ScoreVoice, staffSounds: number, hand: 'right' | 'left' | undefined, track: import('./model').StaffChange[] = []) {
     const voices: MeasureVoice[] = [];
     const engraving = { ...part, ...voice.settings };
+    let changeIndex = 0, activeClef: string = hand === 'left' ? 'bass' : part.clef ?? 'treble';
+    let changes: import('./model').StaffChange[] = [], inBar = 0;
+    // Written settings persist across bars. Each voice traverses the same ordered track once.
+    function apply(change: import('./model').StaffChange) {
+      if (change.key) {
+        writtenKey = change.key;
+        manager = new KeyManager(writtenKey);
+        state.key = intervalFor(score.transpose)?.target ?? writtenKey;
+      }
+      if (change.clef) activeClef = change.clef;
+      if (change.sounds !== undefined) staffSounds = change.sounds;
+    }
     let previous: Attack | undefined;
     let depressed: Attack | undefined;
     function voiceAttack(event: ScoreEvent) {
+      while (inBar < changes.length && !new Fraction().parse(changes[inBar].at).greaterThan(new Fraction().parse(event.at)))
+        apply(changes[inBar++]);
       const next = attack(event, staffSounds);
+      if (track.length) { next.writtenClef = activeClef; next.activeKey = state.key; }
       for (const mark of event.marks) {
         if (mark.kind !== 'pedal') continue;
         const range = locate(mark.range);
@@ -352,6 +367,13 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       if (change?.displayMeter !== undefined) displayMeter = change.displayMeter;
       const span = bar.span ?? (bar.number === 1 && score.pickup ? score.pickup : fullBar);
       const meter = bar.meter ?? initialMeter;
+      changes = []; inBar = 0;
+      while (changeIndex < track.length && track[changeIndex].bar === bar.number) {
+        const at = track[changeIndex++];
+        if (at.at === '0/1') apply(at);
+        else changes.push(at);
+      }
+      const openingState = { key: state.key, clef: activeClef, changes };
       const value: MeasureVoice = { declaration: locate(voice.range), hand, span, events: voice.events.slice(bar.start, bar.end).map(voiceAttack),
         tuplets: [], stem: engraving.stem, beams: engraving.beam ?? true, beamRests: engraving.beamRests ?? true, beatGroups: engraving.beatGroups, stemlets: engraving.stemlets ?? false, middleRests: engraving.middleRests ?? false, tabStems: engraving.tabStems ?? false,
         rehearsal: bar.rehearsal, opening: bar.opening ? { type: bar.opening, range } : undefined, closing: bar.closing ? { type: bar.closing, range } : undefined, tabDirection: engraving.tabDirection === 'down' ? -1 : 1
@@ -359,9 +381,11 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       const prior = measures[bar.number - 2]?.state;
       const changedMeter = prior?.meter !== meter || prior?.meterSign !== bar.meterSign;
       const m = measures[bar.number - 1] ??= {
-        number: bar.number, range, state: { ...state, fragment: !!bar.fragment, meter, meterSign: bar.meterSign, timeRange: bar.meterRange ? locate(bar.meterRange) : state.timeRange, showTime: displayMeter !== false && (bar.number === 1 ? displayMeter || state.showTime : changedMeter || change?.displayMeter === true) },
+        number: bar.number, range, state: { ...state, key: openingState.key, fragment: !!bar.fragment, meter, meterSign: bar.meterSign, timeRange: bar.meterRange ? locate(bar.meterRange) : state.timeRange, showTime: displayMeter !== false && (bar.number === 1 ? displayMeter || state.showTime : changedMeter || change?.displayMeter === true) },
         span, newRow: !!bar.newRow, voices: []
       };
+      if (track.length) (m.staffState ??= {})[hand ?? 'notation'] = openingState;
+      while (inBar < changes.length) apply(changes[inBar++]);
       m.newRow ||= !!bar.newRow;
       const first = m.voices[0];
       if (first) {
@@ -446,7 +470,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     }
   }
   for (const staff of part.staves) for (const voice of staff.voices) {
-    addVoice(voice, staff.sounds ?? part.sounds, staff.name === 'upper' ? 'right' : staff.name === 'lower' ? 'left' : undefined);
+    addVoice(voice, staff.sounds ?? part.sounds, staff.name === 'upper' ? 'right' : staff.name === 'lower' ? 'left' : undefined, staff.staffChanges);
   }
   connectNamedTies();
   const attacks = new Map(measures.flatMap(m => m.voices.flatMap(v => v.events.map(e => [e.id, e] as const))));

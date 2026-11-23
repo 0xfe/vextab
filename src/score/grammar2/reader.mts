@@ -25,7 +25,7 @@ export type Node = TimedNode | { kind: import('./model.js').ExpressiveSpan; body
   { kind: 'fragment' | 'slur' | 'beam' | 'palmMute' | 'transpose' | 'octave'; body: Node[]; side?: 'above' | 'below'; strings?: number[]; semitones?: number }
 );
 export interface VoiceSyntax { settings?: import('./model.js').VoiceSettings; name: string; range: TextRange; body: Node[] }
-export interface StaffSyntax extends Omit<InstrumentIdentity, 'name'> { displayName?: string; name: StaffName; range: TextRange; voices: VoiceSyntax[] }
+export interface StaffSyntax extends Omit<InstrumentIdentity, 'name'> { staffChanges?: PartSettings['staffChanges']; displayName?: string; name: StaffName; range: TextRange; voices: VoiceSyntax[] }
 export interface PartSyntax extends PartSettings, InstrumentIdentity { lanes?: { voice: VoiceSyntax; style: LaneStyle }[]; kind: PartKind; range: TextRange; staves: StaffSyntax[] }
 
 /** Comments consume the rest of the line. Punctuation has the same meaning across line breaks. */
@@ -127,6 +127,7 @@ export function readScore(source: string, fail: Fail) {
   let playback: import('./model.js').ScoreV2['playback'];
   let transpose: number | undefined;
   let measureNumbers: boolean | undefined;
+  const groups: import('./model.js').StaffGroup[] = [];
   const editions: import('./model.js').Edition[] = [];
   let layout: import('./model.js').ScoreLayout | undefined;
   let pickup: Fraction | undefined, pickupToken: Token | undefined;
@@ -233,7 +234,7 @@ export function readScore(source: string, fail: Fail) {
   /** Display and playback metadata are shared by instrument and staff declarations. */
   function identityFields(id?: string): InstrumentIdentity {
     const fields: InstrumentIdentity = id ? { id } : {};
-    while (peek() === 'name' || peek() === 'shortName' || peek() === 'sounds') {
+    while (peek() === 'name' || peek() === 'shortName' || (peek() === 'sounds' && tokens[cursor + 2]?.text !== 'at')) {
       const field = take();
       if (Object.prototype.hasOwnProperty.call(fields, field.text)) error('Duplicate instrument field', field);
       if (field.text === 'sounds') {
@@ -769,7 +770,24 @@ export function readScore(source: string, fail: Fail) {
   }
 
   /** Read settings before the part's first voice so every voice shares the same instrument. */
-  function settings(kind: PartKind, voiceOnly = false): PartSettings {
+  /** Timed declarations are bar-local. Normalize offsets so equivalent spellings compare identically. */
+  function timedPosition(first: Token) {
+    expect('at');
+    const bar = take();
+    if (!/^[1-9]\d{0,4}$/.test(bar.text)) error('Expected a positive written bar number', bar);
+    let at = '0/1', last = bar;
+    if (peek() === '+') {
+      take(); last = take();
+      if (!/^\d{1,9}\/[1-9]\d{0,8}$/.test(last.text)) error('Expected an offset in whole notes', last);
+      const [n, d] = last.text.split('/').map(Number);
+      let a = n, b = d;
+      while (b) [a, b] = [b, a % b];
+      at = (n / a) + '/' + (d / a);
+    }
+    return { bar: Number(bar.text), at, range: [first.range[0], last.range[1]] as TextRange };
+  }
+
+  function settings(kind: PartKind, voiceOnly = false, hand = false): PartSettings {
     const result: PartSettings = {};
     /** Apply shared settings to the whole part or to an authored measure boundary. */
     function atBar() {
@@ -784,7 +802,7 @@ export function readScore(source: string, fail: Fail) {
       const changes = result.changes ??= {};
       changes[at] = { ...changes[at], ...values };
     }
-    const names = voiceOnly ? ['stem', 'beams', 'beamRests', 'stemlets', 'middleRests', 'tabStems', 'tabDirection'] : ['program', 'map', 'meter', 'key', 'clef', 'view', 'capo', 'tuning', 'ink', 'stem', 'beams', 'beamRests', 'tabStems', 'stemlets', 'middleRests', 'tabDirection', 'accidentals', 'display', 'groupBeats'];
+    const names = hand ? ['key','clef','sounds'] : voiceOnly ? ['stem', 'beams', 'beamRests', 'stemlets', 'middleRests', 'tabStems', 'tabDirection'] : ['program', 'map', 'meter', 'key', 'clef', 'sounds', 'view', 'capo', 'tuning', 'ink', 'stem', 'beams', 'beamRests', 'tabStems', 'stemlets', 'middleRests', 'tabDirection', 'accidentals', 'display', 'groupBeats'];
     while (names.includes(peek())) {
       const option = take(), value = take();
       if (option.text === 'program') {
@@ -834,14 +852,23 @@ export function readScore(source: string, fail: Fail) {
       } else if (option.text === 'key') {
         if (!/^(?:Cb|Gb|Db|Ab|Eb|Bb|F|C|G|D|A|E|B|F#|C#|Abm|Ebm|Bbm|Fm|Cm|Gm|Dm|Am|Em|Bm|F#m|C#m|G#m|D#m|A#m)$/.test(value.text))
           error('Expected a key signature', value);
-        if (peek() === 'at') {
-          (result.keys ??= {})[atBar()] = value.text;
+        if (peek() === 'at' || hand) {
+          const position = peek() === 'at' ? timedPosition(option) : { bar: 1, at: '0/1', range: option.range };
+          if (!hand && position.at === '0/1' && position.bar > 1) (result.keys ??= {})[position.bar] = value.text;
+          else (result.staffChanges ??= []).push({ ...position, key: value.text });
         } else result.key = value.text;
+      } else if (option.text === 'sounds') {
+        if (!/^[+-]?\d{1,3}$/.test(value.text) || Math.abs(Number(value.text)) > 127) error('Invalid sounding interval', value);
+        (result.staffChanges ??= []).push({ ...timedPosition(option), sounds: Number(value.text) });
       } else if (option.text === 'clef') {
-        if (kind === 'piano' || kind === 'drums') error('This part supplies its own clefs', option);
+        if ((kind === 'piano' && !hand) || kind === 'drums') error('Declare the clef on a pitched staff', option);
         const clefs = ['treble', 'bass', 'alto', 'tenor', 'none', 'soprano', 'mezzo-soprano', 'baritone-c', 'baritone-f', 'subbass', 'french', 'percussion'];
         if (!clefs.includes(value.text)) error('Unknown clef', value);
-        result.clef = value.text as PartSettings['clef'];
+        if (peek() === 'at' || hand) {
+          if (value.text === 'none') error('A timed clef must be visible', value);
+          const position = peek() === 'at' ? timedPosition(option) : { bar: 1, at: '0/1', range: option.range };
+          (result.staffChanges ??= []).push({ ...position, clef: value.text });
+        } else result.clef = value.text as PartSettings['clef'];
       } else if (kind !== 'guitar') error('This setting needs a guitar part', option);
       else if (option.text === 'view') {
         if (value.text !== 'tab' && value.text !== 'both' && value.text !== 'notation') error('Expected tab, notation or both', value);
@@ -942,11 +969,13 @@ export function readScore(source: string, fail: Fail) {
             const tempo = take();
             if (!/^[1-9]\d{0,2}$/.test(tempo.text)) error('Expected a positive tempo', tempo);
             if (peek() === 'at') {
-              take(); const bar = take();
-              if (!/^[1-9]\d{0,3}$/.test(bar.text)) error('Expected a written bar number', bar);
-              if (tempoRanges.has(Number(bar.text))) error('Duplicate tempo change at this bar', bar);
-              tempoRanges.set(Number(bar.text), bar.range);
-              (playback!.tempos ??= {})[Number(bar.text)] = Number(tempo.text);
+              const pos = timedPosition(field);
+              if (pos.at !== '0/1') (playback!.tempoChanges ??= []).push({ ...pos, bpm: Number(tempo.text) });
+              else {
+                if (tempoRanges.has(pos.bar)) error('Duplicate tempo change at this bar', tempo);
+                tempoRanges.set(pos.bar, pos.range);
+                (playback!.tempos ??= {})[pos.bar] = Number(tempo.text);
+              }
             } else playback!.tempo = Number(tempo.text);
           } else if (field.text === 'controls' || field.text === 'controlSize' || field.text === 'position' || field.text === 'inset') {
             const value = take(), controls = playback!.controls ??= {};
@@ -997,6 +1026,14 @@ export function readScore(source: string, fail: Fail) {
       const name = identifier();
       if (patterns.has(name)) error('Duplicate pattern ' + name, nameToken);
       patterns.set(name, block(sequence));
+    } else if (token.text === 'group') {
+      const type = take();
+      if (type.text !== 'brace' && type.text !== 'bracket') error('Expected brace or bracket', type);
+      expect('('); const names: string[] = [];
+      while (peek() !== ')') names.push(identifier());
+      const end = take();
+      if (names.length < 2) error('A group needs at least two parts', type);
+      groups.push({ type: type.text as 'brace' | 'bracket', parts: names, range: [token.range[0], end.range[1]] });
     } else if (isPartKind(token.text)) {
       drums = new Set(standardDrums);
       const idToken = tokens[cursor];
@@ -1016,9 +1053,9 @@ export function readScore(source: string, fail: Fail) {
             const staffId = peek() === '{' ? undefined : identifier();
             if (staves.some(staff => (staff.id ?? staff.name) === (staffId ?? hand)))
               error('Duplicate staff ID ' + (staffId ?? hand), staffId ? key : handToken);
-            let fields: InstrumentIdentity;
-            const music = block(() => { fields = identityFields(staffId); return voices(); });
-            staves.push({ ...staffFields(fields), name: hand, range: handToken.range, voices: music });
+            let fields: InstrumentIdentity, handSettings: PartSettings;
+            const music = block(() => { fields = identityFields(staffId); handSettings = settings('piano', false, true); return voices(); });
+            staves.push({ ...staffFields(fields), ...handSettings, name: hand, range: handToken.range, voices: music });
           }
           lanes = readLanes();
         });
@@ -1043,5 +1080,5 @@ export function readScore(source: string, fail: Fail) {
     } else error('Expected a score setting, alias, pattern or part', token);
   }
   if (!parts.length) error('Expected a part');
-  return { tempoRanges, editions, patterns, parts, scoreMeters, pickup, pickupRange: pickupToken?.range, playback, measureNumbers, layout, transpose };
+  return { groups, tempoRanges, editions, patterns, parts, scoreMeters, pickup, pickupRange: pickupToken?.range, playback, measureNumbers, layout, transpose };
 }

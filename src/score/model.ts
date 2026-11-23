@@ -42,6 +42,8 @@ export interface VerseSyllable {
   crossConnector?: boolean;
 }
 export interface Attack {
+  writtenClef?: string;
+  activeKey?: string;
   verses?: VerseSyllable[];
   harmony?: import('vexflow').ChordHarmony;
   dynamic?: import('./grammar2/model').Dynamic;
@@ -131,6 +133,7 @@ export interface MeasuredText {
 }
 
 export interface Measure {
+  staffState?: Partial<Record<'notation' | PianoHand, {clef: string; key: string; changes: import('./grammar2/model').StaffChange[]}>>;
   text?: MeasuredText[][];
   number: number;
   range: SourceRange;
@@ -162,13 +165,14 @@ export type ScoreSpan = { id: string; from: string; to: string; range: SourceRan
 );
 
 export interface ParsedScore {
+  groups?: import('./grammar2/model').StaffGroup[];
   /** Authored part and staff identity used by the conductor and extracted editions. */
   instrument?: import('./grammar2/model').InstrumentIdentity & {
     staves: Partial<Record<import('./grammar2/model').StaffName, import('./grammar2/model').InstrumentIdentity>>;
   };
   layout?: import('./grammar2/model').ScoreLayout;
   /** Playback directives, when authored before the first flow stave. */
-  playback?: { enabled: boolean; controls?: import('../playback/control-options.mts').SheetControls; tempos?: Record<number, number>; tempo?: number; swing?: import('../playback/profiles.mts').SwingSetting; performer?: import('../playback/profiles.mts').PerformerName; instrument?: string };
+  playback?: { enabled: boolean; controls?: import('../playback/control-options.mts').SheetControls; tempos?: Record<number, number>; tempoChanges?: import('./grammar2/model').TempoChange[]; tempo?: number; swing?: import('../playback/profiles.mts').SwingSetting; performer?: import('../playback/profiles.mts').PerformerName; instrument?: string };
   source: string;
   repeats?: import('./grammar2/model').WrittenRepeat[];
   program?: number;
