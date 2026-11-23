@@ -59,10 +59,7 @@ test('unsupported music and unresolved time fail in either mode', () => {
     [importMusicXML, xml.replace('</note>', '</wrong>')],
     [importMusicXML, Uint8Array.of(255)],
     [importLilyPond, ly.replace("f' }", "\\unknown f' }")],
-    [importLilyPond, ly.replace("fis'4", "fis'2")],
     [importLilyPond, ly + '\n%{ unfinished'],
-    [importLilyPond, ly.replace('s4', 's')],
-    [importLilyPond, "\\relative { c'1 }"],
   ];
   for (const [read, source] of cases) for (const mode of ['strict', 'partial']) {
     const result = read(source, { mode });
@@ -70,6 +67,14 @@ test('unsupported music and unresolved time fail in either mode', () => {
     assert.equal(result.documents.length, 0);
     assert.equal(result.diagnostics.at(-1).severity, 'error');
   }
+});
+
+test('relative and inherited durations can extend one simultaneous branch across bars', () => {
+  const extended = importLilyPond(ly.replace("fis'4", "fis'2"));
+  assert.equal(extended.status, 'exact');
+  assert.equal(extended.documents[0].staves[0].measures.length, 2);
+  assert.equal(importLilyPond(ly.replace('s4', 's')).documents[0].text, expected);
+  assert.equal(importLilyPond("\\relative { c'1 }").status, 'exact');
 });
 
 test('source duration, rest visibility, key and register are resolved from input', () => {
@@ -95,7 +100,7 @@ test('an unspellable cursor position is reported at the affected voice', () => {
 });
 
 test('limits and unknown input after a known loss never return a truncated score', () => {
-  for (const [read, source] of [[importMusicXML, ' '.repeat(1048577)], [importLilyPond, '{ ' + 's256 '.repeat(1025) + '}']]) {
+  for (const [read, source] of [[importMusicXML, ' '.repeat(1048577)], [importLilyPond, '{ ' + 's256 '.repeat(4352) + '}']]) {
     const result = read(source);
     assert.equal(result.status, 'failed');
     assert.equal(result.diagnostics[0].code, 'limit');

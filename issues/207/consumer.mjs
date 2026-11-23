@@ -6,6 +6,7 @@ import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { chromium } from 'playwright-core';
+import { checkMeasuredConsumers } from '../../scripts/test-importer-measured.mjs';
 import { parseScore } from 'vextab/parse';
 
 const out = resolve('build/importer-m1');
@@ -34,7 +35,9 @@ function checkScore(text) {
   ]);
 }
 
-let types = '';
+let types = 'import { importMXL } from "vextab-import/mxl";\n'
+  + 'const compressed = await importMXL(new Uint8Array()); if (compressed.status === "exact") '
+  + 'compressed.documents[0].text.toUpperCase();\n';
 for (const [entry, input] of Object.entries(inputs)) {
   const id = 'vextab-import/' + entry, name = names[entry];
   checkScore(use(id)[name](input).documents[0].text);
@@ -87,6 +90,7 @@ try {
     assert.deepEqual(observed, [[['f#/4'], ['f/4']], [[], ['c/4']]]);
   }
   await page.locator('main').screenshot({ path: join(out, 'imported-voices.png') });
+  await checkMeasuredConsumers(browser, use, out);
 } finally { await browser.close(); }
 console.log('Packed Node ESM, CommonJS, TypeScript, two independent browser workers and projected pitches passed.');
 console.log({ packedBytes: pack.size, installedBytes: pack.unpackedSize, consumer });
