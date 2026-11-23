@@ -64,7 +64,7 @@ export function notationState(): NotationState {
 export function expression(e: Event) {
   return (e.expression ??= {});
 }
-function headDetail(e: Event) {
+export function headDetail(e: Event) {
   return (e.headDetails ??= [{}])[0];
 }
 export type SourceSpan = SpanPoint & { range?: TextRange };
@@ -167,14 +167,29 @@ function technical(node: Element, detail: HeadDetail, info: HeadInfo, input: Inp
   } else omitElement(node, input);
 }
 /** Store numbered boundaries on source heads until the chord and the voice timeline are complete. */
-export function noteMarks(node: Element, e: Event, state: NotationState, input: Input, isDrum: boolean) {
-  const detail = e.pitch ? headDetail(e) : {};
-  const info: HeadInfo = { start: false, stop: false, gestures: [] };
-  state.heads.set(detail, info);
-  const marks = one(node, 'notations', input, true);
+export function noteMarks(
+  node: Element,
+  e: Event,
+  state: NotationState,
+  input: Input,
+  isDrum: boolean,
+  marks: Element | undefined,
+) {
+  function metadata() {
+    if (!e.pitch)
+      return input.fail('unsupported', 'A head-specific mark needs a pitch or instrument position.', node.range);
+    const detail = headDetail(e);
+    let info = state.heads.get(detail);
+    if (!info) {
+      info = { start: false, stop: false, gestures: [] };
+      state.heads.set(detail, info);
+    }
+    return info;
+  }
   for (const mark of [...node.children.filter((c) => c.name === 'tie'), ...(marks?.children ?? [])]) {
     if (mark.name === 'tie' || mark.name === 'tied') {
       attributesExcept(mark, ['type', 'number'], input);
+      const info = metadata();
       if (mark.attributes.type === 'start') info.start = true;
       else if (mark.attributes.type === 'stop') info.stop = true;
       else input.fail('unsupported', 'Unsupported tie boundary.', mark.range);
@@ -193,8 +208,8 @@ export function noteMarks(node: Element, e: Event, state: NotationState, input: 
         range: mark.range,
       });
     } else if (mark.name === 'technical') {
-      for (const child of mark.children) technical(child, detail, info, input);
-    } else if (mark.name === 'slide') technical(mark, detail, info, input);
+      for (const child of mark.children) technical(child, headDetail(e), metadata(), input);
+    } else if (mark.name === 'slide') technical(mark, headDetail(e), metadata(), input);
     else if (mark.name === 'articulations') {
       for (const child of mark.children) articulation(child, e, input);
     } else if (mark.name === 'fermata') articulation(mark, e, input);
@@ -227,7 +242,7 @@ export function noteMarks(node: Element, e: Event, state: NotationState, input: 
     }
     if (child.name === 'accidental') {
       const sign = ['flat-flat', 'flat', 'natural', 'sharp', 'double-sharp'][(e.pitch?.alter ?? 0) + 2];
-      if (child.text.trim() === sign) detail.forcedAccidental = true;
+      if (child.text.trim() === sign && e.pitch) headDetail(e).forcedAccidental = true;
       else input.omit('Accidental glyph differs from written pitch.', child.range);
       attributesExcept(child, [], input);
     }
@@ -308,9 +323,13 @@ export function finishGrace(state: NotationState, input: Input) {
 }
 /** Transfer head data and event-level marks when a MusicXML chord adds another head. */
 export function appendHead(first: Event, head: Event, state: NotationState, input: Input) {
-  const detail = head.headDetails![0];
-  first.headDetails!.push(detail);
-  if (head.elapsed.compare(first.elapsed) < 0) detail.releaseAfter = head.elapsed;
+  const shorter = head.elapsed.compare(first.elapsed) < 0;
+  if (shorter || first.headDetails || head.headDetails) {
+    const detail = head.headDetails?.[0] ?? {};
+    if (shorter) detail.releaseAfter = head.elapsed;
+    // Allocate head slots only when a chord actually has individual notation or release times.
+    (first.headDetails ??= Array.from({ length: first.pitches?.length ?? 1 }, () => ({}))).push(detail);
+  }
   if (head.expression) {
     for (const s of head.expression.spans ?? []) span(first, s);
     if (head.expression.lyrics) (expression(first).lyrics ??= []).push(...head.expression.lyrics);
@@ -339,7 +358,7 @@ function resolveHeads(events: VoiceEvent[], voice: string, state: NotationState,
     context(input, bar, voice);
     for (const [i, detail] of (event.headDetails ?? []).entries()) {
       const p = (event.pitches ?? [event.pitch])[i],
-        info = state.heads.get(detail)!;
+        info = state.heads.get(detail);
       if (!p) continue;
       const share = event.expression?.graceSteal;
       if (detail.releaseAfter && share && event.expression?.graceSide === 'before') {
@@ -354,6 +373,7 @@ function resolveHeads(events: VoiceEvent[], voice: string, state: NotationState,
             event.headRanges?.[i] ?? event.range,
           );
       }
+      if (!info) continue;
       const key = JSON.stringify([p.step, p.alter, p.octave, detail.string, detail.drum]);
       const range = event.headRanges?.[i] ?? event.range;
       if (info.stop) {
