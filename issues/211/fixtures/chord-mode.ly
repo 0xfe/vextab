@@ -9,4 +9,3 @@ progression = \chordmode {
   \layout {}
   \midi {}
 }
-
