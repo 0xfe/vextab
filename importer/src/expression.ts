@@ -10,7 +10,7 @@ export interface Drum { id:string; name:string; line:number; head:'normal'|'cros
 export type Instrument = Guitar | { kind:'drums'; map:Drum[] };
 /** Head details index the authored pitches or drum positions in their original order. */
 export interface HeadDetail {
-  string?:number; fret?:number|'x'; drum?:string; tieStop?:boolean;
+  string?:number; stringSide?:Side|'left'|'right'; fret?:number|'x'; drum?:string; tieStop?:boolean;
   tieStartId?:string; tieEndId?:string;
   finger?:{value:string; side:Side|'left'|'right'}; forcedAccidental?:boolean;
   gesture?:'hammer'|'pull'|'slide'; bend?:number;
@@ -25,7 +25,7 @@ export interface Syllable { text:string; verse?:string; hyphen?:boolean; extend?
 /** Attach expression to a measured event, keeping all literal strings separate from grammar tokens. */
 export interface Expression {
   lyrics?:Syllable[]; harmony?:{root:string; quality:string; bass?:string};
-  frame?:{frets:(number|'x')[]; barre?:[number,number,number]};
+  frame?:{independent?:boolean; frets:(number|'x')[]; barre?:[number,number,number]};
   dynamic?:'ppp'|'pp'|'p'|'mp'|'mf'|'f'|'ff'|'fff';
   articulations?:{kind:'accent'|'staccato'|'tenuto'|'fermata'|'marcato';side?:Side}[];
   ornament?:'tr'|'turn'|'turn_inverted'|'mordent'|'mordent_inverted';

@@ -26,6 +26,8 @@ export function headMarks(head: HeadDetail, names: Names) {
   if (head.tieStop && !head.tieEndId) marks.push('tie');
   if (head.tieEndId) marks.push('tieEnd ' + names.get('tie', head.tieEndId));
   if (head.tieStartId) marks.push('tieStart ' + names.get('tie', head.tieStartId));
+  if (head.string !== undefined && (head.fret === undefined || head.stringSide))
+    marks.push('stringNumber ' + head.string + (head.stringSide ? ' ' + head.stringSide : ''));
   if (head.finger) marks.push('finger ' + head.finger.value + ' ' + head.finger.side);
   if (head.forcedAccidental) marks.push('showSign');
   if (head.gesture) marks.push(head.gesture);
@@ -49,8 +51,8 @@ export function eventMarks(expression: Expression, names: Names) {
     marks.push('harmony ' + root + ' ' + JSON.stringify(quality) + (bass ? ' bass ' + bass : ''));
   }
   if (expression.frame) {
-    const {frets, barre} = expression.frame;
-    marks.push('frame (' + frets.join(' ') + ')' + (barre ? ' barre=' + barre[0] + '/' + barre[1] + '..' + barre[2] : ''));
+    const {frets, barre, independent} = expression.frame;
+    marks.push((independent ? 'diagram (' : 'frame (') + frets.join(' ') + ')' + (barre ? ' barre=' + barre[0] + '/' + barre[1] + '..' + barre[2] : ''));
   }
   if (expression.dynamic) marks.push('dynamic ' + expression.dynamic);
   for (const sign of expression.articulations ?? []) {
