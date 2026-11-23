@@ -124,20 +124,33 @@ export async function testGuide(page, dist) {
     await go('#lesson/' + id);
     assert.equal(await page.locator('#view').inputValue(), 'conductor');
     if (id === 'chopin-ballade-no3') {
-      // The two staves on each of four systems each contain six engraved measures.
-      const counts = await svg.locator('g.vf-stave:not(.vf-ossia *)').evaluateAll(staves => {
+      // A font load or resize can replace the SVG. Measure the currently mounted drawing
+      // in one browser task so WebKit never measures detached staves from the previous draw.
+      const snapshot = await page.waitForFunction(() => {
+        const drawing = document.querySelector('#score svg');
+        const width = drawing?.getBoundingClientRect().width;
+        if (!width) return false;
         const rows = new Map();
-        for (const stave of staves) {
-          const y = stave.firstElementChild.getBBox().y;
+        for (const stave of drawing.querySelectorAll('g.vf-stave:not(.vf-ossia *)')) {
+          const { width: staveWidth, y } = stave.firstElementChild.getBBox();
+          if (!staveWidth) return false;
           rows.set(y, (rows.get(y) ?? 0) + 1);
         }
-        return [...rows.values()];
+        return {
+          width,
+          counts: [...rows.values()],
+          ossiaNotes: drawing.querySelectorAll('.vf-ossia .vf-stavenote').length,
+          pedals: drawing.querySelectorAll('.vf-pedal').length,
+          heading: drawing.querySelector('.vf-score-heading')?.textContent,
+        };
       });
-      assert.deepEqual(counts, Array(8).fill(6));
-      assert.equal(await svg.locator('.vf-ossia .vf-stavenote').count(), 3);
-      assert.equal(await svg.locator('.vf-pedal').count(), 16);
-      assert.match(await svg.locator('.vf-score-heading').textContent(), /Fr.\sChopin,\sOp.\s47/);
-      assert.ok((await svg.boundingBox()).width < 900);
+      const ballade = await snapshot.jsonValue();
+      await snapshot.dispose();
+      assert.deepEqual(ballade.counts, Array(8).fill(6));
+      assert.equal(ballade.ossiaNotes, 3);
+      assert.equal(ballade.pedals, 16);
+      assert.match(ballade.heading, /Fr.\sChopin,\sOp.\s47/);
+      assert.ok(ballade.width < 900);
     }
     if (id === 'pocket-change') {
       const mark = svg.locator('.vf-swing-mark');
