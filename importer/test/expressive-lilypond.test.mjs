@@ -99,3 +99,16 @@ test('open and closed hi-hat preserve their pitches in partial mode and locate t
   assert.match(text,/"openhihat".*midi 46/);
   assert.match(text,/"closedhihat".*midi 42/);
 });
+
+test('sounding chord mode expands spelled heads in root position using its native octave',()=>{
+  const {text}=convert(ly`\chordmode { c2:m g:7 }`);
+  assert.match(text,/:h \(C4 Eb4 G4\) \(G4 B4 D5 F5\)/);
+  assert.doesNotMatch(text,/harmony/);
+  const nested=convert(ly`\relative c'' \chordmode { fis'4:dim7 g,:aug bes:m7 c:maj7 }`);
+  assert.match(nested.text,/\(F#5 A5 C6 Eb6\) \(G3 B3 D#4\) \(Bb4 Db5 F5 Ab5\) \(C4 E4 G4 B4\)/);
+  for (const [source,where] of [[ly`\chordmode { c1:maj7/e }`,'/'],[ly`\chordmode { c1:sus4 }`,':']]) {
+    const invalid=importLilyPond(source,{targetProfile:'expressive',mode:'partial'});
+    assert.equal(invalid.status,'failed');
+    assert.equal(source.slice(...invalid.diagnostics.at(-1).range),where);
+  }
+});

@@ -79,6 +79,9 @@ def main():
         save("joplin-first", joplin)
         definitions = (HERE / "sor-opening.ly").read_text().split(r"\score")[0]
         env = dict(os.environ, XDG_CACHE_HOME=scratch)
+        chord_source = HERE / "chord-mode.ly"
+        subprocess.run(["lilypond", "-dno-print-pages", chord_source], check=True, cwd=work, capture_output=True, env=env)
+        save("chord-mode", observations(work / "chord-mode.midi", 24))
         # Channeling each voice separately preserves simultaneous unisons and independent releases.
         for voice in ("upperVoice", "lowerVoice", "middleVoice"):
             source = work / (voice + ".ly")
