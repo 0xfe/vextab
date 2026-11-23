@@ -6,12 +6,12 @@ import { Time, zero } from './time.js';
 
 /** A source may declare its lyric lane before the associated voice. */
 export class Lanes {
-  lyrics: { target?:string; verse?:string; words:Token[]; token:Token }[] = [];
+  lyrics: { part?:string; target?:string; verse?:string; words:Token[]; token:Token }[] = [];
   chords: { at:Time; harmony:NonNullable<Expression['harmony']>; token:Token }[] = [];
 
   attach(staves: Measure[][], input:Input) {
     for (const lane of this.lyrics) {
-      const candidates = staves.flatMap(bars => [...new Set(bars.flatMap(b=>[...b.voices.keys()]))]
+      const candidates = staves.filter(bars=>!lane.part || bars[0].part===lane.part).flatMap(bars => [...new Set(bars.flatMap(b=>[...b.voices.keys()]))]
         .filter(name=>!lane.target || lane.target===name)
         .map(name=>bars.flatMap(b=>b.voices.get(name) ?? []).filter(e=>e.kind==='attack')));
       input.file=lane.token.file;
@@ -28,7 +28,7 @@ export class Lanes {
         const at=start.plus(event.at), key=at.numerator+'/'+at.denominator;
         if (!anchors.has(key)) anchors.set(key,event);
       }
-      start=start.plus(bar.pickup ?? new Time(bar.beats,bar.beatType));
+      start=start.plus(bar.pickup ?? bar.fragment ?? new Time(bar.beats,bar.beatType));
     }
     for (const {at,harmony,token} of this.chords) {
       input.file=token.file;
@@ -64,7 +64,7 @@ export class Lanes {
       after=(anchors[index] ?? events.length)-i-1;
       if (token.value==='_') {previous=undefined;continue;}
       const val=token.value;
-      if (!/^(?:[A-Za-z]+|"(?:[^"\\]|\\["\\])*")$/.test(val))
+      if (!/^(?:[\p{L}\p{M}']+|"(?:[^"\\]|\\["\\])*")$/u.test(val))
         input.fail('unsupported','Expected a literal lyric syllable, skip, hyphen or extender.',token.range);
       previous={text:val.startsWith('"')?JSON.parse(val):val,verse};
       ((events[i].expression ??= {}).lyrics ??= []).push(previous);

@@ -24,7 +24,7 @@ export interface LilyPondOptions extends ImportOptions {
 interface Rhythm { denominator: number; dots: number }
 interface State {
   marks:Attachments; instrument?:Instrument; headTies?:Map<string,string>;
-  lastEvent?:Event; lastDetails?:HeadDetail[]; tieFrom?:Event; graceSlashed?:boolean;
+  label?:string; slideFrom?:number; lastEvent?:Event; lastDetails?:HeadDetail[]; tieFrom?:Event; graceSlashed?:boolean;
   part: string; voice: string; group?: NonNullable<Measure['group']>; piano?: { id: string; hands: string[] }; display?: number; index: number; at: Time;
   mode: 'absolute' | 'relative' | 'fixed'; anchor: Pitch; fixed: number;
   rhythm: Rhythm; last: Pitch[]; tuplets: NonNullable<Event['tuplets']>;
@@ -127,14 +127,14 @@ class Resolver {
       last: [], tuplets: [], pendingGrace: [], uses: [], marks:{spans:new Map()},
       instrument };
     this.sequence(expr.words, state, expr.scope, 0);
-    if (state.pendingGrace.length || state.tie || state.headTies?.size || state.marks.spans.size) this.input.fail('timing', 'Missing attachment target.', expr.words.at(-1)!.range);
-    this.lanes.attach([...this.parts.values()],this.input);
+    if (state.pendingGrace.length || state.label!==undefined || state.slideFrom || state.tie || state.headTies?.size || state.marks.spans.size) this.input.fail('timing', 'Missing attachment target.', expr.words.at(-1)!.range);
     for (const bars of this.parts.values()) this.resolveAttributes(bars);
     if (finalFragment) for (const bars of this.parts.values()) {
       const last = bars[bars.length - 1];
       if (!last.pickup && last.extent.compare(zero) > 0 && last.extent.compare(new Time(last.beats, last.beatType)) < 0)
         last.fragment = last.extent;
     }
+    this.lanes.attach([...this.parts.values()],this.input);
     return [...this.parts.values()].flat();
   }
 
@@ -250,7 +250,8 @@ class Resolver {
       case '\\addlyrics': {
         if (input.options.targetProfile!=='expressive') input.fail('unsupported','Lyrics need the expressive target.',t.range);
         const lane=this.laneGroup(next(),scope,'\\lyricmode');
-        this.lanes.lyrics.push({verse:'lyrics'+ ++this.serial,words:lane.words,token:t});
+        const target=this.parts.get(s.part)?.some(b=>b.voices.has(s.voice)) ? s.voice : undefined;
+        this.lanes.lyrics.push({part:s.piano?.id ?? s.part,target,verse:'lyrics'+ ++this.serial,words:lane.words,token:t});
         break;
       }
       case '\\drummode': {
@@ -314,7 +315,10 @@ class Resolver {
       case '\\tempo': {
         if (!includesExtended(input.options)) input.fail('unsupported', 'Tempo changes need the extended target.', t.range);
         if (words[i]?.value.startsWith('"') && input.options.targetProfile==='expressive') {
-          input.omit('Descriptive tempo heading omitted.',words[i++].range);
+          const label=words[i++];
+          if (s.label!==undefined || !/^"(?:[^"\\]|\\["\\])*"$/.test(label.value))
+            input.fail('unsupported','Expected one literal tempo heading.',label.range);
+          s.label=JSON.parse(label.value);
           if (!/^\d+$/.test(words[i]?.value ?? '')) break;
         }
         if (!/^\d+$/.test(words[i]?.value ?? '')) input.fail('unsupported', 'Expected a metronome beat unit.', t.range);
@@ -523,7 +527,7 @@ class Resolver {
       const v: State = { ...s, voice: branch === 0 ? s.voice : branch === 1 ? 'lower' : 'voice' + (branch + 1),
         pendingGrace: [], tie: undefined, tieFrom:undefined, headTies:undefined, marks:{...s.marks,spans:new Map()} };
       i = this.one(words, i, v, scope, depth + 1);
-      if (v.tie || v.pendingGrace.length || v.headTies?.size || v.marks.spans.size) this.input.fail('unsupported', 'Dangling branch attachment.', token.range);
+      if (v.tie || v.label!==undefined || v.slideFrom || v.pendingGrace.length || v.headTies?.size || v.marks.spans.size) this.input.fail('unsupported', 'Dangling branch attachment.', token.range);
       s.rhythm = v.rhythm; s.anchor = v.anchor; s.last = v.last;
       if (v.index > longest.index || (v.index === longest.index && v.at.compare(longest.at) > 0)) longest = v;
       if (words[i]?.value === '\\\\') {
@@ -540,11 +544,26 @@ class Resolver {
     if (!bars || bars.length !== s.index || start >= s.index)
       this.input.fail('unsupported', 'Unfolding requires complete bars in one staff.', token.range);
     const out: Measure[] = [];
-    const append = (bar: Measure) => {
+    const ids=new Map<string,string>();
+    const startId=(old:string) => {
+      const fresh='u'+ ++this.serial; ids.set(old,fresh); return fresh;
+    };
+    const endId=(old:string) => {
+      const fresh=ids.get(old);
+      if (!fresh) return this.input.fail('unsupported','Unfolded endpoint has no performed start.',token.range);
+      ids.delete(old); return fresh;
+    };
+    const append = (bar: Measure, pass=0) => {
       this.work += [...bar.voices.values()].reduce((n, events) => n + events.length, 0);
       if (out.length >= 4096 || this.work > 65536) this.input.fail('limit', 'Unfolded music exceeds budget.', token.range);
       const copy = Object.assign(new Measure(), bar, { label: String(start + out.length + 1) });
-      copy.voices = new Map([...bar.voices].map(([voice, events]) => [voice, [...events]]));
+      copy.voices=new Map([...bar.voices].map(([voice,events])=>[voice,events.map(event=>{
+        const headDetails=event.headDetails?.map(h=>({...h,
+          tieEndId:h.tieEndId && endId(h.tieEndId), tieStartId:h.tieStartId && startId(h.tieStartId)}));
+        const expression=event.expression && {...event.expression};
+        if (expression?.spans) expression.spans=expression.spans.map(p=>({...p,id:p.edge==='start'?startId(p.id):endId(p.id)}));
+        return {...event,headDetails,expression,tuplets:event.tuplets?.map(group=>({...group,id:group.id+'-'+pass}))};
+      })]));
       delete copy.repeatStart; delete copy.repeatEnd; delete copy.ending; delete copy.endingEnd;
       out.push(copy);
     };
@@ -563,8 +582,8 @@ class Resolver {
         choices.push(bars.slice(from, ++i));
       }
       for (let pass = 0; pass < count; pass++) {
-        for (let j = body; j < end; j++) append(bars[j]);
-        for (const bar of choices[pass] ?? []) append(bar);
+        for (let j = body; j < end; j++) append(bars[j],pass);
+        for (const bar of choices[pass] ?? []) append(bar,pass);
       }
     }
     bars.splice(start, bars.length - start, ...out);
@@ -656,6 +675,7 @@ class Resolver {
             const drum=drumByName(item.value);
             if (!drum) return input.fail('unsupported','Unsupported LilyPond drum '+item.value+'.',item.range);
             if (!s.instrument.map.some(d=>d.id===drum.id)) s.instrument.map.push(drum);
+            if (drum.id==='closedhihat' || drum.id==='openhihat') input.omit(drum.id+' playing sign omitted.',item.range);
             p={...pitch('C',0,4),sounding:drum.midi}; detail.drum=drum.id;
           } else p=readPitch(item,s,language,input);
           if (heads.length>=16) input.fail('limit','Chord exceeds 16 heads.',item.range);
@@ -728,8 +748,16 @@ class Resolver {
         details[j].tieStartId=id;
       }
       event.headDetails=details;
+      if (s.label!==undefined) { (event.expression ??= {}).label=s.label; delete s.label; }
       if (t.value==='<') event.headRanges=headRanges;
+      const previousSlide=s.slideFrom;
+      delete s.slideFrom;
+      let slide=false;
       for (;;) {
+        if (words[i]?.value==='\\glissando') {
+          if (s.instrument?.kind!=='guitar' || heads.length!==1) input.fail('unsupported','A guitar slide requires a single fretted head.',words[i].range);
+          slide=true; i++; continue;
+        }
         if (words[i]?.value==='~') {
           if (!heads.length) input.fail('syntax','Cannot tie silence.',range);
           s.tie=heads; s.tieFrom=event; i++; continue;
@@ -742,9 +770,16 @@ class Resolver {
       }
       event.range=[t.range[0],words[i-1].range[1]];
       if (s.instrument?.kind==='guitar') {
+        if (previousSlide) {
+          if (heads.length!==1 || details[0].string && details[0].string!==previousSlide)
+            input.fail('unsupported','Slide destination must use the same string.',t.range);
+          details[0].string=previousSlide; details[0].gesture='slide';
+        }
         frets(heads,details,s.instrument,input,t);
+        if (slide) s.slideFrom=details[0].string;
         event.pitches=heads.map(p=>({...p,octave:p.octave+1}));
         event.pitch=event.pitches[0];
+        if (event.grace) event.grace=event.grace.map(chord=>chord.map(p=>({...p,octave:p.octave+1})));
       }
     } else {
       if (s.tie) {

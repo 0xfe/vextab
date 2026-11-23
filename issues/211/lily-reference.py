@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 from urllib.request import urlopen
 import argparse
 import os
+import re
 import subprocess
 
 import mido
@@ -40,10 +41,32 @@ def save(name, rows):
     (HERE / (name + ".tsv")).write_text("".join("%s\t%s\t%s\n" % row for row in sorted(rows)))
 
 
+def verify_excerpts(directory):
+    """Enforce exact source slices, including their active score blocks and engraving instructions."""
+    raw = (directory / "maple.ly").read_bytes()
+    assert sha256(raw).hexdigest() == "043e9d9207b771658a9afa51e2aa2537c448ecfd602e78ae50110cf3b12209fd"
+    lines = raw.decode().splitlines(keepends=True)
+    maple = lines[0] + "\n" + "".join(lines[31:61]) + "}\n\n" + "".join(lines[154:180]) + "}\n\n" + "".join(lines[266:])
+    assert (HERE / "joplin-first.ly").read_text() == maple
+    raw = (directory / "sor.ly").read_bytes()
+    assert sha256(raw).hexdigest() == "a2dfb39a40b2dd8b406cce4894af20dcd5e5312e815825170e2fbec40c5ca217"
+    sor = raw.decode()
+    result = sor.splitlines()[0] + "\n\n"
+    for m in re.finditer(r"^(?:upperVoice|lowerVoice|middleVoice) =.*", sor, re.M):
+        start = m.start()
+        end = list(re.finditer(r"\|[ \t]*$", sor[start:], re.M))[7].end()
+        result += sor[start:start+end] + "\n}\n\n"
+    result += sor[sor.index(r"\score {"):]
+    assert (HERE / "sor-opening.ly").read_text() == result
+
+
 def main():
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument("--maple-midi", type=Path, help="Use a locally cached copy of the published MIDI.")
+    parser.add_argument('--check-sources', type=Path, help='Directory containing pinned full maple.ly and sor.ly.')
     options = parser.parse_args()
+    if options.check_sources:
+        verify_excerpts(options.check_sources)
     version = subprocess.check_output(["lilypond", "--version"], text=True)
     assert version.startswith("GNU LilyPond 2.26.0 ")
     with TemporaryDirectory() as scratch:

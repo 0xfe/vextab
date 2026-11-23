@@ -15,6 +15,8 @@ add('acousticsnare','sna',38,1);
 add('handclap','hc',39,1,'triangle');
 add('electricsnare','sne',40,1);
 add('lowfloortom','tomfl',41,-4);
+add('closedhihat','hhc',42,3,'cross');
+add('openhihat','hho',46,3,'cross');
 add('hihat','hh',42,3,'cross');
 add('highfloortom','tomfh',43,-2);
 add('pedalhihat','hhp',44,-5,'cross');
