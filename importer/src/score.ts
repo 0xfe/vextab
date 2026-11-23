@@ -6,7 +6,9 @@ import { Time, zero } from './time.js';
 
 /** Traditional major keys in circle-of-fifths order. */
 export const keys = ['Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F', 'C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#'];
-/** Keep the single-measure reader bounded before constructing input records. */
+/** Relative minor keys share the fifths index of their major signatures. */
+export const minorKeys = ['Abm', 'Ebm', 'Bbm', 'Fm', 'Cm', 'Gm', 'Dm', 'Am', 'Em', 'Bm', 'F#m', 'C#m', 'G#m', 'D#m', 'A#m'];
+/** Bound decoded plain sources and the score member selected from an MXL archive. */
 export const sourceLimit = 1024 * 1024;
 
 /** Written spelling and sounding MIDI are distinct even in this concert-pitch profile. */

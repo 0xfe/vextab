@@ -1,6 +1,6 @@
 // Translate resolved source events into editable VexTab grammar v2 within the public compiler limits.
 import type { Event, Input, Measure, Pitch } from './score.js';
-import { keys } from './score.js';
+import { keys, minorKeys } from './score.js';
 import { Time, zero } from './time.js';
 import type { ImportedDocument, TextRange } from './types.js';
 
@@ -8,8 +8,7 @@ import type { ImportedDocument, TextRange } from './types.js';
 function spelling(p: Pitch, key: string, input: Input, range: TextRange) {
   if (p.octave < 0 || p.octave > 9 || p.sounding < 0 || p.sounding > 127 || Math.abs(p.alter) > 2)
     input.fail('unsupported', 'Pitch exceeds the written or sounding target range.', range);
-  const minor = ['Abm', 'Ebm', 'Bbm', 'Fm', 'Cm', 'Gm', 'Dm', 'Am', 'Em', 'Bm', 'F#m', 'C#m', 'G#m', 'D#m', 'A#m'];
-  const fifths = (key.endsWith('m') ? minor : keys).indexOf(key) - 7;
+  const fifths = (key.endsWith('m') ? minorKeys : keys).indexOf(key) - 7;
   const altered = (fifths < 0 ? 'BEADGCF' : 'FCGDAEB').slice(0, Math.abs(fifths));
   const sign = p.alter ? ['bb', 'b', '', '#', '##'][p.alter + 2] : altered.includes(p.step) ? 'n' : '';
   return p.step + sign + p.octave;
@@ -80,6 +79,12 @@ class Writer {
       this.input.fail('unsupported', 'Invalid written duration.', event.range);
     let written = new Time(2 ** (dots + 1) - 1, event.denominator * 2 ** dots);
     for (const t of this.tuplets) written = new Time(written.numerator * BigInt(t.normal), written.denominator * BigInt(t.actual));
+    // Grammar v2 uses bounded rationals even when the source can describe finer subdivisions.
+    const targetLimit = 2147483647n;
+    for (const time of [written, event.at, event.at.plus(event.elapsed)]) {
+      if (time.numerator > targetLimit || time.denominator > targetLimit)
+        this.input.fail('limit', 'Exact event time exceeds the target fraction limit.', event.range);
+    }
     if (written.compare(event.elapsed)) this.input.fail('timing', 'Written duration differs from elapsed duration.', event.range);
     const heads = event.pitches ?? (event.pitch ? [event.pitch] : []);
     if (heads.length > 16) this.input.fail('limit', 'Chord exceeds 16 heads.', event.range);
