@@ -131,3 +131,47 @@ test('literal direction words keep quotes and warn about unrepresented color and
     2,
   );
 });
+test('streaming partwise and timewise selection retain the same inherited state and reject repeat crossings', () => {
+  const bars = [
+    '<attributes><divisions>2</divisions><key><fifths>1</fifths></key></attributes><sound tempo="92"/>' +
+      note('D'),
+    note('F', mark('<articulations><staccato/></articulations>')),
+  ];
+  const list = '<part-list><score-part id="P"><part-name>Solo</part-name></score-part></part-list>';
+  function xml(timewise, bars) {
+    const root = timewise ? 'score-timewise' : 'score-partwise';
+    const music = bars
+      .map(
+        (bar, i) =>
+          '<measure number="' +
+          (i + 1) +
+          '">' +
+          (timewise ? '<part id="P">' + bar + '</part>' : bar) +
+          '</measure>',
+      )
+      .join('');
+    return (
+      '<' +
+      root +
+      ' version="4.0">' +
+      list +
+      (timewise ? music : '<part id="P">' + music + '</part>') +
+      '</' +
+      root +
+      '>'
+    );
+  }
+  const options = { ...expressive, selection: { firstMeasure: 2, lastMeasure: 2 } };
+  const reference = importMusicXML(xml(true, bars), options);
+  assert.equal(reference.status, 'exact');
+  assert.match(reference.documents[0].text, /tempo 92 at 1/);
+  assert.match(reference.documents[0].text, /key G/);
+  const streamed = importMusicXML(xml(false, bars), options);
+  assert.deepEqual(streamed, reference);
+  const start = '<barline location="left"><repeat direction="forward"/></barline>';
+  for (const timewise of [false, true]) {
+    const result = importMusicXML(xml(timewise, [start + bars[0], bars[1]]), options);
+    assert.match(result.diagnostics.at(-1).message, /selection begins inside a repeat/);
+    assert.equal(result.documents.length, 0);
+  }
+});

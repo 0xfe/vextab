@@ -11,6 +11,7 @@ import {
   graceNote,
   notationState,
   noteMarks,
+  headDetail,
   principal,
   type NotationState,
 } from './musicxml-expression.js';
@@ -180,7 +181,8 @@ function attributes(node: Element, state: PartState, cursor: Time, input: Input,
 
 /** Derive omitted note types only when an exact binary or dotted spelling exists. */
 function rhythm(node: Element, duration: Time, input: Input) {
-  const type = one(node, 'type', input, true);
+  const typeNode = one(node, 'type', input, true);
+  const type = typeNode && scalar(node, 'type', input);
   const dots = node.children.filter((c) => c.name === 'dot').length;
   const ratio = one(node, 'time-modification', input, true);
   let actual = 1,
@@ -192,7 +194,7 @@ function rhythm(node: Element, duration: Time, input: Input) {
     normal = integer(scalar(ratio, 'normal-notes', input), ratio.range, input);
   }
   for (let i = 0; i < values.length; i++) {
-    if (type && scalar(node, 'type', input) !== values[i]) continue;
+    if (typeNode && type !== values[i]) continue;
     for (let d = dots; d <= (type || dots ? dots : 3) && d <= 3; d++) {
       if (
         new Time(BigInt(2 ** (d + 1) - 1) * BigInt(normal), BigInt(2 ** (i + d)) * BigInt(actual)).compare(
@@ -402,8 +404,8 @@ function note(
   };
   const marks = one(node, 'notations', input, true);
   if (expressive) {
-    noteMarks(node, event, state.notation, input, !!drum);
-    if (drum) event.headDetails![0].drum = drum.id;
+    noteMarks(node, event, state.notation, input, !!drum, marks);
+    if (drum) headDetail(event).drum = drum.id;
   } else readMarks(node, marks, event, input);
   if (chord) {
     addChordHead(previous, event, voice, bar, state, actual !== normal, input);
@@ -464,42 +466,45 @@ function tempoPosition(node: Element, sound: Element, cursor: Time, divisions: n
 
 type GlobalTempo = Measure['tempos'][number] & { ordinal: number };
 /** Read global tempos even if their source part or the preceding movement is excluded. */
-function scopeTempos(records: BarInput[], input: Input) {
-  const tempos: GlobalTempo[] = [];
-  let divisions = 0;
-  for (const [i, record] of records.entries()) {
-    const timed = record.children.some(
-      (c) =>
-        (c.name === 'sound' && c.attributes.tempo) ||
-        (c.name === 'direction' && c.children.some((n) => n.name === 'sound' && n.attributes.tempo)),
-    );
-    let cursor = zero;
-    for (const child of record.children) {
-      if (child.name === 'attributes') {
-        const d = one(child, 'divisions', input, true);
-        if (d) divisions = integer(d.text.trim(), d.range, input);
-      } else if (timed) {
-        if (child.name === 'backup') cursor = cursor.minus(elapsed(child, divisions, input));
-        else if (
-          child.name === 'forward' ||
-          (child.name === 'note' && !child.children.some((n) => n.name === 'grace' || n.name === 'chord'))
-        )
-          cursor = cursor.plus(elapsed(child, divisions, input));
-        const sound = child.name === 'sound' ? child : child.children.find((n) => n.name === 'sound');
-        if (sound?.attributes.tempo) {
-          const bpm = Number(sound.attributes.tempo);
-          if (!Number.isInteger(bpm) || bpm < 1 || bpm > 999)
-            input.fail('unsupported', 'Tempo exceeds supported integer range.', sound.range);
-          tempos.push({
-            ordinal: i + 1,
-            bpm,
-            at: tempoPosition(child, sound, cursor, divisions, input),
-            range: sound.range,
-          });
-        }
+function measureTempos(record: BarInput, ordinal: number, divisions: number, tempos: GlobalTempo[], input: Input) {
+  const timed = record.children.some(
+    (c) =>
+      (c.name === 'sound' && c.attributes.tempo) ||
+      (c.name === 'direction' && c.children.some((n) => n.name === 'sound' && n.attributes.tempo)),
+  );
+  let cursor = zero;
+  for (const child of record.children) {
+    if (child.name === 'attributes') {
+      const d = one(child, 'divisions', input, true);
+      if (d) divisions = integer(d.text.trim(), d.range, input);
+    } else if (timed) {
+      if (child.name === 'backup') cursor = cursor.minus(elapsed(child, divisions, input));
+      else if (
+        child.name === 'forward' ||
+        (child.name === 'note' && !child.children.some((n) => n.name === 'grace' || n.name === 'chord'))
+      )
+        cursor = cursor.plus(elapsed(child, divisions, input));
+      const sound = child.name === 'sound' ? child : child.children.find((n) => n.name === 'sound');
+      if (sound?.attributes.tempo) {
+        const bpm = Number(sound.attributes.tempo);
+        if (!Number.isInteger(bpm) || bpm < 1 || bpm > 999)
+          input.fail('unsupported', 'Tempo exceeds supported integer range.', sound.range);
+        tempos.push({
+          ordinal,
+          bpm,
+          at: tempoPosition(child, sound, cursor, divisions, input),
+          range: sound.range,
+        });
       }
     }
   }
+
+  return divisions;
+}
+function scopeTempos(records: BarInput[], input: Input) {
+  const tempos: GlobalTempo[] = [];
+  let divisions = 0;
+  for (const [i, record] of records.entries()) divisions = measureTempos(record, i + 1, divisions, tempos, input);
   return tempos;
 }
 
@@ -772,34 +777,36 @@ function definitions(list: Element, input: Input) {
 }
 
 /** Read the state at the selection boundary in musical order, including measures with backups. */
-function carryAttributes(prefix: BarInput[], state: PartState, input: Input, boundary: TextRange) {
-  let repeatOpen = false,
-    endingOpen = false;
-  for (const prior of prefix) {
-    let at = zero,
-      divisions = state.divisions;
-    const changes: { at: Time; node: Element }[] = [];
-    for (const child of prior.children) {
-      if (child.name === 'attributes') {
-        changes.push({ at, node: child });
-        const d = one(child, 'divisions', input, true);
-        if (d) divisions = integer(d.text.trim(), d.range, input);
-      }
-      if (child.name === 'barline')
-        for (const mark of child.children) {
-          if (mark.name === 'repeat') repeatOpen = mark.attributes.direction === 'forward';
-          if (mark.name === 'ending') endingOpen = mark.attributes.type === 'start';
-        }
-      if (child.name === 'backup') at = at.minus(elapsed(child, divisions, input));
-      if (
-        child.name === 'forward' ||
-        (child.name === 'note' && !child.children.some((n) => n.name === 'grace' || n.name === 'chord'))
-      )
-        at = at.plus(elapsed(child, divisions, input));
+interface PrefixState {
+  repeatOpen: boolean;
+  endingOpen: boolean;
+}
+function carryMeasure(prior: BarInput, state: PartState, scope: PrefixState, input: Input) {
+  let at = zero,
+    divisions = state.divisions;
+  const changes: { at: Time; node: Element }[] = [];
+  for (const child of prior.children) {
+    if (child.name === 'attributes') {
+      changes.push({ at, node: child });
+      const d = one(child, 'divisions', input, true);
+      if (d) divisions = integer(d.text.trim(), d.range, input);
     }
-    for (const change of changes.sort((a, b) => a.at.compare(b.at))) attributes(change.node, state, zero, input);
+    if (child.name === 'barline')
+      for (const mark of child.children) {
+        if (mark.name === 'repeat') scope.repeatOpen = mark.attributes.direction === 'forward';
+        if (mark.name === 'ending') scope.endingOpen = mark.attributes.type === 'start';
+      }
+    if (child.name === 'backup') at = at.minus(elapsed(child, divisions, input));
+    if (
+      child.name === 'forward' ||
+      (child.name === 'note' && !child.children.some((n) => n.name === 'grace' || n.name === 'chord'))
+    )
+      at = at.plus(elapsed(child, divisions, input));
   }
-  if (repeatOpen || endingOpen)
+  for (const change of changes.sort((a, b) => a.at.compare(b.at))) attributes(change.node, state, zero, input);
+}
+function checkBoundary(scope: PrefixState, boundary: TextRange, input: Input) {
+  if (scope.repeatOpen || scope.endingOpen)
     input.fail('unsupported', 'The selection begins inside a repeat or ending.', boundary);
 }
 
@@ -821,7 +828,9 @@ function readPart(
     last > all.length
   )
     input.fail('syntax', 'Invalid inclusive one-based measure selection.', range);
-  carryAttributes(all.slice(0, first - 1), state, input, all[first - 1].measure.range);
+  const prefix = { repeatOpen: false, endingOpen: false };
+  for (let i = 0; i < first - 1; i++) carryMeasure(all[i], state, prefix, input);
+  checkBoundary(prefix, all[first - 1].measure.range, input);
   const records = all.slice(first - 1, last);
   if (!records.length) input.fail('syntax', 'Missing part ' + state.id + '.', range);
   for (const record of records)
@@ -830,6 +839,17 @@ function readPart(
   const partBars: Measure[] = [];
   for (let i = 0; i < records.length; i++) partBars.push(...measure(records[i], state, i, input));
 
+  return finishPart(partBars, state, selection, range, input);
+}
+
+/** Pair boundaries on the complete selected voice after each XML measure has released its element tree. */
+function finishPart(
+  partBars: Measure[],
+  state: PartState,
+  selection: MusicXMLOptions['selection'],
+  range: TextRange,
+  input: Input,
+) {
   if (input.options.targetProfile === 'expressive') {
     for (const bar of partBars) {
       const instrument = state.instruments.staffs[bar.staff - 1];
@@ -918,30 +938,99 @@ function readScore(
   return [bars, root.range];
 }
 
+/** The active part keeps normalized bars, two division clocks and the repeat state at a selected boundary. */
+interface StreamingPart {
+  state: PartState;
+  selected: boolean;
+  divisions: number;
+  count: number;
+  prefix: PrefixState;
+  bars: Measure[];
+}
+
 /** Convert decoded text, UTF-8 bytes or BOM/signature-detected UTF-16 into editable VexTab. */
 export function importMusicXML(source: string | Uint8Array, options: MusicXMLOptions = {}): ImportResult {
   return convert(options, 'score.musicxml', (input) => {
     const resolved = new Map<string, Measure[]>(),
       tempos: GlobalTempo[] = [];
     let registry: Map<string, PartState> | undefined;
-    const root = readTree(source, input, options.selection, (node, root) => {
-      if (root.name !== 'score-partwise') return;
-      if (node.name === 'part-list') {
-        registry = definitions(node, input);
-      } else if (node.name === 'part') {
-        const id = node.attributes.id,
+    // The expressive reader preserves short chord heads in-place, so it can normalize each measure on arrival.
+    // Older profiles reserve every source voice ID first to allocate collision-free synthetic chord voices.
+    const stream = options.targetProfile === 'expressive';
+    const selection = options.selection,
+      first = selection?.firstMeasure ?? 1,
+      last = selection?.lastMeasure ?? Infinity;
+    if (
+      stream &&
+      (!Number.isSafeInteger(first) ||
+        first < 1 ||
+        (selection?.lastMeasure !== undefined && (!Number.isSafeInteger(last) || last < first)))
+    )
+      input.fail('syntax', 'Invalid inclusive one-based measure selection.', [0, 0]);
+    let current: StreamingPart | undefined;
+    function streamMeasure(node: Element, part: Element, ordinal: number) {
+      if (!current) {
+        const id = part.attributes.id,
           state = registry?.get(id);
-        if (!state || resolved.has(id)) input.fail('syntax', 'Unmatched or duplicate part ID.', node.range);
-        shape(node, input, ['measure'], ['id']);
-        if (!node.children.length) input.fail('syntax', 'Empty part.', node.range);
-        const selected = !options.selection?.parts || options.selection.parts.includes(id);
-        const records = node.children.map((measure) => ({ measure, children: measure.children }));
-        if (options.selection && includesExtended(options)) tempos.push(...scopeTempos(records, input));
-        const bars = selected ? readPart(records, state!, input, options.selection, node.range) : [];
-        resolved.set(id, bars);
-        node.children = [];
+        if (!state || resolved.has(id)) return input.fail('syntax', 'Unmatched or duplicate part ID.', part.range);
+        current = {
+          state,
+          selected: !selection?.parts || selection.parts.includes(id),
+          divisions: 0,
+          count: 0,
+          prefix: { repeatOpen: false, endingOpen: false },
+          bars: [],
+        };
       }
-    });
+      current.count = ordinal;
+      const record = { measure: node, children: node.children };
+      if (selection && ordinal <= last)
+        current.divisions = measureTempos(record, ordinal, current.divisions, tempos, input);
+      if (!current.selected || ordinal > last) return;
+      if (ordinal < first) carryMeasure(record, current.state, current.prefix, input);
+      else {
+        if (ordinal === first) checkBoundary(current.prefix, node.range, input);
+        current.bars.push(...measure(record, current.state, ordinal - first, input));
+      }
+    }
+    const root = readTree(
+      source,
+      input,
+      options.selection,
+      (node, root) => {
+        if (root.name !== 'score-partwise') return;
+        if (node.name === 'part-list') {
+          registry = definitions(node, input);
+        } else if (node.name === 'part') {
+          const id = node.attributes.id,
+            state = registry?.get(id);
+          if (!state || resolved.has(id)) input.fail('syntax', 'Unmatched or duplicate part ID.', node.range);
+          shape(node, input, ['measure'], ['id']);
+          if (stream) {
+            if (!current) return input.fail('syntax', 'Empty part.', node.range);
+            if (
+              current.selected &&
+              (first > current.count || (selection?.lastMeasure !== undefined && last > current.count))
+            )
+              input.fail('syntax', 'Invalid inclusive one-based measure selection.', node.range);
+            resolved.set(
+              id,
+              current.selected ? finishPart(current.bars, current.state, selection, node.range, input) : [],
+            );
+            current = undefined;
+            return;
+          }
+          if (!node.children.length) input.fail('syntax', 'Empty part.', node.range);
+          const selected = !options.selection?.parts || options.selection.parts.includes(id);
+          const records = node.children.map((measure) => ({ measure, children: measure.children }));
+          if (options.selection && includesExtended(options)) tempos.push(...scopeTempos(records, input));
+          const bars = selected ? readPart(records, state!, input, options.selection, node.range) : [];
+          resolved.set(id, bars);
+          node.children = [];
+        }
+      },
+      stream ? streamMeasure : undefined,
+    );
     input.context = {};
     const [bars, range] = readScore(
       root,

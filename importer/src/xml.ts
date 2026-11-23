@@ -12,6 +12,8 @@ export interface Element {
   range: [number, number];
 }
 
+// Most XML elements are scalar leaves. Share the empty child list until the first child arrives.
+const noChildren: Element[] = [];
 const largeXMLLimit = 8 * 1024 * 1024;
 /** A caller can select a small target from a larger source, independently of the host capacity. */
 export function xmlLimit(options: MusicXMLOptions) {
@@ -31,6 +33,7 @@ export function readTree(
   input: Input,
   selection?: MusicXMLOptions['selection'],
   onRootChild?: (node: Element, root: Element) => void,
+  onPartMeasure?: (measure: Element, part: Element, ordinal: number) => void,
 ): Element {
   const size = source.length,
     limit = xmlLimit(input.options);
@@ -121,12 +124,14 @@ export function readTree(
     const node: Element = {
       name: tag.name,
       attributes: tag.attributes,
-      children: [],
+      children: noChildren,
       text: '',
       range: [start, parser.position],
     };
-    if (parent) parent.children.push(node);
-    else root = node;
+    if (parent) {
+      if (parent.children === noChildren) parent.children = [node];
+      else parent.children.push(node);
+    } else root = node;
     stack.push(node);
   });
   function text(value: string) {
@@ -156,7 +161,18 @@ export function readTree(
         current.children = current.children.filter((c) => c.name === 'attributes' || c.name === 'barline');
       }
       current.range[1] = parser.position;
-      if (root && stack.length === 1) onRootChild?.(current, root);
+      if (
+        onPartMeasure &&
+        root?.name === 'score-partwise' &&
+        stack.length === 2 &&
+        current.name === 'measure' &&
+        stack[1]?.name === 'part'
+      ) {
+        const part = stack[1];
+        onPartMeasure(current, part, ordinal);
+        // The normalized measure owns its values. Release the entire SAX subtree before decoding its neighbor.
+        part.children.pop();
+      } else if (root && stack.length === 1) onRootChild?.(current, root);
     }
   });
   function write(next: string) {
@@ -200,10 +216,14 @@ export function shape(node: Element, input: Input, children: string[], attribute
 
 /** Require exactly one selected child, or permit its absence when an explicit default exists. */
 export function one(node: Element, name: string, input: Input, optional = false) {
-  const matches = node.children.filter((child) => child.name === name);
-  if (matches.length > 1) input.fail('unsupported', 'Only one ' + name + ' is supported here.', matches[1].range);
-  if (!optional && !matches.length) input.fail('syntax', 'Missing ' + name + '.', node.range);
-  return matches[0] as Element | undefined;
+  let match: Element | undefined;
+  for (const child of node.children)
+    if (child.name === name) {
+      if (match) input.fail('unsupported', 'Only one ' + name + ' is supported here.', child.range);
+      match = child;
+    }
+  if (!match && !optional) input.fail('syntax', 'Missing ' + name + '.', node.range);
+  return match;
 }
 
 /** Scalar values cannot contain markup. */

@@ -143,6 +143,13 @@ export function checkPositions(e: Event, state: InstrumentState, input: Input) {
   if (!e.pitch) return;
   if (state.tab.has(e.staff) && inst?.kind !== 'guitar')
     input.fail('unsupported', 'TAB staff is missing its open-string tuning.', e.range);
+  if (!e.headDetails) {
+    if (inst?.kind === 'drums')
+      input.fail('unsupported', 'Mixed pitched and unpitched attacks on one percussion staff.', e.range);
+    if (inst?.kind === 'guitar' && inst.view !== 'notation')
+      input.fail('unsupported', 'Fretted note is missing its explicit string or fret.', e.range);
+    return;
+  }
   const used = new Set<number>();
   for (const [i, head] of (e.headDetails ?? []).entries()) {
     const p = e.pitches?.[i] ?? e.pitch,
