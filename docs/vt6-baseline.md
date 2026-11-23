@@ -1,6 +1,6 @@
 # VexTab 6 engraving and language baseline
 
-The baseline below describes the original release. M0–M5 have since landed on `uplevel`. The guide ships four repertoire studies on VexFlow 5.8.0. For current results and remaining grammar limits, see the [M5 qualification](../issues/200/README.md).
+The baseline below describes the original 6.0.0 release. VexTab 6.1.0 later shipped four repertoire studies tested with VexFlow 5.8.0. The [M5 qualification](../issues/200/README.md) records those results and the grammar limits at that release.
 
 **20 November 2026 · VexTab 6.0.0 · grammar v2 · VexFlow 5.6.1 in the released bundle**
 
