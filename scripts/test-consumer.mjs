@@ -59,7 +59,7 @@ try {
   await page.locator('#preview canvas').waitFor();
   await page.locator('#paper svg').first().waitFor();
   assert.match(await page.locator('#paper').textContent(), /One/);
-  assert.equal(await page.locator('#paper .vf-timed-text').count(), 2);
+  assert.equal(await page.locator('#paper .vf-timed-direction').count(), 2);
   await page.locator('#editor svg').waitFor();
   assert.equal(await page.locator('#embed textarea').evaluate(el => el.style.height), '72px');
   assert.equal(await page.locator('#embed textarea').inputValue(), lesson);

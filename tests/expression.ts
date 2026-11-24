@@ -23,7 +23,7 @@ QUnit.module('Expressive notation and performance', () => {
       const view = renderConductor(host(), score, { width: 640, renderer });
       const fragments = view.composition.sheet.getContinuousLayout().fragments;
       assert.deepEqual(fragments.filter(f => f.kind === 'crescendo').map(f => !!f.nienteTip), [true, false]);
-      const hyphens = fragments.filter(f => f.kind === 'hyphen');
+      const hyphens = fragments.filter(f => f.kind === 'hyphen' && f.part !== 'single');
       assert.deepEqual(hyphens.map(f => f.part), ['first', 'last']);
       const notes = view.navigation.events.map(e => view.composition.getNote(e.id));
       const word = notes[2].getModifiers().find((m): m is Annotation => m instanceof Annotation && m.getText() === 'e');
@@ -41,6 +41,21 @@ QUnit.module('Expressive notation and performance', () => {
     const page = renderEdition(host(), score).publication.pages[0].svg;
     assert.ok(page.textContent.includes('Dm7/C'));
     assert.ok(page.textContent.includes('two') && page.textContent.includes('on'));
+  });
+
+  QUnit.test('authored beams choose one stem side across the middle line', assert => {
+    // Echigo-Jishi opens with four eighths. Its middle-line B alone would receive a down-stem.
+    for (const [stem, direction] of [['', 1], ['stem down', -1]] as const) {
+      const score = parseScore(`meter 2/4 staff { voice melody ${stem} { :8 beam { A4 A4 B4 A4 } | } }`);
+      const view = renderConductor(host(), score, { width: 600 });
+      const notes = view.navigation.events.map(event => view.composition.getNote(event.id) as StaveNote);
+      assert.deepEqual(notes.map(note => note.getStemDirection()), Array(4).fill(direction));
+      assert.ok(notes[0].getBeam() && notes.every(note => note.getBeam() === notes[0].getBeam()));
+      const page = renderScorePart(host(), score, 'notation').publication.pages[0].svg;
+      const stems = [...page.querySelectorAll<SVGPathElement>('.vf-stem path')];
+      assert.deepEqual(stems.map(path => Math.sign(path.getPointAtLength(0).y - path.getPointAtLength(path.getTotalLength()).y)),
+        Array(4).fill(direction), 'the printed stems attach on the same side');
+    }
   });
 
   QUnit.test('native beams, divided tremolo time, nested tuplets and a shared piano stem', assert => {

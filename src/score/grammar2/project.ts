@@ -353,7 +353,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       const span = bar.span ?? (bar.number === 1 && score.pickup ? score.pickup : fullBar);
       const meter = bar.meter ?? initialMeter;
       const value: MeasureVoice = { declaration: locate(voice.range), hand, span, events: voice.events.slice(bar.start, bar.end).map(voiceAttack),
-        tuplets: [], stem: engraving.stem, beams: engraving.beam ?? true, beamRests: engraving.beamRests ?? true, beatGroups: engraving.beatGroups, stemlets: engraving.stemlets ?? false, middleRests: engraving.middleRests ?? false, tabStems: engraving.tabStems ?? false,
+        tuplets: [], stem: engraving.stem, beams: engraving.beam ?? true, flatBeams: engraving.flatBeams, beamRests: engraving.beamRests ?? true, beatGroups: engraving.beatGroups, stemlets: engraving.stemlets ?? false, middleRests: engraving.middleRests ?? false, tabStems: engraving.tabStems ?? false,
         rehearsal: bar.rehearsal, opening: bar.opening ? { type: bar.opening, range } : undefined, closing: bar.closing ? { type: bar.closing, range } : undefined, tabDirection: engraving.tabDirection === 'down' ? -1 : 1
       };
       const prior = measures[bar.number - 2]?.state;

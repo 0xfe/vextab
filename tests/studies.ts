@@ -109,13 +109,14 @@ QUnit.module('Responsive studies', () => {
       for (const sys of view.composition.systems) assert.deepEqual(sys.getPhraseLayout().diagnostics, []);
       const starts = view.composition.sheet.getContinuousLayout().rows.map(row => row.measures[0]);
       assert.ok(starts.includes(7), 'The second six-bar line starts at its authored break');
-      assert.equal(view.composition.systems[0].getPhraseLayout().getLyricConnectors().length, 1);
-      const line = view.composition.systems[1].getPhraseLayout().getLyricConnectors()[0];
+      const fragments = view.composition.sheet.getContinuousLayout().fragments;
+      assert.equal(fragments.filter(f => f.kind === 'hyphen' && f.row === 0 && f.x1 >= view.composition.staves[0][0].getX() && f.x1 < view.composition.staves[0][0].getX() + view.composition.staves[0][0].getWidth()).length, 1);
+      const line = fragments.find(f => f.kind === 'lyric');
       const end = view.composition.getNote(view.navigation.events.find(e => e.source === second.voices[0].events[2].id).id) as StaveNote;
-      assert.closeTo(line.x + line.w, end.getNoteHeadBeginX() + end.getGlyphWidth(), 0.01);
+      assert.closeTo(line.x2, end.getAbsoluteX() + end.getGlyphWidth(), end.checkStave().space(1));
       for (const lower of view.composition.notes[1][0][1]) {
         const ink = measureEngraving(lower).ink;
-        if (ink.x + ink.w > line.x && ink.x < line.x + line.w) assert.true(line.y > ink.y + ink.h);
+        if (ink.x + ink.w > line.x1 && ink.x < line.x2) assert.true(line.y1 > ink.y + ink.h);
       }
       const chord = view.composition.getNote(view.navigation.events.find(e => e.source === top[1].id).id);
       assert.ok(chord.getModifiers().some(m => m instanceof Annotation && m.getText() === 'Am/G'));
@@ -205,6 +206,6 @@ QUnit.module('Responsive studies', () => {
     assert.deepEqual(meta.spans[0].strings, [3]);
     const sheet = renderScorePart(target, read(lead), 'notation').publication;
     assert.deepEqual(sheet.diagnostics, []);
-    assert.ok(sheet.pages[0].svg.querySelector('.vf-chord-frames'));
+    assert.ok(sheet.pages[0].svg.querySelector('.vf-fret-diagram'));
   });
 });

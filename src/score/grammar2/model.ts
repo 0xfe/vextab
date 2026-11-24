@@ -88,7 +88,7 @@ export type VoiceSpan =
 export interface WrittenRepeat { first: number; bodyEnd: number; endings: { first: number; last: number }[]; range: TextRange }
 
 export interface TextBoundary { edge: 'start' | 'end'; text: string; glyph: boolean; range: TextRange; style: LaneStyle; bar: number }
-export type VoiceSettings = Pick<PartSettings, 'stem' | 'beam' | 'beamRests' | 'stemlets' | 'middleRests' | 'tabStems' | 'tabDirection'>;
+export type VoiceSettings = Pick<PartSettings, 'stem' | 'beam' | 'flatBeams' | 'beamRests' | 'stemlets' | 'middleRests' | 'tabStems' | 'tabDirection'>;
 export interface ScoreVoice {
   settings?: VoiceSettings;
   boundaries?: TextBoundary[];
@@ -107,7 +107,7 @@ export interface PartSettings {
   meters?: Record<number, WrittenMeter>;
   cautionary?: boolean; displayMeter?: boolean; beatGroups?: number[]; stemlets?: boolean; middleRests?: boolean; tabDirection?: 'up' | 'down';
   changes?: Record<number, { tuning?: string; ink?: string; displayMeter?: boolean }>;
-  keys?: Record<number, string>; ink?: string; beam?: boolean; beamRests?: boolean; tabStems?: boolean; stem?: 'up' | 'down';
+  keys?: Record<number, string>; ink?: string; beam?: boolean; flatBeams?: boolean; beamRests?: boolean; tabStems?: boolean; stem?: 'up' | 'down';
   tuning?: string; capo?: number; key?: string; clef?: 'treble' | 'bass' | 'alto' | 'tenor' | 'none' | 'soprano' | 'mezzo-soprano' | 'baritone-c' | 'baritone-f' | 'subbass' | 'french' | 'percussion';
   view?: 'tab' | 'notation' | 'both';
 }

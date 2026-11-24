@@ -71,10 +71,10 @@ QUnit.module('Grammar v2 historical parity', () => {
   });
 
   QUnit.test('timed signs keep their music glyphs and clear the words, notes and barlines', assert => {
-    const source = 'meter 2/4 staff { :h C4 | text words line 8 font "Georgia" size 14 style italic ink navy { start sign coda :8 "One," "and" ink crimson "three" "four" end sign segno | } }';
+    const source = 'meter 2/4 staff { :h C4 | text words line 8 align center font "Georgia" size 14 style italic ink navy { start sign coda :8 "One," "and" ink crimson "three" "four" end sign segno | } }';
     const score = read(source);
     const inspect = (svg: SVGSVGElement) => {
-      const labels = [...svg.querySelectorAll<SVGTextElement>('.vf-timed-text text')];
+      const labels = [...svg.querySelectorAll<SVGTextElement>('.vf-timed-text text, .vf-timed-direction text')];
       const coda = labels.find(label => label.textContent === VexFlow.Glyphs.coda);
       const segno = labels.find(label => label.textContent === VexFlow.Glyphs.segno);
       const words = labels.filter(label => label !== coda && label !== segno);
@@ -100,6 +100,25 @@ QUnit.module('Grammar v2 historical parity', () => {
     inspect(renderScorePart(host(), score, 'notation').publication.pages[0].svg);
   });
 
+  QUnit.test('two directions at each bar edge keep separate source selections', assert => {
+    const input = 'staff { :w C4 | text words { start "Solo" start "Andante" :w "dolce" end "ten." end "Fine" | } }';
+    const score = read(input);
+    const tokens = ['start "Solo"', 'start "Andante"', '"dolce"', 'end "ten."', 'end "Fine"'];
+    const selections = (svg: SVGSVGElement, rangeFor: ReturnType<typeof renderScore>['rangeFor']) =>
+      [...svg.querySelectorAll<SVGGElement>('.vf-timed-direction')].sort((a, b) => a.getBBox().x - b.getBBox().x).map(group => {
+        const range = rangeFor(group.getAttribute('data-direction-id'), input);
+        return input.slice(range.start, range.end);
+      });
+    for (const width of [280, 560]) {
+      const surface = host(), view = renderScore(surface, score, { width });
+      assert.deepEqual(selections(surface.querySelector('svg'), view.rangeFor), tokens);
+      assert.equal(view.extraRegions.length, tokens.length);
+      for (const box of view.extraRegions) assert.equal(view.hitTest(box.x + box.w / 2, box.y + box.h / 2)?.id, box.id);
+    }
+    const printed = renderScorePart(host(), score, 'notation');
+    assert.deepEqual(selections(printed.publication.pages[0].svg, printed.rangeFor), tokens);
+  });
+
   QUnit.test('scoped transposition keeps diagram, symbol, fret, string and performed notes together', assert => {
     const legacy = parseScore('options transpose=2\ntabstave notation=true time=2/4\nnotes :h (0/5.2/4.2/3.1/2.0/1) !chord "Am/E"! !frame x,0,2,2,1,0 barre=2:4-3! |', { language: 1 });
     const input = 'meter 2/4 guitar { transpose +2 { :h (0/5 2/4 2/3 1/2 0/1)[symbol "Am/E", frame (x 0 2 2 1 0) barre=2/4..3] | } :h 0/5 | }';
@@ -111,7 +130,7 @@ QUnit.module('Grammar v2 historical parity', () => {
     assert.deepEqual(scorePerformance(result.score, 60).events[0].notes, scorePerformance(legacy, 60).events[0].notes);
     assert.equal(result.score.measures[1].voices[0].events[0].heads[0].position.fret, 0);
     assert.throws(() => renderScore(host(), read('guitar { transpose -2 { :w 0/6 | } }')), /original string/);
-    assert.ok(renderScorePart(host(), read(input), 'tab').publication.pages[0].svg.querySelector('.vf-chord-frames'));
+    assert.ok(renderScorePart(host(), read(input), 'tab').publication.pages[0].svg.querySelector('.vf-fret-diagram'));
   });
 
   QUnit.test('native tab gestures, manual beams, slurs and a cross-bar palm mute', assert => {
@@ -148,7 +167,7 @@ QUnit.module('Grammar v2 historical parity', () => {
     const score = read(input), surface = host(), view = renderScore(surface, score);
     const native = fixed('stave time=2/4\nnotes :h C/4 |\ntext :8,One,and,three,four');
     assert.ok(native.textContent.includes('three'));
-    const labels = [...surface.querySelectorAll<SVGGElement>('.vf-timed-text')];
+    const labels = [...surface.querySelectorAll<SVGGElement>('.vf-timed-text, .vf-timed-direction')];
     assert.equal(labels.length, 6);
     const three = labels.find(g => g.textContent === 'three').querySelector('text');
     const one = labels.find(g => g.textContent === 'One,').querySelector('text');
@@ -158,7 +177,7 @@ QUnit.module('Grammar v2 historical parity', () => {
     assert.ok(hit && view.hitTest(hit.x + hit.w / 2, hit.y + hit.h / 2).id === hit.id);
     assert.equal(scorePerformance(view.score, 60).events.length, 1);
     const page = renderScorePart(host(), score, 'notation').publication.pages[0].svg;
-    assert.equal(page.querySelectorAll('.vf-timed-text').length, 6);
+    assert.equal(page.querySelectorAll('.vf-timed-text, .vf-timed-direction').length, 6);
     assert.ok(page.textContent.includes('One,'));
   });
 

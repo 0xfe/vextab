@@ -784,7 +784,7 @@ export function readScore(source: string, fail: Fail) {
       const changes = result.changes ??= {};
       changes[at] = { ...changes[at], ...values };
     }
-    const names = voiceOnly ? ['stem', 'beams', 'beamRests', 'stemlets', 'middleRests', 'tabStems', 'tabDirection'] : ['program', 'map', 'meter', 'key', 'clef', 'view', 'capo', 'tuning', 'ink', 'stem', 'beams', 'beamRests', 'tabStems', 'stemlets', 'middleRests', 'tabDirection', 'accidentals', 'display', 'groupBeats'];
+    const names = voiceOnly ? ['stem', 'beams', 'flatBeams', 'beamRests', 'stemlets', 'middleRests', 'tabStems', 'tabDirection'] : ['program', 'map', 'meter', 'key', 'clef', 'view', 'capo', 'tuning', 'ink', 'stem', 'beams', 'flatBeams', 'beamRests', 'tabStems', 'stemlets', 'middleRests', 'tabDirection', 'accidentals', 'display', 'groupBeats'];
     while (names.includes(peek())) {
       const option = take(), value = take();
       if (option.text === 'program') {
@@ -828,7 +828,7 @@ export function readScore(source: string, fail: Fail) {
       else if (option.text === 'stem' || option.text === 'tabDirection') {
         if (value.text !== 'up' && value.text !== 'down') error('Expected up or down', value);
         result[option.text] = value.text;
-      } else if (option.text === 'beams' || option.text === 'beamRests' || option.text === 'tabStems' || option.text === 'stemlets' || option.text === 'middleRests') {
+      } else if (option.text === 'beams' || option.text === 'flatBeams' || option.text === 'beamRests' || option.text === 'tabStems' || option.text === 'stemlets' || option.text === 'middleRests') {
         if (value.text !== 'on' && value.text !== 'off') error('Expected on or off', value);
         result[option.text === 'beams' ? 'beam' : option.text] = value.text === 'on';
       } else if (option.text === 'key') {
