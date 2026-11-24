@@ -46,7 +46,7 @@ interface PartState {
   /** Some historical exporters split one numbered measure into, for example, "7" and "7a". */
   shortBar?: { label: string; extent: Time; bars: Measure[] };
   reserved: Set<string>;
-  lanes: Map<string, string>;
+  lanes: Map<string, { temporary: string; label: string }>;
 }
 interface BarInput {
   measure: Element;
@@ -276,12 +276,12 @@ function addChordHead(
     const identity = JSON.stringify([voice, headNumber]);
     let lane = state.lanes.get(identity);
     if (!lane) {
-      lane = voice + ' (short chord head ' + headNumber + ')';
-      while (state.reserved.has(lane)) lane += '*';
+      // A NUL cannot occur in XML text, even as a character reference. This internal key
+      // keeps the lane distinct until all of this part's source voice names are known.
+      lane = { temporary: '\0' + state.lanes.size, label: voice + ' (short chord head ' + headNumber + ')' };
       state.lanes.set(identity, lane);
-      state.reserved.add(lane);
     }
-    bar.add(lane, event, input);
+    bar.add(lane.temporary, event, input);
     return;
   }
   if (first.tieStart !== event.tieStart || first.tieStop !== event.tieStop)
@@ -319,6 +319,7 @@ function note(
   input: Input,
 ): { cursor: Time; previous?: Previous } {
   const voice = scalar(node, 'voice', input, '1');
+  state.reserved.add(voice);
   input.context.voice = voice;
   shape(
     node,
@@ -804,9 +805,6 @@ function readPart(
   for (let i = 0; i < first - 1; i++) carryMeasure(all[i], state, input);
   const records = all.slice(first - 1, last);
   if (!records.length) input.fail('syntax', 'Missing part ' + state.id + '.', range);
-  for (const record of records)
-    for (const child of record.children)
-      if (child.name === 'note') state.reserved.add(scalar(child, 'voice', input, '1'));
   const partBars: Measure[] = [];
   for (let i = 0; i < records.length; i++) partBars.push(...measure(records[i], state, i, input));
 
@@ -820,6 +818,24 @@ function finishPart(
   range: TextRange,
   input: Input,
 ) {
+  // Only legacy targets split short heads. Resolve their human-readable voice labels once,
+  // including collisions with an explicitly named voice first used many measures later.
+  if (state.lanes.size) {
+    const names = new Map<string, string>();
+    for (const { temporary, label } of state.lanes.values()) {
+      let name = label;
+      while (state.reserved.has(name)) name += '*';
+      state.reserved.add(name);
+      names.set(temporary, name);
+    }
+    for (const bar of partBars) {
+      if ([...bar.voices.keys()].some((voice) => names.has(voice))) {
+        const renamed = new Map<string, Event[]>();
+        for (const [voice, events] of bar.voices) renamed.set(names.get(voice) ?? voice, events);
+        bar.voices = renamed;
+      }
+    }
+  }
   if (input.options.targetProfile === 'expressive') {
     for (const bar of partBars) {
       const instrument = state.instruments.staffs[bar.staff - 1];
@@ -919,17 +935,13 @@ export function musicXMLReader(size: number, asText: boolean, input: Input, opti
   const resolved = new Map<string, Measure[]>(),
     tempos: GlobalTempo[] = [];
   let registry: Map<string, PartState> | undefined;
-  // The expressive reader preserves short chord heads in-place, so it can normalize each measure on arrival.
-  // Older profiles reserve every source voice ID first to allocate collision-free synthetic chord voices.
-  const stream = options.targetProfile === 'expressive';
   const selection = options.selection,
     first = selection?.firstMeasure ?? 1,
     last = selection?.lastMeasure ?? Infinity;
   if (
-    stream &&
-    (!Number.isSafeInteger(first) ||
-      first < 1 ||
-      (selection?.lastMeasure !== undefined && (!Number.isSafeInteger(last) || last < first)))
+    !Number.isSafeInteger(first) ||
+    first < 1 ||
+    (selection?.lastMeasure !== undefined && (!Number.isSafeInteger(last) || last < first))
   )
     input.fail('syntax', 'Invalid inclusive one-based measure selection.', [0, 0]);
   let current: StreamingPart | undefined;
@@ -952,7 +964,7 @@ export function musicXMLReader(size: number, asText: boolean, input: Input, opti
       input.context = {part:current.state.id, measure:node.attributes.number};
       collectForm(node.children, ordinal, form, first, input);
     }
-    if (selection && ordinal <= last)
+    if (selection && includesExtended(options) && ordinal <= last)
       current.divisions = measureTempos(record, ordinal, current.divisions, tempos, input);
     if (!current.selected || ordinal > last) return;
     if (ordinal < first) carryMeasure(record, current.state, input);
@@ -972,34 +984,20 @@ export function musicXMLReader(size: number, asText: boolean, input: Input, opti
           state = registry?.get(id);
         if (!state || resolved.has(id)) input.fail('syntax', 'Unmatched or duplicate part ID.', node.range);
         shape(node, input, ['measure'], ['id']);
-        if (stream) {
-          if (!current) return input.fail('syntax', 'Empty part.', node.range);
-          if (
-            current.selected &&
-            (first > current.count || (selection?.lastMeasure !== undefined && last > current.count))
-          )
-            input.fail('syntax', 'Invalid inclusive one-based measure selection.', node.range);
-          resolved.set(
-            id,
-            current.selected ? finishPart(current.bars, current.state, node.range, input) : [],
-          );
-          current = undefined;
-          return;
-        }
-        if (!node.children.length) input.fail('syntax', 'Empty part.', node.range);
-        const selected = !options.selection?.parts || options.selection.parts.includes(id);
-        const records = node.children.map((measure) => ({ measure, children: measure.children }));
-        for (const [i, record] of records.entries()) if (i+1 <= last) {
-          input.context = {part:id, measure:record.measure.attributes.number};
-          collectForm(record.children, i+1, form, first, input);
-        }
-        if (options.selection && includesExtended(options)) tempos.push(...scopeTempos(records, input));
-        const bars = selected ? readPart(records, state!, input, options.selection, node.range) : [];
-        resolved.set(id, bars);
-        node.children = [];
+        if (!current) return input.fail('syntax', 'Empty part.', node.range);
+        if (
+          current.selected &&
+          (first > current.count || (selection?.lastMeasure !== undefined && last > current.count))
+        )
+          input.fail('syntax', 'Invalid inclusive one-based measure selection.', node.range);
+        resolved.set(
+          id,
+          current.selected ? finishPart(current.bars, current.state, node.range, input) : [],
+        );
+        current = undefined;
       }
     },
-    stream ? streamMeasure : undefined,
+    streamMeasure,
   );
   function finish(): [Measure[], TextRange] {
     const root = tree.finish();

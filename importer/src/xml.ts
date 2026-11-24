@@ -12,8 +12,43 @@ export interface Element {
   range: [number, number];
 }
 
-// Most XML elements are scalar leaves. Share the empty child list until the first child arrives.
+// Most XML elements are scalar leaves. Allocate children only for the first nested element.
 const noChildren: Element[] = [];
+const noAttributes: Record<string, string> = Object.freeze(Object.create(null));
+// A single unusually dense measure must not extend the reusable pool for the rest of the import.
+const reusableElements = 4096;
+
+/** Element views last until the measure callback returns. Retained ranges and attribute maps belong to
+ * the source element and remain valid after another measure reuses this view.
+ */
+class XmlElement implements Element {
+  name = '';
+  text = '';
+  attributes = noAttributes;
+  children = noChildren;
+  private start = 0;
+  private end = 0;
+  private savedRange?: [number, number];
+
+  get range(): [number, number] {
+    return (this.savedRange ??= [this.start, this.end]);
+  }
+
+  reset(name: string, attributes: Record<string, string>, start: number, end: number) {
+    this.name = name;
+    this.attributes = attributes;
+    this.text = '';
+    if (this.children !== noChildren) this.children.length = 0;
+    this.start = start;
+    this.end = end;
+    this.savedRange = undefined;
+  }
+
+  close(end: number) {
+    this.end = end;
+    if (this.savedRange) this.savedRange[1] = end;
+  }
+}
 const largeXMLLimit = 8 * 1024 * 1024;
 /** A caller can select a small target from a larger source, independently of the host capacity. */
 export function xmlLimit(options: MusicXMLOptions) {
@@ -55,7 +90,10 @@ export function treeReader(
     offset = 0,
     priorOpening = 0;
   const parser = new SaxesParser();
-  const stack: (Element | undefined)[] = [];
+  const stack: (XmlElement | undefined)[] = [];
+  const arena: XmlElement[] = [];
+  let inMeasure = false;
+  let used = 0;
   const selected = selection?.parts && new Set(selection.parts);
   let part = '',
     ordinal = 0;
@@ -122,13 +160,14 @@ export function treeReader(
         return;
       }
     }
-    const node: Element = {
-      name: tag.name,
-      attributes: tag.attributes,
-      children: noChildren,
-      text: '',
-      range: [start, parser.position],
-    };
+    if (onPartMeasure && root?.name === 'score-partwise' && stack.length === 2 &&
+        parent?.name === 'part' && tag.name === 'measure') inMeasure = true;
+    let node: XmlElement;
+    if (inMeasure && used < reusableElements) {
+      node = arena[used] ?? (arena[used] = new XmlElement());
+      used++;
+    } else node = new XmlElement();
+    node.reset(tag.name, tag.attributes, start, parser.position);
     if (parent) {
       if (parent.children === noChildren) parent.children = [node];
       else parent.children.push(node);
@@ -158,9 +197,12 @@ export function treeReader(
             c.name === 'sound' || (c.name === 'direction' && c.children.some((s) => s.name === 'sound')),
         )
       ) {
-        current.children = current.children.filter((c) => c.name === 'attributes' || c.name === 'barline');
+        let keep = 0;
+        for (const child of current.children)
+          if (child.name === 'attributes' || child.name === 'barline') current.children[keep++] = child;
+        current.children.length = keep;
       }
-      current.range[1] = parser.position;
+      current.close(parser.position);
       if (
         onPartMeasure &&
         root?.name === 'score-partwise' &&
@@ -172,6 +214,8 @@ export function treeReader(
         onPartMeasure(current, part, ordinal);
         // The normalized measure owns its values. Release the entire SAX subtree before decoding its neighbor.
         part.children.pop();
+        inMeasure = false;
+        used = 0;
       } else if (root && stack.length === 1) onRootChild?.(current, root);
     }
   });
@@ -203,7 +247,8 @@ export function treeReader(
         prefix = undefined;
       }
       if (chunk.length < 2) {
-        prefix = chunk;
+        // An archive inflater may release its output buffer when this callback returns.
+        prefix = chunk.slice();
         return;
       }
       decoder = new TextDecoder(encoding(chunk), { fatal: true });

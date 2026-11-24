@@ -184,9 +184,17 @@ async function consume(source: ReturnType<typeof member>, write: (chunk: Uint8Ar
           parseFailure = { error };
         }
       }
+      // Only the native inflater owns this full output buffer. Caller-supplied archives and
+      // stored-member views never enter this branch. Drop its backing store after both consumers
+      // finish, including when we must keep reading for a CRC failure after a source error.
+      if (value.byteOffset === 0 && value.byteLength === value.buffer.byteLength) {
+        const owned = value.buffer as ArrayBuffer & { transfer?: (size: number) => ArrayBuffer };
+        owned.transfer?.(0);
+      }
     }
   } finally {
     await reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
   verify(size, crc);
   if (parseFailure) throw parseFailure.error;

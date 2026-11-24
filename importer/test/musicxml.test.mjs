@@ -58,6 +58,27 @@ test('shorter chord head keeps its release in partial mode; longer chord heads f
   assert.equal(importMusicXML(longer, partial).status, 'failed');
 });
 
+test('streamed short chord lanes preserve an explicit colliding voice first used in a later bar', () => {
+  const lane = '1 (short chord head 1)';
+  const chord = '<note><chord/><pitch><step>A</step><octave>4</octave></pitch><duration>1</duration><type>eighth</type></note>';
+  const second = '<measure number="2"><note><rest/><duration>4</duration><voice>' + lane +
+    '</voice><type>half</type></note></measure>';
+  const partwise = model.replace('<divisions>1', '<divisions>2').replaceAll('<duration>1', '<duration>2')
+    .replace('</note>', '</note>' + chord).replace('</measure></part>', '</measure>' + second + '</part>');
+  const timewise = partwise.replaceAll('score-partwise', 'score-timewise')
+    .replace('<part id="P1"><measure number="1">', '<measure number="1"><part id="P1">')
+    .replace('</measure><measure number="2">', '</part></measure><measure number="2"><part id="P1">')
+    .replace('</measure></part>', '</part></measure>');
+  for (const targetProfile of ['standard', 'extended']) {
+    const options = { mode: 'partial', targetProfile };
+    const result = importMusicXML(partwise, options);
+    assert.equal(result.status, 'partial');
+    assert.deepEqual(result.documents, importMusicXML(timewise, options).documents);
+    assert.ok(result.documents[0].source.voices.some((v) => v.source === lane));
+    assert.ok(result.documents[0].source.voices.some((v) => v.source === lane + '*'));
+  }
+});
+
 test('Archive corruption, truncated data and ambiguous source clocks fail closed', async () => {
   const bad = Buffer.from(fixture('stored.mxl'));
   bad[bad.indexOf('<score-partwise') + 1] ^= 1;

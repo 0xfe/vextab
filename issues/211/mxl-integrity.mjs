@@ -51,6 +51,39 @@ export async function checkArchiveIntegrity(browser) {
       },
       cases.map((bytes) => bytes.toString('base64')),
     );
+    // Split the UTF-16 BOM across two genuine native output chunks. The first chunk owns its
+    // buffer, while the second borrows its backing store. Releasing either must preserve the XML
+    // decoder's pending prefix and the bytes of the caller's archive.
+    const ownership = await page.evaluate(async (source) => {
+      const NativeInflater = DecompressionStream;
+      globalThis.DecompressionStream = class {
+        constructor(format) {
+          const native = new NativeInflater(format);
+          let first = true;
+          this.writable = native.writable;
+          this.readable = native.readable.pipeThrough(new TransformStream({
+            transform(chunk, controller) {
+              if (first && chunk.length > 1) {
+                first = false;
+                controller.enqueue(chunk.slice(0, 1));
+                controller.enqueue(chunk.subarray(1));
+              } else controller.enqueue(chunk);
+            },
+          }));
+        }
+      };
+      try {
+        const { importMXL } = await import('/mxl.js');
+        const bytes = Uint8Array.from(atob(source), (c) => c.charCodeAt(0));
+        const storage = new Uint8Array(bytes.length + 2);
+        storage.set(bytes, 1);
+        const archive = storage.subarray(1, -1);
+        const result = await importMXL(archive, { targetProfile: 'expressive' });
+        return { status: result.status, intact: archive.length === bytes.length &&
+          bytes.every((value, i) => archive[i] === value) };
+      } finally { globalThis.DecompressionStream = NativeInflater; }
+    }, good.toString('base64'));
+    assert.deepEqual(ownership, { status: 'exact', intact: true });
     assert.equal(results[0].status, 'exact');
     assert.equal(results[1].status, 'failed');
     assert.equal(results[1].diagnostics.at(-1).file, 'source.mxl!/score.xml');
