@@ -470,6 +470,12 @@ await player.play();
 
 Written order is the default. Performed order revisits repeat bodies and selects successive endings. Equal bar grids share an authored repeat across instruments. Repeated attacks retain their written source IDs. A display staff, printed cue or paired guitar TAB adds no playback voice.
 
+An individual head can carry an integer MIDI velocity from 0 through 127. In
+`(C4[velocity 60] E4[velocity 95])`, the player sounds E more strongly than C.
+A zero leaves a visible, silent head. The authored velocity survives accents,
+hairpins, and performer chord balancing. A tied continuation keeps the original
+attack and its velocity.
+
 Dynamics set attack velocity. Hairpins interpolate between endpoint velocities in their own voice. An unmarked open end uses a 24-step change and niente uses the softest sounding velocity. Glissandi and tied bends supply timed pitch ramps to the playback plugin. Grace pitches share a quarter of the principal attack’s time. The five ornamental signs use short diatonic figures in the written key and resolve to the principal. These are playback interpretations of unmeasured signs. [Complete musical examples and controls](../issues/199/README.md)
 
 ### Staff changes and ensemble groups

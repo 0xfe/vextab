@@ -38,12 +38,14 @@ def fraction(value):
     return f"{value.numerator}/{value.denominator}"
 
 
-def observe_part(part):
+def observe_part(part, measure_tempos):
     """Read one document cursor, preserving voice and displayed staff across backups and chord members."""
     divisions = None
     transpose = 0
     bars = []
     written = []
+    expression = []
+    tempos = {}
     for ordinal, measure in enumerate(part.findall("measure"), 1):
         cursor = extent = Fraction(0)
         chord_onset = None
@@ -54,6 +56,11 @@ def observe_part(part):
                 change = child.find("transpose")
                 if change is not None:
                     transpose = int(change.findtext("chromatic", 0)) + 12 * int(change.findtext("octave-change", 0))
+            if measure_tempos and child.tag in ("sound", "direction"):
+                tempo = child if child.tag == "sound" else child.find("sound")
+                if tempo is not None and tempo.get("tempo"):
+                    assert cursor == 0 and child.findtext("offset", "0") == "0"
+                    tempos[ordinal] = int(tempo.get("tempo"))
             if child.tag not in ("backup", "forward", "note") or child.find("grace") is not None:
                 continue
             duration = Fraction(int(child.findtext("duration")), 4 * divisions)
@@ -80,17 +87,21 @@ def observe_part(part):
                     spelling = step + ALTER[alter] + str(octave)
                     midi = 12 * (octave + 1) + "C D EF G A B".index(step) + alter + transpose
                     edges = {tie.get("type") for tie in child.findall("tie")}
-                    sounding.append((chord_onset, duration, staff, voice, midi, edges))
+                    raw = child.get("dynamics")
+                    velocity = min(127, int(Fraction(raw) * 90 / 100 + Fraction(1, 2))) if raw is not None else None
+                    expression.append([part.get("id"), staff, voice, ordinal, fraction(chord_onset), spelling,
+                                       child.findtext("stem"), velocity])
+                    sounding.append((chord_onset, duration, staff, voice, midi, edges, velocity))
                 written.append([part.get("id"), staff, voice, ordinal, fraction(chord_onset), fraction(duration), spelling])
                 extent = max(extent, chord_onset + duration)
             assert cursor >= 0
             extent = max(extent, cursor)
         repeats = [r.get("direction") for r in measure.findall("barline/repeat")]
         bars.append((extent, sounding, repeats))
-    return bars, written
+    return bars, written, expression, tempos
 
 
-def perform(bars):
+def perform(bars, tempos):
     """Play these scores' simple backward repeats and join sounding ties before comparing MIDI notes."""
     visits = []
     start = 0
@@ -103,11 +114,15 @@ def perform(bars):
     clock = Fraction(0)
     sounding = []
     held = {}
+    bpm = 120
     for index in visits:
         extent, notes, _ = bars[index]
-        for onset, duration, staff, voice, midi, edges in sorted(notes, key=lambda note: note[0]):
+        bpm = tempos.get(index + 1, bpm)
+        whole = Fraction(240, bpm)
+        for onset, duration, staff, voice, midi, edges, velocity in sorted(notes, key=lambda note: note[0]):
             key = (staff, voice, midi)
-            at = clock + onset
+            at = clock + onset * whole
+            duration *= whole
             if "stop" in edges:
                 candidates = [k for k, note in held.items() if k[0] == staff and k[2] == midi and note[2] == at]
                 if key in candidates:
@@ -119,20 +134,18 @@ def perform(bars):
                 note = held.pop(source)
                 note[2] += duration
             else:
-                note = [at, midi, at + duration]
+                note = [at, midi, at + duration, velocity]
                 sounding.append(note)
             if "start" in edges:
                 assert key not in held
                 held[key] = note
-        clock += extent
+        clock += extent * whole
     assert not held
 
-    def ticks(value):
-        scaled = value * 1536
-        assert scaled.denominator == 1
-        return scaled.numerator
+    def micros(value):
+        return int(value * 1_000_000 + Fraction(1, 2))
 
-    return [i + 1 for i in visits], [[ticks(start), midi, ticks(end)] for start, midi, end in sounding]
+    return [i + 1 for i in visits], [[micros(start), midi, micros(end), velocity] for start, midi, end, velocity in sounding]
 
 
 def main():
@@ -146,22 +159,25 @@ def main():
         assert len(parts) == record["parts"]
         assert all(len(p.findall("measure")) == record["bars"] for p in parts)
         assert len(root.findall("part/measure/note")) == record["rawNotes"]
-        if record["status"] == "failed":
-            continue
-        written = []
-        played = {}
+        written, expression, played, clocks, tempos = [], [], {}, {}, {}
         for part in parts:
-            bars, rows = observe_part(part)
+            bars, rows, details, changes = observe_part(part, record.get("verifyPerformedTuples") or record.get("verifyOrchestralTiming"))
+            clocks[part.get("id")] = bars
             written.extend(rows)
-            if record.get("verifyPerformedTuples"):
-                assert not part.findall(".//grace") and not part.findall(".//ornaments/*")
-                visits, notes = perform(bars)
-                played[part.get("id")] = {"visits": visits, "notes": notes}
+            expression.extend(details)
+            for ordinal, bpm in changes.items():
+                assert tempos.setdefault(ordinal, bpm) == bpm
+        if record.get("verifyPerformedTuples") or record.get("verifyOrchestralTiming"):
+            for part in parts:
+                assert not part.findall(".//grace")
+                if not record.get("verifyOrchestralTiming"):
+                    assert not part.findall(".//ornaments/*")
+                identity = part.get("id")
+                visits, notes = perform(clocks[identity], tempos)
+                played[identity] = {"visits": visits, "notes": notes}
         result = {"written": written, "played": played}
-        if played:
-            tempos = {s.get("tempo") for s in root.findall(".//sound") if s.get("tempo")}
-            assert len(tempos) == 1
-            result["quarterBPM"] = int(tempos.pop())
+        if record.get("verifyOrchestralTiming"):
+            result["expression"] = expression
         (OUTPUT / (record["file"] + ".reference.json")).write_text(json.dumps(result, separators=(",", ":")))
 
 

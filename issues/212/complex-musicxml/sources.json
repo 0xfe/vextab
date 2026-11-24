@@ -89,12 +89,15 @@
     "rawNotes": 15261,
     "parts": 18,
     "bars": 502,
-    "status": "failed",
+    "status": "partial",
     "xmlSHA256": "5de9f153c72b3831757d43584c5d5ec792510d36cc5a389a4160aa90697fc17b",
-    "failure": {
-      "part": "P1",
-      "measure": "39",
-      "message": "Unsupported note attribute dynamics."
-    }
+    "rests": 5159,
+    "pitchedHeads": 10029,
+    "voices": 18,
+    "playerAttacks": 10946,
+    "verifyOrchestralTiming": true,
+    "authoredStems": 10029,
+    "authoredVelocities": 682,
+    "performedPrincipals": 10922
   }
 ]

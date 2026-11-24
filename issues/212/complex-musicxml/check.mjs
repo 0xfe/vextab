@@ -50,7 +50,7 @@ function equalRows(actual, expected, label) {
 
 /** Use the importer's voice-name mapping only for identity; all musical values come from public parsing. */
 function written(model, imported) {
-  const rows = [];
+  const rows = [], expression = [];
   let index = 0;
   for (const part of model.parts)
     for (const staff of part.staves) {
@@ -65,12 +65,41 @@ function written(model, imported) {
           if (event.kind === 'rest') rows.push([...start, event.duration, 'rest']);
           for (const head of event.heads) {
             const sustain = head.marks.find((m) => m.kind === 'sustain');
-            rows.push([...start, sustain?.duration ?? event.duration, head.pitch.replace('n', '')]);
+            const pitch = head.pitch.replace('n', '');
+            rows.push([...start, sustain?.duration ?? event.duration, pitch]);
+            expression.push([...start, pitch, event.marks.find(m => m.kind === 'stem')?.value ?? null,
+              head.marks.find(m => m.kind === 'velocity')?.value ?? null]);
           }
         }
       }
     }
-  return rows;
+  return {rows, expression};
+}
+
+/** Check literal attacks against XML MIDI pitch, source tempo clock, tie release and authored velocity.
+ * For a written trill, check its envelope and alternation before comparing the principal to the source.
+ */
+function performed(events, score) {
+  const trills = new Set(score.measures.flatMap(bar => bar.voices.flatMap(voice =>
+    voice.events.filter(note => note.ornament === 'tr').map(note => note.id))));
+  const notes = [];
+  const micros = seconds => Math.round(seconds * 1e6);
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i];
+    if (trills.has(event.source)) {
+      const pulses = [event];
+      while (events[i+1]?.source === event.source) pulses.push(events[++i]);
+      assert.equal(pulses.length, 5);
+      const pitches = pulses.map(p => p.notes[0].pitch);
+      assert.ok(pitches[1] > pitches[0] && pitches[1] <= pitches[0] + 2);
+      assert.deepEqual(pitches, [pitches[0], pitches[1], pitches[0], pitches[1], pitches[0]]);
+      const last = pulses.at(-1);
+      notes.push([micros(event.time), pitches[0], micros(last.time + last.notes[0].duration),
+        event.notes[0].fixedVelocity ? event.notes[0].velocity : null]);
+    } else for (const note of event.notes) notes.push([micros(event.time), note.pitch,
+      micros(event.time + note.duration), note.fixedVelocity ? note.velocity : null]);
+  }
+  return notes;
 }
 
 for (const record of records) {
@@ -80,25 +109,6 @@ for (const record of records) {
   const plain = importMusicXML(xml, options);
   assert.equal(compressed.status, record.status, JSON.stringify(compressed.diagnostics.at(-1)));
   assert.equal(plain.status, record.status);
-  if (record.status === 'failed') {
-    for (const result of [compressed, plain]) {
-      const error = result.diagnostics.at(-1);
-      assert.deepEqual({ part: error.part, measure: error.measure, message: error.message }, record.failure);
-      assert.match(xml.toString('utf8').slice(...error.range), /^<note\b[^>]*\bdynamics="/);
-      assert.deepEqual(result.documents, []);
-    }
-    console.log(
-      record.title +
-        ' → ' +
-        record.failure.message +
-        ' (' +
-        record.failure.part +
-        ', measure ' +
-        record.failure.measure +
-        ')',
-    );
-    continue;
-  }
   const doc = compressed.documents[0];
   assert.equal(doc.text, plain.documents[0].text);
   writeFileSync(join(cache, record.file + '.vextab'), doc.text);
@@ -107,7 +117,13 @@ for (const record of records) {
   assert.ok(model.parts.every((p) => p.measureCount === record.bars));
   assert.equal(model.parts.flatMap((p) => p.staves.flatMap((s) => s.voices)).length, record.voices);
   const truth = JSON.parse(readFileSync(join(cache, record.file + '.reference.json')));
-  const rows = written(model, doc);
+  const {rows, expression} = written(model, doc);
+  if (truth.expression) {
+    equalRows(expression, truth.expression, record.file + ' authored stems and velocities');
+    assert.equal(expression.filter(row => row.at(-2) !== null).length, record.authoredStems);
+    assert.equal(expression.filter(row => row.at(-1) !== null).length, record.authoredVelocities);
+    assert.equal(Object.values(truth.played).reduce((n, part) => n + part.notes.length, 0), record.performedPrincipals);
+  }
   equalRows(rows, truth.written, record.file + ' written');
   assert.equal(rows.filter((row) => row.at(-1) === 'rest').length, record.rests);
   assert.equal(rows.length, record.rests + record.pitchedHeads);
@@ -116,16 +132,12 @@ for (const record of records) {
   for (let i = 0; i < model.parts.length; i++) {
     const score = projectScoreV2(model, i);
     const visits = measureVisits(score, true);
-    const events = scorePerformance(score, 120, undefined, visits).events;
+    const events = scorePerformance(score, score.playback?.tempo ?? 120, undefined, visits).events;
     played += events.reduce((sum, event) => sum + event.notes.length, 0);
-    if (record.verifyPerformedTuples) {
+    if (truth.played[ids[i]]) {
       const expected = truth.played[ids[i]];
       assert.deepEqual(visits, expected.visits);
-      const ticks = (sec) => Math.round(((sec * truth.quarterBPM) / 60) * 384);
-      const notes = events.flatMap((event) =>
-        event.notes.map((n) => [ticks(event.time), n.pitch, ticks(event.time + n.duration)]),
-      );
-      equalRows(notes, expected.notes, record.file + ' performed ' + ids[i]);
+      equalRows(performed(events, score), expected.notes, record.file + ' performed ' + ids[i]);
     }
   }
   assert.equal(played, record.playerAttacks);
@@ -136,7 +148,7 @@ for (const record of records) {
       ' verified written heads/rests, ' +
       played +
       ' performed notes' +
-      (record.verifyPerformedTuples ? ' with every pitch/onset/release independently verified' : '') +
+      (record.verifyPerformedTuples || record.verifyOrchestralTiming ? ' with every principal pitch/onset/release independently verified' : '') +
       '.',
   );
 }
