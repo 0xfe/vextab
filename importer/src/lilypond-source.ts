@@ -13,7 +13,7 @@ export interface Token {
 
 /** A snapshot captures source-order bindings without copying the entire symbol table on each use. */
 export interface Scope { previous?: Scope; name?: string; value?: Expression; language: string }
-export interface Expression { words: Token[]; scope: Scope }
+export interface Expression { words: Token[]; scope: Scope; outputTempo?: {bpm:number;range:TextRange} }
 interface Movement extends Expression { print: boolean; midi: boolean; midiSettings?: Token }
 
 /** Tokenize once per virtual file. Strings and comments protect their internal delimiters. */
@@ -110,6 +110,16 @@ export function selectScore(source: string, options: LilyPondOptions, input: Inp
       const token = words[i++], name = token.value, arg = words[i];
       const value = arg?.value ?? '';
       switch (name) {
+        case '#': {
+          // Accept this one historical layout setting as inert literal data.
+          const tokens=words.slice(i,i+10);
+          const [op,set,dash,global,dash2,staff,dash3,size,points,close]=tokens.map(t=>t.value);
+          if (options.targetProfile!=='expressive' || op!=='(' || set!=='set' || dash!=='-' || global!=='global'
+              || dash2!=='-' || staff!=='staff' || dash3!=='-' || size!=='size' || !/^\d{1,2}$/.test(points) || close!==')')
+            input.fail('unsupported','Unsupported top-level Scheme expression.',token.range);
+          input.omit('Global staff size omitted.',[token.range[0],tokens[9].range[1]]);
+          i+=10; break;
+        }
         case '\\version':
           if (!/^"2\.(24|26)\.\d+"$/.test(value) && !['"2.14.2"', '"2.17.11"', '"2.16.0"', '"2.16.1"', '"2.19.21"', '"2.23.0"'].includes(value))
             input.fail('unsupported', 'Unqualified LilyPond source version.', token.range);
@@ -121,6 +131,11 @@ export function selectScore(source: string, options: LilyPondOptions, input: Inp
         case '\\include': {
           if (!/^"[^"\\]+"$/.test(value)) input.fail('syntax', 'Expected a quoted virtual filename.', token.range);
           const file = includePath(token.file, value.slice(1, -1), input, arg.range);
+          const builtins:Record<string,string>={'deutsch.ly':'deutsch','english.ly':'english','nederlands.ly':'nederlands'};
+          const basename=value.slice(1,-1);
+          if (options.targetProfile==='expressive' && Object.hasOwn(builtins,basename) && !Object.hasOwn(options.includes ?? {},file)) {
+            scope={previous:scope,language:builtins[basename]}; i++; break;
+          }
           if (!options.includes || !Object.hasOwn(options.includes, file))
             input.fail('unsupported', 'Missing virtual include ' + file + '.', arg.range);
           scanFile(file, options.includes![file]);
@@ -178,6 +193,11 @@ export function selectScore(source: string, options: LilyPondOptions, input: Inp
   if (!movement) return input.fail('unsupported', 'No matching LilyPond score.', [0, source.length]);
   if (movement.midiSettings && (selected === 'midi' || !movement.print)) {
     input.file = movement.midiSettings.file;
+    const fields=movement.midiSettings.children!.map(t=>t.value);
+    if (options.targetProfile==='expressive' && fields.length===4 && fields[0]==='\\tempo' &&
+        fields[1]==='4' && fields[2]==='=' && /^[1-9]\d{0,2}$/.test(fields[3])) {
+      return {...movement,outputTempo:{bpm:Number(fields[3]),range:movement.midiSettings.range}};
+    }
     input.omit('MIDI output settings are outside the written-score profile.', movement.midiSettings.range);
   }
   return movement;

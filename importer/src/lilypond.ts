@@ -176,6 +176,10 @@ class Resolver {
       if (!last.pickup && last.extent.compare(zero) > 0 && last.extent.compare(new Time(last.beats, last.beatType)) < 0)
         last.fragment = last.extent;
     }
+    if (expr.outputTempo) {
+      const first=this.parts.values().next().value?.[0];
+      if (first && !first.tempos.some(t=>!t.at.compare(zero))) first.tempos.push({...expr.outputTempo,at:zero});
+    }
     this.lanes.attach([...this.parts.values()],this.input);
     return [...this.parts.values()].flat();
   }
@@ -400,6 +404,16 @@ class Resolver {
       }
       case '\\set': {
         const prop=next();
+        if (input.options.targetProfile==='expressive' && prop.value==='Staff' && words[i]?.value==='.' &&
+            words[i+1]?.value==='midiInstrument' && words[i+2]?.value==='=') {
+          i+=3;
+          if (words[i]?.value==='#') i++;
+          const name=next();
+          if (!/^"[^"\\]*"$/.test(name.value)) input.fail('unsupported','Expected a literal MIDI instrument name.',name.range);
+          if (name.value==='"acoustic guitar (nylon)"' && !s.index && !s.at.compare(zero) && !s.piano) this.measure(s).program=24;
+          else input.omit('MIDI instrument selection omitted.',name.range);
+          break;
+        }
         if (s.instrument?.kind==='guitar' && ['TabStaff','Staff','stringTunings'].includes(prop.value)) {
           i=index+1+this.stringTuning(words.slice(index+1),s,scope.language,prop);
           break;
@@ -420,6 +434,21 @@ class Resolver {
         this.measure(s).pickup = length(duration); i = end;
         break;
       }
+      case '\\barNumberCheck': {
+        boundary();
+        if (next().value!=='#') input.fail('syntax','Expected a literal bar number.',t.range);
+        const number=next(), expected=s.index+(this.parts.get(s.part)?.[0].pickup?0:1);
+        if (!/^\d+$/.test(number.value) || +number.value!==expected) input.fail('timing','Bar-number check expected '+expected+'.',number.range);
+        break;
+      }
+      case '\\bar': {
+        const style=next();
+        if (style.value!=='"|."') input.fail('unsupported','Unsupported explicit barline.',style.range);
+        input.omit('Final double barline omitted.',[t.range[0],style.range[1]]);
+        break;
+      }
+      case '\\break':
+        input.omit('Explicit system break omitted.',t.range); break;
       case '|': boundary(); break;
       case '\\tuplet': case '\\times': {
         const ratio = next(), match = /^([1-9]\d?)\/([1-9]\d?)$/.exec(ratio.value);
@@ -742,6 +771,11 @@ class Resolver {
     }
     const [rhythm, end] = chordRhythm ? [chordRhythm,i] as const : readRhythm(words, i, s.rhythm, input);
     s.rhythm = rhythm; i = end;
+    if (expressive && words[i]?.value==='\\rest') {
+      if (heads.length!==1) input.fail('syntax','A positioned rest needs one reference pitch.',words[i].range);
+      input.omit('Pitched rest uses default vertical position.',words[i++].range);
+      heads=[]; details.length=0; kind='rest';
+    }
     const range: TextRange = [t.range[0], words[i - 1].range[1]];
     if (s.collectGrace) {
       if (!heads.length || s.collectGrace.length >= 16) input.fail('unsupported', 'Unsupported grace event.', range);

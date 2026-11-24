@@ -245,6 +245,7 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
   /** Declare opening settings and compare each later bar to the preceding bar's *ending* state. */
   function settings(measures: Measure[], hand=false) {
     const opening=measures[0];
+    if (!hand && opening.program!==undefined) writer.text+='  program '+opening.program+'\n';
     if (!hand && opening.name) writer.text+='  name '+JSON.stringify(opening.name)+'\n';
     if (opening.instrument?.kind !== 'drums' && ((!opening.piano && opening.clef!=='treble') || hand && opening.clef!==(opening.staff===1?'treble':'bass')))
       writer.text+='  clef '+opening.clef+'\n';

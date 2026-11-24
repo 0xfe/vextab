@@ -27,6 +27,11 @@ export const standardGuitar = (): Guitar => ({
 /** A physical string is explicit or editorial. Honor all supplied strings and open-finger zero first. */
 export function frets(heads: Pitch[], details: HeadDetail[], guitar: Guitar, input: Input, token: Token) {
   const fretAt = (p: Pitch, string: number) => p.sounding - guitar.tuning[string - 1].sounding - guitar.capo;
+  for (const [i,head] of heads.entries()) {
+    const detail=details[i], string=detail.string;
+    if (string && string<=guitar.tuning.length && detail.finger?.value==='0' && fretAt(head,string)>0)
+      input.omit('Source finger zero conflicts with the explicit string; retaining both marks.',token.range);
+  }
   const candidates = heads.map((p, i) =>
     guitar.tuning
       .map((_, j) => j + 1)
@@ -36,7 +41,7 @@ export function frets(heads: Pitch[], details: HeadDetail[], guitar: Guitar, inp
           (!details[i].string || details[i].string === string) &&
           fret >= 0 &&
           fret <= 36 &&
-          (details[i].finger?.value !== '0' || fret === 0)
+          (details[i].finger?.value !== '0' || fret === 0 || details[i].string === string)
         );
       })
       .sort((a, b) => fretAt(p, a) - fretAt(p, b)),

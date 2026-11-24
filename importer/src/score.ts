@@ -50,6 +50,8 @@ export class Measure {
   /** Explicit two-staff keyboard with independent owning and display staves. */
   piano = false;
   instrument?: Instrument;
+  /** Opening General MIDI instrument, numbered from zero. */
+  program?: number;
   clef = 'treble';
   sounds = 0;
   changes: { kind:'clef'|'key'|'sounds'; value:string|number; at:Time; range:TextRange }[] = [];
