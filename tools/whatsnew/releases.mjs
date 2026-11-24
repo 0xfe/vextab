@@ -134,6 +134,21 @@ export const highlights = [
     'Playback after browser Back',
     'After returning to a page with the Back button, Play opens a fresh audio context so the score resumes at the intended tempo.',
   ],
+  [
+    '744add8',
+    'MusicXML and LilyPond importers',
+    'The separate vextab-import package converts MusicXML, compressed MXL and static LilyPond into editable scores. Each document reports its required VexTab version and any conversion losses.',
+  ],
+  [
+    'a87314a',
+    'Importing in the guide',
+    'Try each reader in its own lesson. The gallery includes thirteen editions and movements, with original and converted downloads, playback and instrument selection.',
+  ],
+  [
+    '5d379ff',
+    'Three piano studies',
+    'Read and play the Friska from Liszt’s Hungarian Rhapsody No. 2, the opening of his fifth Consolation and the double-thirds passage from Chopin’s Op. 25 No. 6. Piano engraving includes timed words in system clearance and supports hairpins above the staff.',
+  ],
 ];
 
 // These npm patches lack tags on master. Only 4.0.4 has a release build in the reported ancestry.
