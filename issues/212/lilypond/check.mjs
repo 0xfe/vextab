@@ -72,7 +72,7 @@ try {
         // Native voiceOne/Two set ties independently of later stemUp commands in the tenor.
         assert.equal(result.target.minimumVersion,'6.6.0');
         assert.deepEqual(targets.map(({voice})=>{
-          const stems=voice.events.flatMap(e=>e.marks.filter(m=>m.kind==='stem').map(m=>m.value));
+          const stems=voice.events.filter(e=>e.writtenDuration!=='1/1').flatMap(e=>e.marks.filter(m=>m.kind==='stem').map(m=>m.value));
           const ties=voice.events.flatMap(e=>e.heads.flatMap(h=>h.marks?.filter(m=>m.kind==='tieStart').map(m=>m.side)??[]));
           return [stems.filter(s=>s==='up').length,stems.filter(s=>s==='down').length,
             ties.filter(s=>s==='above').length,ties.filter(s=>s==='below').length];

@@ -187,6 +187,14 @@ class Resolver {
     }
     this.lanes.attach([...this.parts.values()],this.input);
     const bars=[...this.parts.values()].flat();
+    // LilyPond's neutral stems follow the pitch and beam even when another voice is sounding.
+    // Explicit overrides (including numbered simultaneous voices) are already on their events.
+    // Only request the newer layout policy if independent voices can actually meet on a staff.
+    if (this.input.options.targetProfile === 'expressive' && bars.some(bar => bar.voices.size > 1 ||
+      [...bar.voices.values()].some(events => events.some(event => event.staff !== bar.staff)))) {
+      this.input.pitchStemPolicy = bars.some(bar => [...bar.voices.values()].some(events =>
+        events.some(event => event.kind === 'attack' && !event.expression?.stem)));
+    }
     // Explicit unfolding has already removed the unused branches. Only surviving alternate
     // destinations need the player's corrected tie traversal on a forward volta jump.
     if (bars.some(bar=>[...bar.voices.values()].some(events=>events.some(e=>
@@ -628,12 +636,22 @@ class Resolver {
   /** Time branches from one origin. LilyPond resolves relative pitch and inherited duration in source order. */
   private simultaneous(token: Token, s: State, scope: Scope, depth: number) {
     const words = token.children!;
+    const separator = this.input.options.targetProfile === 'expressive' && words.find(word => word.value === '\\\\');
+    if (separator) this.input.omit('Numbered voices also set rest, script, note-column and grace positions.', separator.range);
     let longest: State = { ...s }, branch = 0;
     for (let i = 0; i < words.length;) {
       if (words[i].value === '\\\\') this.input.fail('syntax', 'Missing simultaneous branch.', words[i].range);
       const v: State = { ...s, voice: branch === 0 ? s.voice : branch === 1 ? 'lower' : 'voice' + (branch + 1),
         pendingGrace: [], tie: undefined, tieFrom:undefined, headTies:undefined, marks:{...s.marks,spans:new Map()} };
+      if (separator) {
+        v.stem = branch % 2 ? 'down' : 'up';
+        v.tieSide = v.stem === 'up' ? 'above' : 'below';
+        v.marks.side = v.tieSide;
+        v.marks.phrasingSide = v.tieSide;
+      }
       i = this.one(words, i, v, scope, depth + 1);
+      if (separator && words[i] && words[i].value !== '\\\\')
+        this.input.fail('unsupported', 'Expected one music expression per numbered voice.', words[i].range);
       if (v.tie || v.label!==undefined || v.slideFrom || v.pendingGrace.length || v.headTies?.size || v.marks.spans.size) this.input.fail('unsupported', 'Dangling branch attachment.', token.range);
       s.rhythm = v.rhythm; s.anchor = v.anchor; s.last = v.last;
       if (v.index > longest.index || (v.index === longest.index && v.at.compare(longest.at) > 0)) longest = v;
@@ -903,7 +921,8 @@ class Resolver {
         if (s.tieSide) details[j].tieSide = s.tieSide;
       }
       event.headDetails=details;
-      if (s.stem && kind === 'attack' && rhythm.denominator > 1) (event.expression ??= {}).stem = s.stem;
+      // A stemless whole note's direction still affects VexFlow's simultaneous-voice placement.
+      if (s.stem && kind === 'attack') (event.expression ??= {}).stem = s.stem;
       const beamStaff = s.instrument?.kind === 'guitar' && s.instrument.view === 'tab' ? 0 : bar.staff;
       const openBeam = s.marks.spans.get('beam')?.beamStart;
       if (openBeam) trackBeamMember(openBeam, event, beamStaff);

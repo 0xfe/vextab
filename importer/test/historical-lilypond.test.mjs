@@ -105,7 +105,7 @@ test('stem, tie and slur directions change independently and reset on their sour
   const scoped=read(ly`\new Staff { \stemDown c'4 \new Voice { d'8 \stemUp e'8 } f'4 r4 }`,expressive);
   assert.equal(scoped.status,'exact');
   assert.match(scoped.documents[0].text,/:q C4\[stem down\] :8 D4 E4\[stem up\] :q F4\[stem down\] rest/);
-  assert.doesNotMatch(read(ly`{ \stemDown c'1 r1 }`,expressive).documents[0].text,/stem/);
+  assert.match(read(ly`{ \stemDown c'1 r1 }`,expressive).documents[0].text,/C4\[stem down\] \|\s+:w rest \|/);
 });
 
 test('polyphonic overrides belong to their branch and regular slur commands leave phrasing slurs alone',()=>{
@@ -149,4 +149,22 @@ test('manual beams diagnose unsupported cross-bar members without losing the not
     assert.match(r.diagnostics[0].message,/Manual beam omitted because/);
     assert.doesNotMatch(r.documents[0].text,/beamStart|beamEnd/);
   }
+});
+
+
+test('neutral polyphony uses pitch-driven stems and the numbered voice separator sets distinct overrides',()=>{
+  const parallel=ly`\new Staff << \new Voice { c'2 d'2 } \new Voice { g2 a2 } >>`;
+  const plain=read(parallel,expressive);
+  assert.equal(plain.status,'exact');
+  assert.match(plain.documents[0].text,/layout \{ stemPolicy pitch \}/);
+  assert.equal(plain.target.minimumVersion,'6.6.0');
+  assert.doesNotMatch(read(ly`{ \stemNeutral c'2 d'2 }`,expressive).documents[0].text,/stemPolicy/);
+  const split=ly`{ << { c'2~ c'2 } \\ { g2 \stemNeutral a2 } >> }`;
+  assert.equal(read(split,expressive).status,'failed');
+  const numbered=read(split,{...expressive,mode:'partial'});
+  assert.equal(numbered.status,'partial');
+  assert.equal(split.slice(...numbered.diagnostics[0].range),ly`\\`);
+  assert.match(numbered.documents[0].text,/stemPolicy pitch/);
+  assert.match(numbered.documents[0].text,/C4\[tieStart tie\d+ above, stem up\]/);
+  assert.match(numbered.documents[0].text,/G3\[stem down\] A3/);
 });

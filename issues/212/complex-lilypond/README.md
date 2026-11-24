@@ -12,7 +12,7 @@ Use `{targetProfile: 'expressive', mode: 'partial', score: 'print'}` at default 
 | Bass | 168 | 143 |
 | **Total** | **848** | **734** |
 
-The 847 written events contain 787 noteheads and 61 rests. The score retains 770 directed stems, all 53 outgoing tie directions and the two authored cross-bar beams. The tenor beam joins bars 10–11 and the soprano beam joins bars 20–21. The tenor’s twelve upward stems leave its downward tie directions intact.
+The 847 written events contain 787 noteheads and 61 rests. The score retains 770 explicitly directed visible stems, 11 pitch-driven stems after `\stemNeutral`, all 53 outgoing tie directions and the two authored cross-bar beams. The native LilyPond engraving and the VexTab screen engraving agree on the direction at every one of these 834 source positions. The tenor beam joins bars 10–11 and the soprano beam joins bars 20–21. The tenor’s twelve upward stems leave its downward tie directions intact.
 
 Twelve source diagnostics locate three ornament signs, four system breaks, four voice presets and the final double barline. The voice presets also control rests, scripts, note columns and grace styling. These properties still use the target’s engraving defaults.
 
@@ -32,4 +32,11 @@ The source SHA-256 is `10d51eabac0fdfeddcbb7d76ad3bf361d4c095feec3ce7aa61d034d5b
 
 ```sh
 python3 issues/212/lilypond/reference.py --edition bwv846
+```
+
+To check engraving directions in Chrome against the recorded native fingerprint, run the first command. The second command also runs LilyPond 2.26.0 on the full four-voice score and compares each voice, onset, mark and side directly. The independent written and MIDI checks above cover pitch and time.
+
+```sh
+node issues/219/lilypond-directions.mjs
+node issues/219/lilypond-directions.mjs --native
 ```

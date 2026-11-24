@@ -107,6 +107,8 @@ class ImportFailure extends Error {}
 export class Input {
   /** A construct may require a newer host than the requested profile's baseline. */
   minimumVersion?: ImportResult['target']['minimumVersion'];
+  /** A source with independent polyphonic voices can request pitch-driven neutral stems. */
+  pitchStemPolicy = false;
   readonly diagnostics: ImportDiagnostic[] = [];
   context: Pick<ImportDiagnostic, 'part' | 'measure' | 'voice'> = {};
   readonly rootFile: string;

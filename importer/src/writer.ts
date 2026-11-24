@@ -221,6 +221,10 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
   const first = bars[0], writer = new Writer(input, range);
   const meter = (bar: Measure) => bar.beats + '/' + bar.beatType;
   writer.text = 'meter ' + meter(first) + '\n';
+  if (input.pitchStemPolicy) {
+    writer.text += 'layout { stemPolicy pitch }\n';
+    input.requireVersion('6.6.0');
+  }
   if (first.pickup) writer.text += 'pickup ' + first.pickup.numerator + '/' + first.pickup.denominator + '\n';
   const staves: NonNullable<ImportedDocument['staves']> = [];
   const extended = includesExtended(input.options);
