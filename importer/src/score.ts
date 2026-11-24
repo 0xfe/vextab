@@ -93,6 +93,8 @@ class ImportFailure extends Error {}
 
 /** Keep options, locations and diagnostics scoped to a single call in either runtime. */
 export class Input {
+  /** A construct may require a newer host than the requested profile's baseline. */
+  minimumVersion?: ImportResult['target']['minimumVersion'];
   readonly diagnostics: ImportDiagnostic[] = [];
   context: Pick<ImportDiagnostic, 'part' | 'measure' | 'voice'> = {};
   readonly rootFile: string;
@@ -132,6 +134,7 @@ export function convertPrepared(input: Input, read: () => [Measure | Measure[], 
       input.fail('limit','Large capacity requires the extended VexTab 6.3.0 target and a large-capacity host.',[0,0]);
     const [bar, range] = read();
     const document = writeScore(Array.isArray(bar) ? bar : [bar], input, range);
+    if (input.minimumVersion) common.target.minimumVersion = input.minimumVersion;
     return { ...common, status: input.diagnostics.length ? 'partial' : 'exact', documents: [document] };
   } catch (error) {
     if (!(error instanceof ImportFailure)) throw error;
