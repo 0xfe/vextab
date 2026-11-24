@@ -1,6 +1,6 @@
 # Importing MusicXML and LilyPond into VexTab
 
-The [M5 qualification report](../issues/212/README.md) records the implemented profiles, exact corpus results, package checks and measured budgets.
+The [M5 qualification report](../issues/212/README.md) records the implemented profiles, exact corpus results, package checks and measured budgets. The [M6 qualification report](../issues/219/README.md) covers explicit stem and tie directions, cross-bar beams and Beethoven’s first movement.
 
 Build two readers and one writer that produces editable VexTab grammar v2. Start with measured Western staff notation, then qualify piano, voices and lyrics, fretted instruments, percussion, and ensemble scores. A musician should be able to import a piece, open the result in an ordinary VexTab editor, change a note, and print or play the revision. A caller should also be able to convert a file in Node or a browser worker without installing an engraver.
 

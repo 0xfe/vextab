@@ -121,7 +121,8 @@ async function checkBrowser() {
     };
     for (const [entry, source] of Object.entries(expressiveSources)) {
       const result = await importInWorker(entry, source, {targetProfile:'expressive', mode:'partial'});
-      assert.equal(result.target.minimumVersion, '6.4.0');
+      // The Joplin transcription explicitly changes stem direction. The song needs only the expressive baseline.
+      assert.equal(result.target.minimumVersion, entry === 'lilypond' ? '6.6.0' : '6.4.0');
       assert.ok(result.documents.length, JSON.stringify(result.diagnostics.at(-1)));
       const model = parseScore(result.documents[0].text);
       assert.equal(model.parts[0].measureCount, entry === 'musicxml' ? 1 : 18);
