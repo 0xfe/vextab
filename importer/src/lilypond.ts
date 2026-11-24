@@ -22,11 +22,14 @@ export interface LilyPondOptions extends ImportOptions {
 
 /** All duration fields are lexical. Variables carry their own duration defaults. */
 interface Rhythm { denominator: number; dots: number }
+/** Staff order determines upper and lower display. Only a source-declared name can be a change target. */
+interface PianoHand { declaration: Token; key: string; name?: string }
+
 interface State {
   chordMode?:boolean;
   marks:Attachments; instrument?:Instrument; headTies?:Map<string,string>;
   label?:string; slideFrom?:number; lastEvent?:Event; lastDetails?:HeadDetail[]; tieFrom?:Event; graceSlashed?:boolean;
-  part: string; voice: string; group?: NonNullable<Measure['group']>; piano?: { id: string; hands: string[] }; display?: number; index: number; at: Time;
+  part: string; voice: string; group?: NonNullable<Measure['group']>; piano?: { id: string; hands: PianoHand[] }; display?: number; index: number; at: Time;
   mode: 'absolute' | 'relative' | 'fixed'; anchor: Pitch; fixed: number;
   rhythm: Rhythm; last: Pitch[]; tuplets: NonNullable<Event['tuplets']>;
   pendingGrace: Pitch[][]; collectGrace?: Pitch[][]; tie?: Pitch[]; uses: NonNullable<Event['uses']>;
@@ -145,7 +148,7 @@ class Resolver {
       }
       if (s.piano) {
         bar.piano = true;
-        bar.staff = s.piano.hands.indexOf(s.part) + 1;
+        bar.staff = s.piano.hands.findIndex(hand => hand.key === s.part) + 1;
         if (!previous && bar.staff === 2) bar.clef = 'bass';
       }
       bar.label = String(s.index + 1);
@@ -269,13 +272,14 @@ class Resolver {
         if (context === 'PianoStaff') {
           const group = words[i];
           if (group?.value !== '<<') input.fail('unsupported', 'Expected two simultaneous piano staves.', t.range);
-          const branches = group.children!, hands: string[] = [];
+          const branches = group.children!, hands: PianoHand[] = [];
           for (const [j, branch] of branches.entries()) {
             if (!['\\context', '\\new'].includes(branch.value) || branches[j + 1]?.value !== 'Staff') continue;
-            if (branches[j + 2]?.value !== '=') input.fail('unsupported', 'Expected a named piano staff.', branch.range);
-            hands.push(branches[j + 3]?.value.replace(/^"|"$/g, ''));
+            const name = branches[j + 2]?.value === '=' ? branches[j + 3]?.value.replace(/^"|"$/g, '') : undefined;
+            // A backslash cannot occur in a source-declared staff ID.
+            hands.push({ declaration: branch, name, key: name ?? '\\staff' + ++this.serial });
           }
-          if (hands.length !== 2 || hands[0] === hands[1]) input.fail('unsupported', 'Expected two distinct piano hands.', t.range);
+          if (hands.length !== 2 || hands[0].key === hands[1].key) input.fail('unsupported', 'Expected two distinct piano hands.', t.range);
           s.piano = { id: id ?? 'piano' + ++this.serial, hands };
         }
         if (context === 'StaffGroup') {
@@ -285,7 +289,10 @@ class Resolver {
         }
         if (context === 'TabStaff') s.instrument={...(s.instrument?.kind==='guitar'?s.instrument:standardGuitar()),view:'tab'};
         if (context === 'DrumStaff') s.instrument={kind:'drums',map:[]};
-        if (context === 'Staff' || context === 'TabStaff' || context === 'DrumStaff') s.part = id ?? (s.part === 'staff' && !this.parts.has('staff') ? 'staff' : 'staff' + ++this.serial);
+        if (context === 'Staff' || context === 'TabStaff' || context === 'DrumStaff') {
+          const hand = s.piano?.hands.find(hand => hand.declaration === t);
+          s.part = id ?? hand?.key ?? (s.part === 'staff' && !this.parts.has('staff') ? 'staff' : 'staff' + ++this.serial);
+        }
         if (['Voice','TabVoice','DrumVoice'].includes(context) && id) s.voice = id;
         if (words[i]?.value==='\\with') {
           i++;
@@ -323,8 +330,9 @@ class Resolver {
       case '\\change': {
         if (next().value !== 'Staff' || next().value !== '=') input.fail('unsupported', 'Expected a staff change.', t.range);
         const name = next().value.replace(/^"|"$/g, '');
-        if (!s.piano || !s.piano.hands.includes(name)) input.fail('unsupported', 'Unknown display staff ' + name + '.', t.range);
-        s.display = s.piano!.hands.indexOf(name) + 1;
+        const hand = s.piano?.hands.findIndex(hand => hand.name === name);
+        if (hand === undefined || hand < 0) input.fail('unsupported', 'Unknown display staff ' + name + '.', t.range);
+        s.display = hand! + 1;
         break;
       }
       case '\\relative': case '\\absolute': case '\\fixed': {

@@ -64,3 +64,29 @@ test('located physical constraint conflicts retain both source marks only in par
   assert.match(result.documents[0].text,/9\/4\[write B4, finger 0 left\]/);
 });
 
+
+test('anonymous piano staves follow source order and only named staves are change targets',()=>{
+  const twoHands=ly`\new PianoStaff << \new Staff { c''1 } \new Staff { c1 } >>`;
+  const result=read(twoHands,expressive);
+  assert.equal(result.status,'exact');
+  assert.match(result.documents[0].text,/piano \w+ \{[\s\S]*upper \{[\s\S]*C5[\s\S]*lower \{[\s\S]*C3/);
+  const mixed=ly`\new PianoStaff << \new Staff { c''2 \change Staff = "left" c'2 } \new Staff = "left" { c1 } >>`;
+  const change=read(mixed,expressive);
+  assert.equal(change.status,'exact');
+  assert.match(change.documents[0].text,/C4\[onStaff lower\]/);
+  const unknown=mixed.replace('= "left" c', '= "upper" c');
+  for(const mode of ['strict','partial']){
+    const failure=read(unknown,{...expressive,mode});
+    assert.equal(failure.status,'failed');
+    assert.match(failure.diagnostics.at(-1).message,/Unknown display staff upper/);
+  }
+});
+
+test('historical upper ornament scripts have located loss diagnostics and preserve note length',()=>{
+  const source=ly`{ b'2.^\downmordent c''8_\prall d''8 }`;
+  assert.equal(read(source,expressive).status,'failed');
+  const result=read(source,{...expressive,mode:'partial'});
+  assert.equal(result.status,'partial');
+  assert.deepEqual(result.diagnostics.map(d=>source.slice(...d.range)),[ly`^\downmordent`,ly`_\prall`]);
+  assert.match(result.documents[0].text,/:h\. B4 :8 C5 D5/);
+});

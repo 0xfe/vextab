@@ -13,6 +13,7 @@ const here=fileURLToPath(new URL('.',import.meta.url));
 const editions=[
   {name:'sor',voices:['upperVoice','lowerVoice','middleVoice'],written:48,played:80,tempo:100},
   {name:'bwv999',voices:['melody','bass'],written:43,played:43,tempo:80},
+  {name:'bwv846',folder:'../complex-lilypond',voices:['soprane','tenor','alt','bass'],written:27,played:27,tempo:66},
   {name:'maple',voices:['top','bottom'],written:85,played:145,tempo:120},
 ];
 const fraction=s=>s.split('/').map(Number).reduce((a,b)=>a/b);
@@ -47,10 +48,10 @@ function sameRows(actual,expected,description){
 
 try {
   const {projectScoreV2,measureVisits,scorePerformance}=literalPlayer();
-  for (const {name,voices,written,played,tempo} of editions) {
-    const source=readFileSync(join(here,name+'.ly'),'utf8');
-    const reference=readFileSync(join(here,name+'.tsv'),'utf8').trim().split('\n');
-    const guitar=name!=='maple';
+  for (const {name,folder='.',voices,written,played,tempo} of editions) {
+    const source=readFileSync(join(here,folder,name+'.ly'),'utf8');
+    const reference=readFileSync(join(here,folder,name+'.tsv'),'utf8').trim().split('\n');
+    const guitar=name==='sor' || name==='bwv999';
     for(const selection of ['print','midi']){
       const options={guitar,score:selection,targetProfile:'expressive',finalFragment:true,filename:name+'.ly'};
       const strict=importLilyPond(source,options);
@@ -68,7 +69,7 @@ try {
       const targets=part.staves.flatMap(stave=>stave.voices.map(voice=>({stave,voice})));
       assert.equal(targets.length,voices.length);
       const attacks=new Map(projection.measures.flatMap(m=>m.voices.flatMap(v=>v.events.map(e=>[e.id,e]))));
-      const midiTempo=guitar && selection==='midi'?tempo:undefined;
+      const midiTempo=name!=='maple' && selection==='midi'?tempo:undefined;
       assert.equal(model.playback?.tempos?.[1],midiTempo);
       const {events,duration}=scorePerformance(projection,120,undefined,order);
       const fullTicks=order.reduce((sum,index)=>sum+1536*fraction(targets[0].voice.measures[index-1].span),0);

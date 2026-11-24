@@ -14,6 +14,7 @@ HERE = Path(__file__).resolve().parent
 EDITION = {
     "sor": ("a2dfb39a40b2dd8b406cce4894af20dcd5e5312e815825170e2fbec40c5ca217", ["upperVoice", "lowerVoice", "middleVoice"]),
     "bwv999": ("67c2ab0e9bcffeb07b7be0006a74264c8d65ea8c96868e1e205f9d76fb148fa1", ["melody", "bass"]),
+    "bwv846": ("10d51eabac0fdfeddcbb7d76ad3bf361d4c095feec3ce7aa61d034d5b836c708", ["soprane", "tenor", "alt", "bass"]),
     "maple": ("043e9d9207b771658a9afa51e2aa2537c448ecfd602e78ae50110cf3b12209fd", ["top", "bottom"]),
 }
 
@@ -25,7 +26,7 @@ def notation(data):
         if not line.startswith("M5\t"):
             continue
         _, staff, onset, span, spelling = line.split("\t")
-        # All three editions use binary note values.
+        # These editions use binary note values.
         at, duration = Fraction(onset) * 1536, Fraction(span) * 1536
         assert at.denominator == duration.denominator == 1
         rows.append([int(at), int(duration), staff, spelling])
@@ -63,6 +64,9 @@ def source_for(name, voice, unfold):
     variable = ("\\" + voice)
     if unfold:
         variable = r"\unfoldRepeats " + variable
+    if name == "bwv846":
+        staff = "up" if voice in ("soprane", "tenor") else "down"
+        return rf'\new Staff = "{staff}" {{ \global {variable} }}'
     if name != "maple":
         return r'\new Staff = "solo" { ' + (r"\time 3/4 " if name == "sor" else "") + variable + " }"
     # A voice crossing staves must find its destination, even when its partner is observed separately.
@@ -73,12 +77,16 @@ def source_for(name, voice, unfold):
 
 def main():
     parser = argparse.ArgumentParser(__doc__)
+    parser.add_argument("--edition", choices=EDITION, help="Check a single edition.")
     parser.add_argument("--write", action="store_true", help="Replace checked-in native observations.")
     parser.add_argument("--published-maple-midi", type=Path, help="Also check the full independently published Mutopia MIDI.")
     args = parser.parse_args()
     assert subprocess.check_output(["lilypond", "--version"], text=True).startswith("GNU LilyPond 2.26.0 ")
     for name, (digest, voices) in EDITION.items():
-        raw = (HERE / (name + ".ly")).read_bytes()
+        if args.edition and args.edition != name:
+            continue
+        folder = HERE.parent / "complex-lilypond" if name == "bwv846" else HERE
+        raw = (folder / (name + ".ly")).read_bytes()
         assert sha256(raw).hexdigest() == digest
         with TemporaryDirectory() as temp:
             cwd = Path(temp)
@@ -114,7 +122,7 @@ def main():
                 assert sha256(midi.read_bytes()).hexdigest()=="3dd712a85fabd267f5a2cee5cb23af4683408c2f29b8814721844498f1ee4f66"
                 notes=sorted(list(map(int,row.split("\t")[2:])) for row in rows if row.split("\t")[1]=="P")
                 assert notes==performance(midi)
-            snapshot = HERE / (name + ".tsv")
+            snapshot = folder / (name + ".tsv")
             output = "\n".join(rows) + "\n"
             if args.write:
                 snapshot.write_text(output)

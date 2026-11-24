@@ -165,6 +165,8 @@ export function afterNote(
   else if (value === '\\sustainOn' || value === '\\sustainOff') {
     (x.pedal ??= []).push(value.endsWith('On') ? 'down' : 'up');
     if (value.endsWith('Off')) x.pedalUpAtOnset = true;
+  } else if (value === '\\downmordent' || value === '\\prall') {
+    input.omit('LilyPond ornament ' + value + ' omitted.', [t.range[0], words[j].range[1]]);
   } else if (value === '\\trill' || value === '\\turn' || value === '\\mordent')
     x.ornament = value === '\\trill' ? 'tr' : (value.slice(1) as Expression['ornament']);
   else {
