@@ -1,6 +1,6 @@
 {
   "name": "vextab-import",
-  "version": "0.1.0-alpha.5",
+  "version": "0.1.0-alpha.6",
   "description": "Convert MusicXML and LilyPond source to editable VexTab",
   "license": "LicenseRef-LICENSE",
   "repository": { "type": "git", "url": "https://github.com/0xfe/vextab.git", "directory": "importer" },

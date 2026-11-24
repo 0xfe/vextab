@@ -16,7 +16,7 @@ if (lily.status === 'exact') console.log(lily.documents[0].text);
 
 ## Compatibility
 
-Read `result.target.minimumVersion` before opening the document. The standard, extended and expressive profiles start at VexTab 6.2.3, 6.3.0 and 6.4.0 respectively. A score that relies on a newer grammar or playback behavior reports the higher version it needs. `capacity: 'large'` also requires the consuming editor or parser to enable that capacity.
+Read `result.target.minimumVersion` before opening the document. The standard, extended and expressive profiles start at VexTab 6.2.3, 6.3.0 and 6.4.0 respectively. A score that relies on newer grammar or playback reports the version it needs. Per-attack stems, directed ties, note velocities and named beams crossing a barline require VexTab 6.6.0. `capacity: 'large'` also requires the consuming editor or parser to enable that capacity.
 
 The [qualification report](https://github.com/0xfe/vextab/blob/importer/issues/212/README.md) lists the tested source editions, historical versions, known losses and package measurements. The [corpus matrix](https://github.com/0xfe/vextab/blob/importer/issues/212/coverage.md) reports strict and partial results per score.
 

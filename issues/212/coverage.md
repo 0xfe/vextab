@@ -24,7 +24,7 @@ Each row is one named input and selection on the expressive target. Both columns
 | measured.musicxml | MusicXML 4.0 | exact | exact | Chords and tuplets | 0 |
 | backup.musicxml | MusicXML 4.0 | failed | partial | Voices and time | 2 |
 | divisions.musicxml | MusicXML 4.0 | failed | partial | Voices and time | 3 |
-| hidden.musicxml | MusicXML 3.1 | failed | partial | Voices and time | 9 |
+| hidden.musicxml | MusicXML 3.1 | failed | partial | Voices and time | 1 |
 | 21c-Chords-ThreeNotesDuration.musicxml | MusicXML 4.0 | failed | partial | Chords and tuplets | 1 |
 | 46e-PickupMeasure-SecondVoiceStartsLater.musicxml | MusicXML 4.0 | failed | partial | Voices and time | 1 |
 | stored.mxl | MXL 4.0 | exact | exact | MXL | 0 |
@@ -43,26 +43,26 @@ Each row is one named input and selection on the expressive target. Both columns
 | 71e-TabStaves.musicxml | MusicXML 4.0 | failed | failed | Guitar and TAB | Bar 1. Two simultaneous heads occupy one physical string. |
 | 73a-Percussion.musicxml | MusicXML 4.0 | failed | failed | Percussion | Bar 1. Unpitched hit requires a named instrument with a declared midi-unpitched key. |
 | testChangeTranspose.xml | MusicXML 4.0 | failed | partial | Staff changes, Spelled pitch | 17 |
-| testTuplets1.xml | MusicXML 4.0 | failed | partial | Chords and tuplets | 61 |
+| testTuplets1.xml | MusicXML 4.0 | failed | partial | Chords and tuplets | 22 |
 | testIncompleteTuplet.xml | MusicXML 4.0 | failed | failed | Chords and tuplets | Bar 2. Written value disagrees with elapsed MusicXML duration. |
-| testLyricsVoice2a.xml | MusicXML 4.0 | failed | partial | Lyrics and expression | 19 |
+| testLyricsVoice2a.xml | MusicXML 4.0 | failed | partial | Lyrics and expression | 11 |
 | testTablature1.xml | MusicXML 4.0 | failed | failed | Guitar and TAB | Bar 1. String, fret, tuning and capo disagree with the declared sounding pitch. |
 | Beach, soprano bars 1–6 | MusicXML 3.1 | failed | partial | Lyrics and expression | 148 |
-| Haydn, movement II | MXL 4.0 | failed | partial | MXL, Voices and time, Lyrics and expression | 7277 |
+| Haydn, movement II | MXL 4.0 | failed | partial | MXL, Voices and time, Lyrics and expression | 5447 |
 | Haydn, all four movements | MXL 4.0 | failed | failed | MXL, Repeats and endings | Bar 56. Sound navigation changes the performed measure sequence. |
 | chord-mode.ly | LilyPond 2.26.0 | exact | exact | Chords and tuplets | 0 |
-| Joplin, first strain | LilyPond 2.14.2 | failed | partial | Voices and time, Repeats and endings | 6 |
-| Sor Op. 35 No. 22, print | LilyPond 2.16.1 | failed | partial | Guitar and TAB, Repeats and endings | 61 |
-| Sor Op. 35 No. 22, midi | LilyPond 2.16.1 | failed | partial | Guitar and TAB, Repeats and endings | 59 |
+| Joplin, first strain | LilyPond 2.14.2 | failed | partial | Voices and time, Repeats and endings | 2 |
+| Sor Op. 35 No. 22, print | LilyPond 2.16.1 | failed | partial | Guitar and TAB, Repeats and endings | 7 |
+| Sor Op. 35 No. 22, midi | LilyPond 2.16.1 | failed | partial | Guitar and TAB, Repeats and endings | 5 |
 | Bach BWV 999, print | LilyPond 2.16.1 | failed | partial | Guitar and TAB, Voices and time | 4 |
 | Bach BWV 999, midi | LilyPond 2.16.1 | failed | partial | Guitar and TAB, Voices and time | 4 |
-| Joplin, complete Maple Leaf Rag, print | LilyPond 2.14.2 | failed | partial | Voices and time, Repeats and endings | 17 |
-| Joplin, complete Maple Leaf Rag, midi | LilyPond 2.14.2 | failed | partial | Voices and time, Repeats and endings | 18 |
-| Haydn, movement I | MXL 4.0 | failed | partial | MXL, Repeats and endings | 14678 |
+| Joplin, complete Maple Leaf Rag, print | LilyPond 2.14.2 | failed | partial | Voices and time, Repeats and endings | 9 |
+| Joplin, complete Maple Leaf Rag, midi | LilyPond 2.14.2 | failed | partial | Voices and time, Repeats and endings | 10 |
+| Haydn, movement I | MXL 4.0 | failed | partial | MXL, Repeats and endings | 10838 |
 | 45a-SimpleRepeat.musicxml | MusicXML 4.0 | failed | partial | Repeats and endings | 3 |
 | 45b-RepeatWithAlternatives.musicxml | MusicXML 4.0 | failed | partial | Repeats and endings | 4 |
 | 45d-Repeats-MultipleEndings.musicxml | MusicXML 4.0 | failed | failed | Repeats and endings | Bar 6. Expected one consecutive pass number per MusicXML ending. |
 | Echigo-Jishi, complete song | MXL 4.0 | failed | partial | MXL, Lyrics and expression | 568 |
-| Bach BWV 269, complete chorale | MXL 3.0 | failed | partial | MXL, Voices and time, Repeats and endings | 642 |
+| Bach BWV 269, complete chorale | MXL 3.0 | failed | partial | MXL, Voices and time, Repeats and endings | 413 |
 | Schumann, Dichterliebe No. 1 | MXL 4.0 | failed | failed | MXL, Lyrics and expression | Bar 26. Written value disagrees with elapsed MusicXML duration. |
 | Computed LilyPond music | LilyPond 2.26.0 | failed | failed | Procedural music | Bar 1. Computed Scheme music is outside the static LilyPond profile. |
