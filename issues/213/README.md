@@ -1,6 +1,6 @@
 # VexFlow engraving migration
 
-The eleven repertoire scores that motivated this work are the acceptance fixtures. Compare the same source on VexTab `1eb710d` with VexFlow 5.9.0 and on the migration with the official 5.10.0 GitHub release tarball. The tarball SHA-256 is `14ff96f0ad070923bd0f33c1ef9b73687f8186b24e86b2b9f00cdf8fe07368be`. The VexTab review branch starts at `f90dc2d`.
+The eleven repertoire scores that motivated this work are the acceptance fixtures. Compare the same source on VexTab `1eb710d` with VexFlow 5.9.0 and on the migration with the pinned VexFlow 5.10.0 npm release. The npm and GitHub tarballs are identical. The tarball SHA-256 is `14ff96f0ad070923bd0f33c1ef9b73687f8186b24e86b2b9f00cdf8fe07368be`. The VexTab review branch starts at `f90dc2d`.
 
 ## What changed
 
@@ -16,7 +16,7 @@ The eleven repertoire scores that motivated this work are the acceptance fixture
 | Screen and page head-occurrence indexes | Searching exported SVG for pitched and TAB heads to drive playback. Silent beats still anchor the playhead. | Select either projection of an All of Me chord. A Haydn cue links to its donor without adding an attack. |
 | `continuous.opening` | Separate diagram wrapping, swing miniature factory and injected first-system indent. | Pocket Change’s swing equation, the Soleá diagram key and the opening piano brace. VexTab retains the Ballade’s raised lettering and editorial credit columns. |
 
-For example, a numeric fingering now travels with its typed notehead. VexTab supplies the digit and position once. VexFlow assigns it to the correct pitch, measures its clearance and recreates it on the printed page. The migration removes 1,154 lines and adds 501 across production sources, webpack and both loaders relative to `f90dc2d`. The new 41-line loader is included in that count.
+For example, a numeric fingering now travels with its typed notehead. VexTab supplies the digit and position once. VexFlow assigns it to the correct pitch, measures its clearance and recreates it on the printed page. The initial migration at `cca2569` removed 1,154 lines and added 501 across production sources, webpack and both loaders relative to `f90dc2d`. The new 41-line loader is included in that count.
 
 ## Reproduce the comparisons
 
@@ -34,7 +34,7 @@ node issues/213/repertoire.mjs /path/to/eleven/guide/scores dist
 
 The runner opens each full score through its guide lesson or loads it into the piano editor when the checkout does not list the lesson. A missing score fails the run. Eight fixtures are on the review branch. The two Liszt files are from VexTab `1eb710d`. The independent Chopin Étude draft used for both builds has SHA-256 `4ac6972ea346b869a824e0127ba743ee8e2c575fac9ad9e6238efc8bfb7471d0`. Use those revisions to reproduce the comparison.
 
-All eleven retained their baseline reading-event, system and page counts. Ten editions fit one page and the Haydn cello part takes two. The migrated conductor views and editions reported zero diagnostics at authored widths. The ordinary browser suite covers Canvas and SVG, reflow, independent parts, playback, and A4 and Letter printing. The unchanged upstream composition, engraving, phrase, publication and EasyScore rendering controls were run separately against the stock release.
+At the original 1,080-unit fallback width, all eleven retained their baseline reading-event, system and page counts. A visual review at a 960-unit fallback identified two screen reflows and additional engraving defects. See the [19-demo comparison and all printed editions](visual-review.md). Ten editions fit one page and the Haydn cello part takes two. The migrated conductor views and editions reported zero diagnostics at authored widths. The ordinary browser suite covers Canvas and SVG, reflow, independent parts, playback, and A4 and Letter printing. The unchanged upstream composition, engraving, phrase, publication and EasyScore rendering controls were run separately against the stock release.
 
 ## Authoring trial
 
@@ -46,5 +46,7 @@ In the packaged guide editor, replace the first occurrence of `(B4[finger 1 abov
 - A harmony on a notation staff asks for ink from its companion TAB staff and reports unsupported geometry. [VexFlow #472](https://github.com/vexflow/vexflow/issues/472)
 - Pitched slurs need an alternative attachment around fingered beams and an opposite-side retry for an undirected phrase. Authored sides remain fixed. [VexFlow #473](https://github.com/vexflow/vexflow/issues/473)
 - Two separately selectable directions can occupy the same bar-edge position. VexTab still reserves space and draws that subset of timed text. [VexFlow #474](https://github.com/vexflow/vexflow/issues/474)
+- Hairpins and deep ledger notes outside the wedge span can spread the Chopin piano hands. [VexFlow #475](https://github.com/vexflow/vexflow/issues/475)
+- Two tuplet numerals can collide in paired notation and rhythmic TAB. Those scores use envelope spacing pending the native fix. [VexFlow #476](https://github.com/vexflow/vexflow/issues/476)
 
 Repeat the linked controls on the next stock release. Remove the matching workaround as each control and its repertoire passage pass. The two webpack targets can go when the first three controls pass without rewriting VexFlow.

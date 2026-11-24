@@ -5,7 +5,7 @@ import { editionSettings, type EditionOptions } from './editions';
 import { locations, projectScoreV2 } from './grammar2/project';
 import type { ScoreV2 } from './grammar2/model';
 import { attachHeadMarks, typedFingering } from './head-marks';
-import { TextLanes } from './text-lanes';
+import { pianoTextLanes, TextLanes } from './text-lanes';
 import { drumKit } from './drums';
 import { attachOpenSlide, describeOpenSlide } from './open-slide';
 import { inkStyle, setFretPaper } from './color';
@@ -123,7 +123,7 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     }
     const writtenClef = destination === 'left' ? 'bass' : destination === 'right' ? 'treble' : clef;
     const heads = event.heads.map((head, i) => {
-      const finger = typedFingering(head.marks);
+      const finger = typedFingering(head.marks, event.heads);
       return { key: keys[i], ...(finger && { fingering: { finger: finger.finger, position: finger.position } }),
         ...(head.accidental && { accidental: head.cautionary ? 'cautionary' as const : 'force' as const }) };
     });
@@ -208,6 +208,8 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
   // A sustained outer notation voice ties away from the other voices on its staff.
   const notationTieSides = new Map<string, 'above' | 'below'>();
   const mixedEndings: ScoreSpan[] = [];
+  // The native TAB profile omits tuplet numerals. Keep room for both rhythmic projections.
+  const pairedTuplets = staves.includes('tab') && parsed.measures.some(m => m.voices.some(v => v.tabStems && v.tuplets.length));
   const spec: EasyScoreCompositionSpec = {
     stemPolicy: 'active-voices', accidentals: 'key-aware', graceAccidentals: 'ordered', sheet: { width, x: 10, y: parsed.layout?.top ?? 14, rowGap: parsed.layout?.rowGap ?? 36,
       ...(parsed.layout?.spacing && { measurePadding: 18, measureGap: 0 }) },
@@ -239,7 +241,8 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
           voices: [
             ...voices.map((v, index) => v.events.length ? voiceSpec(v, m, staff, sources)
               : { notes: [textLanes.anchor(eventId(staff, 'blank-' + m.number + '-' + index), null)] }),
-            ...(staff === staves[0] ? m.text ?? [] : []).map(lane => ({
+            ...(m.state.piano && staves.length === 2 ? pianoTextLanes(m.text ?? [], staff === 'left', parsed.layout?.staffDistance ?? 9)
+              : staff === staves[0] ? m.text ?? [] : []).map(lane => ({
               notes: lane.map(cell => {
                 for (const at of cell.boundaries ?? []) sources.project(staff, cell.id + '-at-' + at.range.start, at.range);
                 return textLanes.anchor(sources.project(staff, cell.id, cell.range), cell);
@@ -250,7 +253,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       }),
     })),
     continuous: {
-      verticalSpacing: parsed.measures[0].state.piano || staves.length > 1 ? 'profile' : 'envelope',
+      verticalSpacing: parsed.measures[0].state.piano || (staves.length > 1 && !pairedTuplets) ? 'profile' : 'envelope',
       textLanes: 'system',
       opening: { indent: parsed.layout?.firstSystemIndent, blocks },
       courtesy: false, measureNumbers: parsed.measureNumbers, spans,
@@ -421,7 +424,7 @@ function prepareAttack(note: Note, event: Attack, staff: Staff, voice: MeasureVo
   if (event.silent) note.renderOptions.draw = false;
   event.heads.forEach((head, index) => {
     if (!head.marks) return;
-    const built = note instanceof StaveNote && !head.drum ? typedFingering(head.marks) : undefined;
+    const built = note instanceof StaveNote && !head.drum ? typedFingering(head.marks, event.heads) : undefined;
     attachHeadMarks(note, index, head.marks.filter(mark => mark !== built), staff === 'tab', true);
   });
   if (note instanceof TabNote) {
@@ -528,7 +531,7 @@ function engraving(parsed: ParsedScore, view: Projection): EasyScoreCompositionS
       for (const columns of composition.notes) for (const voices of columns) for (const ticks of voices) for (const tick of ticks) {
         const id = tick.getAttribute('id'), entry = events.get(id);
         const note = tick as Note;
-        if (!entry) { view.textLanes.place(note, add); continue; }
+        if (!entry) { view.textLanes.place(note, add, composition); continue; }
         const { measure, voice, staff, event } = entry;
         notes.set(id, note);
         if (view.printAnchors && note.preFormatted && rows.has(measure.number) && (!view.printAnchors.has(event.id) || staff === view.staves[0])) {

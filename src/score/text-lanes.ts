@@ -1,13 +1,31 @@
 // Recreate timed text in each screen or print composition using its own formatted voice.
-import { TextNote, type Note, type CompositionMark, type EasyScoreContent, type ScoreHitRegion, type PublicationOptions } from 'vexflow';
+import { TextNote, type Note, type CompositionMark, type EasyScoreComposition, type EasyScoreContent, type ScoreHitRegion, type PublicationOptions } from 'vexflow';
 import { scoreMusicFont } from './engraving';
 import { inkStyle } from './color';
 import type { MeasuredText } from './model';
 
+/** A line written beyond the piano's nominal lower staff belongs to that hand.
+ * Keep its beat and source while measuring it below the bass as the hands move apart. */
+export function pianoTextLanes(lanes: MeasuredText[][], lower: boolean, distance: number) {
+  return lanes.flatMap(lane => {
+    let visible = false;
+    const cells = lane.map(cell => {
+      // TextNote line 3 is the top staff line. Four more spaces reach the bottom line.
+      const belowBass = (line = 0) => line - 3 > distance + 4;
+      const text = cell.text && belowBass(cell.style.line) === lower ? cell.text : '';
+      const boundaries = cell.boundaries?.filter(b => belowBass(b.style.line) === lower)
+        .map(b => lower ? { ...b, style: { ...b.style, line: b.style.line - distance } } : b);
+      if (text || boundaries?.length) visible = true;
+      return { ...cell, text, boundaries, belowBassStaff: lower, style: text && lower ? { ...cell.style, line: cell.style.line - distance } : cell.style };
+    });
+    return visible ? [cells] : [];
+  });
+}
+
 /** Resolve source ranges and fresh VexFlow text objects separately for each composition. */
 export class TextLanes {
   readonly regions = new Map<string, ScoreHitRegion>();
-  private readonly cells = new Map<string, MeasuredText | null>();
+  private readonly cells = new Map<string, (MeasuredText & { belowBassStaff?: boolean }) | null>();
 
   /** A timed anchor keeps its written duration and never sounds a note. */
   anchor(id: string, cell: MeasuredText | null): EasyScoreContent {
@@ -25,7 +43,7 @@ export class TextLanes {
   }
 
   /** Native directions own their hit boxes. Smooth text uses a placed mark to leave beat spacing alone. */
-  place(note: Note, add: (mark: CompositionMark) => void) {
+  place(note: Note, add: (mark: CompositionMark) => void, composition: EasyScoreComposition) {
     const id = note.getAttribute('id'), cell = this.cells.get(id);
     if (!cell || cell.boundaries?.length) return;
     let label: TextNote;
@@ -49,6 +67,20 @@ export class TextLanes {
       label.setYShift(0);
       const ascent = cell.glyph ? -label.getTextInk(0, 0).y : label.getTextMetrics().fontBoundingBoxAscent;
       label.setYShift(stave.getSpacingBetweenLines() + ascent);
+    }
+    if (cell.belowBassStaff) {
+      // A long instruction can reach the next bar's down-stem beam.
+      const ink = label.getBoundingBox();
+      let bottom = ink.y;
+      for (const tick of composition.notes.flat(3)) {
+        const candidate = tick as Note, beam = candidate.getBeam?.();
+        if (!beam || beam.getNotes()[0] !== candidate || candidate.getStave()?.getY() !== stave.getY()) continue;
+        for (const strip of beam.getStripBounds()) {
+          if (strip.x < ink.x + ink.w && strip.x + strip.w > ink.x)
+            bottom = Math.max(bottom, strip.y + strip.h + stave.space(0.4));
+        }
+      }
+      label.setYShift(label.getYShift() + bottom - ink.y);
     }
     const bounds = label.getBoundingBox();
     this.regions.set(id, { id, source: cell.id, kind: 'event', x: bounds.x, y: bounds.y, w: bounds.w, h: bounds.h });

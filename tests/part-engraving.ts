@@ -6,6 +6,8 @@ import { scoreSurfaces } from '../src/playback/geometry';
 import { parseScore } from '../src/score/parse';
 import melody from '../guide/scores/all-of-me.vextab';
 import haydn from '../guide/scores/haydn-emperor-variation.vextab';
+import ballade from '../guide/scores/chopin-ballade-no3.vextab';
+import picking from '../guide/scores/compound-picking.vextab';
 import river from '../guide/scores/slow-river.vextab';
 import sor from '../guide/scores/sor-op35-no22.vextab';
 
@@ -20,6 +22,32 @@ function verse(root: Element) {
 }
 
 QUnit.module('Independent part engraving', () => {
+  QUnit.test('the Ballade opening finger stays beside the top head under its beam on screen and paper', assert => {
+    const score = parseScore(ballade), screen = host(), print = host();
+    renderScore(screen, score);
+    renderScorePart(print, score, 'notation');
+    for (const root of [screen, print]) {
+      const chord = root.querySelector<SVGGElement>('.vf-stavenote[id$="keys.upper.melody.4"],.vf-stavenote[data-vf-id$="keys.upper.melody.4"]');
+      const texts = [...chord.querySelectorAll<SVGTextElement>('text')];
+      const digit = textInk(texts.find(el => el.textContent === '5'));
+      const heads = texts.filter(el => el.textContent === '\uE0A4').map(textInk);
+      assert.equal(heads.length, 2);
+      const gap = Math.min(...heads.map(head => head.top)) - digit.bottom;
+      assert.ok(gap >= 0 && gap < 10, 'the fingering clears the head by less than one staff space');
+    }
+  });
+
+  QUnit.test('compound picking leaves daylight between the two triplet numerals on screen and paper', assert => {
+    const score = parseScore(picking), screen = host(), print = host();
+    renderScore(screen, score);
+    renderEdition(print, score);
+    for (const root of [screen, print]) {
+      const digits = [...root.querySelectorAll<SVGTextElement>('.vf-tuplet text')].map(textInk);
+      assert.equal(digits.length, 2);
+      assert.ok(digits[1].top - digits[0].bottom > 3, 'the two triplet numbers stay individually readable');
+    }
+  });
+
   QUnit.test('the printed playhead advances through a rest on the same stave without drawing a note glow', assert => {
     const model = parseScore('layout { heading { title "Andante" } } staff { :q C4 rest D4 E4 | }');
     const print = renderScorePart(host(), model, 'notation');

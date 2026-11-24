@@ -32,6 +32,19 @@ try {
       try {
         const view = vextab.renderConductor(host, score, { width: score.layout?.width ?? 1080 });
         const checks = {};
+        if (id === 'liszt-hungarian-rhapsody-no2') {
+          checks.distance = view.composition.sheet.getContinuousLayout().rows.map(row => {
+            const [upper, lower] = view.composition.staves[row.measures[0] - 1];
+            return lower.getYForLine(0) - upper.getYForLine(4);
+          });
+          checks.handLabels = [...host.querySelectorAll('text')].filter(el => ['R.H.', 'L.H.'].includes(el.textContent)).length;
+        }
+        if (id === 'handy-st-louis-blues') {
+          checks.pianoGaps = view.composition.sheet.getContinuousLayout().rows.map(row => {
+            const [, upper, lower] = view.composition.staves[row.measures[0] - 1];
+            return lower.getYForLine(0) - upper.getYForLine(4);
+          });
+        }
         if (id === 'liszt-consolation-no5') {
           const notes = (bar, voice) => view.navigation.events.filter(e => e.measure === bar && e.source.includes('.' + voice + '.'))
             .map(e => view.composition.getNote(e.id));
@@ -48,6 +61,14 @@ try {
     }, { id, source });
     assert.deepEqual(report.diagnostics, [], id);
     assert.ok(report.attacks > 0 && report.pages > 0, id);
+    if (id === 'liszt-hungarian-rhapsody-no2') {
+      const [first, second, third] = report.checks.distance;
+      assert.ok(second <= Math.max(first, third) + 25, 'bar 9 text clears the bass without separating the hands');
+      assert.equal(report.checks.handLabels, 0, 'preserve the two explicitly empty hand names');
+    }
+    if (id === 'handy-st-louis-blues') {
+      assert.ok(report.checks.pianoGaps.every(gap => gap > 0 && gap < 100), 'keep the piano hands together beneath the singer');
+    }
     if (id === 'liszt-consolation-no5') assert.deepEqual(report.checks, {
       pickup: [1, 1], bass: Array(6).fill(-1), sameBeam: true, quarters: [1, 1, 1],
     });

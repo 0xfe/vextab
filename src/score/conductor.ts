@@ -24,7 +24,7 @@ function identity(score: ParsedScore, staff: string) {
 export function instrumentLabel(score: ParsedScore, stave: string, primary: boolean) {
   const { role, staff } = identity(score, stave);
   if (!primary && role === 'main') return {};
-  const labels = (a?: string, b?: string) => [a, b].filter(Boolean).join(' ') || undefined;
+  const labels = (a?: string, b?: string) => [a, b].filter(Boolean).join(' ') || (b === '' ? '' : undefined);
   const name = labels(primary && score.instrument?.name, staff?.name);
   const shortName = labels(primary && (score.instrument?.shortName ?? score.instrument?.name), staff?.shortName ?? staff?.name);
   if (name === undefined && shortName === undefined) return {};
@@ -83,7 +83,9 @@ export function conductorSpec(scores: ParsedScore[], specs: EasyScoreComposition
   return { ...specs[0], staves, engraving: {
     prepareNote(options, note, builder) { for (const spec of specs) spec.engraving?.prepareNote?.(options, note, builder); },
     place(score, add) { for (const spec of specs) spec.engraving?.place?.(score, add); },
-  }, continuous: { ...specs[0].continuous, groups, boundaries: boundaries(scores, specs),
+  }, continuous: { ...specs[0].continuous, groups,
+    verticalSpacing: specs.some(s => s.continuous.verticalSpacing === 'profile') ? 'profile' : specs[0].continuous.verticalSpacing,
+    boundaries: boundaries(scores, specs),
     opening: { ...specs[0].continuous.opening, blocks: [...(specs[0].continuous.opening?.blocks ?? []),
       ...specs.slice(1).flatMap(s => (s.continuous.opening?.blocks ?? []).filter(b => b.kind === 'diagrams'))] },
     ossias: specs.flatMap(spec => spec.continuous.ossias ?? []),

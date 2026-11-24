@@ -8,7 +8,8 @@ const positions = { left: Modifier.Position.LEFT, right: Modifier.Position.RIGHT
 
 /** Let the native modifier context reserve the side column alongside accidentals. */
 export function fingerNumber(label: string, position: ModifierPosition, stringNumber = false, tab = false) {
-  const modifier = stringNumber ? new StringNumber(label) : new FretHandFinger(label, { headPlacement: !tab }).setDrawCircle(tab && /^\d$/.test(label));
+  const headPlacement = !tab && (position === Modifier.Position.LEFT || position === Modifier.Position.RIGHT);
+  const modifier = stringNumber ? new StringNumber(label) : new FretHandFinger(label, { headPlacement }).setDrawCircle(tab && /^\d$/.test(label));
   modifier.setPosition(position);
   return modifier;
 }
@@ -33,6 +34,12 @@ export function attachHeadMarks(note: Note, index: number, marks: HeadMark[], ta
 }
 
 /** One numbered fingering is supported directly on a typed pitched head. */
-export function typedFingering(marks: HeadMark[] = []) {
-  return marks.find(mark => mark.finger && /^\d$/.test(mark.finger) && !mark.stringNumber);
+export function typedFingering(marks: HeadMark[] | undefined, heads: { marks?: HeadMark[] }[]) {
+  return marks?.find(mark => {
+    if (!mark.finger || !/^\d$/.test(mark.finger) || mark.stringNumber) return false;
+    if (mark.position === 'left' || mark.position === 'right') return true;
+    // A lone vertical digit stays at its head. Two digits on one side share VexFlow's outside column.
+    return heads.some(head => head.marks?.some(other => other !== mark && other.position === mark.position &&
+      /^\d$/.test(other.finger ?? '') && !other.stringNumber));
+  });
 }
