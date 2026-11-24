@@ -18,6 +18,7 @@ for (const [entry, ceiling] of [
     format: 'esm',
     target: 'es2022',
     bundle: true,
+    minify: true,
     write: false,
     metafile: true,
   });
@@ -46,11 +47,12 @@ for (const [entry, ceiling] of [
     Object.values(result.metafile.outputs).every((output) => output.imports.length === 0),
     entry + ' must load without external modules or lazy chunks',
   );
-  // Minify the entire closed graph so local bindings across the reader and writer can be shortened.
+  // esbuild keeps the SAX state machine fast. Reassigning short names on the final bundle improves gzip
+  // without running another optimizer over those hot loops.
   const { code } = await minify(result.outputFiles[0].text, {
     module: true,
     ecma: 2022,
-    compress: { passes: 2 },
+    compress: false,
   });
   assert.ok(code, 'Missing production bundle for ' + entry);
   const bytes = gzipSync(code, { level: 9 }).length;
