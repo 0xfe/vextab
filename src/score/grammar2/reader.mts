@@ -296,7 +296,8 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
     }
     if (mark.text === 'tieStart' || mark.text === 'tieEnd') {
       const name = identifier();
-      return { kind: mark.text, name, range: range() };
+      const side = mark.text === 'tieStart' && (peek() === 'above' || peek() === 'below') ? take().text as 'above' | 'below' : undefined;
+      return { kind: mark.text, name, ...(side && { side }), range: range() };
     }
     if (mark.text === 'sustain') {
       const token = take();

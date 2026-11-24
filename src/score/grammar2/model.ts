@@ -15,7 +15,7 @@ export type ExpansionFrame = { range: TextRange } & (
 );
 
 /** Fingering, technique and sounding duration (whole notes) belong to an individual head. */
-export type HeadMark = { kind: 'sustain'; duration: string; range: TextRange } | { kind: 'tieStart' | 'tieEnd'; name: string; range: TextRange } | { kind: 'write'; pitch: string; range: TextRange } | { kind: 'sign'; code: string; position: 'above' | 'below'; range: TextRange } | { kind: 'bend'; semitones: number; rise: [number, number]; hold?: [number, number]; release?: [number, number]; range: TextRange } |
+export type HeadMark = { kind: 'sustain'; duration: string; range: TextRange } | { kind: 'tieStart' | 'tieEnd'; name: string; side?: 'above' | 'below'; range: TextRange } | { kind: 'write'; pitch: string; range: TextRange } | { kind: 'sign'; code: string; position: 'above' | 'below'; range: TextRange } | { kind: 'bend'; semitones: number; rise: [number, number]; hold?: [number, number]; release?: [number, number]; range: TextRange } |
   { kind: 'slideIn' | 'slideOut'; side: 'above' | 'below'; range: TextRange } |
   { kind: 'prebend'; semitones: number; release: boolean; range: TextRange } |
 { kind: 'release'; hold: [number, number]; release: [number, number]; range: TextRange } |

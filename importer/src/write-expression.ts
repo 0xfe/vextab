@@ -27,8 +27,9 @@ export function headMarks(head: HeadDetail, names: Names) {
   const marks: string[] = [];
   if (head.tieStop && !head.tieEndId) marks.push('tie');
   if (head.tieEndId) marks.push('tieEnd ' + names.get('tie', head.tieEndId));
-  for (const id of head.tieStartIds ?? []) marks.push('tieStart ' + names.get('tie',id));
-  if (head.tieStartId) marks.push('tieStart ' + names.get('tie', head.tieStartId));
+  const side = head.tieSide ? ' ' + head.tieSide : '';
+  for (const id of head.tieStartIds ?? []) marks.push('tieStart ' + names.get('tie', id) + side);
+  if (head.tieStartId) marks.push('tieStart ' + names.get('tie', head.tieStartId) + side);
   if (head.string !== undefined && (head.fret === undefined || head.stringSide))
     marks.push('stringNumber ' + head.string + (head.stringSide ? ' ' + head.stringSide : ''));
   if (head.finger) marks.push('finger ' + head.finger.value + ' ' + head.finger.side);

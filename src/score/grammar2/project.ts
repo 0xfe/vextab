@@ -269,7 +269,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     return result;
   }
 
-  type Endpoint = { event: Attack; index: number; bar: number; hand?: string; range: SourceRange; scope: string; start: boolean };
+  type Endpoint = { event: Attack; index: number; bar: number; hand?: string; side?: 'above' | 'below'; range: SourceRange; scope: string; start: boolean };
   const tieEndpoints = new Map<string, Endpoint[]>();
 
   /** Two uses of a self-contained phrase each own its ties. Tuplets can start or end within a tie. */
@@ -294,7 +294,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       first.position?.str !== last.position?.str || start.hand !== end.hand)
       throw new ScoreError('measure', 'Named tie needs a later matching head on the same staff', end.range);
     const id = 'named-tie-' + name + (expanded ? '-' + start.event.id : '');
-    projected.ties.push({ id, from: start.event.id, fromHead: start.index, to: end.event.id, toHead: end.index, range: end.range });
+    projected.ties.push({ id, from: start.event.id, fromHead: start.index, to: end.event.id, toHead: end.index, ...(start.side && { side: start.side }), range: end.range });
   }
 
   /** Preserve a single cross-scope pair. Repeated pairs must resolve within each individual expansion. */
@@ -361,7 +361,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
           const points = tieEndpoints.get(mark.name) ?? [];
           if (!points.length) tieEndpoints.set(mark.name, points);
           points.push({ event: next, index: i, bar: event.bar, hand, range: locate(mark.range),
-            scope: tieScope(event), start: mark.kind === 'tieStart' });
+            scope: tieScope(event), side: mark.side, start: mark.kind === 'tieStart' });
         }
         const gliss = next.heads[i].glissFrom;
         if (gliss !== undefined) {

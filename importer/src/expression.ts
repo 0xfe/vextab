@@ -28,6 +28,8 @@ export interface HeadDetail {
   drum?: string;
   tieStop?: boolean;
   tieStartId?: string;
+  /** Engrave an outgoing tie on the source's chosen side, regardless of stem direction. */
+  tieSide?: Side;
   /** Additional destinations reached on alternate volta passes. */
   tieStartIds?: string[];
   tieEndId?: string;

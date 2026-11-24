@@ -184,7 +184,8 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     // Explicit beams in this voice/bar own their stems alongside the alternating strokes.
     autoBeam: !voice.events.some(e => e.tremolo) && voice.beams && (staff !== 'tab' || voice.tabStems) && {
       groups: voice.beatGroups?.map(n => new Fraction(n, Number(measure.state.meter.split('/')[1]))),
-      stemDirection, flatBeams: voice.flatBeams, beamRests: voice.beamRests, showStemlets: voice.stemlets, beamMiddleOnly: voice.middleRests },
+      // A global direction makes the native auto-beamer overwrite per-note exceptions.
+      stemDirection: voice.events.some(event => event.stem) ? undefined : stemDirection, flatBeams: voice.flatBeams, beamRests: voice.beamRests, showStemlets: voice.stemlets, beamMiddleOnly: voice.middleRests },
     // The native group resolves one stem side across the middle line and preserves an authored direction.
     beams: staff === 'tab' && !voice.tabStems ? [] : voice.beamGroups?.map(group => ({
       start: group.start, count: group.end - group.start + 1, flatBeams: voice.flatBeams,
@@ -304,7 +305,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       const from = eventId(staff, tie.from);
       if (!sources.ids[from]) continue;
       spans.push({ kind: 'tie', id: sources.project(staff, tie.id, tie.range), from,
-        to: eventId(staff, tie.to), side: staff === 'tab' ? undefined : notationTieSides.get(tie.from) ?? notationTieSides.get(tie.to),
+        to: eventId(staff, tie.to), side: staff === 'tab' ? undefined : tie.side ?? notationTieSides.get(tie.from) ?? notationTieSides.get(tie.to),
         ...(staff === 'tab' && tie.bend && { bend: tie.bend, string: tie.string }), fromHead: tie.fromHead, toHead: tie.toHead });
     }
   }

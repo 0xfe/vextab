@@ -77,7 +77,7 @@ class Writer {
 
   event(event: Event, bar: Measure) {
     this.groups(event.tuplets ?? [], event.range);
-    if (event.expression?.stem || event.headDetails?.some(head => head && 'velocity' in head)) {
+    if (event.expression?.stem || event.headDetails?.some(head => head && ('velocity' in head || head.tieSide))) {
       this.input.requireVersion('6.6.0');
     }
     const dots = event.dots ?? 0;

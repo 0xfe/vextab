@@ -151,6 +151,8 @@ export interface Measure {
 
 /** Endpoints identify particular chord members, even across a measure boundary. */
 export interface Tie {
+  /** Source-authored notation arc, independent of the voice and stem defaults. */
+  side?: 'above' | 'below';
   bend?: import('vexflow').TiedBend;
   string?: number;
   id: string;
