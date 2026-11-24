@@ -31,7 +31,7 @@
         "playwright-core": "1.65.1",
         "prismjs": "1.30.0",
         "qunit": "3.0.0",
-        "spessasynth_lib": "4.4.9",
+        "spessasynth_lib": "4.4.10",
         "style-loader": "4.0.0",
         "typescript": "7.0.2",
         "webpack": "5.112.2",
