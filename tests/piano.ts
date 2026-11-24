@@ -60,7 +60,7 @@ QUnit.module('Piano grand staff', () => {
         assert.ok(view.composition.getNote(view.navigation.events[0].id).fontInfo.family.startsWith('Petaluma'));
         assert.deepEqual(VexFlow.getTextFonts(), hostText);
       }
-      assert.equal(root.querySelector('.vf-score-heading text').getAttribute('font-family'), 'Petaluma Script');
+      assert.equal(root.querySelector('.vf-score-opening text').getAttribute('font-family'), 'Petaluma Script');
       const plain = renderScore(host(), parseScore(musicSource));
       assert.ok(plain.composition.getNote(plain.navigation.events[0].id).fontInfo.family.startsWith('Bravura'));
       assert.throws(() => renderScore(root, handwritten, { width: 1 }), /width/);
@@ -144,8 +144,10 @@ QUnit.module('Piano grand staff', () => {
       assert.deepEqual(view.diagnostics, []);
     }
     const paper = renderScorePart(host(), score, 'left').publication.pages[0].svg;
-    assert.equal(paper.querySelectorAll('.vf-ossia .vf-stavenote').length, 3);
-    assert.equal(paper.querySelectorAll('.vf-pedal text').length, 2);
+    const inset = paper.querySelector('.vf-inline-ossia');
+    assert.equal(inset.querySelectorAll('.vf-stavenote').length, 3);
+    assert.ok([...inset.querySelectorAll('text')].some(t => t.textContent === VexFlow.Glyphs.ornamentShortTrill));
+    assert.equal(paper.querySelectorAll('.vf-pedal-down text, .vf-pedal-up text').length, 2);
     const music = scorePerformance(score, 60);
     const at = (time: number) => music.events.filter(event => event.time === time).flatMap(event => event.notes);
     assert.deepEqual(at(0).map(n => [n.pitch, n.duration]), [[72, 2], [48, 3]], 'restrike the upper C while the bass continues ringing');

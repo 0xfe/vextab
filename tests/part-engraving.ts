@@ -1,7 +1,11 @@
 // Verify that authored notes, marks and verse lanes survive each fresh screen, part and cue.
 import { Accidental, Annotation, Articulation, FretHandFinger, StaveNote, StringNumber, TabNote, type StemmableNote } from 'vexflow';
-import { renderScore, renderScorePart } from '../src/score/layout';
+import { renderEdition, renderScore, renderScorePart } from '../src/score/layout';
+import { textInk } from './svg-ink';
+import { scoreSurfaces } from '../src/playback/geometry';
 import { parseScore } from '../src/score/parse';
+import melody from '../guide/scores/all-of-me.vextab';
+import haydn from '../guide/scores/haydn-emperor-variation.vextab';
 import river from '../guide/scores/slow-river.vextab';
 import sor from '../guide/scores/sor-op35-no22.vextab';
 
@@ -16,6 +20,49 @@ function verse(root: Element) {
 }
 
 QUnit.module('Independent part engraving', () => {
+  QUnit.test('the printed playhead advances through a rest on the same stave without drawing a note glow', assert => {
+    const model = parseScore('layout { heading { title "Andante" } } staff { :q C4 rest D4 E4 | }');
+    const print = renderScorePart(host(), model, 'notation');
+    const geometry = scoreSurfaces.get(print.publication.pages[0].svg).read();
+    const [first, rest, third] = print.score.measures[0].voices[0].events.map(event => geometry.get(event.id));
+    assert.strictEqual(rest.row, first.row);
+    assert.ok(first.x < rest.x && rest.x < third.x);
+    assert.deepEqual(rest.heads, []);
+    assert.equal(third.heads.length, 1);
+    assert.ok(third.row.top < third.heads[0].y && third.row.bottom > third.heads[0].y);
+  });
+
+  QUnit.test('All of Me keeps each selected head attached to the same written fret through reflow and print', assert => {
+    const score = parseScore(melody);
+    for (const renderer of ['svg', 'canvas'] as const) for (const width of [890, 420]) {
+      const view = renderScore(host(), score, { width, renderer });
+      const attack = view.score.measures[0].voices[0].events.find(e => e.heads.length === 4);
+      const occurrences = view.navigation.heads.get(attack.id, 1);
+      assert.deepEqual(occurrences.map(h => h.role), ['notehead', 'fret']);
+      for (const h of occurrences) {
+        const b = h.bounds, hit = view.hitTest(b.x + b.w / 2, b.y + b.h / 2);
+        const range = view.rangeFor(hit.id, melody);
+        assert.equal(melody.slice(range.start, range.end), '9/4');
+        assert.strictEqual(view.rangeFor(hit.id, melody + ' '), undefined);
+      }
+    }
+    const print = renderScorePart(host(), score, 'tab'), attack = print.score.measures[0].voices[0].events.find(e => e.heads.length === 4);
+    const page = print.publication.pages[0], [fret] = page.heads.get(attack.id, 1);
+    const hit = page.heads.hitTest(fret.bounds.x + fret.bounds.w / 2, fret.bounds.y + fret.bounds.h / 2);
+    const range = print.headRangeFor(hit.sourceEvent, Number(hit.sourceHead), melody);
+    assert.equal(melody.slice(range.start, range.end), '9/4');
+  });
+
+  QUnit.test('the measure 23 cello cue retains the violin II head identity on the printed page', assert => {
+    const score = parseScore(haydn), part = renderEdition(host(), score, { partId: 'cello' });
+    const cues = part.publication.pages.flatMap(page => page.heads.occurrences.filter(h => h.reference === 'cue' && h.measure === 23));
+    assert.ok(cues.length > 0);
+    for (const head of cues) {
+      assert.ok(head.sourceEvent.startsWith('violin_ii.'));
+      assert.ok(part.headRangeFor(head.sourceEvent, Number(head.sourceHead), haydn));
+    }
+  });
+
   QUnit.test('centered title and credit sit above the framed chord in screen and page coordinates', assert => {
     const score = parseScore('layout { heading { align center title "Solo guitar" composer "An arrangement" } } '
       + 'guitar { view notation :w (2/3 1/2 0/1)[symbol "Am", frame (x x x 2 1 0)] | }');
@@ -24,7 +71,13 @@ QUnit.module('Independent part engraving', () => {
       renderScore(screen, score, { width });
       const print = renderScorePart(host(), score, 'notation').publication.pages[0].svg;
       for (const root of [screen, print]) {
-        const [title, credit] = [...root.querySelectorAll('.vf-score-heading text')].map(el => el.getBoundingClientRect());
+        const [title, credit] = [...root.querySelectorAll<SVGTextElement>('.vf-score-opening text')].map(el => {
+          // Firefox includes the full em box in SVG text bounds. Compare the ink on the paper.
+          const ink = textInk(el), matrix = el.getScreenCTM();
+          const top = new DOMPoint(ink.left, ink.top).matrixTransform(matrix);
+          const bottom = new DOMPoint(ink.right, ink.bottom).matrixTransform(matrix);
+          return new DOMRect(top.x, top.y, bottom.x - top.x, bottom.y - top.y);
+        });
         const frame = root.querySelector('.vf-fret-diagram').getBoundingClientRect();
         const staff = root.querySelector('.vf-stave').getBoundingClientRect();
         assert.closeTo(title.x + title.width / 2, credit.x + credit.width / 2, 2, 'centers match');
@@ -71,12 +124,12 @@ QUnit.module('Independent part engraving', () => {
       assert.deepEqual(pub.diagnostics, []);
       const page = pub.pages[0].svg;
       const first = page.querySelector('[data-system="1"]');
-      const diagram = first.querySelector('.vf-chord-frames').getBoundingClientRect();
+      const diagram = first.querySelector('.vf-fret-diagram').getBoundingClientRect();
       const stave = first.querySelector('.vf-stave').getBoundingClientRect();
       assert.ok(diagram.width > 0 && diagram.bottom < stave.top);
       assert.equal(new Set(verse(first).map(el => el.getAttribute('y'))).size, 1);
       assert.equal(verse(first).length, 3);
-      assert.ok(pub.toSVG(1).includes('vf-chord-frames'));
+      assert.ok(pub.toSVG(1).includes('vf-fret-diagram'));
     }
   });
 

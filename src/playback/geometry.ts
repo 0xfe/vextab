@@ -8,7 +8,9 @@ export interface Point { x: number; y: number }
 export interface PlaybackRow {
   top: number; bottom: number; right: number;
   /** Independently paginated music has its own coordinate system. */
-  printedMusic?: SVGGElement;
+  printedPage?: SVGSVGElement;
+  /** Millimeters per logical engraving unit on this page. */
+  scale?: number;
 }
 export interface Position { row: PlaybackRow; x: number; heads: Point[] }
 export type Geometry = Map<object | string, Position>;
@@ -62,32 +64,39 @@ export function artistGeometry(artist: Artist): Geometry {
   return result;
 }
 
+/** Source beat and stave extent in the publication composition, including silent beats. */
+export interface PrintAnchor { measure: number; x: number; row: PlaybackRow }
+
 /** The printed score uses independently laid out heads, identified by their original IDs. */
-export function printedGeometry(publication: PublicationResult, attacks: Map<string, Attack>): Geometry {
+export function printedGeometry(publication: PublicationResult, attacks: Map<string, Attack>, anchors: Map<string, PrintAnchor>, scale: number): Geometry {
   const result: Geometry = new Map();
-  for (const page of publication.pages) for (const system of page.svg.querySelectorAll('[data-system]')) {
-    const music = system.lastElementChild as SVGGElement;
-    const staves = Array.from(music.querySelectorAll<SVGGElement>('.vf-stave,.vf-tabstave'), s => s.getBBox());
-    if (!staves.length) continue;
-    const row = {
-      top: Math.min(...staves.map(s => s.y)) - 7, bottom: Math.max(...staves.map(s => s.y + s.height)) + 7,
-      right: Math.max(...staves.map(s => s.x + s.width)), printedMusic: music,
-    };
-    for (const group of music.querySelectorAll<SVGGElement>('.vf-stavenote,.vf-tabnote')) {
-      const attack = attacks.get(group.getAttribute('data-vf-id'));
-      if (!attack) continue;
-      const heads: Point[] = [];
-      let x = 0;
-      const tab = group.classList.contains('vf-tabnote');
-      const elements = group.querySelectorAll<SVGTextElement>(tab ? ':scope > text' : '.vf-notehead > text');
-      elements.forEach((text, i) => {
-        const box = text.getBBox();
-        const point = { x: box.x + box.width / 2, y: Number(text.getAttribute('y')) };
-        if (!i) x = point.x;
-        const head = attack.heads[i];
-        if (head && (head.sounding || head.midi !== undefined) && !attack.silent) heads.push(point);
-      });
-      if (elements.length) result.set(attack.id, { x, row, heads });
+  const beats = new Map<number, [string, PrintAnchor][]>();
+  for (const entry of anchors) {
+    const { measure } = entry[1];
+    if (!beats.has(measure)) beats.set(measure, []);
+    beats.get(measure).push(entry);
+  }
+  for (const page of publication.pages) {
+    for (const system of page.systems) {
+      // Publication translates its music group around the opening and any inserted cues.
+      const music = page.svg.querySelector<SVGGElement>('[data-system="' + system.measures[0] + '"] > g:last-child');
+      const offsetY = system.y / scale + (music?.transform.baseVal[0]?.matrix.f ?? 0);
+      const offsetX = system.x / scale;
+      let row: PlaybackRow;
+      for (const bar of system.measures) for (const [id, beat] of beats.get(bar) ?? []) {
+        row ??= { top: offsetY + beat.row.top, bottom: offsetY + beat.row.bottom, right: offsetX + beat.row.right, printedPage: page.svg, scale };
+        result.set(id, { row, x: offsetX + beat.x, heads: [] });
+      }
+    }
+    for (const head of page.heads.occurrences) {
+      if (head.reference || head.role === 'mark') continue;
+      const attack = attacks.get(head.sourceEvent), position = result.get(head.sourceEvent);
+      if (!attack || !position || typeof head.sourceHead !== 'number') continue;
+      const pitch = attack.heads[head.sourceHead];
+      if (attack.silent || !pitch || (!pitch.sounding && pitch.midi === undefined)) continue;
+      const b = head.bounds, point = { x: (b.x + b.w / 2) / scale, y: (b.y + b.h / 2) / scale };
+      if (!position.heads.length) position.x = point.x;
+      position.heads.push(point);
     }
   }
   return result;

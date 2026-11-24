@@ -66,14 +66,13 @@ export class PlaybackAnimation {
 
   /** Each preview page gets a sibling overlay. Its downloadable SVG stays untouched. */
   private rowLayer(row: PlaybackRow): SVGGElement {
-    const ink = row.printedMusic;
-    if (!ink) {
+    const paper = row.printedPage;
+    if (!paper) {
       if (!this.layer.parentNode) this.surface?.append(this.layer);
       return this.layer;
     }
     const mounted = this.printedRows.get(row);
     if (mounted) return mounted;
-    const paper = ink.ownerSVGElement;
     let overlay = this.pages.get(paper);
     if (!overlay) {
       const wrapper = document.createElement('div');
@@ -89,7 +88,7 @@ export class PlaybackAnimation {
       if (!this.layer.parentNode) overlay.append(this.layer);
     }
     // Keep separate row groups so a new line can begin to glow before the bar wraps.
-    const group = svg('g', { transform: [ink.parentElement, ink].map(g => g.getAttribute('transform') ?? '').join(' '),
+    const group = svg('g', { transform: 'scale(' + row.scale + ')',
       class: 'vextab-playback-ink', 'pointer-events': 'none' });
     overlay.append(group);
     this.printedRows.set(row, group);

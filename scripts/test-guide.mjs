@@ -140,7 +140,7 @@ export async function testGuide(page, dist) {
           width,
           counts: [...rows.values()],
           ossiaNotes: drawing.querySelectorAll('.vf-ossia .vf-stavenote').length,
-          pedals: drawing.querySelectorAll('.vf-pedal').length,
+          pedals: drawing.querySelectorAll('.vf-pedal-down').length,
           heading: drawing.querySelector('.vf-score-heading')?.textContent,
         };
       });
@@ -153,7 +153,7 @@ export async function testGuide(page, dist) {
       assert.ok(ballade.width < 900);
     }
     if (id === 'pocket-change') {
-      const mark = svg.locator('.vf-swing-mark');
+      const mark = svg.locator('.vf-score-opening');
       assert.equal(await mark.count(), 1);
       assert.equal(await mark.locator('.vf-stavenote').count(), 4);
       assert.equal(await mark.locator('.vf-beam').count(), 1);
@@ -175,11 +175,12 @@ export async function testGuide(page, dist) {
       const count = id === 'all-of-me' ? 17 : 16;
       assert.deepEqual(bars, Array.from({ length: count }, (_, i) => i + 1), id + ' exports every bar of the source page');
     }
-    if (id === 'pocket-change') assert.equal(await pages.locator('[data-system="1"] .vf-swing-mark').count(), 1);
+    if (id === 'pocket-change') assert.equal(await pages.locator('[data-system="1"] .vf-score-opening').count(), 1);
     if (id === 'chopin-ballade-no3') {
       assert.equal(await pages.count(), 1);
       assert.equal(await pages.locator('[data-system="1"] .vf-ossia .vf-stavenote').count(), 3);
-      assert.equal(await pages.locator('.vf-pedal').count(), 16);
+      assert.equal(await pages.locator('.vf-pedal-down').count(), 16);
+      assert.equal(await pages.locator('.vf-pedal-up').count(), 16);
       assert.equal(await pages.locator('[data-system="1"] .vf-score-heading').count(), 1);
       assert.deepEqual(await pages.locator('[data-system]').evaluateAll(rows => rows.map(row => row.dataset.system)),
         ['1', '7', '13', '19']);

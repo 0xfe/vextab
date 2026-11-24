@@ -88,6 +88,8 @@ export interface MeasureVoice {
   span: string;
   stem?: 'up' | 'down';
   beams: boolean;
+  /** Keep beams horizontal in this voice. */
+  flatBeams?: boolean;
   beamGroups?: { feather?: 'left' | 'right'; start: number; end: number; range: SourceRange }[];
   tabStems: boolean;
   tabDirection: number;

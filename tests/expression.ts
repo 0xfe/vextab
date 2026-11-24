@@ -23,7 +23,7 @@ QUnit.module('Expressive notation and performance', () => {
       const view = renderConductor(host(), score, { width: 640, renderer });
       const fragments = view.composition.sheet.getContinuousLayout().fragments;
       assert.deepEqual(fragments.filter(f => f.kind === 'crescendo').map(f => !!f.nienteTip), [true, false]);
-      const hyphens = fragments.filter(f => f.kind === 'hyphen');
+      const hyphens = fragments.filter(f => f.kind === 'hyphen' && f.part !== 'single');
       assert.deepEqual(hyphens.map(f => f.part), ['first', 'last']);
       const notes = view.navigation.events.map(e => view.composition.getNote(e.id));
       const word = notes[2].getModifiers().find((m): m is Annotation => m instanceof Annotation && m.getText() === 'e');

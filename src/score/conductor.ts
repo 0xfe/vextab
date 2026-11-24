@@ -80,7 +80,13 @@ export function conductorSpec(scores: ParsedScore[], specs: EasyScoreComposition
       v.notes.map(n => typeof n === 'object' && 'stave' in n && typeof n.stave === 'string' ? { ...n, stave: staveId(p, n.stave) } : n) })) })) })));
   const groups = specs.flatMap((spec, p) => spec.continuous.groups.map(g => ({ ...g, first: staveId(p, g.first), last: staveId(p, g.last) })));
   if (scores.length > 1) groups.push({ first: staves[0].id, last: staves[staves.length - 1].id, type: 'bracket', barlines: groups.length === 0 });
-  return { ...specs[0], staves, continuous: { ...specs[0].continuous, groups, boundaries: boundaries(scores, specs),
+  return { ...specs[0], staves, engraving: {
+    prepareNote(options, note, builder) { for (const spec of specs) spec.engraving?.prepareNote?.(options, note, builder); },
+    place(score, add) { for (const spec of specs) spec.engraving?.place?.(score, add); },
+  }, continuous: { ...specs[0].continuous, groups, boundaries: boundaries(scores, specs),
+    opening: { ...specs[0].continuous.opening, blocks: [...(specs[0].continuous.opening?.blocks ?? []),
+      ...specs.slice(1).flatMap(s => (s.continuous.opening?.blocks ?? []).filter(b => b.kind === 'diagrams'))] },
+    ossias: specs.flatMap(spec => spec.continuous.ossias ?? []),
     splitChords: specs.flatMap(spec => spec.continuous.splitChords ?? []), spans: specs.flatMap(spec => spec.continuous.spans) } };
 }
 

@@ -8,13 +8,8 @@ const positions = { left: Modifier.Position.LEFT, right: Modifier.Position.RIGHT
 
 /** Let the native modifier context reserve the side column alongside accidentals. */
 export function fingerNumber(label: string, position: ModifierPosition, stringNumber = false, tab = false) {
-  const modifier = stringNumber ? new StringNumber(label) : new FretHandFinger(label).setDrawCircle(tab && /^\d$/.test(label));
+  const modifier = stringNumber ? new StringNumber(label) : new FretHandFinger(label, { headPlacement: !tab }).setDrawCircle(tab && /^\d$/.test(label));
   modifier.setPosition(position);
-  if (!tab && !stringNumber && position === Modifier.Position.LEFT) {
-    // Reserve the padding before VexFlow places accidentals. Moving ink alone can overlap their column.
-    const padding = 4;
-    modifier.setWidth(modifier.getWidth() + 2 * padding).setOffsetX(padding);
-  }
   return modifier;
 }
 
@@ -35,4 +30,9 @@ export function attachHeadMarks(note: Note, index: number, marks: HeadMark[], ta
       note.addModifier(new Articulation(mark.articulation ?? 'a>').setPosition(pos), index);
     }
   }
+}
+
+/** One numbered fingering is supported directly on a typed pitched head. */
+export function typedFingering(marks: HeadMark[] = []) {
+  return marks.find(mark => mark.finger && /^\d$/.test(mark.finger) && !mark.stringNumber);
 }
