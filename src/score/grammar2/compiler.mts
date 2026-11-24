@@ -250,7 +250,7 @@ export function compile(source: string, capacity?: ScoreCapacity): ScoreV2 {
               if (beat[0] || bar === start) fail('bar-length', 'Each ending needs at least one complete bar', node.range, trace);
               return { first: start, last: bar - 1 };
             });
-            (result.repeats ??= []).push({ first, bodyEnd, endings, range: node.range });
+            (result.repeats ??= []).push({ first, bodyEnd, endings, ...(node.count && {count:node.count}), range: node.range });
             break;
           }
           case 'tuplet': {

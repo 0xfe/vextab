@@ -1,7 +1,7 @@
 // Translate resolved source events into editable VexTab grammar v2 within the public compiler limits.
 import type { Event, Input, Measure, Pitch } from './score.js';
 import { eventMarks, graceMark, headMarks, instrumentSettings, Names } from './write-expression.js';
-import { includesExtended, keys, minorKeys } from './score.js';
+import { groupStaves, includesExtended, keys, minorKeys } from './score.js';
 import { Time, zero } from './time.js';
 import type { ImportedDocument, TextRange } from './types.js';
 
@@ -125,7 +125,7 @@ class Writer {
   }
 
   /** Repeat marks surround the written body. An ending owns its own written measures. */
-  bar(bar: Measure, voice: string, structured: boolean, first: boolean) {
+  bar(bar: Measure, voice: string, structured: 'volta' | 'repeatCount' | undefined, first: boolean) {
     this.input.context = { part: bar.part, measure: bar.label, voice };
     const range = bar.range ?? this.range;
     const full = new Time(bar.beats, bar.beatType);
@@ -136,7 +136,7 @@ class Writer {
     if (bar.ending) this.text += ' ending ' + bar.ending + ' {';
     if (bar.repeatStart) {
       if (!structured && bar.repeatStart !== 2) this.input.fail('unsupported', 'A simple repeat requires two passes.', range);
-      this.text += structured ? ' volta ' + bar.repeatStart + ' {' : ' repeatStart';
+      this.text += structured ? ' ' + structured + ' ' + bar.repeatStart + ' {' : ' repeatStart';
     }
     if (bar.fragment) this.text += ' fragment {';
     this.rhythm = '';
@@ -173,7 +173,7 @@ class Writer {
 
 /** Validate consecutive alternatives before choosing printed repeat or structured volta syntax. */
 function repeatForms(bars: Measure[], input: Input, range: TextRange) {
-  const structured = new Set<number>();
+  const structured = new Map<number, 'volta' | 'repeatCount'>();
   let start = -1, alternatives = 0, expected = 0, activeEnding = false;
   for (const [i, bar] of bars.entries()) {
     const fail = () => input.fail('unsupported', 'Incomplete or overlapping repeat structure.', bar.range ?? range);
@@ -187,8 +187,13 @@ function repeatForms(bars: Measure[], input: Input, range: TextRange) {
       if (bars[i + 1]?.ending) {
         alternatives = bars[start].repeatStart!;
         expected = 1;
-        structured.add(start);
-        structured.add(i);
+        structured.set(start, 'volta');
+        structured.set(i, 'volta');
+      } else if (bars[start].repeatStart! > 2) {
+        if (input.options.targetProfile !== 'expressive') fail();
+        input.minimumVersion = '6.5.0';
+        structured.set(start, 'repeatCount');
+        structured.set(i, 'repeatCount');
       }
       start = -1;
     }
@@ -209,13 +214,7 @@ function repeatForms(bars: Measure[], input: Input, range: TextRange) {
 /** Keep every voice on the same grid, even when the source omits it for entire measures. */
 export function writeScore(bars: Measure[], input: Input, range: TextRange): ImportedDocument {
   if (!bars.length) input.fail('syntax', 'No measures in the selected score.', range);
-  const grouped = new Map<string, Measure[]>();
-  for (const bar of bars) {
-    const id = JSON.stringify([bar.part, bar.staff]);
-    const group = grouped.get(id);
-    if (group) group.push(bar);
-    else grouped.set(id, [bar]);
-  }
+  const grouped = groupStaves(bars);
   const first = bars[0], writer = new Writer(input, range);
   const meter = (bar: Measure) => bar.beats + '/' + bar.beatType;
   writer.text = 'meter ' + meter(first) + '\n';
@@ -286,7 +285,7 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
       writer.text += '  voice ' + voice.target + ' {';
       for (const [i, bar] of measures.entries()) {
         if (i) writer.text += '\n   ';
-        writer.bar(bar, voice.source, forms.has(i), !i);
+        writer.bar(bar, voice.source, forms.get(i), !i);
       }
       writer.text += ' }\n';
     }

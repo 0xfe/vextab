@@ -88,6 +88,18 @@ export class Measure {
   }
 }
 
+/** Group measures by original part and staff without changing score order or written labels. */
+export function groupStaves(bars: Measure[]) {
+  const grouped = new Map<string, Measure[]>();
+  for (const bar of bars) {
+    const id = JSON.stringify([bar.part, bar.staff]);
+    const group = grouped.get(id);
+    if (group) group.push(bar);
+    else grouped.set(id, [bar]);
+  }
+  return grouped;
+}
+
 /** Internal control flow distinguishes malformed input from programming errors. */
 class ImportFailure extends Error {}
 

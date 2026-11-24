@@ -1,5 +1,5 @@
 // Normalize partwise and timewise MusicXML to exact measured voices in source part order.
-import { includesExtended, Input, keys, minorKeys, Measure, meter, pitch } from './score.js';
+import { groupStaves, includesExtended, Input, keys, minorKeys, Measure, meter, pitch } from './score.js';
 import { Time, zero } from './time.js';
 import type { Event } from './score.js';
 import type { MusicXMLOptions, TextRange } from './types.js';
@@ -24,6 +24,7 @@ import {
   type InstrumentState,
 } from './musicxml-instruments.js';
 import type { Element } from './xml.js';
+import { barline, collectForm, normalizeForm, type Boundaries } from './musicxml-form.js';
 
 /** Independent state persists at bar boundaries even if divisions change within a measure. */
 interface PartState {
@@ -42,6 +43,8 @@ interface PartState {
   piano: boolean;
   ownership: Map<string, number>;
   pickup?: Time;
+  /** Some historical exporters split one numbered measure into, for example, "7" and "7a". */
+  shortBar?: { label: string; extent: Time; bars: Measure[] };
   reserved: Set<string>;
   lanes: Map<string, string>;
 }
@@ -376,7 +379,10 @@ function note(
   if ([p, unpitched, rest].filter(Boolean).length !== 1)
     input.fail('syntax', 'Expected one rest or pitch.', node.range);
   const drum = unpitched && drumHead(node, unpitched, state.instruments, staff, input);
-  if (rest) shape(rest, input, [], ['measure']);
+  if (rest) {
+    shape(rest, input, ['display-step', 'display-octave'], ['measure']);
+    if (rest.children.length) input.omit('Omitted vertical position of a written rest.', rest.range);
+  }
   const head = p ? notePitch(p, input) : drum?.display;
   const hidden = node.attributes['print-object'] === 'no';
   if (hidden && head)
@@ -394,7 +400,13 @@ function note(
     denominator,
     dots,
   };
-  const marks = one(node, 'notations', input, true);
+  // Exporters can split hidden tuplet brackets and visible slurs into separate notation groups.
+  const groupsOfMarks = node.children.filter((child) => child.name === 'notations');
+  for (const group of groupsOfMarks)
+    for (const name of Object.keys(group.attributes))
+      input.omit('Omitted notations group attribute ' + name + '.', group.range);
+  const marks = groupsOfMarks.length < 2 ? groupsOfMarks[0] :
+    {...groupsOfMarks[0], children: groupsOfMarks.flatMap(group => group.children)};
   if (expressive) {
     noteMarks(node, event, state.notation, input, !!drum, marks);
     if (drum) headDetail(event).drum = drum.id;
@@ -422,25 +434,6 @@ function note(
   if (hidden) addHiddenRest(bar, voice, event, input);
   else bar.add(voice, event, input);
   return { cursor: cursor.plus(duration), previous: hidden ? undefined : { event, voice } };
-}
-
-/** Decode repeat barlines at their declared measure edge. Keep other barline styles visible as losses. */
-function barline(node: Element, bars: Measure[], input: Input) {
-  shape(node, input, ['bar-style', 'repeat'], ['location']);
-  const repeat = one(node, 'repeat', input, true);
-  if (!repeat) {
-    if (scalar(node, 'bar-style', input, 'regular') !== 'regular') omit(node, input);
-    return;
-  }
-  const location = node.attributes.location ?? 'right';
-  const count = integer(repeat.attributes.times ?? '2', repeat.range, input);
-  if (count !== 2)
-    input.fail('unsupported', 'Repeat counts other than two require an explicit repeat block.', repeat.range);
-  for (const bar of bars) {
-    if (repeat.attributes.direction === 'forward' && location === 'left') bar.repeatStart = count;
-    else if (repeat.attributes.direction === 'backward' && location === 'right') bar.repeatEnd = true;
-    else input.fail('unsupported', 'Repeat at unsupported measure edge.', repeat.range);
-  }
 }
 
 /** Only an explicit playback offset on the direction displaces the associated sound. */
@@ -579,16 +572,11 @@ function measure(data: BarInput, state: PartState, index: number, input: Input) 
           input.fail('timing', 'Cursor crosses a mid-measure divisions change.', child.range);
         if (cursor.compare(zero) < 0)
           input.fail('timing', 'Backup crosses the beginning of the measure.', child.range);
-      } else if (child.name === 'barline') barline(child, bars, input);
+      } else if (child.name === 'barline') {
+        if (!child.children.some(mark => mark.name === 'repeat' || mark.name === 'ending')) barline(child, input);
+      }
       else if (['direction', 'print', 'harmony', 'sound'].includes(child.name)) {
         const sound = child.name === 'sound' ? child : child.children.find((c) => c.name === 'sound');
-        if (
-          sound &&
-          Object.keys(sound.attributes).some((k) =>
-            ['dacapo', 'dalsegno', 'tocoda', 'fine', 'forward-repeat'].includes(k),
-          )
-        )
-          input.fail('unsupported', 'Sound navigation changes the performed measure sequence.', sound.range);
         const expressiveDirection =
           input.options.targetProfile === 'expressive' && (child.name === 'direction' || child.name === 'harmony');
         if (expressiveDirection) addDirection(child, cursor, state.divisions, pending, input);
@@ -617,8 +605,15 @@ function measure(data: BarInput, state: PartState, index: number, input: Input) 
   const boundary = data.children.some(
     (c) =>
       c.name === 'barline' &&
-      c.children.some((s) => s.name === 'bar-style' && ['light-light', 'light-heavy'].includes(s.text.trim())),
+      c.children.some((s) => s.name === 'repeat' || s.name === 'bar-style' && ['light-light', 'light-heavy'].includes(s.text.trim())),
   );
+  const priorShort = state.shortBar;
+  const split = priorShort && label === priorShort.label + 'a' && extent.plus(priorShort.extent).compare(length) === 0;
+  if (split) for (const prior of priorShort.bars) {
+    prior.extent = priorShort.extent;
+    if (!prior.pickup) prior.fragment = priorShort.extent;
+  }
+  state.shortBar = extent.compare(length) < 0 ? {label, extent, bars} : undefined;
   for (const bar of bars) {
     bar.changes.sort((a, b) => a.at.compare(b.at));
     const writtenPositions = new Set<string>();
@@ -654,7 +649,7 @@ function measure(data: BarInput, state: PartState, index: number, input: Input) 
     bar.instrument = state.instruments.staffs[bar.staff - 1];
     bar.extent = length;
     const complement = boundary && state.pickup && extent.plus(state.pickup).compare(length) === 0;
-    if (extent.compare(length) < 0 && (node.attributes.implicit === 'yes' || complement)) {
+    if (extent.compare(length) < 0 && (node.attributes.implicit === 'yes' || (index === 0 && label === '0') || complement || split)) {
       bar.extent = extent;
       if (index === 0) {
         bar.pickup = extent;
@@ -769,11 +764,7 @@ function definitions(list: Element, input: Input) {
 }
 
 /** Read the state at the selection boundary in musical order, including measures with backups. */
-interface PrefixState {
-  repeatOpen: boolean;
-  endingOpen: boolean;
-}
-function carryMeasure(prior: BarInput, state: PartState, scope: PrefixState, input: Input) {
+function carryMeasure(prior: BarInput, state: PartState, input: Input) {
   let at = zero,
     divisions = state.divisions;
   const changes: { at: Time; node: Element }[] = [];
@@ -783,11 +774,6 @@ function carryMeasure(prior: BarInput, state: PartState, scope: PrefixState, inp
       const d = one(child, 'divisions', input, true);
       if (d) divisions = integer(d.text.trim(), d.range, input);
     }
-    if (child.name === 'barline')
-      for (const mark of child.children) {
-        if (mark.name === 'repeat') scope.repeatOpen = mark.attributes.direction === 'forward';
-        if (mark.name === 'ending') scope.endingOpen = mark.attributes.type === 'start';
-      }
     if (child.name === 'backup') at = at.minus(elapsed(child, divisions, input));
     if (
       child.name === 'forward' ||
@@ -797,11 +783,6 @@ function carryMeasure(prior: BarInput, state: PartState, scope: PrefixState, inp
   }
   for (const change of changes.sort((a, b) => a.at.compare(b.at))) attributes(change.node, state, zero, input);
 }
-function checkBoundary(scope: PrefixState, boundary: TextRange, input: Input) {
-  if (scope.repeatOpen || scope.endingOpen)
-    input.fail('unsupported', 'The selection begins inside a repeat or ending.', boundary);
-}
-
 /** Normalize a selected part and discard its XML elements before processing the next part. */
 function readPart(
   all: BarInput[],
@@ -820,9 +801,7 @@ function readPart(
     last > all.length
   )
     input.fail('syntax', 'Invalid inclusive one-based measure selection.', range);
-  const prefix = { repeatOpen: false, endingOpen: false };
-  for (let i = 0; i < first - 1; i++) carryMeasure(all[i], state, prefix, input);
-  checkBoundary(prefix, all[first - 1].measure.range, input);
+  for (let i = 0; i < first - 1; i++) carryMeasure(all[i], state, input);
   const records = all.slice(first - 1, last);
   if (!records.length) input.fail('syntax', 'Missing part ' + state.id + '.', range);
   for (const record of records)
@@ -831,14 +810,13 @@ function readPart(
   const partBars: Measure[] = [];
   for (let i = 0; i < records.length; i++) partBars.push(...measure(records[i], state, i, input));
 
-  return finishPart(partBars, state, selection, range, input);
+  return finishPart(partBars, state, range, input);
 }
 
 /** Pair boundaries on the complete selected voice after each XML measure has released its element tree. */
 function finishPart(
   partBars: Measure[],
   state: PartState,
-  selection: MusicXMLOptions['selection'],
   range: TextRange,
   input: Input,
 ) {
@@ -854,16 +832,6 @@ function finishPart(
     }
     finishNotation(partBars, state.notation, input);
   } else validateTies(partBars, input);
-  // An unpaired first backward repeat in MusicXML starts at the beginning of the work.
-  for (const staff of new Set(partBars.map((bar) => bar.staff))) {
-    const staffBars = partBars.filter((bar) => bar.staff === staff);
-    const first = staffBars.find((bar) => bar.repeatStart || bar.repeatEnd);
-    if (first?.repeatEnd && !first.repeatStart) {
-      if ((selection?.firstMeasure ?? 1) > 1)
-        input.fail('unsupported', 'Backward repeat reaches before the selected measures.', first.range ?? range);
-      staffBars[0].repeatStart = 2;
-    }
-  }
   return partBars;
 }
 
@@ -875,12 +843,13 @@ function readScore(
   resolved?: Map<string, Measure[]>,
   registry?: Map<string, PartState>,
   tempos: GlobalTempo[] = [],
+  form: Boundaries = new Map(),
 ): [Measure[], TextRange] {
   if (
     !['score-timewise', 'score-partwise'].includes(root.name) ||
-    !['3.1', '4.0'].includes(root.attributes.version)
+    !['3.0', '3.1', '4.0'].includes(root.attributes.version)
   )
-    input.fail('unsupported', 'Expected partwise or timewise MusicXML 3.1 or 4.0.', root.range);
+    input.fail('unsupported', 'Expected partwise or timewise MusicXML 3.0, 3.1 or 4.0.', root.range);
   const timewise = root.name === 'score-timewise';
   const structural = timewise ? 'measure' : 'part';
   shape(
@@ -923,6 +892,11 @@ function readScore(
   }
   const bars: Measure[] = [];
   for (const state of states.values()) {
+    for (const [index, record] of data.get(state.id)!.entries()) {
+      if (index + 1 > (selection?.lastMeasure ?? Infinity)) continue;
+      input.context = {part:state.id, measure:record.measure.attributes.number};
+      collectForm(record.children, index + 1, form, selection?.firstMeasure ?? 1, input);
+    }
     if (selection && includesExtended(input.options)) tempos.push(...scopeTempos(data.get(state.id)!, input));
     if (selection?.parts && !selection.parts.includes(state.id)) continue;
     bars.push(...readPart(data.get(state.id)!, state, input, selection, root.range));
@@ -936,12 +910,12 @@ interface StreamingPart {
   selected: boolean;
   divisions: number;
   count: number;
-  prefix: PrefixState;
   bars: Measure[];
 }
 
 /** Incrementally build partwise music while preserving the document offsets and root validation of timewise scores. */
 export function musicXMLReader(size: number, asText: boolean, input: Input, options: MusicXMLOptions) {
+  const form: Boundaries = new Map();
   const resolved = new Map<string, Measure[]>(),
     tempos: GlobalTempo[] = [];
   let registry: Map<string, PartState> | undefined;
@@ -969,20 +943,20 @@ export function musicXMLReader(size: number, asText: boolean, input: Input, opti
         selected: !selection?.parts || selection.parts.includes(id),
         divisions: 0,
         count: 0,
-        prefix: { repeatOpen: false, endingOpen: false },
         bars: [],
       };
     }
     current.count = ordinal;
     const record = { measure: node, children: node.children };
+    if (ordinal <= last) {
+      input.context = {part:current.state.id, measure:node.attributes.number};
+      collectForm(node.children, ordinal, form, first, input);
+    }
     if (selection && ordinal <= last)
       current.divisions = measureTempos(record, ordinal, current.divisions, tempos, input);
     if (!current.selected || ordinal > last) return;
-    if (ordinal < first) carryMeasure(record, current.state, current.prefix, input);
-    else {
-      if (ordinal === first) checkBoundary(current.prefix, node.range, input);
-      current.bars.push(...measure(record, current.state, ordinal - first, input));
-    }
+    if (ordinal < first) carryMeasure(record, current.state, input);
+    else current.bars.push(...measure(record, current.state, ordinal - first, input));
   }
   const tree = treeReader(
     size,
@@ -1007,7 +981,7 @@ export function musicXMLReader(size: number, asText: boolean, input: Input, opti
             input.fail('syntax', 'Invalid inclusive one-based measure selection.', node.range);
           resolved.set(
             id,
-            current.selected ? finishPart(current.bars, current.state, selection, node.range, input) : [],
+            current.selected ? finishPart(current.bars, current.state, node.range, input) : [],
           );
           current = undefined;
           return;
@@ -1015,6 +989,10 @@ export function musicXMLReader(size: number, asText: boolean, input: Input, opti
         if (!node.children.length) input.fail('syntax', 'Empty part.', node.range);
         const selected = !options.selection?.parts || options.selection.parts.includes(id);
         const records = node.children.map((measure) => ({ measure, children: measure.children }));
+        for (const [i, record] of records.entries()) if (i+1 <= last) {
+          input.context = {part:id, measure:record.measure.attributes.number};
+          collectForm(record.children, i+1, form, first, input);
+        }
         if (options.selection && includesExtended(options)) tempos.push(...scopeTempos(records, input));
         const bars = selected ? readPart(records, state!, input, options.selection, node.range) : [];
         resolved.set(id, bars);
@@ -1033,7 +1011,17 @@ export function musicXMLReader(size: number, asText: boolean, input: Input, opti
       root.name === 'score-partwise' ? resolved : undefined,
       registry,
       tempos,
+      form,
     );
+    if (form.size) {
+      const staves = groupStaves(bars);
+      const reference = staves.values().next().value!;
+      for (const staff of staves.values()) {
+        if (staff.length !== reference.length || staff.some((bar,i) => bar.extent.compare(reference[i].extent)))
+          input.fail('unsupported', 'Shared MusicXML repeats require coincident measure boundaries.', staff[0].range ?? range);
+        normalizeForm(staff, form, first, range, input);
+      }
+    }
     if (options.selection && includesExtended(options))
       applySelectionTempo(bars, tempos, options.selection.firstMeasure ?? 1, input);
     return [bars, range];

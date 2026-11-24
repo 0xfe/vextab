@@ -1,0 +1,62 @@
+{
+  "Echigo-Jishi": {
+    "scope": "complete work",
+    "exporter": "Finale v27.0 for Mac, MusicXML 4.0",
+    "status": "partial",
+    "parts": 1,
+    "barsPerPart": 47,
+    "writtenEvents": 169,
+    "pitched": 163,
+    "rests": 6,
+    "numberOfNonemptySyllables": 88,
+    "performedAttacks": 163,
+    "writtenReference": "ElementTree and exact fractions on the complete publisher XML",
+    "performanceReference": "Separate Mutopia LilyPond edition, complete published MIDI with 384 ticks per quarter",
+    "features": {"written onsets, durations and pitches": "match", "Unicode lyrics on notes and rests": "match", "tempo, MIDI pitches, attacks and releases": "match", "layout, secondary beams, empty lyrics and sound settings": "located losses"},
+    "mxl": "https://wpmedia.musicxml.com/wp-content/uploads/2021/06/Echigo-Jishi.mxl",
+    "plain": "https://wpmedia.musicxml.com/wp-content/uploads/2021/06/Echigo-Jishi.musicxml",
+    "midi": "https://www.mutopiaproject.org/ftp/Traditional/JPM096-Echigo-Jishi-hiragana/JPM096-Echigo-Jishi-hiragana.mid",
+    "edition": "https://wpmedia.musicxml.com/wp-content/uploads/2017/12/Echigo-Jishi.pdf"
+  },
+  "bwv269": {
+    "scope": "complete chorale, four SATB parts",
+    "exporter": "music21 v5.3.0 and MuseScore 2.1.0, MusicXML 3.0",
+    "status": "partial",
+    "parts": 4,
+    "barsPerPart": 24,
+    "writtenEvents": 229,
+    "performedAttacks": 302,
+    "nonemptySyllables": 52,
+    "visitsPerPart": 32,
+    "features": {"per-part written notes, onsets, durations, measure spans, lyrics": "match XML edition", "implicit repeat and unmarked pickup with split bars": "match", "all pitches, attacks and releases including ties": "match XML edition", "independent Humdrum edition": "300 attacks, two alto rearticulations differ", "engraving coordinates, text metadata and stem choices": "located losses"},
+    "edition": "https://github.com/craigsapp/bach-370-chorales/blob/a95574f9e93b4d72a96cd390a059df4f8471ddb6/kern/chor001.krn"
+  },
+  "Haydn Op. 76 No. 3": {
+    "scope": "complete four-movement OpenScore source, four parts",
+    "exporter": "MuseScore Studio 4.7.4, MusicXML 4.0",
+    "status": "failed",
+    "barsPerPart": 531,
+    "rawXmlNotesIncludingGracesAndChordHeads": 10593,
+    "features": {
+      "movement I, 128 written bars per part": "partial, four parts reparse, 247 performed visits per part including both pairs of alternative endings",
+      "movement II, 109 written bars per part": "partial, 1990 written attacks and rests verified by M3/M4",
+      "movement III or whole source": "located failure at Fine in violin I, measure label 56 (ordinal 295), later Menuetto D.C. in the same movement",
+      "movement IV selected by itself": "located failure at its implicit backward repeat, no declared forward boundary within the selection"
+    }
+  },
+  "Dichterliebe01": {
+    "scope": "complete song, Robert Schumann, Im wunderschönen Monat Mai",
+    "exporter": "Finale v27.0 for Mac, MusicXML 4.0",
+    "status": "failed",
+    "parts": 2,
+    "barsPerPart": 27,
+    "rawXmlNotesIncludingChordHeads": 478,
+    "features": {"held-out whole work": "located failure at the singer's whole-rest glyph in measure 26, two quarter notes elapsed in 2/4, no measure-rest attribute"}
+  },
+  "W3C navigation controls": {
+    "upstream": "https://github.com/w3c-cg/musicxmlTestSuite/tree/0618bdee1bfcb965ffdd9f4e52271c909d744fd1/xmlFiles",
+    "45a-SimpleRepeat.musicxml": {"status":"partial","written":2,"visits":[1,1,1,1,1,2],"sha256":"7274c51cb5dd284419210aec9c9e1ddd4afc8b15aeedc9447e6cf30828d6c101"},
+    "45b-RepeatWithAlternatives.musicxml": {"status":"partial","written":4,"visits":[1,2,1,3,4],"sha256":"2dd2a4bc1c25ad01e6e1856692ff01f06703204e1e27da9fbb48139f5a43c24c"},
+    "45d-Repeats-MultipleEndings.musicxml": {"status":"failed","written":12,"reason":"nonconsecutive pass list 3, 5, 7","sha256":"c720348fd52c2fa002e5f384565794e5cd42d25ade86dd4ec9c19883f713b2a7"}
+  }
+}

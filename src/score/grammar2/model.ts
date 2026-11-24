@@ -96,7 +96,7 @@ export type VoiceSpan = { name?: string } & (
   { kind: 'hammer' | 'pull' | 'slide'; from: HeadRef; to: HeadRef; range: TextRange });
 
 /** Measure numbers in written order. Endings identify their inclusive bar ranges. */
-export interface WrittenRepeat { first: number; bodyEnd: number; endings: { first: number; last: number }[]; range: TextRange }
+export interface WrittenRepeat { count?: number; first: number; bodyEnd: number; endings: { first: number; last: number }[]; range: TextRange }
 
 export interface TextBoundary { edge: 'start' | 'end'; text: string; glyph: boolean; range: TextRange; style: LaneStyle; bar: number }
 export type VoiceSettings = Pick<PartSettings, 'stem' | 'beam' | 'beamRests' | 'stemlets' | 'middleRests' | 'tabStems' | 'tabDirection'>;

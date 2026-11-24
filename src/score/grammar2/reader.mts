@@ -18,7 +18,7 @@ export type TimedNode = { range: TextRange } & (
 export type Node = TimedNode | { kind: import('./model.js').ExpressiveSpan; body: Node[]; niente?: boolean; feather?: 'left' | 'right'; strokes?: number; range: TextRange } | { range: TextRange } & (
   { kind: 'meter'; signature: WrittenMeter } | { kind: 'duration'; value: Fraction } | { kind: 'use'; name: string } |
   { kind: 'times'; count: number; body: Node[] } | { kind: 'tuplet'; scale: Fraction; body: Node[] } |
-  { kind: 'volta'; body: Node[]; endings: Node[][] } | { kind: '|'; closing?: string } |
+  { kind: 'volta'; count?: number; body: Node[]; endings: Node[][] } | { kind: '|'; closing?: string } |
   { kind: 'textBoundary'; boundary: Omit<TextBoundary, 'bar'> } | { kind: 'break' | 'repeatStart' } | { kind: 'mark'; text: string } |
   { kind: 'fragment' | 'slur' | 'beam' | 'palmMute' | 'transpose' | 'octave'; body: Node[]; side?: 'above' | 'below'; strings?: number[]; semitones?: number }
 );
@@ -675,17 +675,17 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
         const semitones = Number(value.text) * (token.text === 'octave' ? 12 : 1);
         if (!/^[+-]?\d{1,3}$/.test(value.text) || Math.abs(semitones) > 127) error('Invalid transposition interval', value);
         node = { kind: token.text, semitones, body: block(sequence), range: token.range };
-      } else if (token.text === 'volta') {
+      } else if (token.text === 'volta' || token.text === 'repeatCount') {
         take();
         const count = take();
         if (!/^(?:[2-9]|[12]\d|3[0-2])$/.test(count.text)) error('Expected 2 through 32 repeat passes', count);
         const body = block(sequence), endings: Node[][] = [];
-        for (let i = 1; i <= Number(count.text); i++) {
+        for (let i = 1; token.text === 'volta' && i <= Number(count.text); i++) {
           expect('ending');
           expect(String(i));
           endings.push(block(sequence));
         }
-        node = { kind: 'volta', body, endings, range: token.range };
+        node = { kind: 'volta', body, endings, ...(token.text === 'repeatCount' && {count: Number(count.text)}), range: token.range };
       } else if (token.text === 'times' || token.text === 'tuplet') {
         take();
         const parameter = take();

@@ -90,6 +90,7 @@ const ornaments = {
 function articulation(node: Element, e: Event, input: Input) {
   const kind = Object.hasOwn(art, node.name) ? art[node.name as keyof typeof art] : undefined;
   if (!kind) return omitElement(node, input);
+  if (!e.pitch) return input.omit('Omitted head articulation on a rest: ' + node.name + '.', node.range);
   const inverted = node.name === 'fermata' && node.attributes.type === 'inverted';
   if (node.text.trim() && node.text.trim() !== 'normal')
     input.omit('Omitted nonstandard articulation shape.', node.range);
@@ -110,8 +111,9 @@ function lyric(node: Element, e: Event, state: NotationState, input: Input) {
     input.fail('unsupported', 'Unknown syllabic value.', node.range);
   let syllable: Syllable | undefined;
   if (words.length) {
-    if (!e.pitch || words.some((w) => !w.text.trim()))
-      return input.omit('Empty lyric or lyric without a sounding attack.', node.range);
+    if (e.kind === 'skip' || words.some((w) => !w.text.trim()))
+      return input.omit('Empty lyric or lyric without a visible note or rest.', node.range);
+    if (e.kind === 'rest') input.minimumVersion = '6.5.0';
     const elisions = node.children.filter((c) => c.name === 'elision');
     for (const child of [...words, ...elisions]) attributesExcept(child, [], input);
     if (words.length > 2 || (words.length === 2 && elisions.length !== 1))
@@ -350,9 +352,38 @@ interface VoiceEvent {
 function context(input: Input, bar: Measure, voice: string) {
   input.context = { part: bar.part, measure: bar.label, voice };
 }
-/** Match ties by written pitch and string across changes of chord order. Resolve technical spans on that string. */
-function resolveHeads(events: VoiceEvent[], voice: string, state: NotationState, input: Input) {
-  const ties = new Map<string, { id: string; until: Time; range: TextRange }>();
+interface TiePoint {
+  detail: HeadDetail;
+  range: TextRange;
+  voice: string;
+  bar: Measure;
+}
+type TiePoints = Map<string, {starts: TiePoint[]; stops: TiePoint[]}>;
+
+/** Pair ties on the same voice first. A unique remaining pair can transfer to a different voice on the staff. */
+function connectTies(points: TiePoints, input: Input) {
+  for (const {starts, stops} of points.values()) {
+    const connect = (start: TiePoint, stop: TiePoint) => {
+      stop.detail.tieEndId = start.detail.tieStartId = 't' + start.range[0];
+      starts.splice(starts.indexOf(start), 1);
+      stops.splice(stops.indexOf(stop), 1);
+    };
+    for (const end of [...stops]) {
+      const candidates = starts.filter(s => s.voice === end.voice);
+      if (candidates.length === 1 && stops.filter(s => s.voice === end.voice).length === 1)
+        connect(candidates[0], end);
+    }
+    if (starts.length === 1 && stops.length === 1) connect(starts[0], stops[0]);
+    const missing = starts[0] ?? stops[0];
+    if (missing) {
+      context(input, missing.bar, missing.voice);
+      input.fail('unsupported', 'Tie lacks a unique adjacent matching head on the same staff.', missing.range);
+    }
+  }
+}
+
+/** Collect exact tie boundaries across voices and resolve technical spans on their own string. */
+function resolveHeads(events: VoiceEvent[], voice: string, state: NotationState, ties: TiePoints, input: Input) {
   const gestures = new Map<string, { index: number; detail: HeadDetail; range: TextRange }>();
   for (const [index, { event, at, bar }] of events.entries()) {
     context(input, bar, voice);
@@ -374,20 +405,15 @@ function resolveHeads(events: VoiceEvent[], voice: string, state: NotationState,
           );
       }
       if (!info) continue;
-      const key = JSON.stringify([p.step, p.alter, p.octave, detail.string, detail.drum]);
       const range = event.headRanges?.[i] ?? event.range;
-      if (info.stop) {
-        const prior = ties.get(key);
-        if (!prior || prior.until.compare(at))
-          input.fail('unsupported', 'Tie stop lacks an adjacent matching head.', range);
-        detail.tieEndId = prior!.id;
-        ties.delete(key);
+      function endpoint(position: Time, start: boolean) {
+        const key = JSON.stringify([bar.staff, position.numerator + '/' + position.denominator, p!.step, p!.alter, p!.octave, detail.string, detail.drum]);
+        const entry = ties.get(key) ?? {starts: [], stops: []};
+        if (!ties.has(key)) ties.set(key, entry);
+        entry[start ? 'starts' : 'stops'].push({detail, range, voice, bar});
       }
-      if (info.start) {
-        if (ties.has(key)) input.fail('unsupported', 'Ambiguous simultaneous tied heads.', range);
-        detail.tieStartId = 't' + range[0];
-        ties.set(key, { id: detail.tieStartId, until: at.plus(detail.releaseAfter ?? event.elapsed), range });
-      }
+      if (info.stop) endpoint(at, false);
+      if (info.start) endpoint(at.plus(detail.releaseAfter ?? event.elapsed), true);
       for (const mark of info.gestures) {
         const key = mark.kind + '/' + mark.number;
         if (mark.type === 'start' && !gestures.has(key)) gestures.set(key, { index, detail, range: mark.range });
@@ -411,8 +437,6 @@ function resolveHeads(events: VoiceEvent[], voice: string, state: NotationState,
       }
     }
   }
-  for (const tie of ties.values())
-    input.fail('unsupported', 'Head tie extends beyond the selected voice.', tie.range);
   for (const item of gestures.values()) input.omit('Fretted gesture lacks a following destination.', item.range);
 }
 /** Extenders count events in their own lyric lane, including intervening untexted notes. */
@@ -550,9 +574,11 @@ export function finishNotation(bars: Measure[], state: NotationState, input: Inp
     }
     staffs.set(bar.staff, start.plus(bar.extent));
   }
+  const ties: TiePoints = new Map();
   for (const { voice, events } of lanes.values()) {
-    resolveHeads(events, voice, state, input);
+    resolveHeads(events, voice, state, ties, input);
     resolveLyrics(events, voice, state, input);
     resolveSpans(events, voice, input);
   }
+  connectTies(ties, input);
 }

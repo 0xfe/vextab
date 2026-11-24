@@ -446,13 +446,25 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   /** Endings describe shared bar boundaries even when only one voice declares the repeat. */
   function addEndings(voice: ScoreVoice) {
     for (const repeat of voice.repeats ?? []) {
+      const sameBody = projected.repeats?.find(r => r.first === repeat.first && r.bodyEnd === repeat.bodyEnd);
+      if (sameBody && sameBody.count !== repeat.count)
+        throw new ScoreError('measure', 'Voices disagree about the repeat count', locate(repeat.range));
       if (!projected.repeats?.some(r => r.first === repeat.first && r.bodyEnd === repeat.bodyEnd &&
-        r.endings.length === repeat.endings.length && r.endings.every((e, i) => e.last === repeat.endings[i].last))) (projected.repeats ??= []).push(repeat);
+        r.count === repeat.count && r.endings.length === repeat.endings.length && r.endings.every((e, i) => e.last === repeat.endings[i].last))) (projected.repeats ??= []).push(repeat);
       const range = locate(repeat.range);
-      if (measures.slice(repeat.first - 1, repeat.endings[repeat.endings.length - 1].last).some(m => !m.voices[0].events.length))
+      const lastBar = repeat.endings[repeat.endings.length - 1]?.last ?? repeat.bodyEnd;
+      if (measures.slice(repeat.first - 1, lastBar).some(m => !m.voices[0].events.length))
         throw new ScoreError('measure', 'An ending needs sounding or resting measures', range);
       const first = measures[repeat.first - 1].voices[0];
       first.opening = { type: 'repeat-begin', range };
+      if (repeat.count) {
+        const last = measures[repeat.bodyEnd - 1].voices[0];
+        last.closing = {type: 'repeat-end', range};
+        const anchor = last.events[last.events.length - 1];
+        const text = '×' + repeat.count;
+        if (!anchor.labels?.some(label => label.text === text))
+          (anchor.labels ??= []).push({text, position: 'above', range});
+      }
       repeat.endings.forEach((ending, i) => {
         const voice = measures[ending.last - 1].voices[0];
         if (i < repeat.endings.length - 1) voice.closing = { type: 'repeat-end', range };

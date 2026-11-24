@@ -109,7 +109,7 @@ export function treeReader(
     if (selection && (excluded || prefix || ordinal > last)) {
       let drop = false;
       if (content) {
-        const carry = !excluded && prefix && ['attributes', 'barline'].includes(tag.name);
+        const carry = tag.name === 'barline' || ['direction', 'sound'].includes(tag.name) || (!excluded && prefix && tag.name === 'attributes');
         const clock =
           (keepClock || (!excluded && prefix)) &&
           ['attributes', 'note', 'forward', 'backup', 'direction', 'sound'].includes(tag.name);
@@ -155,8 +155,7 @@ export function treeReader(
         !current.children.some(
           (c) =>
             (c.name === 'attributes' && c.children.some((a) => a.name !== 'divisions')) ||
-            (c.name === 'sound' && c.attributes.tempo) ||
-            (c.name === 'direction' && c.children.some((s) => s.name === 'sound' && s.attributes.tempo)),
+            c.name === 'sound' || (c.name === 'direction' && c.children.some((s) => s.name === 'sound')),
         )
       ) {
         current.children = current.children.filter((c) => c.name === 'attributes' || c.name === 'barline');
