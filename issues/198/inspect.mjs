@@ -13,6 +13,7 @@ try {
   const context = await browser.newContext({ offline: true });
   const page = await context.newPage(), print = await context.newPage();
   await page.setContent('<div id="score"></div>');
+  await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
   await page.addScriptTag({ path: resolve(process.argv[2] ?? 'dist/main.dev.js') });
   await page.addScriptTag({ path: resolve('node_modules/opentype.js/dist/opentype.min.js') });
   const fonts = [];

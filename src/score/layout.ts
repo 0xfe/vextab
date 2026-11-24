@@ -12,8 +12,8 @@ import { inkStyle, setFretPaper } from './color';
 import { conductorSpec, instrumentComposition, instrumentLabel, selectedPart, type PartSelector } from './conductor';
 import { drawHeading, ossiaNotes } from './score-details';
 import { headingWeight, scoreMusicFont, scoreTextFont, withScoreFonts } from './engraving';
-import {
-  AlternatingTremolo, GraceNoteGroup, GraceTabNote, Ornament, TextDynamics, Clef, FretDiagram, Registry, VexFlow, Fraction, Annotation, Stroke, Vibrato, Articulation, Modifier, TabSlide, Barline, StaveNote, TabNote, TabTie, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, CanvasContext,
+import VexFlow, {
+  AlternatingTremolo, GraceNoteGroup, GraceTabNote, Ornament, TextDynamics, Clef, FretDiagram, Registry, Fraction, Annotation, Stroke, Vibrato, Articulation, Modifier, TabSlide, Barline, StaveNote, TabNote, TabTie, Factory, FrettedInstrument, Publication, ScoreNavigation, SVGContext, CanvasContext,
   type Note, type CompositionMark, type ContinuousSpan, type EasyScoreComposition, type EasyScoreCompositionSpec, type EasyScoreContent,
   type EasyScoreVoiceSpec, type NotationIdentity, type PublicationOptions, type ScoreHitRegion, type ScoreReadingEvent,
 } from 'vexflow';

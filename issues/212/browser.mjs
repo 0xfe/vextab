@@ -61,6 +61,7 @@ try {
         }, result.diagnostics.at(-1).message);
       } else {
         assert.ok(result.documents.length, JSON.stringify(result.diagnostics.at(-1)));
+        await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
         await page.addScriptTag({ path: resolve('dist/main.dev.js') });
         const proof = await page.evaluate(
           async ({ text, from, to, midi, before, id }) => {

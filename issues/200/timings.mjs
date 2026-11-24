@@ -13,6 +13,7 @@ try {
     const page = await browser.newPage({ viewport:{ width:1000, height:800 }, deviceScaleFactor:1 });
     try {
       await page.setContent('<style>*{box-sizing:content-box}body,#screen,#paper{background:white;margin:0}#screen{width:fit-content}</style><div id="screen"></div><div id="paper"></div><div id="embed"></div>');
+      await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
       await page.addScriptTag({ path:resolve(bundle) });
       await page.addScriptTag({ path:resolve('issues/195/browser.js') });
       const version = await page.evaluate(async () => {

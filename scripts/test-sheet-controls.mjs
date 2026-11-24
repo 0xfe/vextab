@@ -92,6 +92,7 @@ export async function testSheetControls(browser, dist) {
     await page.goto('about:blank');
     await page.setContent('<style>body { margin: 0; height: 1500px } #clip { margin: 80px 0 0 40px; border: 4px solid; width: 300px; height: 200px; overflow: auto } #score { width: 700px }</style>'
       + '<div id="clip"><div id="score" data-renderer="canvas" data-width="700" data-playback-controls="always" data-playback-size="large" data-playback-position="top-right" data-playback-inset="16"></div></div>');
+    await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
     await page.addScriptTag({ path: resolve(dist, 'vextab-div.js') });
     await page.evaluate(() => {
       const host = document.querySelector('#score');

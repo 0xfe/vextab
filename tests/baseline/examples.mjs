@@ -85,10 +85,11 @@ async function serveExamples(page, dist, candidate) {
   const content = new Map();
   for (const [path] of pages) content.set('/' + path, await readFile(candidate ? path : resolve('tests/baseline/v1', path), 'utf8'));
   for (const path of ['doc/style.css', 'doc/vextab.css']) content.set('/' + path, await readFile(path, 'utf8'));
+  if (candidate) content.set('/dist/vexflow.js', await readFile('node_modules/vexflow/build/cjs/vexflow.js', 'utf8'));
   for (const [requested, bundle] of [
     ['main.dev.js', 'main.prod.js'], ['div.dev.js', 'div.prod.js'], ['vextab-div.js', 'vextab-div.js'],
   ]) {
-    let script = await readFile(resolve(dist, bundle), 'utf8');
+    let script = await readFile(resolve(dist, candidate ? 'vextab.js' : bundle), 'utf8');
     if (!candidate && requested === 'main.dev.js') script += '\n;(' + observeApiSource.toString() + ')();';
     content.set('/dist/' + requested, script);
   }

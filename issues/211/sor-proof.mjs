@@ -18,6 +18,7 @@ const browser = await chromium.launch(process.env.CHROME_BIN ? {executablePath:p
 try {
   const page = await browser.newPage({viewport:{width:1040,height:860}});
   await page.setContent('<style>body{margin:24px;background:white;color:#222;font:16px system-ui}h1{font-size:22px}h2{font-size:16px;margin:12px 0 0}.edition{width:970px}#host{width:970px}aside{position:absolute;left:-200vw}</style><h1>Fernando Sor · Op. 35, No. 22</h1><main></main><h2>VexTab · notation and tablature</h2><div id="host"></div><aside></aside>');
+  await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
   await page.addScriptTag({path:resolve('dist/main.dev.js')});
   const proof = await page.evaluate(({original, text}) => {
     if (original) {

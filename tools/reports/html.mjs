@@ -69,7 +69,7 @@ export function summary(r) {
     committed: r.committed,
     loc: r.source.files.reduce((n, f) => n + f.code, 0),
     lines: r.coverage.total.lines,
-    core: r.bundles.find((b) => b.name === 'main.prod.js').gzip,
+    core: r.bundles[0].gzip,
   };
 }
 

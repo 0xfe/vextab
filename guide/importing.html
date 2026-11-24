@@ -51,7 +51,7 @@ staff {
   <p>Change the last <code>&lt;step&gt;A&lt;/step&gt;</code> to B and convert again. The second pitch moves up and its onset stays three eighths into the bar. A <code>&lt;chord/&gt;</code> note instead joins the previous attack. In scores with several voices, <code>&lt;backup&gt;</code> and <code>&lt;forward&gt;</code> move the source cursor.</p>
   <h3>Select a part or open a compressed score</h3>
   <p>In a long work, select the original part ID and inclusive measure positions. Position 1 means the first measure in the file, even if its printed number is 0. Compressed <code>.mxl</code> files have a separate asynchronous reader that opens the archive manifest. Pass it the original bytes.</p>
-  <figure class="code-sample"><figcaption>Opening a compressed MusicXML file</figcaption><pre data-language="javascript"><code>import { importMXL } from 'vextab-import/mxl';
+  <figure class="code-sample"><figcaption>Opening a compressed MusicXML file</figcaption><pre data-language="javascript"><code>import { importMXL } from 'vextab/import/mxl';
 
 const bytes = new Uint8Array(await file.arrayBuffer());
 const result = await importMXL(bytes, {
@@ -64,28 +64,21 @@ const result = await importMXL(bytes, {
 <section id="integration">
   <h2>Use an importer in your application</h2>
   <p>Load the reader for the file your user chose. Conversion produces editable VexTab text in Node or a browser worker. Your application can save that text, validate it without a browser, or open it in an editor.</p>
-  <h3>Install the separate package</h3>
-  <p>From a VexTab source checkout, build a local importer tarball. Install the resulting file in your application alongside a compatible VexTab host.</p>
-  <figure class="code-sample"><figcaption>Building and installing the importer</figcaption><pre data-language="bash"><code>cd importer
-npm ci
-npm pack --pack-destination /tmp
-
-cd /path/to/your/application
-npm install /tmp/vextab-import-0.1.0-alpha.6.tgz
-</code></pre></figure>
-  <p>The public entries are <code>vextab-import/lilypond</code>, <code>vextab-import/musicxml</code> and <code>vextab-import/mxl</code>. Only MXL needs archive decompression. A dynamic import lets an editor wait until someone actually opens a source file.</p>
+  <h3>Install VexTab</h3>
+  <figure class="code-sample"><figcaption>In your application directory</figcaption><pre data-language="bash"><code>npm install vextab@7</code></pre></figure>
+  <p>The public entries are <code>vextab/import/lilypond</code>, <code>vextab/import/musicxml</code> and <code>vextab/import/mxl</code>. Only MXL needs archive decompression. A dynamic import lets an editor wait until someone actually opens a source file.</p>
   <figure class="code-sample"><figcaption>Choosing a reader by file type</figcaption><pre data-language="javascript"><code>async function readScore(file) {
   const options = { filename: file.name, targetProfile: 'expressive' };
   if (/\.ly$/i.test(file.name)) {
-    const { importLilyPond } = await import('vextab-import/lilypond');
+    const { importLilyPond } = await import('vextab/import/lilypond');
     return importLilyPond(await file.text(), options);
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (/\.mxl$/i.test(file.name)) {
-    const { importMXL } = await import('vextab-import/mxl');
+    const { importMXL } = await import('vextab/import/mxl');
     return importMXL(bytes, options);
   }
-  const { importMusicXML } = await import('vextab-import/musicxml');
+  const { importMusicXML } = await import('vextab/import/musicxml');
   return importMusicXML(bytes, options);
 }</code></pre></figure>
   <h3>Open the generated text</h3>

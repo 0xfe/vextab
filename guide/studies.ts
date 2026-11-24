@@ -1,6 +1,6 @@
 // Mount the canonical M3 examples in the responsive editor and keep a draft for each study.
 import { highlightEditor } from './highlight';
-import Div from '../src/div';
+import { Div } from '../src/browser';
 import { scoreOptions } from './audio';
 import guitar from './scores/drop-d-turnaround.vextab';
 import lead from './scores/slow-river.vextab';

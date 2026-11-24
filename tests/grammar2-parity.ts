@@ -1,6 +1,6 @@
 // Exercise the historical score families through the public grammar v2 browser APIs.
 import { Artist, parseScore, renderScore, renderScorePart, Vex, VexTab } from '../src/browser';
-import { Clef, VexFlow } from 'vexflow';
+import VexFlow, { Clef } from 'vexflow';
 import { textInk } from './svg-ink';
 import { scorePerformance } from '../src/playback/performance';
 

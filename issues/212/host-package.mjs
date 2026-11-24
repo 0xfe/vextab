@@ -1,54 +1,45 @@
-// Inspect the packed VexTab host and every public executable entry's production source map.
+// Verify the actual release inventory and the module graph of each packed entry.
 import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const root = process.argv[2];
-assert.ok(root && process.argv[3], 'Pass the unpacked vextab package directory and its webpack stats JSON');
 const manifest = JSON.parse(await readFile(join(root, 'package.json')));
-const forbidden = /(?:^|\/)(?:vextab-import|importers?|gallery|saxes|xmlchars)(?:\/|$)/;
 const files = await readdir(root, { recursive: true });
-assert.ok(
-  files.every((file) => !forbidden.test(file)),
-  'Unexpected importer payload in host',
-);
-for (const dependencies of [
-  manifest.dependencies,
-  manifest.optionalDependencies,
-  manifest.peerDependencies,
-]) {
-  assert.ok(Object.keys(dependencies ?? {}).every((name) => !forbidden.test(name)));
+for (const entry of Object.values(manifest.exports)) {
+  for (const file of typeof entry === 'string' ? [entry] : Object.values(entry)) assert.ok(files.includes(file.slice(2)), file);
 }
-// Include split production chunks in addition to the parser, player, browser and editor exports.
-const maps = files.filter((file) => file.startsWith('dist/') && /(?:\.prod\.js|\.cjs)\.map$/.test(file));
-for (const [id, entry] of Object.entries(manifest.exports)) {
-  if (id === './*') continue;
-  assert.ok(maps.includes(entry.default.slice(2) + '.map'), id + ' has no production source map');
+assert.deepEqual(Object.keys(manifest.dependencies), ['vexflow']);
+assert.ok(files.includes('dist/runtime/THIRD-PARTY.txt'));
+assert.ok(files.every(file => !file.endsWith('.map') && !file.endsWith('.dev.js')));
+for (const file of files) assert.ok(file.startsWith('dist/runtime/') ||
+  ['package.json', 'README.md', 'LICENSE', 'SECURITY.md', 'dist', 'dist/runtime', 'scripts', 'scripts/migrate-score.mjs'].includes(file), file);
+const { modules, browser } = JSON.parse(await readFile('build/runtime-stats.json'));
+assert.ok(browser.outputs['dist/runtime/vextab.js'].bytes < 400_000, 'Browser script size budget exceeded');
+for (const graph of [modules, browser]) {
+  assert.ok(Object.keys(graph.inputs).every(file => !file.includes('node_modules/vexflow/')));
+  for (const file of Object.keys(graph.outputs)) assert.ok(files.includes(file), file);
 }
-// Generated font chunks have no source maps. Inspect webpack's full module graph as well.
-const stats = JSON.parse(await readFile(process.argv[3], 'utf8'));
-const modules = [];
-function visit(module) {
-  for (const id of [module.name, module.identifier, module.nameForCondition]) {
-    if (id) assert.ok(!forbidden.test(id), 'Importer code in host module ' + id);
+// Follow shared chunks so an accidental import from the renderer is caught after splitting.
+function inputsOf(graph, entry) {
+  const inputs = new Set(), seen = new Set();
+  function visit(file) {
+    if (seen.has(file)) return;
+    seen.add(file);
+    const output = graph.outputs[file];
+    for (const input of Object.keys(output.inputs)) inputs.add(input);
+    for (const dependency of output.imports) if (!dependency.external) visit(dependency.path);
   }
-  if (module.identifier) modules.push(module.identifier);
-  for (const child of [...(module.modules ?? []), ...(module.children ?? [])]) visit(child);
+  visit(entry);
+  return [...inputs];
 }
-for (const module of stats.modules) visit(module);
-assert.ok(modules.some(id => id.includes('src/score/')), 'Incomplete host module inventory');
-assert.ok(modules.some(id => id.includes('node_modules/vexflow/')), 'Missing bundled engraving engine');
-for (const file of files.filter(file => /^dist\/[^/]+\.prod\.js$/.test(file))) {
-  assert.ok(stats.assets.some(asset => asset.name === file.slice(5)), 'Unaccounted production asset ' + file);
+for (const entry of ['auto', 'browser', 'parse', 'performer']) {
+  assert.ok(inputsOf(modules, 'dist/runtime/' + entry + '.mjs').every(file => !file.startsWith('importer/')));
 }
-for (const path of maps) {
-  const map = JSON.parse(await readFile(join(root, path)));
-  assert.ok(map.sources.length, path);
-  assert.ok(
-    map.sources.every((source) => !forbidden.test(source)),
-    path + ' contains an importer module',
-  );
+assert.ok(inputsOf(browser, 'dist/runtime/vextab.js').every(file => !file.startsWith('importer/')));
+for (const name of ['musicxml', 'mxl', 'lilypond']) {
+  const inputs = inputsOf(modules, 'dist/runtime/import/' + name + '.mjs');
+  assert.ok(inputs.includes('importer/src/' + name + '.ts'));
+  assert.ok(inputs.every(file => !file.startsWith('src/')));
 }
-console.log(
-  'Host package has no importer files or dependencies across ' + maps.length + ' production bundle maps and ' + modules.length + ' module records.',
-);
+console.log('Verified production entries, shared chunks and external VexFlow in the packed release.');

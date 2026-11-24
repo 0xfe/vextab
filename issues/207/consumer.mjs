@@ -1,4 +1,4 @@
-// Install the actual importer tarball, check all three public entries, and engrave worker output with VexTab.
+// Check all three import paths in the packed VexTab runtime and engrave worker output.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -12,22 +12,14 @@ import { parseScore } from 'vextab/parse';
 const out = resolve('build/importer-consumer');
 await mkdir(out, { recursive: true });
 const consumer = await mkdtemp(join(tmpdir(), 'vextab-import-consumer-'));
-// Exercise the real release lifecycle once. The minimum-Node job consumes the prebuilt distribution.
-const packFlags = process.argv.includes('--node-only') ? ['--ignore-scripts'] : [];
-const [pack] = JSON.parse(execFileSync('npm', ['pack', '--json', ...packFlags, '--pack-destination', out],
-  { cwd: 'importer', encoding: 'utf8' }));
-assert.ok(pack.size <= 96 * 1024 && pack.unpackedSize <= 320 * 1024);
-// Inspect the package npm actually produced, including generated declarations and license notices.
-const manifest = JSON.parse(await readFile('importer/package.json', 'utf8'));
-assert.deepEqual(pack.files.map(file => file.path).sort(),
-  [...manifest.files, 'README.md', 'package.json'].sort());
-assert.deepEqual(Object.keys(manifest.dependencies ?? {}), []);
-assert.deepEqual(Object.keys(manifest.optionalDependencies ?? {}), []);
-assert.deepEqual(Object.keys(manifest.peerDependencies ?? {}), []);
+// CI has already built the runtime, including when it switches to the minimum Node version.
+const [pack] = JSON.parse(execFileSync('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', out], { encoding: 'utf8' }));
+// The 7.0 tarball is about 300 KB. Allow room for growth while catching duplicated bundles.
+assert.ok(pack.size < 400_000 && pack.unpackedSize < 1_200_000, 'Runtime package size budget exceeded');
 await writeFile(join(consumer, 'package.json'), '{"type":"module","private":true}');
-execFileSync('npm', ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', join(out, pack.filename)], { cwd: consumer });
+execFileSync('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', join(out, pack.filename)], { cwd: consumer });
 const use = createRequire(join(consumer, 'package.json'));
-assert.throws(() => use.resolve('vexflow'), { code: 'MODULE_NOT_FOUND' });
+
 const fixture = name => readFile('importer/test/voices.' + name, 'utf8');
 const expected = await fixture('vextab');
 const inputs = { musicxml: await fixture('musicxml'), lilypond: await fixture('ly') };
@@ -44,11 +36,11 @@ function checkScore(text) {
   ]);
 }
 
-let types = 'import { importMXL } from "vextab-import/mxl";\n'
+let types = 'import { importMXL } from "vextab/import/mxl";\n'
   + 'const compressed = await importMXL(new Uint8Array(), {targetProfile:"expressive", capacity:"large", selection:{parts:["P1"]}}); if (compressed.status === "exact") '
   + 'compressed.documents[0].text.toUpperCase();\n';
 for (const [entry, input] of Object.entries(inputs)) {
-  const id = 'vextab-import/' + entry, name = names[entry];
+  const id = 'vextab/import/' + entry, name = names[entry];
   checkScore(use(id)[name](input).documents[0].text);
   const program = 'import {' + name + '} from ' + JSON.stringify(id) + '; console.log(JSON.stringify(' + name + '(process.argv[1])))';
   const result = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', program, input], { cwd: consumer, encoding: 'utf8' }));
@@ -59,14 +51,14 @@ for (const [entry, input] of Object.entries(inputs)) {
 }
 // Exercise asynchronous inflation via ESM on the installed subpath in a clean process.
 const mxlProgram = `import { readFileSync } from 'node:fs';
-  import { importMXL } from 'vextab-import/mxl';
+  import { importMXL } from 'vextab/import/mxl';
   const result = await importMXL(readFileSync(process.argv[1]));
   console.log(JSON.stringify(result));`;
 const mxlResult = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', mxlProgram,
   resolve('issues/208/fixtures/deflated.mxl')], { cwd: consumer, encoding: 'utf8' }));
 assert.ok(mxlResult.documents.length, JSON.stringify(mxlResult.diagnostics));
 assert.ok(parseScore(mxlResult.documents[0].text).parts.length);
-const viaRequire = await use('vextab-import/mxl').importMXL(await readFile('issues/208/fixtures/deflated.mxl'));
+const viaRequire = await use('vextab/import/mxl').importMXL(await readFile('issues/208/fixtures/deflated.mxl'));
 assert.deepEqual(viaRequire, mxlResult);
 await writeFile(join(consumer, 'check.ts'), types);
 execFileSync(resolve('node_modules/.bin/tsc'), ['--noEmit', '--strict', '--target', 'es2022',
@@ -81,16 +73,20 @@ async function checkBrowser() {
     // Serve only the installed ESM modules and their worker callers, with no network fallback.
     await context.route('**/*', route => {
       const path = new URL(route.request().url()).pathname;
+      if (/^\/shared\/[A-Z0-9]+\.mjs$/.test(path)) return route.fulfill({
+        contentType: 'text/javascript', path: join(use.resolve('vextab/import/mxl'), '../..', path.slice(1)),
+      });
       if (path === '/') return route.fulfill({ contentType: 'text/html', body:
         '<style>body{background:white;color:#222;font:16px system-ui;margin:20px}h2{font-size:17px}</style><main></main>' });
       for (const [entry, name] of Object.entries(names)) {
-        if (path === '/' + entry + '.js') return route.fulfill({ contentType: 'text/javascript', path: use.resolve('vextab-import/' + entry) });
+        if (path === '/' + entry + '.js') return route.fulfill({ contentType: 'text/javascript', path: use.resolve('vextab/import/' + entry) });
         if (path === '/' + entry + '-worker.js') return route.fulfill({ contentType: 'text/javascript',
           body: 'import {' + name + '} from "./' + entry + '.js"; onmessage = ({data}) => postMessage(' + name + '(data.input,data.options));' });
       }
       return route.abort();
     });
     await page.goto('http://consumer.test/');
+    await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
     await page.addScriptTag({ path: resolve('dist/main.dev.js') });
     // Each worker loads only its installed entry, including when it emits the newer grammar.
     async function importInWorker(entry, input, options) {

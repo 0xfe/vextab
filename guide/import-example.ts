@@ -2,14 +2,16 @@
 import type Div from '../src/div';
 import type { ImportOptions, ImportResult } from '../importer/src/types';
 
+// Empty for checkout builds that serve the local readers.
+declare const __IMPORT_CDN: string;
 export const hostedGuide = 'https://vexflow.com/vextab/guide/';
 export const hasImportAssets = document.documentElement.dataset.importingAssets === 'true' && location.protocol !== 'file:';
 
 type Reader = (source: string, options: ImportOptions) => ImportResult;
 
-/** Each optional ESM file is served beside the guide. The host's bundles contain no source reader. */
+/** Fetch the selected reader on first use from the release CDN or local development server. */
 async function loadReader(format: 'lilypond' | 'musicxml'): Promise<Reader> {
-  const url = new URL('importers/' + format + '.js', document.baseURI);
+  const url = new URL((__IMPORT_CDN || '../runtime/import/') + format + '.mjs', document.baseURI);
   const entry = await import(/* webpackIgnore: true */ url.href);
   return format === 'lilypond' ? entry.importLilyPond : entry.importMusicXML;
 }

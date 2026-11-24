@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { readFile, readdir } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { chromium } from 'playwright-core';
+import manifest from '../package.json' with { type: 'json' };
 import { testGuideImporting } from './test-guide-importing.mjs';
 
 const directory = 'build/guide';
@@ -39,8 +40,26 @@ let browser;
 try {
   browser = await chromium.launch(process.env.CHROME_BIN ? { executablePath: process.env.CHROME_BIN } : { channel: 'chrome' });
   const page = await browser.newPage({ viewport: { width: 1170, height: 850 } });
+  // Before publication, serve the candidate bytes at the exact CDN URLs emitted by the site.
+  if (!external) {
+    const runtime = 'https://cdn.jsdelivr.net/npm/vextab@' + manifest.version + '/dist/runtime/';
+    const files = new Set(await readdir('dist/runtime', { recursive: true }));
+    await page.route(runtime + '**', route => {
+      const file = route.request().url().slice(runtime.length);
+      if (!files.has(file)) return route.abort();
+      return route.fulfill({ path: join('dist/runtime', file), contentType: 'text/javascript',
+        headers: { 'Access-Control-Allow-Origin': '*' } });
+    });
+    await page.route('https://cdn.jsdelivr.net/npm/vexflow@' + manifest.dependencies.vexflow + '/build/cjs/vexflow.js',
+      route => route.fulfill({ path: 'node_modules/vexflow/build/cjs/vexflow.js', contentType: 'text/javascript' }));
+  }
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  // Both standalone lessons run their own inline integrations against the public script API.
+  for (const lesson of ['triplets', 'shared-score']) {
+    await page.goto(new URL(lesson + '.html', base).href);
+    await page.locator('#score svg .vf-stavenote').first().waitFor();
+  }
   await testGuideImporting(page, new URL('index.html', base).href, true);
   const gallery = new URL('gallery/index.html', base);
   await page.goto(gallery.href);

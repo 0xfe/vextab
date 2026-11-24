@@ -1,7 +1,7 @@
 // Install the actual tarball in a fresh project and compile a typed browser consumer against it.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -20,11 +20,14 @@ const converted = execFileSync(join(cwd, 'node_modules/.bin/vextab-migrate'), []
   cwd, input: 'stave time=1/4\nnotes :q C/4 |', encoding: 'utf8',
 });
 assert.equal(consumerRequire('vextab/parse').parseScore(converted).measureCount, 1);
-const lesson = await readFile(join(cwd, 'node_modules/vextab/dist/guide/scores/first-fret.vextab'), 'utf8');
+const lesson = await readFile(resolve('guide/scores/first-fret.vextab'), 'utf8');
 const previewCheck = "if (parseScore('staff { :w C4 | }').measureCount !== 1) process.exit(1)";
 execFileSync(process.execPath, ['--input-type=module','-e',"import {parseScore} from 'vextab/parse';" + previewCheck], { cwd });
 execFileSync(process.execPath, ['-e',"const {parseScore}=require('vextab/parse');" + previewCheck], { cwd });
 await writeFile(join(cwd,'consumer.ts'), `import { Div, parseScore, renderScore, renderScorePart, type ScoreV2, type PlaybackPlugin, createSpessaSynthPlayback } from 'vextab/browser';
+import VexFlow from 'vexflow';
+import { Vex } from 'vextab/browser';
+if (Vex !== VexFlow) throw Error('Multiple engraving engines');
 const host = document.getElementById('manual')!;
 const score: ScoreV2 = parseScore('meter 1/4 staff { C4 | }');
 const preview: ScoreV2 = parseScore('meter common staff { :w C4 | text words { :h "One" "two" | } }');
@@ -70,5 +73,35 @@ try {
   assert.equal(await page.locator('#embed textarea').evaluate(el => el.value.slice(el.selectionStart, el.selectionEnd)), '0/1');
   assert.match(await page.locator('#manual').getAttribute('data-event'), /C 4/);
   assert.equal(await page.locator('.vextab-auto svg').count(), 0);
+  const embed = await browser.newPage();
+  const script = join(cwd, 'node_modules/vextab/dist/runtime/vextab.js');
+  const errors = [];
+  embed.on('pageerror', error => errors.push(error.message));
+  await embed.addScriptTag({ path: script });
+  assert.match(errors.pop() ?? '', /Load vexflow.js before vextab.js/);
+  await embed.goto('about:blank');
+  await embed.setContent('<div class="vextab-auto">staff { :w G4 | }</div><div class="vex-tabdiv">staff { :w C4 | }</div>');
+  await embed.addScriptTag({ path: consumerRequire.resolve('vexflow') });
+  await embed.addScriptTag({ path: script });
+  await embed.locator('.vextab-auto svg .vf-stavenote').waitFor();
+  await embed.locator('.vex-tabdiv canvas').waitFor();
+  assert.ok(await embed.evaluate(() => window.vextab.Vex === window.VexFlow && window.VexTabDiv.Flow === window.VexFlow));
+  // Exercise every authored guide score with only the two installed scripts, including print fonts.
+  const fixtures = new URL('../guide/scores/', import.meta.url);
+  for (const name of (await readdir(fixtures)).filter(file => file.endsWith('.vextab'))) {
+    const source = await readFile(new URL(name, fixtures), 'utf8');
+    const result = await embed.evaluate(source => {
+      const host = document.createElement('div');
+      document.body.replaceChildren(host);
+      const score = window.vextab.parseScore(source);
+      window.vextab.renderConductor(host, score, { width: score.layout?.width ?? 960 });
+      const screen = host.querySelectorAll('svg .vf-stave').length;
+      host.replaceChildren();
+      const { publication } = window.vextab.renderEdition(host, score, 'conductor', {});
+      return { screen, pages: publication.pages.length, print: host.querySelectorAll('svg .vf-stave').length };
+    }, source);
+    assert.ok(result.screen && result.pages && result.print, name);
+  }
+  assert.deepEqual(errors, []);
 } finally { await browser.close(); }
 console.log('Installed consumer passed CommonJS, ESM, strict TypeScript, bundling and manual browser mounting.');

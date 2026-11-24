@@ -1,4 +1,5 @@
 // Script-tag entry. Automatically mount modern VexTab embeds after the document is ready.
+import $ from 'zepto-webpack';
 import Div from './div';
 export * from './browser';
 export { default } from './div';

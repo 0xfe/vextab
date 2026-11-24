@@ -1,5 +1,6 @@
 {
   "name": "vextab-import",
+  "private": true,
   "version": "0.1.0-alpha.6",
   "description": "Convert MusicXML and LilyPond source to editable VexTab",
   "license": "LicenseRef-LICENSE",

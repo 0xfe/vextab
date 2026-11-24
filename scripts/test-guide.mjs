@@ -1,4 +1,4 @@
-// Exercise the packaged guide as a reader, editor, keyboard user and returning author.
+// Exercise the checkout guide as a reader, editor, keyboard user and returning author.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';

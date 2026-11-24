@@ -22,6 +22,7 @@ async function openScore(title) {
   const page = await browser.newPage({viewport: {width: 1120, height: 760}});
   await page.setContent('<style>body{margin:20px;color:#222;background:white;font:16px system-ui}h2{font-size:20px;margin:0 0 12px}</style><h2></h2><main></main><aside></aside>');
   await page.locator('h2').evaluate((node, label) => { node.textContent = label; }, title);
+  await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
   await page.addScriptTag({path: resolve('dist/main.dev.js')});
   return page;
 }

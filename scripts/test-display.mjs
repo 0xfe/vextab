@@ -55,6 +55,7 @@ export async function testDisplay(browser, dist, engine) {
     }
     await page.goto('about:blank');
     await page.setContent('<div class="vex-tabdiv" width="400">play { tempo 120 } meter 2/4 guitar { view tab 0/1 12/2 | }</div>');
+    await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
     await page.addScriptTag({ path: resolve(dist, 'vextab-div.js') });
     const canvas = page.locator('.vex-tabdiv canvas');
     await canvas.waitFor();

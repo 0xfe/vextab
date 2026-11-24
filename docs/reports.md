@@ -37,7 +37,7 @@ Each measurement runs in a detached local clone. It uses the revision’s source
 | Complexity | Classic ESLint cyclomatic complexity per library function, including field initializers. Each row links to source. |
 | Dead-code candidates | TypeScript unused and unreachable diagnostics in library source. Public consumers can use exported declarations. |
 | Browser coverage | Istanbul statements, compiled lines, branches and functions in the revision’s QUnit suite. Every first-party TS implementation under `src/` starts with zero hits. The generated Jison parser and separate integration suites are outside the denominator. |
-| Bundle size | Raw, gzip level 9 and Brotli bytes of the fresh production `main.prod.js` and `div.prod.js` bundles. |
+| Bundle size | Raw, gzip level 9 and Brotli bytes of the production browser script (`vextab.js` in 7.x, `main.prod.js` and `div.prod.js` in older releases). From 7.x, VexFlow is a separate download. |
 | Dependencies | Root manifest ranges and lockfile versions, licenses, install locations and duplicate versions. |
 
 ## What's New?

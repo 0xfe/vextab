@@ -1,9 +1,8 @@
 // The guide, demo library and playground share one warmed renderer and one catalogue of scores.
-import Div from '../src/div';
-import Player from '../src/player';
+import { Div } from '../src/browser';
 import { previousDraft } from './drafts';
 import { scoreOptions } from './audio';
-import { renderEdition, renderScorePart, type Part } from '../src/score/layout';
+import { Player, renderEdition, renderScorePart, type Part } from '../src/browser';
 import type { PartSelector } from '../src/score/conductor';
 import type { ScoreV2 } from '../src/score/grammar2/model';
 import { lessons, type Lesson } from './catalog';

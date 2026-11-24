@@ -1,5 +1,5 @@
 // Exercise aligned piano timing, clefs and connectors, independent hand parts, and located diagnostics.
-import { VexFlow, type StaveNote } from 'vexflow';
+import VexFlow, { type StaveNote } from 'vexflow';
 import consolation from '../guide/scores/liszt-consolation-no5.vextab';
 import { Div, parseScore, renderScore, renderScorePart } from '../src/browser';
 import { projectScoreV2 } from '../src/score/grammar2/project';

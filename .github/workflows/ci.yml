@@ -67,7 +67,7 @@ jobs:
           npm audit --prefix tools
           npm audit --prefix importer
           npm audit --prefix issues/206
-      - run: npm run build -- --json "$RUNNER_TEMP/vextab-webpack.json"
+      - run: npm run build
       - name: Pack the distribution and test the files consumers receive
         env:
           CHROME_BIN: /usr/bin/google-chrome
@@ -75,11 +75,11 @@ jobs:
           mkdir "$RUNNER_TEMP/assets" "$RUNNER_TEMP/unpacked"
           npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/assets"
           tar -xzf "$RUNNER_TEMP"/assets/*.tgz -C "$RUNNER_TEMP/unpacked"
-          node issues/212/host-package.mjs "$RUNNER_TEMP/unpacked/package" "$RUNNER_TEMP/vextab-webpack.json"
-          node scripts/test-browser.mjs "$RUNNER_TEMP/unpacked/package/dist"
+          node issues/212/host-package.mjs "$RUNNER_TEMP/unpacked/package"
+          node scripts/test-browser.mjs
           node scripts/test-consumer.mjs "$RUNNER_TEMP"/assets/*.tgz
-          npm run test:baseline -- "$RUNNER_TEMP/unpacked/package/dist"
-      - name: Check the packed guide in Firefox and WebKit
+          npm run test:baseline -- "$RUNNER_TEMP/unpacked/package/dist/runtime"
+      - name: Check the local guide in Firefox and WebKit
         if: github.ref_type == 'tag' || github.base_ref == 'grammar-v2-development' || github.head_ref == 'grammar-v2-development'
         run: |
           npx --no-install playwright-core install --with-deps firefox webkit
@@ -88,8 +88,8 @@ jobs:
           pulseaudio --start --exit-idle-time=-1
           pactl load-module module-null-sink sink_name=vextab
           pactl set-default-sink vextab
-          VEXTAB_BROWSER=firefox node scripts/test-browser.mjs "$RUNNER_TEMP/unpacked/package/dist"
-          VEXTAB_BROWSER=webkit node scripts/test-browser.mjs "$RUNNER_TEMP/unpacked/package/dist"
+          VEXTAB_BROWSER=firefox node scripts/test-browser.mjs
+          VEXTAB_BROWSER=webkit node scripts/test-browser.mjs
       - name: Use the importer's minimum supported Node version
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -100,8 +100,8 @@ jobs:
       - name: Prepare standalone downloads and checksums
         if: github.ref_type == 'tag'
         run: |
-          cd "$RUNNER_TEMP/unpacked/package/dist"
-          cp main.prod.js div.dev.js div.prod.js div.prod.js.map vextab-div.js vextab.css "$RUNNER_TEMP/assets/"
+          cd "$RUNNER_TEMP/unpacked/package/dist/runtime"
+          cp vextab.js vextab.css "$RUNNER_TEMP/assets/"
           cd "$RUNNER_TEMP/assets"
           sha256sum * > SHA256SUMS
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

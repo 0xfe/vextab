@@ -1,5 +1,5 @@
 // Interpret flow commands at musical boundaries and on their preceding attack.
-import { FrettedInstrument, VexFlow, KeyManager, type TimedStringBend, type FretDiagramSpec } from 'vexflow';
+import VexFlow, { FrettedInstrument, KeyManager, type TimedStringBend, type FretDiagramSpec } from 'vexflow';
 import { isScoreColor } from './color';
 import type { Attack, Measure, MeasureVoice, ScoreSpan, StaffState } from './model';
 import { ScoreError, type SourceRange } from './source';

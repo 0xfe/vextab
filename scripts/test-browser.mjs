@@ -1,7 +1,6 @@
 // Run the built QUnit suite and check the interactive playground in the selected browser.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import manifest from '../package.json' with { type: 'json' };
 import { resolve } from 'node:path';
@@ -12,9 +11,9 @@ import { testGuideAudio } from './test-guide-audio.mjs';
 import { testGuide } from './test-guide.mjs';
 import { chromium, firefox, webkit } from 'playwright-core';
 
-// Release checks point the same suite at the files extracted from the package.
+// The checkout site contains the demos and QUnit fixtures for this suite.
 const dist = resolve(process.argv[2] ?? 'dist');
-// The same packaged parser is usable by a command-line validator without a browser.
+// Exercise the local parser used by the browser test build.
 const { parseScore, ScoreV2Error } = createRequire(import.meta.url)(resolve(dist, 'score.cjs'));
 execFileSync(process.execPath, ['experiments/grammarv2/compiler.test.mjs', resolve(dist, 'score.cjs')], { stdio: 'inherit' });
 const sample = 'meter 1/4\r\nstaff { C4 | }';
@@ -57,7 +56,7 @@ try {
   await page.locator('#blah').fill('staff { :w C4 | }');
   await page.waitForFunction(() => !document.querySelector('#boo').hasAttribute('data-preview-stale'));
 
-  // Exercise the packaged guide with keyboard editing, both views, and a mobile viewport.
+  // Exercise the checkout guide with keyboard editing, both views, and a mobile viewport.
   await page.goto(pathToFileURL(resolve(dist, 'guide/triplets.html')).href);
   const source = page.getByRole('textbox', { name: 'VexTab source' });
   const toggle = page.getByRole('checkbox', { name: 'Show standard notation' });
@@ -169,6 +168,7 @@ try {
       data-layout="" layout="flow">stave time=1/4\nnotes C/4</div>
     <div id="default" class="vex-tabdiv">guitar { :w 3/2 | }</div>
     <div id="invalid" class="vextab-auto" data-show-errors="true">guitar { use missing }</div>`);
+  await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
   await page.addScriptTag({ path: resolve(dist, 'vextab-div.js') });
   await page.locator('#legacy canvas').waitFor();
   assert.equal(await page.locator('#legacy').getAttribute('renderer'), 'canvas');
@@ -198,25 +198,6 @@ try {
   await page.waitForFunction(() => Number(document.querySelector('#flow svg').getAttribute('width')) === 360);
   assert.equal(Number(await page.locator('#fixed-width svg').getAttribute('width')), 300);
   assert.equal(await page.locator('#fixed-width .vex-canvas').evaluate(el => getComputedStyle(el).overflowX), 'auto');
-  if (process.argv[2]) {
-    // Exercise both public production entry points directly from the packed distribution.
-    const packed = JSON.parse(await readFile(resolve(dist, '../package.json'), 'utf8'));
-    assert.equal(packed.name, manifest.name);
-    assert.equal(packed.version, manifest.version);
-    await page.goto('about:blank');
-    await page.setContent('<div id="score"></div>');
-    await page.addScriptTag({ path: resolve(dist, '..', packed.main) });
-    await page.evaluate(() => {
-      const score = window.vextab.parseScore('guitar { fragment { 5/2 } }');
-      window.vextab.renderScore(document.querySelector('#score'), score, { width: 500 });
-    });
-    await page.locator('#score svg path').first().waitFor({ state: 'attached' });
-
-    await page.goto('about:blank');
-    await page.setContent('<div class="vextab-auto">guitar { fragment { 5/2 } }</div>');
-    await page.addScriptTag({ path: resolve(dist, 'div.prod.js') });
-    await page.locator('.vextab-auto svg path').first().waitFor({ state: 'attached' });
-  }
   assert.deepEqual(errors, []);
 } finally {
   await browser.close();

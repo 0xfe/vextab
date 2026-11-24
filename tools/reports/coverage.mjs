@@ -20,12 +20,15 @@ export async function browserCoverage(checkout, files) {
   const qunit = classic
     ? createRequire(import.meta.url).resolve('qunit-classic')
     : createRequire(join(checkout, 'package.json')).resolve('qunit');
+  const manifest = JSON.parse(await readFile(join(checkout, 'package.json')));
+  const engine = manifest.main?.startsWith('./dist/runtime/') ? '<script src="vexflow.js"></script>' : '';
+  if (engine) await writeFile(join(directory, 'vexflow.js'), await readFile(join(checkout, 'node_modules/vexflow/build/cjs/vexflow.js')));
   const file = join(directory, 'report-tests.html');
   // Retain the original body fixtures, with the corresponding QUnit runner provided locally.
   const body = source.slice(source.indexOf('<body>')).replace('</body>', '<script src="tests.dev.js"></script></body>');
   await writeFile(
     file,
-    '<!doctype html><meta charset="utf-8"><script src="qunit.js"></script>' +
+    '<!doctype html><meta charset="utf-8"><script src="qunit.js"></script>' + engine +
       '<script>QUnit.on("runEnd", r => window.reportCounts = r.testCounts)</script>' +
       body,
   );

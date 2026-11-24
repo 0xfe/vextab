@@ -5,6 +5,7 @@
  * live-editing and error display support.
  */
 
+import $ from 'zepto-webpack';
 import Vex from './vexflow';
 import Artist from './artist';
 import VexTab from './vextab';

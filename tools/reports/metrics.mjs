@@ -152,8 +152,10 @@ export function dependencies(pkg, lock) {
 /** Compress the exact bytes of each published browser entry, excluding its external source map. */
 export async function bundleSizes(checkout) {
   const rows = [];
-  for (const name of ['main.prod.js', 'div.prod.js']) {
-    const bytes = await readFile(join(checkout, 'dist', name));
+  const manifest = JSON.parse(await readFile(join(checkout, 'package.json')));
+  const modern = manifest.main?.startsWith('./dist/runtime/');
+  for (const name of modern ? ['vextab.js'] : ['main.prod.js', 'div.prod.js']) {
+    const bytes = await readFile(join(checkout, modern ? 'dist/runtime' : 'dist', name));
     rows.push({
       name,
       raw: bytes.length,

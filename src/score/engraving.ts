@@ -1,5 +1,5 @@
 // Select bundled engraving faces for a single synchronous VexFlow rendering pass.
-import { VexFlow } from 'vexflow';
+import VexFlow from 'vexflow';
 import type { ScoreLayout } from './grammar2/model';
 
 /** Default face for VexTab's fixed-layout renderer. */

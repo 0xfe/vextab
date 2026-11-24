@@ -25,20 +25,21 @@ The development server watches the source. Open the [project index](http://127.0
 | Command | Output |
 | --- | --- |
 | `npm run build-dev` | Readable browser bundles and test pages in `dist/` |
-| `npm run build` | Type declarations in `dist/types/`, minified bundles, source maps, and the legacy `vextab-div.js` entry point |
+| `npm run build:runtime` | Build the publishable modules, browser script, declarations and licenses into a clean `dist/runtime/` |
+| `npm run build` | Build the runtime and the local production demos, tests and guide |
 | `npm run watch` | Development bundles rebuilt on source changes |
 | `npm run clean` | Removes the generated `dist/` directory |
 
 ## Importer guide and gallery
 
-Use `npm start` and open the [importing lessons](http://127.0.0.1:9005/guide/index.html#importing) or the [13-score gallery](http://127.0.0.1:9005/guide/gallery/index.html). The first build installs the importer’s locked build tools and downloads six checksum-pinned editions. Later builds reuse the archives in `build/import-guide/sources/`. Restart the server after changing the importer or the gallery generator.
+Use `npm start` and open the [importing lessons](http://127.0.0.1:9005/guide/index.html#importing) or the [13-score gallery](http://127.0.0.1:9005/guide/gallery/index.html). The first build builds the public importer modules and downloads six checksum-pinned editions. Later builds reuse the archives in `build/import-guide/sources/`. Restart the server after changing the importer or the gallery generator.
 
 | Command | Purpose |
 | --- | --- |
-| `npm run guide:build` | Build the complete static site in `build/guide/`, including download links, separate format readers and license notices |
+| `npm run guide:build` | Build the complete static site in `build/guide/`, including download links, pinned CDN imports and license notices |
 | `npm run test:import-guide` | Build the site and test the lessons, nested gallery links, conversions and downloads in Chrome |
 | `npm test --prefix importer` | Build and test the converter on its own after `npm ci --prefix importer` |
-| `(cd importer && npm pack)` | Create the independent importer package |
+| `npm pack` | Build the runtime tarball with all three typed importer entries |
 
 Add editions in [the gallery builder](../guide/gallery/build.mjs). Record the upstream revision, checksum and license, retain special selection options, and include an opening score image. After the guide build, run `node scripts/test-import-guide.mjs --previews` to regenerate the images from the rendered scores. [Per-format qualification and reference suites](../issues/212/README.md) · [Importer package API](../importer/README.md)
 
@@ -63,7 +64,7 @@ npm run guide:upload
 
 The destination is `gs://vexflow.com/vextab/guide/`, served at **https://vexflow.com/vextab/guide/**. Each upload builds in a fresh staging directory, uploads hashed bundles, the on-demand SoundFont instrument and print chunks first, then publishes the standalone lessons and the guide index. It verifies the uploaded HTML against the build. For a staging bucket, pass `-- --destination=gs://your-bucket/vextab/guide/`.
 
-The web guide loads Tangerine Bold from Google Fonts. To preview the standalone site offline, run `npm run guide:build` and open `build/guide/index.html`. The offline guide uses the included font and license.
+The web guide loads Tangerine Bold from Google Fonts. The hosted guide uses versioned jsDelivr scripts for VexFlow and VexTab. Publish the npm tarball and verify both CDN URLs before uploading the guide. To preview offline, run `npm run build-dev` and open `dist/guide/index.html`. The offline guide uses the included font and license.
 
 ## Test locally
 
@@ -91,13 +92,13 @@ The browser suite checks real SoundFont output from the offline guide. Keep the 
 
 Edit tutorial chapters and their fixed-layout examples in `doc/tutorial.html`. The historical page and the guide share this source. Edit feature chapters in `guide/features.html`, API entries in `guide/reference.html`, and study descriptions and the notation glossary in `guide/catalog.ts`. Preserve the chapter and entry IDs for incoming links. Use stable score IDs for guide, playground and original-source links. Edit the study music in `guide/scores/*.vextab`. The guide and engraving tests import the same files. The suite exercises both scores at 360 and 960 CSS pixels, including a return to the starting width after fonts load. [Guitar and lead-sheet coverage](vt5-m3.md)
 
-To test the package a consumer will download, build a tarball and run the browser suite against its extracted files. GitHub Actions performs this check on pushes, pull requests, and release tags.
+To test the package a consumer will download, build a tarball and run the consumer tests against that archive. GitHub Actions performs this check on pushes, pull requests, and release tags.
 
 ```sh
 package_dir=$(mktemp -d)
 npm pack --pack-destination "$package_dir"
 tar -xzf "$package_dir"/vextab-*.tgz -C "$package_dir"
-node scripts/test-browser.mjs "$package_dir/package/dist"
+node issues/212/host-package.mjs "$package_dir/package"
 node scripts/test-consumer.mjs "$package_dir"/vextab-*.tgz
 ```
 
@@ -133,7 +134,7 @@ gh run list --workflow ci.yml --branch "$release_version"
 gh release view "$release_version"
 ```
 
-The tag workflow checks that the tag matches the package version. It tests the packed files, computes SHA-256 checksums, and publishes the tarball, standalone browser bundles, legacy stylesheet, and `SHA256SUMS` to [GitHub Releases](https://github.com/0xfe/vextab/releases). The automatic source archives contain the source checkout. Download the attached `.tgz` for the built npm package.
+The tag workflow checks that the tag matches the package version. It tests the packed files, computes SHA-256 checksums, and publishes the tarball, browser script, legacy stylesheet, and `SHA256SUMS` to [GitHub Releases](https://github.com/0xfe/vextab/releases). The automatic source archives contain the source checkout. Download the attached `.tgz` for the built npm package.
 
 ## Publish the verified tarball to npm
 
@@ -153,9 +154,10 @@ npm publish "$download_dir/vextab-$release_version.tgz" --access public --tag la
 npm view "vextab@$release_version" version dist.integrity
 ```
 
-## Prepare the separate importer release
+## Upgrading browser embeds from 6.x
 
-1. Run the hosted guide checks, the corpus comparisons and the packed importer consumer checks from CI on the proposed release commit. Verify both `package.json` versions and the host version that each target profile advertises. [Importer qualification](../issues/212/README.md)
-2. Build the importer tarball from `importer/` on that commit. Check its file list, TypeScript declarations, per-format gzip sizes, license notices and SHA-512 integrity. The host’s numeric tag workflow publishes only host release assets.
-3. Before publishing the importer for the first time, confirm registry ownership of `vextab-import`, choose its dist-tag, and record the verified importer tarball and checksum as separate release assets. An alpha should use an explicit prerelease dist-tag such as `next`.
-4. Once the intended host and importer are published, install them together by exact registry versions in an empty project. Convert one source of each format, render and play both results, then publish the guide built from the same commit.
+Replace the old `main.prod.js`, `div.prod.js` or `vextab-div.js` tag with the two pinned jsDelivr tags in the [README](../README.md). The full VexFlow build includes the fonts for both Bravura and Petaluma. Keep both files locally for offline embeds. The VexTab script mounts modern and legacy markup and exposes both browser globals.
+
+npm callers can keep using `vextab/browser`, `vextab/auto`, `vextab/parse` and `vextab/performer`. Switch imports from `vextab-import/<format>` to `vextab/import/<format>`. VexTab 7 installs VexFlow once as its runtime dependency. Use `import VexFlow from "vexflow"` in an ES module. An app that mixes CommonJS and ES modules can use the `Vex` export from `vextab/browser` to access the exact engine instance used for engraving. Readers can run in Node and browser workers without loading the engraving engine.
+
+Development bundles, source maps, tests and examples live in the source checkout. To debug the shipped runtime, check out its release tag, run `npm ci` and `npm run build:runtime -- --sourcemap`. A normal `npm pack` rebuilds the production files.

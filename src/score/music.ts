@@ -1,5 +1,5 @@
 // Musical rules shared by the fixed Artist and the source-based score compiler.
-import { Bend, KeyManager, Music, Tuning, VexFlow } from 'vexflow';
+import VexFlow, { Bend, KeyManager, Music, Tuning } from 'vexflow';
 import type { Prebend } from './model';
 
 /** Preserve enharmonic octave crossings such as B sharp and C flat. */

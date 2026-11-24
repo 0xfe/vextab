@@ -1,5 +1,5 @@
 // Read the guide's bundled chapters and mount only the examples on the open page.
-import Div from '../src/div';
+import { Div } from '../src/browser';
 import { previousDraft } from './drafts';
 import { scoreOptions } from './audio';
 import { highlightCode, highlightEditor } from './highlight';

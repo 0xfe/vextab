@@ -4,7 +4,7 @@ import { readFile, realpath } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { text } from 'node:stream/consumers';
 import { Music } from 'vexflow';
-import { parseScore } from '../dist/score.cjs';
+import { parseScore } from 'vextab/parse';
 
 const quote = JSON.stringify;
 const pitch = value => value[0].toUpperCase() + value.slice(1).replace('/', '');

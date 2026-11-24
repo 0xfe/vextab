@@ -9,6 +9,7 @@ const browser = await chromium.launch(process.env.CHROME_BIN ? { executablePath:
 try {
   const page = await browser.newPage({ viewport: { width: 1000, height: 1000 }, deviceScaleFactor: 1 });
   await page.setContent('<style>body{margin:0;background:white}</style><div id="score"></div>');
+  await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
   await page.addScriptTag({ path: resolve(process.argv[2] ?? 'dist/main.dev.js') });
   await page.evaluate(async () => { await window.vextab.Vex.Flow.loadFonts('Bravura','Academico'); await document.fonts.ready; });
   const before = process.argv.includes('--before');

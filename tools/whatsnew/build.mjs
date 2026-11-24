@@ -58,7 +58,10 @@ async function endpoint(browser, stage, hash, current) {
     const page = await browser.newPage({ viewport: { width: 900, height: 600 }, deviceScaleFactor: 1 });
     try {
       await page.setContent('<style>body{margin:0;background:white}#score{width:820px}</style><div id="score"></div>');
-      await page.addScriptTag({ path: join(checkout, 'dist/main.prod.js') });
+      const manifest = JSON.parse(await readFile(join(checkout, 'package.json')));
+      const split = manifest.main?.startsWith('./dist/runtime/');
+      if (split) await page.addScriptTag({ path: join(checkout, 'node_modules/vexflow/build/cjs/vexflow.js') });
+      await page.addScriptTag({ path: join(checkout, split ? 'dist/runtime/vextab.js' : 'dist/main.prod.js') });
       const examples = comparisons.map(([id, name, source]) => ({
         id,
         name,
@@ -132,7 +135,7 @@ try {
         hash,
         tests: r.coverage.tests.passed,
         lines: r.coverage.total.lines,
-        gzip: r.bundles.find((bundle) => bundle.name === 'main.prod.js').gzip,
+        gzip: r.bundles[0].gzip,
       });
     }
     await refreshArchive(reports);

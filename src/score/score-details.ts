@@ -1,5 +1,5 @@
 // Describe score opening text and cue-sized alternate readings for both backends.
-import { KeyManager, Ornament, VexFlow, type RenderContext } from 'vexflow';
+import VexFlow, { KeyManager, Ornament, type RenderContext } from 'vexflow';
 import type { ScoreHeading } from './grammar2/model';
 import type { Attack } from './model';
 import { headingWeight, scoreMusicFont, scoreTextFont } from './engraving';

@@ -22,6 +22,7 @@ try {
     await page.setContent(
       '<style>body{background:white}section{width:1120px}</style><section></section><aside></aside>',
     );
+    await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
     await page.addScriptTag({ path: resolve('dist/main.dev.js') });
     const observed = await page.evaluate(
       ({ source, needle }) => {

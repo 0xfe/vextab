@@ -1,4 +1,4 @@
-// Build the guide's editable gallery from checksum-pinned editions and the isolated importer package.
+// Build the guide's editable gallery from checksum-pinned editions and the public VexTab format readers.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
@@ -23,18 +23,6 @@ async function archive(filename, url, digest) {
   await writeFile(temporary, bytes);
   await rename(temporary, file);
   return file;
-}
-
-/** Host package builds skip this step. Only the web guide needs the three browser readers. */
-async function buildReaders() {
-  const lock = await readFile('importer/package-lock.json', 'utf8');
-  const stamp = 'importer/node_modules/.guide-package-lock';
-  const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  if (!existsSync(stamp) || await readFile(stamp, 'utf8') !== lock) {
-    execFileSync(npm, ['ci', '--prefix', 'importer', '--ignore-scripts'], { stdio: 'inherit' });
-    await writeFile(stamp, lock);
-  }
-  execFileSync(npm, ['run', 'build', '--prefix', 'importer'], { stdio: 'inherit' });
 }
 
 /** Collect the source editions and the selection required to open each complete movement. */
@@ -101,9 +89,10 @@ function page(title, body) {
 
 /** Convert each score and stage the downloads and page templates for the guide build. */
 export async function prepareGallery() {
-  await buildReaders();
-  const { importLilyPond } = await import('../../importer/dist/lilypond.js');
-  const { importMXL } = await import('../../importer/dist/mxl.js');
+  // The gallery exercises the exact modules shipped to npm users.
+  execFileSync(process.execPath, ['scripts/build-runtime.mjs'], { stdio: 'inherit' });
+  const { importLilyPond } = await import('../../dist/runtime/import/lilypond.mjs');
+  const { importMXL } = await import('../../dist/runtime/import/mxl.mjs');
   const rows = await repertoire();
   await mkdir(out, { recursive: true });
   for (const name of ['gallery.css', 'viewer.js'])

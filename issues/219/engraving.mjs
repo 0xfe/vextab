@@ -21,6 +21,7 @@ try {
     const page = await browser.newPage({ viewport: { width: 1150, height: 850 } });
     try {
       await page.setContent('<style>body,svg{background:white}body{margin:14px}</style><main></main><aside></aside>');
+      await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
       await page.addScriptTag({ path: resolve('dist/main.dev.js') });
       const proof = await page.evaluate(({ text, part, bar, index }) => {
         const api = window.vextab, model = api.parseScore(text, { capacity: 'large' });

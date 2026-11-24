@@ -1,4 +1,5 @@
 // Preserve the original VexTabDiv global and markup using the current renderer.
+import $ from 'zepto-webpack';
 import './auto';
 import ModernDiv, { type DivOptions, Artist, Vex, VexTab, usesFlowLayout } from './div';
 

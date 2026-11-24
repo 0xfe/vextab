@@ -46,7 +46,8 @@ async function examine(browser, dist, label, expectedFlow) {
   const page = await browser.newPage({ deviceScaleFactor: 1 });
   try {
     await page.setContent('<style>body,#score{background:white}#score{width:fit-content}</style><div id="score"></div>');
-    const bundle = join(dist, 'main.prod.js');
+    if (label === 'candidate') await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
+    const bundle = join(dist, label === 'candidate' ? 'vextab.js' : 'main.prod.js');
     await page.addScriptTag({ path: bundle });
     assert.equal(await page.evaluate(() => window.vextab.Vex.Flow.BUILD.VERSION), expectedFlow);
     // Prime the same music glyphs before measuring positions, taking pictures or timing.
@@ -72,7 +73,7 @@ async function examine(browser, dist, label, expectedFlow) {
 }
 
 const releaseDist = await loadRelease();
-const candidateDist = resolve(process.argv[2] ?? 'dist');
+const candidateDist = resolve(process.argv[2] ?? 'dist/runtime');
 const browser = await chromium.launch(process.env.CHROME_BIN
   ? { executablePath: process.env.CHROME_BIN } : { channel: 'chrome' });
 try {

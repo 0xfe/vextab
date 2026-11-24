@@ -1,5 +1,5 @@
 // Cross-check the M2 source model, fixed Artist, composed views and independent parts.
-import { Barline, Fraction, Renderer, TimeSignature, VexFlow } from 'vexflow';
+import VexFlow, { Barline, Fraction, Renderer, TimeSignature } from 'vexflow';
 import Artist from '../src/artist';
 import Div from '../src/div';
 import VexTab from '../src/vextab';

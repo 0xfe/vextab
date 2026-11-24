@@ -1,11 +1,13 @@
-# vextab-import
+# VexTab file importers
+
+Install `vextab@7` to use these entries. Existing `vextab-import` users can switch package paths and keep their converter calls.
 
 Convert measured MusicXML, compressed MXL or static LilyPond into editable VexTab grammar v2. Import the entry for the format you use. Each entry runs in Node 22.18+ and modern browser workers. Conversion is independent of the renderer.
 
 ~~~js
-import { importMusicXML } from 'vextab-import/musicxml';
-import { importMXL } from 'vextab-import/mxl';
-import { importLilyPond } from 'vextab-import/lilypond';
+import { importMusicXML } from 'vextab/import/musicxml';
+import { importMXL } from 'vextab/import/mxl';
+import { importLilyPond } from 'vextab/import/lilypond';
 
 const xml = importMusicXML(xmlTextOrBytes);
 const compressed = await importMXL(new Uint8Array(archiveBytes));
@@ -55,7 +57,7 @@ The repertoire checks cover the complete 109-bar Haydn second movement and selec
 
 ## Build and verify
 
-From the repository root run `npm ci --prefix importer` and `npm test --prefix importer`. Run `npm pack` inside `importer/` to build the installable tarball. The package contains the typed format entries and bundled-code notices. Once the root development build is available, `node issues/207/consumer.mjs` installs that tarball into a fresh project and checks the public exports in Node and Chrome workers.
+From the repository root run `npm ci --prefix importer` and `npm test --prefix importer`. Run `npm pack` in the repository root to build the installable tarball. The package contains the typed format entries and bundled-code notices. Once the root development build is available, `node issues/207/consumer.mjs` installs that tarball into a fresh project and checks the public exports in Node and Chrome workers.
 
 ## Expressive imports
 

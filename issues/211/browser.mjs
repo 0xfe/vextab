@@ -21,6 +21,7 @@ async function proof(profile) {
   const page = await browser.newPage({viewport:{width:1120,height:780}});
   try {
     await page.setContent('<style>body{margin:20px;background:white;color:#222;font:16px system-ui}h1{font-size:23px}main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}section{border-top:1px solid #aaa;min-height:210px}h2{font-size:17px}p{max-width:40em;color:#333}aside{position:absolute;left:-200vw}</style><h1></h1><main></main><aside></aside>');
+    await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
     await page.addScriptTag({path:resolve('dist/main.dev.js')});
     await page.locator('h1').evaluate((el, text) => { el.textContent = text; }, profile === 'extended' ? 'M3 · extended import' : 'M4 · expressive import');
     for (const [id, title] of cases) {

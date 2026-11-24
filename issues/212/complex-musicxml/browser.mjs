@@ -43,6 +43,7 @@ try {
       await page.setContent(
         '<style>body{margin:20px;background:white;color:black}main{width:1120px}aside{position:absolute;left:-200vw}</style><main></main><aside></aside>',
       );
+      await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
       await page.addScriptTag({ path: join(root, 'dist/main.dev.js') });
       const proof = await page.evaluate(
         ({ source, partIndex, conductor }) => {

@@ -14,9 +14,10 @@ const score = parseScore('meter 1/4 staff { C4 | }');</pre></article>
 const take = createPerformer('parker', 42);
 const played = take.perform(parts, bars, 132);</pre></article>
   <article id="auto-module"><h3>vextab/auto and script tags</h3>
-    <p>The auto entry mounts each <code>div.vextab-auto</code> on DOM ready. Load <code>dist/div.prod.js</code> for a plain HTML page. The package root and <code>dist/main.prod.js</code> retain the legacy browser API. The old <code>dist/vextab-div.js</code> adapter supports <code>.vex-tabdiv</code>, underscore editor attributes and the original Canvas default.</p>
+    <p>The auto entry mounts each <code>div.vextab-auto</code> on DOM ready. Use the two scripts in the <a href="#quickstart/install">HTML quickstart</a>. The browser script exposes <code>window.vextab</code> and the legacy <code>window.VexTabDiv</code> adapter. In a bundled app import <code>vextab/auto</code> for automatic mounting or <code>vextab/browser</code> for manual mounting.</p>
     <pre data-language="html">&lt;div class="vextab-auto" editor="true"&gt;guitar { 0/1 2/1 3/1 2/1 | }&lt;/div&gt;
-&lt;script src="./div.prod.js"&gt;&lt;/script&gt;</pre></article>
+&lt;script defer src="https://cdn.jsdelivr.net/npm/vexflow@5.10.1/build/cjs/vexflow.js"&gt;&lt;/script&gt;
+&lt;script defer src="https://cdn.jsdelivr.net/npm/vextab@7.0.0/dist/runtime/vextab.js"&gt;&lt;/script&gt;</pre></article>
 </section>
 <section id="parsing">
   <h2>Parsing and the score model</h2>
@@ -37,7 +38,7 @@ const played = take.perform(parts, bars, 132);</pre></article>
 meter 4/4
 guitar { key C :q 3/5 5/5 7/5 8/5 | }</pre>
     <p>This shifts C major to D major and displays frets 5, 7, 9, and 10 on string five.</p></article>
-  <article id="grammar-v2"><h3>Grammar v2</h3><p>VexTab 6 selects grammar v2 unless the caller passes <code>{ language: 1 }</code> to the parser or sets <code>data-language="1"</code> on the embed. For a complete bar, <code>parseScore('staff { :w C4 | }').measureCount</code> returns 1. To show rhythm in a guitar part, add <code>tabStems on</code>.</p></article>
+  <article id="grammar-v2"><h3>Grammar v2</h3><p>VexTab selects grammar v2 unless the caller passes <code>{ language: 1 }</code> to the parser or sets <code>data-language="1"</code> on the embed. For a complete bar, <code>parseScore('staff { :w C4 | }').measureCount</code> returns 1. To show rhythm in a guitar part, add <code>tabStems on</code>.</p></article>
   <article id="parsed-score"><h3>ScoreV2</h3><p>Follow <code>parts → staves → voices → events</code> to reach a written attack. Each event records its onset, duration, heads and source range. Use that range with the original source string to recover the text the musician entered.</p><pre>const event = score.parts[0].staves[0].voices[0].events[0];
 const token = score.source.slice(...event.range);</pre></article>
   <article id="score-error"><h3>ScoreV2Error and source ranges</h3><p>Read <code>line</code> and <code>column</code> for a one-based location to display to the author. Use <code>range</code> for text selection. Its two offsets count UTF-16 code units from the start of the input and exclude the character at the end offset.</p><pre>try { parseScore(input.value); }

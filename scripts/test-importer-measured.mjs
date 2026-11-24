@@ -43,19 +43,23 @@ export async function checkMeasuredConsumers(browser, use, output) {
   try {
     await page.context().route('**/*', route => {
       const path = new URL(route.request().url()).pathname;
+      if (/^\/shared\/[A-Z0-9]+\.mjs$/.test(path)) return route.fulfill({
+        contentType: 'text/javascript', path: join(use.resolve('vextab/import/mxl'), '../..', path.slice(1)),
+      });
       if (path === '/') return route.fulfill({contentType: 'text/html', body:
         '<style>body{background:white;color:#222;font:16px system-ui;margin:20px}h2{font-size:17px}</style><main></main>'});
       for (const [id, fn] of cases) {
-        if (path === '/' + id + '.js') return route.fulfill({contentType: 'text/javascript', path: use.resolve('vextab-import/' + id)});
+        if (path === '/' + id + '.js') return route.fulfill({contentType: 'text/javascript', path: use.resolve('vextab/import/' + id)});
         if (path === '/' + id + '-worker.js') return route.fulfill({contentType: 'text/javascript', body:
           'import {' + fn + '} from "./' + id + '.js"; onmessage = async e => postMessage(await ' + fn + '(e.data));'});
       }
       return route.abort();
     });
     await page.goto('http://consumer.test/');
+    await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
     await page.addScriptTag({path: resolve('dist/main.dev.js')});
     for (const [id, fn, source, title] of cases) {
-      const expected = verify(await use('vextab-import/' + id)[fn](source));
+      const expected = verify(await use('vextab/import/' + id)[fn](source));
       const result = await page.evaluate(({id, source}) => new Promise((done, fail) => {
         const worker = new Worker('/' + id + '-worker.js', {type: 'module'});
         worker.onerror = e => { worker.terminate(); fail(Error(e.message)); };

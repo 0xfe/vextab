@@ -1,4 +1,5 @@
 // Measure a committed snapshot in a temporary checkout so old build products cannot affect the report.
+import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { access, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -48,6 +49,10 @@ export async function refreshArchive(directory) {
 
 // Both entry bundles and the test suite use the webpack version locked by the measured revision.
 export function buildBundles(checkout, mode) {
+  if (mode === 'production' && existsSync(join(checkout, 'scripts/build-runtime.mjs'))) {
+    execFileSync(process.execPath, ['scripts/build-runtime.mjs'], { cwd: checkout, stdio: 'inherit' });
+    return;
+  }
   execFileSync(process.execPath, [join(root, 'tools/reports/webpack.cjs'), mode], { cwd: checkout, stdio: 'inherit' });
 }
 

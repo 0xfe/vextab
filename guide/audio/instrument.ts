@@ -1,6 +1,6 @@
 // Load the guide's self-contained SpessaSynth instrument on the first Play gesture.
 import { WorkletSynthesizer } from 'spessasynth_lib';
-import { createSpessaSynthPlayback } from '../../src/playback/spessasynth';
+import { createSpessaSynthPlayback } from '../../src/browser';
 import processor from 'spessasynth_lib/dist/spessasynth_processor.min.js?guide-content';
 import samples from './florestan-subset.sf2';
 

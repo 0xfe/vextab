@@ -1,12 +1,13 @@
 {
     "name": "vextab",
-    "version": "6.6.0",
+    "version": "7.0.0",
     "author": {
         "name": "Mohit Muthanna Cheppudira",
         "email": "mohit@muthanna.com",
         "url": "http://muthanna.com"
     },
-    "main": "dist/main.prod.js",
+    "main": "./dist/runtime/auto.mjs",
+    "jsdelivr": "./dist/runtime/vextab.js",
     "description": "A VexTab Parser for VexFlow",
     "repository": {
         "type": "git",
@@ -24,6 +25,7 @@
         "@vexflow-fonts/petalumascript": "1.0.0",
         "copy-webpack-plugin": "14.0.0",
         "css-loader": "7.1.5",
+        "esbuild": "0.28.2",
         "esbuild-loader": "4.5.0",
         "html-webpack-plugin": "5.6.8",
         "opentype.js": "2.0.0",
@@ -31,6 +33,7 @@
         "playwright-core": "1.65.1",
         "prismjs": "1.30.0",
         "qunit": "3.0.0",
+        "saxes": "6.0.0",
         "spessasynth_lib": "4.4.10",
         "style-loader": "4.0.0",
         "typescript": "7.0.2",
@@ -43,11 +46,11 @@
         "url": "https://github.com/0xfe/vextab/issues"
     },
     "scripts": {
-        "build": "tsc -p tsconfig.types.json && webpack --mode production --env TAG_NAME=prod",
+        "build": "npm run build:runtime && webpack --mode production --env TAG_NAME=prod",
         "test:import-guide": "npm run guide:build && node scripts/test-import-guide.mjs",
         "guide:build": "webpack --mode production --env guideSite",
         "guide:upload": "node scripts/upload-guide.mjs",
-        "build-dev": "webpack --mode development --env TAG_NAME=dev",
+        "build-dev": "npm run build:runtime && webpack --mode development --env TAG_NAME=dev",
         "start": "webpack serve --mode development --env TAG_NAME=dev",
         "serve": "python3 -m http.server 8052 --bind 127.0.0.1",
         "watch": "webpack --watch --mode development --env TAG_NAME=dev",
@@ -59,14 +62,15 @@
         "test": "npm run build-dev && npm run test:corpus && node scripts/test-browser.mjs",
         "test:vt6-baseline": "node issues/195/run.mjs",
         "test:baseline": "node scripts/test-baseline.mjs",
-        "prepack": "npm run clean && npm run build-dev && npm run build",
+        "prepack": "npm run build:runtime",
         "report:setup": "npm ci --prefix tools --ignore-scripts",
         "report": "node tools/reports/cli.mjs build",
         "report:history": "node tools/reports/cli.mjs history",
         "report:upload": "node tools/reports/cli.mjs upload",
         "whatsnew:build": "node tools/whatsnew/build.mjs",
         "whatsnew:verify": "node tools/whatsnew/verify.mjs",
-        "whatsnew:upload": "node tools/whatsnew/upload.mjs"
+        "whatsnew:upload": "node tools/whatsnew/upload.mjs",
+        "build:runtime": "node scripts/build-runtime.mjs"
     },
     "homepage": "http://www.vexflow.com/vextab/",
     "keywords": [
@@ -75,11 +79,19 @@
         "guitar",
         "tablature"
     ],
-    "bin": { "vextab-migrate": "scripts/migrate-score.mjs" },
+    "bin": {
+        "vextab-migrate": "scripts/migrate-score.mjs"
+    },
     "files": [
+        "dist/runtime/*.mjs",
+        "dist/runtime/shared/*.mjs",
+        "dist/runtime/import/*.mjs",
+        "dist/runtime/vextab.js",
+        "dist/runtime/vextab.css",
+        "dist/runtime/types",
+        "dist/runtime/THIRD-PARTY.txt",
+        "dist/runtime/ZEPTO-LICENSE",
         "scripts/migrate-score.mjs",
-        "dist",
-        "src",
         "SECURITY.md"
     ],
     "engines": {
@@ -88,28 +100,41 @@
     "allowScripts": {
         "esbuild": false
     },
-    "types": "dist/types/browser.d.ts",
+    "types": "./dist/runtime/types/auto.d.ts",
     "exports": {
         ".": {
-            "types": "./dist/types/browser.d.ts",
-            "default": "./dist/main.prod.js"
-        },
-        "./browser": {
-            "types": "./dist/types/browser.d.ts",
-            "default": "./dist/browser.cjs"
-        },
-        "./performer": {
-            "types": "./dist/types/playback/performer.d.ts",
-            "default": "./dist/performer.cjs"
-        },
-        "./parse": {
-            "types": "./dist/types/score/parse.d.ts",
-            "default": "./dist/score.cjs"
+            "types": "./dist/runtime/types/auto.d.ts",
+            "default": "./dist/runtime/auto.mjs"
         },
         "./auto": {
-            "types": "./dist/types/auto.d.ts",
-            "default": "./dist/div.prod.js"
+            "types": "./dist/runtime/types/auto.d.ts",
+            "default": "./dist/runtime/auto.mjs"
         },
-        "./*": "./*"
+        "./browser": {
+            "types": "./dist/runtime/types/browser.d.ts",
+            "default": "./dist/runtime/browser.mjs"
+        },
+        "./parse": {
+            "types": "./dist/runtime/types/score/parse.d.ts",
+            "default": "./dist/runtime/parse.mjs"
+        },
+        "./performer": {
+            "types": "./dist/runtime/types/playback/performer.d.ts",
+            "default": "./dist/runtime/performer.mjs"
+        },
+        "./import/musicxml": {
+            "types": "./dist/runtime/types/import/musicxml.d.ts",
+            "default": "./dist/runtime/import/musicxml.mjs"
+        },
+        "./import/mxl": {
+            "types": "./dist/runtime/types/import/mxl.d.ts",
+            "default": "./dist/runtime/import/mxl.mjs"
+        },
+        "./import/lilypond": {
+            "types": "./dist/runtime/types/import/lilypond.d.ts",
+            "default": "./dist/runtime/import/lilypond.mjs"
+        },
+        "./vextab.css": "./dist/runtime/vextab.css",
+        "./package.json": "./package.json"
     }
 }

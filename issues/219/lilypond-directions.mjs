@@ -20,6 +20,7 @@ const browser = await chromium.launch(process.env.CHROME_BIN ? { executablePath:
 try {
   const page = await browser.newPage();
   await page.setContent('<main></main>');
+  await page.addScriptTag({ path: resolve('node_modules/vexflow/build/cjs/vexflow.js') });
   await page.addScriptTag({path:resolve(root,'dist/main.dev.js')});
   const result = await page.evaluate(source => {
     const model = window.vextab.parseScore(source);
