@@ -170,27 +170,42 @@ async function consume(source: ReturnType<typeof member>, write: (chunk: Uint8Ar
   let size = 0,
     crc = 0xffffffff;
   let parseFailure: { error: unknown } | undefined;
+  // Native stream reads can resolve in a continuous microtask chain in both windows and workers.
+  // Let higher-priority browser work proceed between slices of a large conversion. Each queued
+  // task performs the next chunk's CRC and XML work. Hosts without a task scheduler read directly.
+  const { scheduler } = globalThis as {
+    scheduler?: { postTask?: (work: () => void, options: { priority: 'background' }) => Promise<void> };
+  };
+  const sliceMilliseconds = 4;
+  let deadline = performance.now() + sliceMilliseconds;
+
+  function consumeChunk(value: Uint8Array<ArrayBuffer>) {
+    size += value.length;
+    check(size <= entry.size, 'Inflated member exceeds its declared size.');
+    crc = updateCRC(crc, value);
+    if (!parseFailure) {
+      try {
+        write(value);
+      } catch (error) {
+        parseFailure = { error };
+      }
+    }
+    // Only the native inflater owns this full output buffer. Caller-supplied archives and
+    // stored-member views never enter this branch. Drop its backing store after both consumers
+    // finish, including when we must keep reading for a CRC failure after a source error.
+    if (value.byteOffset === 0 && value.byteLength === value.buffer.byteLength) {
+      const owned = value.buffer as ArrayBuffer & { transfer?: (size: number) => ArrayBuffer };
+      owned.transfer?.(0);
+    }
+  }
   try {
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
-      size += value.length;
-      check(size <= entry.size, 'Inflated member exceeds its declared size.');
-      crc = updateCRC(crc, value);
-      if (!parseFailure) {
-        try {
-          write(value);
-        } catch (error) {
-          parseFailure = { error };
-        }
-      }
-      // Only the native inflater owns this full output buffer. Caller-supplied archives and
-      // stored-member views never enter this branch. Drop its backing store after both consumers
-      // finish, including when we must keep reading for a CRC failure after a source error.
-      if (value.byteOffset === 0 && value.byteLength === value.buffer.byteLength) {
-        const owned = value.buffer as ArrayBuffer & { transfer?: (size: number) => ArrayBuffer };
-        owned.transfer?.(0);
-      }
+      if (scheduler?.postTask && performance.now() >= deadline) {
+        await scheduler.postTask(() => consumeChunk(value), { priority: 'background' });
+        deadline = performance.now() + sliceMilliseconds;
+      } else consumeChunk(value);
     }
   } finally {
     await reader.cancel().catch(() => {});

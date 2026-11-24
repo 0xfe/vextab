@@ -56,6 +56,8 @@ export async function checkArchiveIntegrity(browser) {
     // decoder's pending prefix and the bytes of the caller's archive.
     const ownership = await page.evaluate(async (source) => {
       const NativeInflater = DecompressionStream;
+      const nativeScheduler = Object.getOwnPropertyDescriptor(globalThis, 'scheduler');
+      Object.defineProperty(globalThis, 'scheduler', { configurable: true, value: undefined });
       globalThis.DecompressionStream = class {
         constructor(format) {
           const native = new NativeInflater(format);
@@ -81,7 +83,11 @@ export async function checkArchiveIntegrity(browser) {
         const result = await importMXL(archive, { targetProfile: 'expressive' });
         return { status: result.status, intact: archive.length === bytes.length &&
           bytes.every((value, i) => archive[i] === value) };
-      } finally { globalThis.DecompressionStream = NativeInflater; }
+      } finally {
+        globalThis.DecompressionStream = NativeInflater;
+        if (nativeScheduler) Object.defineProperty(globalThis, 'scheduler', nativeScheduler);
+        else delete globalThis.scheduler;
+      }
     }, good.toString('base64'));
     assert.deepEqual(ownership, { status: 'exact', intact: true });
     assert.equal(results[0].status, 'exact');
