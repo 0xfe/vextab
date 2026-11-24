@@ -14,18 +14,16 @@ The built-in player synthesizes its preview with Web Audio. The guide bundles it
 
 ## Dependency and build checks
 
-- npm installs exact direct dependencies and resolves transitive dependencies from `package-lock.json`. Run `npm ci` and `npm audit` to check the full tree, including build tools.
+- npm installs exact direct dependencies and resolves transitive dependencies from `package-lock.json`. CI audits the four independent lockfiles for the host, importer, report tools, and qualification tools in `issues/206`. To repeat an audit, run `npm audit` in the corresponding directory.
 - GitHub Actions runs lint, TypeScript checks, browser tests, and the production build. Builds and tests have read-only repository access. The job that publishes a version tag to GitHub Releases has write access to repository contents. All actions are pinned to full commit SHAs.
 - Dependabot checks npm packages and GitHub Actions weekly. Fixes in the repository reach npm consumers when a maintainer publishes a new release.
 
-## Review status on November 18, 2026
+## Review on November 24, 2026
 
-GitHub marked all 71 Dependabot alerts as fixed. The full npm audit reported zero known vulnerabilities in the lockfile.
-
-The latest published npm package at review time was VexTab 4.0.5. Its editor can interpret parser errors as HTML. Applications accepting untrusted scores should use the rebuilt bundles from commit [2400329](https://github.com/0xfe/vextab/commit/240032925b8e20cfd4abc344230aa48e1d912168) or a subsequent release containing that fix.
+Five Dependabot alerts (#278–282) identified minimatch in the report tools. The historical QUnit runner now resolves minimatch 3.1.5 and the TypeScript report parser resolves 11.0.9. All four lockfiles passed npm audit. The historical VexTab 4.0.0 report ran all 39 browser cases with the patched dependency.
 
 ## Known limitations
 
-- Parsing and rendering run synchronously. VexTab has no built-in limit on score length, stave count, or render dimensions. Applications accepting public submissions should bound these inputs.
+- Parsing and rendering run synchronously. Grammar v2 enforces compiler budgets, including source, event and token limits. Applications accepting public submissions should also limit legacy inputs and render dimensions. [Grammar v2 budgets](https://github.com/0xfe/vextab/blob/master/src/score/grammar2/capacity.mts)
 - The npm audit covers registry dependencies. Host-supplied playback scripts and soundfonts need separate review.
-- At the November 18, 2026 review, GitHub Code Quality was unavailable for this repository, CodeQL default setup was unconfigured, and secret scanning was disabled.
+- At the November 24, 2026 review, GitHub Code Quality was unavailable for this repository, CodeQL default setup was unconfigured, and secret scanning was disabled.

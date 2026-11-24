@@ -5,7 +5,14 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 const { version } = require('./package.json');
 
+// Preserve the synchronous config API used by engineering reports for ordinary host builds.
 module.exports = (env = {}) => {
+  if (!env.guideSite && !env.WEBPACK_SERVE) return configuration(env);
+  return import('./guide/gallery/build.mjs')
+    .then(async ({ prepareGallery }) => configuration(env, await prepareGallery()));
+};
+
+function configuration(env, gallery) {
   const guideSite = Boolean(env.guideSite);
   const tag = env.TAG_NAME || 'dev';
   const guidePrefix = guideSite ? '' : 'guide/';
@@ -46,14 +53,25 @@ module.exports = (env = {}) => {
       new webpack.ProvidePlugin({ $: 'zepto-webpack' }),
       new webpack.DefinePlugin({ __VERSION: JSON.stringify(version) }),
       ...Object.entries(guidePages).map(([name, entry]) => new HtmlWebpackPlugin({
-        template: './guide/' + name + '.html', filename: guidePrefix + name + '.html', chunks: ['triplets', 'shared-score'].includes(name) ? [entry, 'example-audio', 'guide-syntax'] : [entry],
+        importingAssets: Boolean(gallery), template: './guide/' + name + '.html', filename: guidePrefix + name + '.html', chunks: ['triplets', 'shared-score'].includes(name) ? [entry, 'example-audio', 'guide-syntax'] : [entry],
       })),
+      ...(gallery ? gallery.pages.map(name => new HtmlWebpackPlugin({
+        templateContent: require('node:fs').readFileSync(path.join(gallery.out, name + '.html'), 'utf8'),
+        filename: guidePrefix + 'gallery/' + name + '.html', chunks: name === 'index' ? [] : ['main'],
+        inject: 'head', minify: false,
+      })) : []),
       ...(!guideSite ? [
         new HtmlWebpackPlugin({ template: './tests/tests.html', filename: 'tests.html', chunks: ['tests'] }),
         new HtmlWebpackPlugin({ template: './tests/playground.html', filename: 'playground.html', chunks: ['playground'] }),
         new HtmlWebpackPlugin({ template: './static/div.html', filename: 'static/div.html', chunks: ['div', 'example-audio'] }),
       ] : []),
       new CopyPlugin({ patterns: [
+        ...(gallery ? [
+          { from: gallery.out, to: guidePrefix + 'gallery', globOptions: { ignore: ['**/*.html'] } },
+          { from: 'importer/dist/*.js', to: guidePrefix + 'importers/[name][ext]' },
+          { from: 'importer/THIRD-PARTY.txt', to: guidePrefix + 'licenses/importer-third-party.txt' },
+          { from: 'importer/LICENSE', to: guidePrefix + 'licenses/importer.txt' },
+        ] : []),
         ...['bravura', 'academico', 'petaluma', 'petalumascript'].map(face => ({
           from: require.resolve('@vexflow-fonts/' + face + '/LICENSE.txt'),
           to: guidePrefix + 'licenses/' + face + '.txt',
@@ -104,4 +122,4 @@ module.exports = (env = {}) => {
       static: { directory: path.resolve(__dirname, 'dist'), watch: false },
     },
   };
-};
+}

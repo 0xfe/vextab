@@ -25,3 +25,16 @@ The player check captured the actual output through the public playback plugin. 
 3. Screen and print both consume those specifications. The reviewer checked both extracted projections by their public note hooks, reading the melody head’s own fingering and the TAB note’s position. The guide’s visible TAB changed from fret 3 and finger 2 to fret 7 and finger 4. [Existing Sor regression](../../tests/part-engraving.ts)
 
 Between the original commit and migration commit `319d1d8`, `head-marks.ts` gained 15 lines and lost 59. The deleted `ChordFinger` calculation chose a shared column, measured the note or stem edge and computed the digit offset. The native modifier now owns that geometry. The migration also removed the 172-line VexFlow webpack loader. These counts describe the filed migration diff, independently of subsequent importer changes.
+
+## Independent reading and editing
+
+A second agent used fresh guide drafts on VexTab `744add8` without consulting the worked answers. These checks complement the paired Sor comparison above.
+
+| Guide task | Observed result |
+| --- | --- |
+| Replace Handy’s second-verse opening word | One token changed. The screen and printed Voice part placed “Walked” below “I”. All 30 vocal attacks retained their pitches and durations. |
+| Release Sor’s tied opening bass | Removing one tie split a six-second B2 into two three-second attacks. The printed Guitar part lost the corresponding tie. |
+| Reverse the four heads of a fingered chord | The fingering followed its head from index zero to three. Source selection found the reordered chord and all eight sounding heads matched. The workshop has no print control. |
+| Identify Haydn’s cello cue on page two | Bar 23 showed the four slurred violin-II quarters above the cello rest. The print metadata identified the donor and the same four pitches. |
+
+Each edit succeeded on the first attempt, produced SoundFont audio and required zero manual offsets, new breaks or duplicate part edits. A human instrumentalist’s usability trial is still outstanding.

@@ -44,6 +44,7 @@
     },
     "scripts": {
         "build": "tsc -p tsconfig.types.json && webpack --mode production --env TAG_NAME=prod",
+        "test:import-guide": "npm run guide:build && node scripts/test-import-guide.mjs",
         "guide:build": "webpack --mode production --env guideSite",
         "guide:upload": "node scripts/upload-guide.mjs",
         "build-dev": "webpack --mode development --env TAG_NAME=dev",
