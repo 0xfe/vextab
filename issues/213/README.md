@@ -38,7 +38,7 @@ At the original 1,080-unit fallback width, all eleven retained their baseline re
 
 ## Authoring trial
 
-In the packaged guide editor, replace the first occurrence of `(B4[finger 1 above] D#5[finger 3 above])` with `(D#5[finger 3 above] B4[finger 1 above])` in the Étude ascent. Commit the edit with Control+Enter. The two heads exchange written order, and each retains its pitch, finger and editable source in the extracted right hand. The change touches one source location and needs zero offsets or repeated edits in the part. The author used the same score spelling on both versions. The demonstrated saving is in maintaining engraving code. An independent reader and maintainer walkthrough remains open.
+In the packaged guide editor, replace the first occurrence of `(B4[finger 1 above] D#5[finger 3 above])` with `(D#5[finger 3 above] B4[finger 1 above])` in the Étude ascent. Commit the edit with Control+Enter. The two heads exchange written order, and each retains its pitch, finger and editable source in the extracted right hand. The change touches one source location and needs zero offsets or repeated edits in the part. The author used the same score spelling on both versions. The demonstrated saving is in maintaining engraving code. The independent [Sor refingering walkthrough](independent-review.md) traces a second edit through the screen, extracts and player.
 
 ## Stock VexFlow 5.10.1 controls
 
@@ -53,4 +53,4 @@ In the packaged guide editor, replace the first occurrence of `(B4[finger 1 abov
 
 The importer’s [Echigo-Jishi beam fix](https://github.com/0xfe/vextab/commit/26976af1cc679852974b554b480b4ae962f8bcd4) is covered in `tests/expression.ts`. VexTab passes the explicit beam range to VexFlow. Its native beam builder chooses a single direction for A4–A4–B4–A4, including the B on the middle line. The original regression test checks automatic and explicitly down-stemmed groups. The extracted notation part checks all four drawn stems as well.
 
-VexFlow’s stock publication suite passes all 35 tests against the GitHub release bundle. The [full demo comparison](visual-review.md) covers the VexTab passages and editions. The second-reader and second-maintainer walkthroughs remain open.
+VexFlow’s stock publication suite passes all 35 tests against the GitHub release bundle. The [full demo comparison](visual-review.md) covers the VexTab passages and editions. The [independent review](independent-review.md) records a second maintainer trace and a paired guide editing trial. A pianist or guitarist has yet to report a human usability trial.
