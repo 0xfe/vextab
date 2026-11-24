@@ -2,6 +2,8 @@
 
 The optional `vextab-import` package converts a score into editable VexTab text. The `/musicxml` and `/lilypond` entries are synchronous. The `/mxl` entry is asynchronous and also reads the ZIP container. Applications can load one format on demand in a worker, then pass the returned text to their own VexTab host. [Package API](../../importer/README.md)
 
+The [local score gallery](gallery/README.md) includes the qualification works and additional complete Bach and Schubert editions, with playback, editable VexTab and source downloads.
+
 ## What the repertoire verifies
 
 | Complete source | Written comparison | Performed comparison |
