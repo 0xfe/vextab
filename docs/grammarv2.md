@@ -328,7 +328,9 @@ As an extension example, reserve qualified mark names such as `[ornament.turn ab
 
 **Ordering.** A `pattern` is an immutable declaration in the score. `use` can name a previously completed declaration only. This gives a directed acyclic dependency graph by construction, including unused definitions. `times 3 { … }` emits three written copies with separate event IDs. A `volta` instead emits its body once in the written score and schedules bounded visits in the proposed performance plan. Endings select passes by ordinal. Give every traversal a separate visit budget and report the repeat that exhausts it. Start with structured repeats and named endings. Navigation signs such as segno can be engraved independently until their playback semantics are specified.
 
-The following proposed repeat prints a first and second ending. Its four performed bars are body, first ending, body, second ending. Only three written bars exist. A fixed-count `times 2` of the body alone prints two copies. At a shared repeat boundary the same traversal drives every voice and part.
+In VexTab 6.5.0, use `repeatCount 5 { :w C4 | }` to print one bar with a repeat count and play it five times. The count must be an integer from 2 through 32, and the body must contain whole written bars. Use the same form in each staff that shares the itinerary.
+
+The following repeat prints a first and second ending. Its four performed bars are body, first ending, body, second ending. Only three written bars exist. A fixed-count `times 2` of the body alone prints two copies. At a shared repeat boundary the same traversal drives every voice and part.
 
 ```text
 meter 2/4

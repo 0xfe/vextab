@@ -1,5 +1,7 @@
 # Importing MusicXML and LilyPond into VexTab
 
+The [M5 qualification report](../issues/212/README.md) records the implemented profiles, exact corpus results, package checks and measured budgets.
+
 Build two readers and one writer that produces editable VexTab grammar v2. Start with measured Western staff notation, then qualify piano, voices and lyrics, fretted instruments, percussion, and ensemble scores. A musician should be able to import a piece, open the result in an ordinary VexTab editor, change a note, and print or play the revision. A caller should also be able to convert a file in Node or a browser worker without installing an engraver.
 
 Ship the readers in a **separate npm package**, provisionally `vextab-import`, with one entry point per format. Use MusicXML to establish the measure and voice model. Build the LilyPond reader alongside it as soon as both can use the same writer. MusicXML encodes the contents of a score. LilyPond describes how to construct one, and can call Scheme while doing so. Only the resolution of musical events and their translation into VexTab should be shared. [MusicXML 4.0](https://www.w3.org/2021/06/musicxml40/) · [LilyPond notation reference](https://lilypond.org/doc/v2.26/Documentation/notation/)

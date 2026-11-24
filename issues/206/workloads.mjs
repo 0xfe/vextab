@@ -5,9 +5,8 @@ import { join } from 'node:path';
 export const output = 'build/importer-m0';
 
 /** Two independent encodings of a 32-bar melody make the emit measurement directly comparable. */
-export function workloads() {
+export function controls() {
   const encode = text => new TextEncoder().encode(text);
-  const load = name => new Uint8Array(readFileSync(join(output, name)));
   const part = '<score-part id="p"><part-name>Control</part-name></score-part>';
   const xml = Array.from({ length: 32 }, (_, bar) => {
     const attributes = bar ? '' : '<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>';
@@ -25,6 +24,14 @@ export function workloads() {
     { name: 'ly32', entry: 'lilypond', bytes: lily, emit: true },
     { name: 'duet32', entry: 'musicxml', bytes: duet },
     { name: 'repeated', entry: 'lilypond', bytes: repeated },
+  ];
+}
+
+/** Include the digest-pinned repertoire for the full M0 benchmark. */
+export function workloads() {
+  const load = name => new Uint8Array(readFileSync(join(output, name)));
+  return [
+    ...controls(),
     { name: 'excerpt', entry: 'musicxml', bytes: load('excerpt.musicxml') },
     { name: 'quartet', entry: 'musicxml', bytes: load('full.musicxml') },
     { name: 'archive', entry: 'mxl', bytes: load('haydn.mxl') },

@@ -49,7 +49,14 @@ jobs:
           node issues/211/browser.mjs
           node issues/211/check-lily-repertoire.mjs
           node issues/211/sor-proof.mjs
-      - run: npm run build
+          node issues/212/musicxml-full.mjs --held-out
+          node issues/212/lilypond/check.mjs
+          node issues/212/lilypond/coverage.mjs
+          node issues/212/generated.mjs
+          node issues/212/matrix.mjs
+          node issues/212/browser.mjs
+          node issues/212/musicxml-surfaces.mjs
+      - run: npm run build -- --json "$RUNNER_TEMP/vextab-webpack.json"
       - name: Pack the distribution and test the files consumers receive
         env:
           CHROME_BIN: /usr/bin/google-chrome
@@ -57,6 +64,7 @@ jobs:
           mkdir "$RUNNER_TEMP/assets" "$RUNNER_TEMP/unpacked"
           npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/assets"
           tar -xzf "$RUNNER_TEMP"/assets/*.tgz -C "$RUNNER_TEMP/unpacked"
+          node issues/212/host-package.mjs "$RUNNER_TEMP/unpacked/package" "$RUNNER_TEMP/vextab-webpack.json"
           node scripts/test-browser.mjs "$RUNNER_TEMP/unpacked/package/dist"
           node scripts/test-consumer.mjs "$RUNNER_TEMP"/assets/*.tgz
           npm run test:baseline -- "$RUNNER_TEMP/unpacked/package/dist"
@@ -71,6 +79,13 @@ jobs:
           pactl set-default-sink vextab
           VEXTAB_BROWSER=firefox node scripts/test-browser.mjs "$RUNNER_TEMP/unpacked/package/dist"
           VEXTAB_BROWSER=webkit node scripts/test-browser.mjs "$RUNNER_TEMP/unpacked/package/dist"
+      - name: Use the importer's minimum supported Node version
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22.18.0'
+          package-manager-cache: false
+      - name: Verify the packed importer's minimum Node version
+        run: node issues/207/consumer.mjs --node-only
       - name: Prepare standalone downloads and checksums
         if: github.ref_type == 'tag'
         run: |
