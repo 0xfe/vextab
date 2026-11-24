@@ -1,5 +1,6 @@
 // Exercise aligned piano timing, clefs and connectors, independent hand parts, and located diagnostics.
-import { VexFlow } from 'vexflow';
+import { VexFlow, type StaveNote } from 'vexflow';
+import consolation from '../guide/scores/liszt-consolation-no5.vextab';
 import { Div, parseScore, renderScore, renderScorePart } from '../src/browser';
 import { projectScoreV2 } from '../src/score/grammar2/project';
 import { scoreSurfaces } from '../src/playback/geometry';
@@ -22,6 +23,55 @@ function bracePaths(element: Element): number {
 }
 
 QUnit.module('Piano grand staff', () => {
+  QUnit.test('Each hand can choose level beams and vertical fingerings follow pitch order', assert => {
+    const score = read('meter 2/4 piano { upper { voice melody stem down { :8 (C5[finger 3 above] G5[finger 5 above])[staccato above] E5 D5 F5 | } } lower { voice bass flatBeams on { :8 C3 G3 E3 G3 | } } }');
+    const [upper, lower] = score.measures[0].voices;
+    assert.notOk(upper.flatBeams);
+    assert.true(lower.flatBeams);
+    const root = host();
+    renderScore(root, score);
+    const marks = [...root.querySelectorAll<SVGTextElement>('.vf-stavenote text')];
+    // SVG text boxes include the entire em square. Compare the visible contours of the digits.
+    const context = document.createElement('canvas').getContext('2d');
+    const ink = (digit: string) => {
+      const mark = marks.find(text => text.textContent === digit);
+      const style = getComputedStyle(mark);
+      context.font = style.fontWeight + ' ' + style.fontSize + ' ' + style.fontFamily;
+      const metrics = context.measureText(digit), baseline = mark.y.baseVal[0].value;
+      return { top: baseline - metrics.actualBoundingBoxAscent, bottom: baseline + metrics.actualBoundingBoxDescent };
+    };
+    assert.ok(ink('5').bottom < ink('3').top, 'top finger clears the lower finger');
+    assert.throws(() => parseScore('staff { flatBeams diagonal :w C4 | }'), /on or off/);
+  });
+
+  QUnit.test('Consolation chords keep the accompaniment below the held voices', assert => {
+    const model = parseScore(consolation);
+    const { composition, navigation } = renderScore(host(), model, { width: model.layout.width });
+    const notes = (bar: number, voice: string) => navigation.events
+      .filter(event => event.measure === bar && event.source.includes('.' + voice + '.'))
+      .map(event => composition.getNote(event.id) as StaveNote);
+    // The bass starts alone with up-stems; its six eighths run under another voice in the second system.
+    assert.deepEqual(notes(1, 'bass').map(n => n.getStemDirection()), [1, 1]);
+    const eighths = notes(7, 'bass'), quarters = notes(7, 'sustained');
+    assert.deepEqual(eighths.map(n => n.getStemDirection()), [-1, -1, -1, -1, -1, -1]);
+    assert.ok(eighths[0].getBeam() && eighths.every(n => n.getBeam() === eighths[0].getBeam()));
+    assert.deepEqual(quarters.map(n => n.getStemDirection()), [1, 1, 1]);
+    assert.deepEqual(quarters.map(n => n.getAbsoluteX()), [0, 2, 4].map(i => eighths[i].getAbsoluteX()));
+    const alto = notes(7, 'inner')[1], soprano = notes(7, 'melody')[2];
+    assert.deepEqual([alto.getKeys(), alto.getDuration(), alto.getStemDirection()], [['a/4'], 'q', -1]);
+    assert.deepEqual([soprano.getKeys(), soprano.getDuration(), soprano.getStemDirection()], [['c#/5'], '8', 1]);
+    const [upper, lower] = composition.staves[6];
+    assert.ok(lower.getYForLine(0) - upper.getYForLine(4) < upper.space(13),
+      'a rolled chord later on the second system still permits both hands to share space');
+    const openingHairpins = composition.sheet.getContinuousLayout().fragments.filter(f => f.row === 0 &&
+      f.id.includes('-left-') && (f.kind === 'crescendo' || f.kind === 'diminuendo'));
+    assert.equal(openingHairpins.length, 2);
+    assert.ok(openingHairpins.every(f => f.above && f.y1 < composition.staves[0][1].getYForLine(0)),
+      'the opening bass hairpins sit between the hands as in the printed page');
+    const paper = renderScorePart(host(), model, 'notation').publication.pages[0].svg;
+    assert.notOk(paper.textContent.includes('roll up'), 'a printed rolled chord uses its arpeggio sign');
+  });
+
   QUnit.test('Aligned beats, shared barlines, and braces survive reflow', assert => {
     const score = read(duet);
     for (const [width, rows] of [[650, 1], [225, 2]]) {
@@ -90,6 +140,27 @@ QUnit.module('Piano grand staff', () => {
       return b.getYForLine(0) - a.getYForLine(4);
     };
     assert.ok(distance('G4 C2') >= distance('C2 G4') + 25, 'reserve space only where the two hands meet');
+  });
+
+  QUnit.test('timed words reserve space only where they are printed', assert => {
+    const score = (words: string) => read('layout { rowGap 12 } piano { upper { :h G4 G4 | break system G4 G4 | } '
+      + 'lower { :h C1 C3 | G3 G3 | } ' + (words && 'text tempo spacing smooth align left { :w skip | :h line -8 ' + words + ' | }') + '}');
+    function screenGap(words: string, renderer: 'svg' | 'canvas') {
+      const [first, second] = renderScore(host(), score(words), { renderer, width: 550 }).composition.staves;
+      return second[0].getYForLine(0) - first[1].getYForLine(4);
+    }
+    for (const renderer of ['svg', 'canvas'] as const) {
+      assert.closeTo(screenGap('skip skip', renderer), screenGap('', renderer), 0.1, renderer + ' ignores an empty lane');
+      assert.ok(screenGap('"rit." skip', renderer) > screenGap('skip "rit."', renderer) + 10,
+        renderer + ' clears a low bass note directly above the word');
+    }
+    function pageGap(words: string) {
+      const page = renderScorePart(host(), score(words), 'notation').publication.pages[0].svg;
+      const line = (bar: number, staff: number, n: number) => page.querySelector('[data-system="' + bar + '"]')
+        .querySelectorAll('.vf-stave')[staff].children[n].getBoundingClientRect().y;
+      return line(2, 0, 0) - line(1, 1, 4);
+    }
+    assert.ok(pageGap('"rit." skip') > pageGap('skip "rit."') + 2, 'print measures the word at its own beat');
   });
 
   QUnit.test('neighboring systems share space at different beats and keep their page margins', assert => {

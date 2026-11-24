@@ -1,0 +1,135 @@
+// Frédéric Chopin, Étude in G-sharp minor, Op. 25 No. 6. Bars 1–17.
+// Source edition: https://cantorion.org/music/621/Etude-No.-6-Original-version
+// Pitches cross-checked against the CC0 transcription distributed by Noctave.
+// https://noctavepiano.com/en/free-library/chopin-etude-in-g-sharp-minor-thirds-op-25/
+layout { width 1680 scale 0.525 spacing optical top 8 firstSystemIndent 60 rowGap 12
+  heading { tempo "Allegro. 𝅗𝅥 = 69." }
+}
+meter cut
+play { performer chopin tempo 138 instrument 0 }
+edition { paper A4 margins 9 8 9 8 staffSize 4.45 }
+
+// Alternative fingerings for the chromatic ascent in bar 5.
+pattern ascent {
+  :16 (B4[finger 1 above] D#5[finger 3 above])[dynamic p] (C#5[finger 2 above] E5[finger 4 above]) crescendo { :16 (C##5[finger 1 above] E#5[finger 5 above]) (D#5[finger 2 above] F#5[finger 3 above])
+  (D##5[finger 1 above] F##5[finger 4 above]) (E#5[finger 1 above] G#5[finger 3 above]) (F#5[finger 2 above] An5[finger 4 above]) (F##5[finger 1 above] A#5[finger 3 above])
+  (G#5[finger 2 above] B5[finger 4 above]) (G##5[finger 1 above] B#5[finger 5 above]) (A#5[finger 2 above] C#6[finger 3 above]) (A##5[finger 1 above] C##6[finger 4 above])
+  (B#5[finger 1 above] D#6[finger 3 above]) (C#6 E6) (C##6 E#6) (D#6 F#6) }
+}
+pattern alternate {
+  :16 (B4[finger 1 above] D#5[finger 3 above])[dynamic p] (C#5 E5) crescendo { :16 (C##5[finger 1 above] E#5[finger 3 above]) (D#5[finger 2 above] F#5[finger 4 above])
+  (D##5[finger 3 above] F##5[finger 5 above]) (E#5[finger 1 above] G#5[finger 3 above]) (F#5 An5) (F##5[finger 1 above] A#5[finger 3 above])
+  (G#5 B5) (G##5[finger 1 above] B#5[finger 3 above]) (A#5[finger 2 above] C#6[finger 4 above]) (A##5[finger 3 above] C##6[finger 5 above])
+  (B#5[finger 1 above] D#6[finger 3 above]) (C#6 E6) (C##6[finger 1 above] E#6[finger 3 above]) (D#6 F#6) }
+}
+
+piano keys { key G#m beamRests off
+  upper { name ""
+    voice thirds stem down {
+      slur above { :16 (B4[finger 1 above] D#5[finger 4 above])[label "sotto voce" below] (C#5[finger 2 above] E5[finger 5 above]) times 7 { :16 (B4 D#5) (C#5 E5) } |
+      times 8 { :16 (B4 D#5) (C#5 E5) } } |
+      break system
+      slur above { :16 (B4 D#5)[dynamic p] (C#5 E5) (B4 D#5) (C#5 E5)
+        (B4 D#5) (C#5 E5) (B4 D#5) (C#5 E5)
+        crescendo { :16 (B4 D#5) (C#5 E5) (B4 D#5) (C#5 E5)
+        (B4 D#5) (C#5 E5) (B4 D#5) (C#5 E5) |
+      :16 (B4[finger 1 above] D#5[finger 4 above]) (C#5[finger 2 above] E5[finger 5 above]) (B4 D#5) (A#4[finger 2 above] C##5[finger 3 above])
+        (B4 D#5) (C#5 E5) (B4 D#5) (A#4 C##5)
+        (B4 D#5) (C#5 E5) (B4 D#5) (A#4 C##5)
+        } diminuendo { :16 (B4 D#5) (C#5 E5) (B4 D#5) (A#4 C##5) } } |
+      slur above { use ascent |
+      break system
+      :16 (D##6 F##6) (E#6 G#6) (F#6[finger 2 above] An6[finger 4 above]) (F##6 A#6) :8 (G#6[finger 2 above] B6[finger 5 above]) } :8 rest :h rest |
+      slur above { :16 (E5[finger 1 above] G#5[finger 4 above]) (F#5[finger 2 above] An5[finger 5 above]) (E5 G#5) (F#5 An5)
+        (E5 G#5) (F#5 An5) (E5 G#5) (F#5 An5)
+        crescendo { :16 (E5 G#5) (F#5 An5) (E5 G#5) (F#5 An5)
+        (E5 G#5) (F#5 An5) (E5 G#5) (F#5 An5) |
+      :16 (E5[finger 1 above] G#5[finger 4 above]) (F#5[finger 2 above] An5[finger 5 above]) (E5 G#5) (D#5[finger 2 above] F##5[finger 3 above])
+        (E5 G#5) (F#5 An5) (E5 G#5) (D#5 F##5)
+        (E5 G#5) (F#5 An5) (E5 G#5) (D#5 F##5)
+        } diminuendo { :16 (E5 G#5) (F#5 An5) (E5 G#5) (D#5 F##5) } } |
+      break system
+      slur above { :16 (E5 G#5)[dynamic p] (F#5[finger 1 above] An5[finger 4 above]) crescendo { :16 (F##5 A#5) (G#5[finger 2 above] B5[finger 3 above])
+        (G##5[finger 2 above] B#5[finger 4 above]) (A#5 C#6) (B5[finger 1 above] Dn6[finger 5 above]) (B#5 D#6)
+        (C#6[finger 2 above] E6[finger 4 above]) (Dn6 Fn6) (D#6[finger 1 above] F#6[finger 3 above]) (E6 Gn6)
+        octave +1 { :16 (E#5[finger 1 above] G#5[finger 5 above])[label "8va" above] (F#5 An5) (F##5 A#5) (G#5[finger 1 above] B5[finger 3 above]) } } |
+      octave +1 { :16 (G##5 B#5)[label "8va" above] (A#5 C#6) (B5 Dn6) (B#5 D#6) :8 (C#6[finger 2 above] E6[finger 5 above]) } } :8 rest :h rest |
+      slur above { diminuendo { octave +1 { :16 (C#6[finger 2 above] E6[finger 4 above])[label "8va" above] (B5[finger 1 above] D#6[finger 3 above]) (A#5[finger 3 above] C#6[finger 5 above]) (G#5 B5)
+        (F##5 A#5) (E5[finger 1 above] G#5[finger 2 above]) } :16 (D#6[finger 3 above] F##6[finger 5 above]) (C#6 E6)
+        (B5[finger 1 above] D#6[finger 3 above]) (A#5 C#6) (G#5 B5) (F##5 A#5)
+        (E5 G#5) (D#5 F##5) (C#5 E5) (B4 D#5) } } |
+      break system
+      slur above { :16 (A#4[finger 2 above] C##5[finger 3 above]) (B4[finger 1 above] D#5[finger 4 above]) (A#4 C##5) (B4 D#5)
+        (C#5[finger 2 above] E5[finger 5 above]) (B4[finger 1 above] D#5[finger 4 above]) (C#5 E5) (B4 D#5)
+        crescendo { :16 (A#4[finger 2 above] C#5[finger 3 above]) (B4[finger 1 above] D#5[finger 4 above]) (A#4 C#5) (B4 D#5)
+        (A#4[finger 2 above] C#5[finger 5 above])[accent below] (G#4[finger 1 above] B4[finger 4 above]) (A#4 C#5) (G#4 B4) } } |
+      slur above { diminuendo { :16 (C#6 E6) (B5 D#6) (A#5 C#6) (G#5 B5)
+        (F##5 A#5) (E5 G#5) (D#5 F##5) (C#5 E5)
+        (B4 D#5) (A#4 C#5) (G#4 B4) (F##4 A#4)
+        (E4 G#4) (D#4 F##4) (C#4 E4) (B3 D#4) } } |
+      slur above { :16 (A#3[finger 2 above] C##4[finger 4 above]) (B3[finger 1 above] D#4[finger 3 above]) (C#4[finger 2 above] E4[finger 4 above]) (C##4 E#4)
+        crescendo { :16 (D#4 F#4) (D##4[finger 2 above] F##4[finger 4 above]) (E#4[finger 1 above] G#4[finger 3 above]) (F#4 An4)
+        (F##4 A#4) (G#4 B4) (An4 Cn5) (A#4 C#5)
+        (B4 Dn5) (B#4 D#5) (C#5 E5) (C##5 E#5) } |
+      break system
+      :8 (D#5[finger 2 above] F#5[finger 4 above])[staccato above] } :8 rest slur above { octave +1 { :16 (B5[finger 1 above] D#6[finger 3 above])[dynamic f, label "8va" above] (C#6[finger 2 above] E6[finger 4 above]) (B5[finger 1 above] D#6[finger 3 above])
+        (A#5[finger 2 above] C#6[finger 4 above]) (G#5[finger 1 above] B5[finger 3 above]) (A#5 C#6) } :16 (G#6 B6)
+        (F#6 A#6) (E6 G#6) (F#6 A#6) (E6 G#6)
+        (D#6 F#6) |
+      :16 (C#6[finger 1 above] E6[finger 3 above]) (D#6 F#6) (C#6 E6) (B5[finger 2 above] D#6[finger 4 above])
+        (A#5[finger 1 above] C#6[finger 3 above]) (B5 D#6) (A#5 C#6) (G#5 B5)
+        (F#5[finger 1 above] A#5[finger 3 above]) (G#5 B5) (F#5 A#5) (E5[finger 2 above] G#5[finger 4 above])
+        (D#5 F#5) (E5 G#5) (D#5 F#5) (C#5 E5) } |
+      slur above { :16 (B4[finger 1 above] D#5[finger 3 above]) (C#5 E5) crescendo { :16 (C##5[finger 1 above] E#5[finger 5 above]) (D#5[finger 2 above] F#5[finger 3 above])
+        (D##5 F##5) (E#5[finger 1 above] G#5[finger 3 above]) (F#5 An5) (F##5[finger 1 above] A#5[finger 3 above])
+        (G#5 B5) } diminuendo { :16 (F##5[finger 1 above] A#5[finger 3 above]) (F#5 An5) (E#5[finger 1 above] G#5[finger 3 above])
+        (E5 Gn5) (D#5[finger 2 above] F#5[finger 4 above]) (Dn5 Fn5) (C#5 E5) } } |
+    }
+  }
+  lower { name ""
+    voice accompaniment {
+      :w rest |
+      :w rest |
+      :8 skip D#3 skip F##2 skip D#3 skip D#2 |
+      :8 skip D#3 B3 C#3 skip D#3 skip D#2 |
+      :8 G#2[staccato below, pedal down] slur above { :8 (B3 D#4 G#4) (B3 D#4 G#4)[pedal up] (B3 D#4 F#4) (B3 D#4 F#4) (G#3 B3 E4) (G#3 B3 E4) (G#3 B3 D#4) |
+      :8 (G#3 B3 D#4)[accent above] (D#3 G#3 C#4) (D#3 G#3 C#4) (D#3 G#3 B3) (D#3 G#3 B3) (C#3 D#3 A#3) (C#3 D#3 A#3) (B2 D#3 G#3) } |
+      :8 skip E3 skip F##2 skip E3 skip G#1 |
+      :8 skip E3 skip D#3 skip E3 skip G#1 |
+      :8 G#2[pedal down] slur above { :8 (E4 G#4 C#5) (E4 G#4 C#5) (C#4 E4 An4)[pedal up] (C#4 E4 An4) (C#4 E4 G#4) (C#4 E4 G#4) (G#3 C#4 F#4) |
+      :8 (G#3 C#4 F#4) (G#3 C#4 E4) (G#3 C#4 E4) (F#3 G#3 D#4) (F#3 G#3 D#4) (E3 G#3 C#4) (F#3 G#3 D#4) (G#3 C#4 E4)[grace before slashed (F#4)] } |
+      :8 D#3[staccato below, pedal down] slur above { :8 (C#4 D#4 B4) B4[accent above] A#4[pedal up] G#4 F##4 } :q rest |
+      :8 skip (D#3 B3) A#2 G#2 F##2[staccato below, pedal down] (D#3 D#4)[staccato above, pedal up] G#2[staccato below, pedal down] (D#3 D#4)[staccato above, pedal up] |
+      :8 D#2[staccato below, pedal down] slur above { :8 (C#3 D#3 B3) B3[pedal up] A#3 G#3 F##3 } :q rest |
+      :8 skip (D#3 B3) A#2 G#2 F##2 (E#3 B3) An2 Gn2 |
+      :8 F#2[staccato below, pedal down] F#3[staccato above] octave +1 { B4[label "8va" above] F#3[pedal up] A#4[pedal down] F#3[pedal up] D#4[pedal down] F#3[pedal up] } |
+      octave +1 { :8 (F#3[tie] A#3 E4)[pedal down] } :8 F#4[staccato above] F#3[staccato above] F#2[staccato above] F#1[staccato above] F#2[staccato above] F#3[staccato above] F#4[staccato above, pedal up] |
+      :8 skip slur below { :8 F#3 B3 D#4 } :8 skip slur below { :8 E3 A#3 C#4 } |
+    }
+    voice held stem down {
+      :w skip |
+      :w skip |
+      :q G#2[pedal down] :8 B3[pedal up] skip :q G#2[pedal down] :8 B3[pedal up] skip |
+      :q G#2[pedal down] :q skip B2 :8 B3[pedal up] skip |
+      :w skip |
+      :w skip |
+      :q G#2[pedal down] :8 C#4[pedal up] skip :q G#2[pedal down] :8 C#4[pedal up] skip |
+      :q G#2[pedal down] :8 C#4[pedal up] skip :q C#3[pedal down] :8 C#4[pedal up] skip |
+      :w skip |
+      :w skip |
+      :q skip :h (C#4 D#4) :q skip |
+      :q G#2 :h. skip |
+      :q skip :h (C#3 D#3) :q skip |
+      :q G#2 :h. skip |
+      :q skip octave +1 { :q (D#4 F#4) (C#4 E4) B3 } |
+      :w skip |
+      :h B2 C#3 |
+    }
+    voice cantabile stem up {
+      times 14 { :w skip | }
+      :h. skip octave +1 { :8. G#4 :16 F#4 } |
+      octave +1 { :8 F#4[tie] } :8 skip :q skip :h skip |
+      :w skip |
+    }
+  }
+}

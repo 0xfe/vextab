@@ -91,7 +91,7 @@ export interface VoiceMeasure {
 
 /** A written tuplet can contain another tuplet or cross a measure boundary. */
 export type VoiceSpan = { name?: string } & (
-  | { kind: ExpressiveSpan; first: string; last: string; niente?: boolean; feather?: 'left' | 'right'; strokes?: number; range: TextRange }
+  | { kind: ExpressiveSpan; first: string; last: string; niente?: boolean; side?: 'above' | 'below'; feather?: 'left' | 'right'; strokes?: number; range: TextRange }
   | { kind: 'tuplet'; ratio: string; first: string; last: string; range: TextRange }
   | { kind: 'palmMute' | 'slur' | 'beam'; side?: 'above' | 'below'; first: string; last: string; strings: number[]; range: TextRange } |
   { kind: 'hammer' | 'pull' | 'slide'; from: HeadRef; to: HeadRef; range: TextRange });

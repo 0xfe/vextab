@@ -33,8 +33,8 @@ export function leadMarks(measure: Measure, staff: 'notation' | 'tab', noteId: (
       if (publication) {
         for (const gesture of event.gestures ?? []) {
           if ('direction' in gesture) {
-            // Independent preparation already draws these string-by-string arrows on both guitar staves.
-            if (!guitarChordLane) labels.push(gesture.kind + ' ' + gesture.direction);
+            // Piano parts and polyphonic guitar already print the stroke itself.
+            if (!measure.state.piano && !guitarChordLane) labels.push(gesture.kind + ' ' + gesture.direction);
           }
           else labels.push(gesture.kind === 'tap' ? 'T' : gesture.wide ? 'Wide vibrato' : 'Vibrato');
         }
