@@ -1,0 +1,94 @@
+/* Local repertoire index and score viewer. */
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  color: #252422;
+  background: #fcfbf8;
+  font:
+    16px/1.5 system-ui,
+    sans-serif;
+}
+main {
+  max-width: 1160px;
+  margin: auto;
+  padding: 30px clamp(15px, 4vw, 48px) 48px;
+}
+h1,
+h2 {
+  font-family: Georgia, serif;
+  line-height: 1.15;
+}
+h1 {
+  font-size: clamp(30px, 5vw, 48px);
+  margin: 12px 0;
+}
+h2 {
+  margin: 0;
+  font-size: 24px;
+}
+p {
+  margin: 0 0 15px;
+}
+a {
+  color: #215d51;
+}
+nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+button {
+  font: inherit;
+  color: #215d51;
+  cursor: pointer;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 285px), 1fr));
+  gap: 20px;
+}
+.card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: white;
+  border: 1px solid #d3d3c9;
+  padding: 16px;
+}
+.card:hover,
+.card:focus-visible {
+  border-color: #215d51;
+}
+.card img {
+  display: block;
+  width: 100%;
+  height: 102px;
+  object-fit: cover;
+  object-position: top left;
+  margin-bottom: 15px;
+}
+.meta {
+  color: #486259;
+  font-size: 14px;
+}
+#score {
+  background: white;
+  overflow: auto;
+  border-top: 1px solid #d3d3c9;
+}
+textarea {
+  max-width: 100%;
+}
+summary {
+  cursor: pointer;
+}
+section {
+  margin: 26px 0;
+}
+section > h2 {
+  margin-bottom: 12px;
+}

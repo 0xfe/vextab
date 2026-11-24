@@ -15,6 +15,28 @@ function performance(score: ReturnType<typeof renderScore>['score']) {
 }
 
 QUnit.module('Grammar v2 score views', () => {
+  QUnit.test('rational staff and tempo changes persist into later bars', assert => {
+    const source = 'meter 2/4 play { tempo 120 tempo 60 at 1 + 1/8 } ' +
+      'staff reed { sounds -2 clef bass at 1 + 1/4 key G at 1 + 1/4 sounds -3 at 2 ' +
+      ':q F4 F4 | :h F4 | }';
+    const score = renderScore(host(), parseScore(source), { renderer: 'svg', width: 550 }).score;
+    const heads = score.measures.flatMap(m => m.voices[0].events.map(e => e.heads[0]));
+    assert.deepEqual(heads.map(h => h.written), ['f/4', 'f#/4', 'f#/4']);
+    const performance = scorePerformance(score, 120);
+    assert.deepEqual(performance.events.map(e => e.notes[0].pitch), [63, 64, 63]);
+    assert.deepEqual(performance.events.map(e => [e.time, e.notes[0].duration]), [[0,.75],[.75,1],[1.75,2]]);
+    assert.equal(score.measures[1].staffState.notation.clef, 'bass');
+    assert.equal(score.measures[1].staffState.notation.key, 'G');
+    assert.throws(() => parseScore('staff { clef bass at 1 + 1/8 :w F4 | }'), /shared music-voice onset/);
+    assert.throws(() => parseScore('play { tempo 60 at 1 + 1/1 } staff { :w C4 | }'), /outside its written measure/);
+    const shifted = renderScore(host(), parseScore('transpose +2 staff { key G at 1 + 1/4 :q C4 F4 C4 F4 | }'),
+      { renderer:'svg', width:550 }).score;
+    assert.equal(shifted.measures[0].staffState.notation.changes[0].key, 'A');
+    assert.throws(() => parseScore('play { tempo 80 at 2 + 1/8 } staff a { meter 2/4 :h C4 | C4 | } ' +
+      'staff b { meter 3/4 :h. C4 | C4 | }'), /Share the written bar grid/);
+    assert.throws(() => parseScore('group bracket (b a) staff a { :w C4 | } staff b { :w C3 | }'), /adjacent named parts/);
+  });
+
   QUnit.test('fret, pitch, slide and per-string bend agree with v1 on both drawing backends', assert => {
     const old = parseScore('tabstave notation=true time=3/4 tuning=dropd capo=2\nnotes :q <0/6 (0/6.7z9z7/3) (0/6.7/3) !bend 3 +2 rise=1/2 release=1/1! |', { language: 1 });
     const source = 'meter 3/4 guitar { tuning dropD capo 2 0/6[slideIn below] (0/6 7/3[prebend +2 release]) (0/6 7/3[bend +2 rise=1/2 release=1]) | }';

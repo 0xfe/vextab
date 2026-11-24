@@ -8,6 +8,8 @@ export function measureVisits(score: ParsedScore, performed: boolean): number[] 
   if (!performed) return written;
   const repeats = [...(score.repeats ?? [])];
   for (const repeat of repeats) {
+    if (repeat.count !== undefined && (!Number.isInteger(repeat.count) || repeat.count < 2 || repeat.count > 32 || repeat.endings.length))
+      throw new ScoreError('measure', 'Invalid counted repeat', score.measures[0].range);
     let last = repeat.bodyEnd;
     if (!Number.isInteger(repeat.first) || !Number.isInteger(last) || repeat.first < 1 || last < repeat.first || last > written.length)
       throw new ScoreError('measure', 'Invalid repeat body', score.measures[0].range);
@@ -18,7 +20,7 @@ export function measureVisits(score: ParsedScore, performed: boolean): number[] 
     }
   }
   const starts: number[] = [];
-  const knownEnds = new Set(repeats.flatMap(r => r.endings.slice(0, -1).map(e => e.last)));
+  const knownEnds = new Set(repeats.flatMap(r => r.count ? [r.bodyEnd] : r.endings.slice(0, -1).map(e => e.last)));
   for (const bar of score.measures) {
     const v = bar.voices[0];
     if (['repeat-begin','repeat-both'].includes(v.opening?.type) && !repeats.some(r => r.first === bar.number)) starts.push(bar.number);
@@ -40,7 +42,7 @@ export function measureVisits(score: ParsedScore, performed: boolean): number[] 
         continue;
       }
       const children = blocks.filter(b => b !== repeat);
-      for (let pass = 0; pass < Math.max(2, repeat.endings.length); pass++) {
+      for (let pass = 0; pass < (repeat.count ?? Math.max(2, repeat.endings.length)); pass++) {
         walk(n, repeat.bodyEnd, children);
         const ending = repeat.endings[pass];
         if (ending) walk(ending.first, ending.last, children);

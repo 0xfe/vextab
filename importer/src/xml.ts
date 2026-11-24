@@ -1,0 +1,309 @@
+// Bounded, non-resolving XML decoder and located element helpers used by MusicXML and its container.
+import { SaxesParser } from 'saxes';
+import { includesExtended, Input, sourceLimit } from './score.js';
+import type { MusicXMLOptions, TextRange } from './types.js';
+
+/** Keep exact element ranges while interpreting this bounded measure in document order. */
+export interface Element {
+  name: string;
+  attributes: Record<string, string>;
+  children: Element[];
+  text: string;
+  range: [number, number];
+}
+
+// Most XML elements are scalar leaves. Allocate children only for the first nested element.
+const noChildren: Element[] = [];
+const noAttributes: Record<string, string> = Object.freeze(Object.create(null));
+// A single unusually dense measure must not extend the reusable pool for the rest of the import.
+const reusableElements = 4096;
+
+/** Element views last until the measure callback returns. Retained ranges and attribute maps belong to
+ * the source element and remain valid after another measure reuses this view.
+ */
+class XmlElement implements Element {
+  name = '';
+  text = '';
+  attributes = noAttributes;
+  children = noChildren;
+  private start = 0;
+  private end = 0;
+  private savedRange?: [number, number];
+
+  get range(): [number, number] {
+    return (this.savedRange ??= [this.start, this.end]);
+  }
+
+  reset(name: string, attributes: Record<string, string>, start: number, end: number) {
+    this.name = name;
+    this.attributes = attributes;
+    this.text = '';
+    if (this.children !== noChildren) this.children.length = 0;
+    this.start = start;
+    this.end = end;
+    this.savedRange = undefined;
+  }
+
+  close(end: number) {
+    this.end = end;
+    if (this.savedRange) this.savedRange[1] = end;
+  }
+}
+const largeXMLLimit = 8 * 1024 * 1024;
+/** A caller can select a small target from a larger source, independently of the host capacity. */
+export function xmlLimit(options: MusicXMLOptions) {
+  return options.selection || includesExtended(options) ? largeXMLLimit : sourceLimit;
+}
+
+/** Recognize the UTF encodings supported by the XML byte stream. */
+function encoding(data: Uint8Array) {
+  if ((data[0] === 255 && data[1] === 254) || (data[0] === 60 && data[1] === 0)) return 'utf-16le';
+  if ((data[0] === 254 && data[1] === 255) || (data[0] === 0 && data[1] === 60)) return 'utf-16be';
+  return 'utf-8';
+}
+
+/** Let saxes handle XML syntax, entities and offsets. No external document is loaded. */
+export function treeReader(
+  size: number,
+  asText: boolean,
+  input: Input,
+  selection?: MusicXMLOptions['selection'],
+  onRootChild?: (node: Element, root: Element) => void,
+  onPartMeasure?: (measure: Element, part: Element, ordinal: number) => void,
+) {
+  const limit = xmlLimit(input.options);
+  if (size > limit)
+    input.fail(
+      'limit',
+      'MusicXML input has ' +
+        size +
+        ' ' +
+        (asText ? 'UTF-16 units' : 'bytes') +
+        '; limit is ' +
+        limit +
+        '. Select a part or measure range, or opt into the extended profile for larger XML.',
+      [0, 0],
+    );
+  let decoder: TextDecoder | undefined;
+  let prefix: Uint8Array | undefined;
+  let block = '',
+    offset = 0,
+    priorOpening = 0;
+  const parser = new SaxesParser();
+  const stack: (XmlElement | undefined)[] = [];
+  const arena: XmlElement[] = [];
+  let inMeasure = false;
+  let used = 0;
+  const selected = selection?.parts && new Set(selection.parts);
+  let part = '',
+    ordinal = 0;
+  const first = selection?.firstMeasure ?? 1,
+    last = selection?.lastMeasure ?? Infinity;
+  const nodeLimit = xmlLimit(input.options) > sourceLimit ? 400000 : 65536;
+  let root: Element | undefined,
+    start = 0,
+    count = 0;
+  const here = (): TextRange => [
+    Math.max(0, Math.min(parser.position - 1, size)),
+    Math.min(parser.position, size),
+  ];
+  parser.on('error', (e) => input.fail('syntax', e.message, here()));
+  parser.on('xmldecl', (decl) => {
+    const declared = decl.encoding?.toLowerCase(),
+      used = decoder?.encoding;
+    if (used && declared && declared !== used && !(used.startsWith('utf-16') && declared === 'utf-16'))
+      input.fail('encoding', 'XML declaration conflicts with byte encoding.', [0, parser.position]);
+  });
+  parser.on('doctype', (d) => {
+    if (d.includes('['))
+      input.fail('unsupported', 'Internal DTD subsets are outside this profile.', [0, parser.position]);
+  });
+  parser.on('processinginstruction', () =>
+    input.fail('unsupported', 'Unsupported processing instruction.', here()),
+  );
+  parser.on('opentagstart', () => {
+    const found = block.lastIndexOf('<', parser.position - offset - 1);
+    start = found >= 0 ? offset + found : priorOpening;
+  });
+  parser.on('opentag', (tag) => {
+    if (stack.length >= 32 || ++count > nodeLimit)
+      input.fail('limit', 'XML element budget exceeded.', [start, parser.position]);
+    const parent = stack[stack.length - 1];
+    if (stack.length && !parent) {
+      stack.push(undefined);
+      return;
+    }
+    if (tag.name === 'part' && (parent?.name === 'score-partwise' || parent?.name === 'measure')) {
+      part = tag.attributes.id;
+      if (parent.name === 'score-partwise') ordinal = 0;
+    }
+    if (tag.name === 'measure' && (parent?.name === 'part' || parent?.name === 'score-timewise')) ordinal++;
+    const content =
+      parent && (root?.name === 'score-partwise' ? parent.name === 'measure' : parent.name === 'part');
+    // For unselected music keep the clock needed by global playback directions, plus inherited state.
+    const excluded = selected && !selected.has(part);
+    const prefix = ordinal < first;
+    const keepClock = includesExtended(input.options) && (excluded || prefix);
+    if (selection && (excluded || prefix || ordinal > last)) {
+      let drop = false;
+      if (content) {
+        const carry = tag.name === 'barline' || ['direction', 'sound'].includes(tag.name) || (!excluded && prefix && tag.name === 'attributes');
+        const clock =
+          (keepClock || (!excluded && prefix)) &&
+          ['attributes', 'note', 'forward', 'backup', 'direction', 'sound'].includes(tag.name);
+        drop = ordinal > last || (!carry && !clock);
+      } else if (parent?.name === 'note') drop = !['duration', 'chord', 'grace'].includes(tag.name);
+      else if (parent?.name === 'direction') drop = !['sound', 'offset'].includes(tag.name);
+      else if (parent?.name === 'attributes' && excluded) drop = tag.name !== 'divisions';
+      if (drop) {
+        stack.push(undefined);
+        return;
+      }
+    }
+    if (onPartMeasure && root?.name === 'score-partwise' && stack.length === 2 &&
+        parent?.name === 'part' && tag.name === 'measure') inMeasure = true;
+    let node: XmlElement;
+    if (inMeasure && used < reusableElements) {
+      node = arena[used] ?? (arena[used] = new XmlElement());
+      used++;
+    } else node = new XmlElement();
+    node.reset(tag.name, tag.attributes, start, parser.position);
+    if (parent) {
+      if (parent.children === noChildren) parent.children = [node];
+      else parent.children.push(node);
+    } else root = node;
+    stack.push(node);
+  });
+  function text(value: string) {
+    const current = stack[stack.length - 1];
+    if (current && (current.text || value.trim())) current.text += value;
+  }
+  parser.on('text', text);
+  parser.on('cdata', text);
+  parser.on('closetag', () => {
+    const current = stack.pop();
+    if (current) {
+      const barEnd =
+        root?.name === 'score-partwise'
+          ? current.name === 'measure'
+          : current.name === 'part' && stack.at(-1)?.name === 'measure';
+      if (
+        selection &&
+        barEnd &&
+        (ordinal < first || (selected && !selected.has(part))) &&
+        !current.children.some(
+          (c) =>
+            (c.name === 'attributes' && c.children.some((a) => a.name !== 'divisions')) ||
+            c.name === 'sound' || (c.name === 'direction' && c.children.some((s) => s.name === 'sound')),
+        )
+      ) {
+        let keep = 0;
+        for (const child of current.children)
+          if (child.name === 'attributes' || child.name === 'barline') current.children[keep++] = child;
+        current.children.length = keep;
+      }
+      current.close(parser.position);
+      if (
+        onPartMeasure &&
+        root?.name === 'score-partwise' &&
+        stack.length === 2 &&
+        current.name === 'measure' &&
+        stack[1]?.name === 'part'
+      ) {
+        const part = stack[1];
+        onPartMeasure(current, part, ordinal);
+        // The normalized measure owns its values. Release the entire SAX subtree before decoding its neighbor.
+        part.children.pop();
+        inMeasure = false;
+        used = 0;
+      } else if (root && stack.length === 1) onRootChild?.(current, root);
+    }
+  });
+  function write(next: string) {
+    if (!next.length) return;
+    const prior = block.lastIndexOf('<');
+    if (prior >= 0) priorOpening = offset + prior;
+    offset += block.length;
+    block = next;
+    parser.write(block);
+  }
+  function decode(bytes?: Uint8Array, stream = false) {
+    let decoded: string;
+    try {
+      decoded = decoder!.decode(bytes, { stream });
+    } catch {
+      return input.fail('encoding', 'Invalid XML byte encoding.', [offset, offset]);
+    }
+    write(decoded);
+  }
+  function bytes(chunk: Uint8Array) {
+    if (!chunk.length) return;
+    if (!decoder) {
+      if (prefix) {
+        const joined = new Uint8Array(prefix.length + chunk.length);
+        joined.set(prefix);
+        joined.set(chunk, prefix.length);
+        chunk = joined;
+        prefix = undefined;
+      }
+      if (chunk.length < 2) {
+        // An archive inflater may release its output buffer when this callback returns.
+        prefix = chunk.slice();
+        return;
+      }
+      decoder = new TextDecoder(encoding(chunk), { fatal: true });
+    }
+    for (let i = 0; i < chunk.length; i += 16384) decode(chunk.subarray(i, i + 16384), true);
+  }
+  function finish(): Element {
+    if (prefix) {
+      decoder = new TextDecoder('utf-8', { fatal: true });
+      decode(prefix);
+    } else if (decoder) decode();
+    parser.close();
+    if (!root) return input.fail('syntax', 'Missing MusicXML root.', [0, size]);
+    return root;
+  }
+  return { write, bytes, finish };
+}
+
+/** Feed a complete plain document through the same decoder as a streamed ZIP member. */
+export function feedTree(reader: ReturnType<typeof treeReader>, source: string | Uint8Array) {
+  if (typeof source === 'string')
+    for (let i = 0; i < source.length; i += 16384) reader.write(source.slice(i, i + 16384));
+  else reader.bytes(source);
+}
+
+/** Reject unrecognized children and attributes before any construct can be silently discarded. */
+export function shape(node: Element, input: Input, children: string[], attributes: string[] = []) {
+  for (const name of Object.keys(node.attributes)) {
+    if (!attributes.includes(name))
+      input.fail('unsupported', 'Unsupported ' + node.name + ' attribute ' + name + '.', node.range);
+  }
+  for (const child of node.children) {
+    if (!children.includes(child.name))
+      input.fail('unsupported', 'Unsupported ' + child.name + ' in ' + node.name + '.', child.range);
+  }
+  if (children.length && node.text.trim())
+    input.fail('syntax', 'Unexpected text in ' + node.name + '.', node.range);
+}
+
+/** Require exactly one selected child, or permit its absence when an explicit default exists. */
+export function one(node: Element, name: string, input: Input, optional = false) {
+  let match: Element | undefined;
+  for (const child of node.children)
+    if (child.name === name) {
+      if (match) input.fail('unsupported', 'Only one ' + name + ' is supported here.', child.range);
+      match = child;
+    }
+  if (!match && !optional) input.fail('syntax', 'Missing ' + name + '.', node.range);
+  return match;
+}
+
+/** Scalar values cannot contain markup. */
+export function scalar(node: Element, name: string, input: Input, fallback?: string): string {
+  const child = one(node, name, input, fallback !== undefined);
+  if (!child) return fallback!;
+  shape(child, input, []);
+  return child.text.trim();
+}

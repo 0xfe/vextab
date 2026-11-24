@@ -1,0 +1,9 @@
+{
+  "name": "vextab-importer-m0-controls",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "fflate": "0.8.3",
+    "saxes": "6.0.0"
+  }
+}

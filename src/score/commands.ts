@@ -39,30 +39,37 @@ function bend(text: string, event: Attack, state: StaffState, range: SourceRange
   return spec;
 }
 
-/** Frames use low-to-high frets. Check the diagram against the actual, capo-relative voicing. */
-export function frame(text: string, event: Attack, state: StaffState, range: SourceRange): FretDiagramSpec {
-  const match = /^([x\d,]+)(?:\s+barre=(\d+):(\d+)-(\d+))?$/.exec(text);
-  if (!match || !event.chord) fail(range, 'A frame follows a chord label and needs low-to-high frets');
-  const cells = match[1].split(',');
-  if (cells.length !== state.strings || cells.some(c => !/^(x|\d+)$/.test(c))) fail(range, 'Supply one fret or x per string');
-  const frets = cells.map(c => c === 'x' ? 'x' : Number(c));
-  if (frets.every(fret => fret === 'x')) fail(range, 'A frame needs at least one sounding string');
+/** A played frame must agree with every physical position of the attached chord. */
+function checkFrameVoicing(frets: readonly (number | 'x')[], event: Attack, range: SourceRange) {
   for (const [i, fret] of frets.entries()) {
-    const head = event.heads.find(h => h.position?.str === state.strings - i);
+    const head = event.heads.find(h => h.position?.str === frets.length - i);
     const played = head?.position?.fret;
-    if (!Number.isSafeInteger(fret) && fret !== 'x') fail(range, 'Invalid frame fret');
     if (fret === 'x' ? played !== undefined && played !== 'X' : played !== fret) fail(range, 'Frame disagrees with the fretted chord');
   }
   if (event.heads.some(h => !h.position)) fail(range, 'A frame needs an explicit string for each chord member');
+}
+
+/** An independent accompaniment diagram uses the same low-to-high frets as a played frame. */
+export function frame(text: string, event: Attack, state: StaffState, range: SourceRange, mode: 'frame' | 'diagram' = 'frame'): FretDiagramSpec {
+  const match = /^([x\d,]+)(?:\s+barre=(\d+):(\d+)-(\d+))?$/.exec(text);
+  if (!match || !event.chord) fail(range, 'A frame follows a chord label and needs low-to-high frets');
+  const cells = match[1].split(',');
+  const strings = cells.length;
+  if (mode === 'diagram' && (strings < 4 || strings > 8)) fail(range, 'Supply four through eight strings in a diagram');
+  if ((mode === 'frame' && strings !== state.strings) || cells.some(c => !/^(x|\d+)$/.test(c))) fail(range, 'Supply one fret or x per string');
+  const frets = cells.map(c => c === 'x' ? 'x' : Number(c));
+  if (frets.every(fret => fret === 'x')) fail(range, 'A frame needs at least one sounding string');
+  if (frets.some(fret => fret !== 'x' && !Number.isSafeInteger(fret))) fail(range, 'Invalid frame fret');
+  if (mode === 'frame') checkFrameVoicing(frets, event, range);
   const stopped = frets.filter((n): n is number => typeof n === 'number' && n > 0);
   const firstFret = Math.max(...stopped) > 4 ? Math.min(...stopped) : 1;
   if (Math.max(...stopped) - firstFret >= 4) fail(range, 'Frame spans more than four frets');
   let barre: FretDiagramSpec['barre'];
   if (match[2]) {
     const [fret, from, to] = match.slice(2).map(Number);
-    if (from <= to || to < 1 || from > state.strings || fret < firstFret ||
-        frets[state.strings - from] !== fret || frets[state.strings - to] !== fret ||
-        frets.slice(state.strings - from, state.strings - to + 1).some(n => typeof n !== 'number' || n < fret)) {
+    if (from <= to || to < 1 || from > strings || fret < firstFret ||
+        frets[strings - from] !== fret || frets[strings - to] !== fret ||
+        frets.slice(strings - from, strings - to + 1).some(n => typeof n !== 'number' || n < fret)) {
       fail(range, 'Barre endpoints must stop at the given fret, from lower to higher string');
     }
     barre = { fret, from, to };

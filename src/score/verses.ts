@@ -16,8 +16,8 @@ export function resolveVerseLinks(bars: MeasureVoice[], spans: ScoreSpan[]) {
     for (const lyric of lyrics(event)) {
       const lane = lyric.verse ?? '';
       const end = lyric.hyphen ? following.get(lane) : lyric.extend ? i + lyric.extend : i;
-      if (!events[end] || !lyric.text.trim() || (lyric.elideWith !== undefined && !lyric.elideWith.trim()) || !event.heads.length)
-        throw new ScoreError('measure', 'Lyric needs a pitched anchor, text and a valid following endpoint', lyric.range);
+      if (!events[end] || !lyric.text.trim() || (lyric.elideWith !== undefined && !lyric.elideWith.trim()) || (!event.heads.length && event.silent))
+        throw new ScoreError('measure', 'Lyric needs a visible note or rest, text and a valid following endpoint', lyric.range);
       if (bar !== events[end].bar) {
         lyric.crossConnector = true;
         spans.push({ kind: lyric.hyphen ? 'hyphen' : 'lyric', lane, from: event.id, to: events[end].event.id,

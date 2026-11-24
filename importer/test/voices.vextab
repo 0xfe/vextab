@@ -1,0 +1,6 @@
+meter 2/4
+staff {
+  key G
+  voice upper { :q F#4 Fn4 | }
+  voice lower { :q skip C4 | }
+}

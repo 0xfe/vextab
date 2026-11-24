@@ -79,7 +79,16 @@ export function conductorSpec(scores: ParsedScore[], specs: EasyScoreComposition
     measures: stave.measures.map(m => ({ ...m, voices: m.voices.map(v => ({ ...v, notes: typeof v.notes === 'string' ? v.notes :
       v.notes.map(n => typeof n === 'object' && 'stave' in n && typeof n.stave === 'string' ? { ...n, stave: staveId(p, n.stave) } : n) })) })) })));
   const groups = specs.flatMap((spec, p) => spec.continuous.groups.map(g => ({ ...g, first: staveId(p, g.first), last: staveId(p, g.last) })));
-  if (scores.length > 1) groups.push({ first: staves[0].id, last: staves[staves.length - 1].id, type: 'bracket', barlines: groups.length === 0 });
+  const selection = new Map(scores.map((s, i) => [s.instrument?.id, i]));
+  const declared = scores[0].groups ?? [];
+  for (const group of declared) {
+    const members = group.parts.map(id => selection.get(id)).filter(i => i !== undefined);
+    if (members.length < 2) continue;
+    const first = members[0], last = members[members.length - 1], lastStaves = specs[last].staves;
+    groups.push({ type: group.type, first: staveId(first, specs[first].staves[0].id),
+      last: staveId(last, lastStaves[lastStaves.length - 1].id), barlines: true });
+  }
+  if (!declared.length && scores.length > 1) groups.push({ first: staves[0].id, last: staves[staves.length - 1].id, type: 'bracket', barlines: groups.length === 0 });
   return { ...specs[0], staves, engraving: {
     prepareNote(options, note, builder) { for (const spec of specs) spec.engraving?.prepareNote?.(options, note, builder); },
     place(score, add) { for (const spec of specs) spec.engraving?.place?.(score, add); },
