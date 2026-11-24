@@ -3,11 +3,9 @@ import { isControlPosition, isControlSize } from '../../playback/control-options
 import { isPerformerName } from '../../playback/profiles.mts';
 import type { GraceFingering, GracePitch, EventMark, Head, HeadMark, PartKind, PartSettings, WrittenMeter, StaffName, TextStyle, LaneStyle, TextBoundary, TextRange, ExpansionFrame, InstrumentIdentity } from './model.js';
 
-/** One compilation shares these budgets across all parts, voices and pattern calls. */
-export const limits = Object.freeze({
-  bytes: 65536, tokens: 8192, depth: 24, repetitions: 32,
-  events: 4096, heads: 16, steps: 32768, fraction: 2147483647,
-});
+import { limits, type capacityLimits } from './capacity.mts';
+export { limits };
+type Budgets = ReturnType<typeof capacityLimits>;
 
 export type DiagnosticCode = 'syntax' | 'source-limit' | 'token-limit' | 'depth-limit' | 'fraction-limit'
   | 'work-limit' | 'event-limit' | 'hammer' | 'instrument' | 'alignment' | 'bar-length';
@@ -20,20 +18,20 @@ export type TimedNode = { range: TextRange } & (
 export type Node = TimedNode | { kind: import('./model.js').ExpressiveSpan; body: Node[]; niente?: boolean; feather?: 'left' | 'right'; strokes?: number; range: TextRange } | { range: TextRange } & (
   { kind: 'meter'; signature: WrittenMeter } | { kind: 'duration'; value: Fraction } | { kind: 'use'; name: string } |
   { kind: 'times'; count: number; body: Node[] } | { kind: 'tuplet'; scale: Fraction; body: Node[] } |
-  { kind: 'volta'; body: Node[]; endings: Node[][] } | { kind: '|'; closing?: string } |
+  { kind: 'volta'; count?: number; body: Node[]; endings: Node[][] } | { kind: '|'; closing?: string } |
   { kind: 'textBoundary'; boundary: Omit<TextBoundary, 'bar'> } | { kind: 'break' | 'repeatStart' } | { kind: 'mark'; text: string } |
   { kind: 'fragment' | 'slur' | 'beam' | 'palmMute' | 'transpose' | 'octave'; body: Node[]; side?: 'above' | 'below'; strings?: number[]; semitones?: number }
 );
 export interface VoiceSyntax { settings?: import('./model.js').VoiceSettings; name: string; range: TextRange; body: Node[] }
-export interface StaffSyntax extends Omit<InstrumentIdentity, 'name'> { displayName?: string; name: StaffName; range: TextRange; voices: VoiceSyntax[] }
+export interface StaffSyntax extends Omit<InstrumentIdentity, 'name'> { staffChanges?: PartSettings['staffChanges']; displayName?: string; name: StaffName; range: TextRange; voices: VoiceSyntax[] }
 export interface PartSyntax extends PartSettings, InstrumentIdentity { lanes?: { voice: VoiceSyntax; style: LaneStyle }[]; kind: PartKind; range: TextRange; staves: StaffSyntax[] }
 
 /** Comments consume the rest of the line. Punctuation has the same meaning across line breaks. */
-function tokenize(source: string, fail: Fail): Token[] {
-  if (source.length > limits.bytes || new TextEncoder().encode(source).length > limits.bytes) fail('source-limit', 'Score exceeds 64 KiB', [0, 0]);
+function tokenize(source: string, fail: Fail, budgets: Budgets): Token[] {
+  if (source.length > budgets.bytes || new TextEncoder().encode(source).length > budgets.bytes) fail('source-limit', 'Score exceeds ' + budgets.bytes / 1024 + ' KiB', [0, 0]);
   const tokens: Token[] = [];
   function emit(text: string, range: TextRange) {
-    if (tokens.length === limits.tokens) fail('token-limit', 'Too many input tokens', range);
+    if (tokens.length === budgets.tokens) fail('token-limit', 'Score exceeds ' + budgets.tokens + ' input tokens', range);
     tokens.push({ text, range });
   }
   const commentTail = /[^\r\n]*/y;
@@ -65,7 +63,7 @@ function tokenize(source: string, fail: Fail): Token[] {
 }
 
 /** Map decoded JSON-string offsets back to written UTF-16 positions, including escapes. */
-function aliasTokens(value: string, definition: Token, fail: Fail): Token[] {
+function aliasTokens(value: string, definition: Token, fail: Fail, budgets: Budgets): Token[] {
   const offsets = [definition.range[0] + 1];
   for (let i = 1; i < definition.text.length - 1;) {
     if (definition.text[i] !== '\\') i++;
@@ -73,7 +71,7 @@ function aliasTokens(value: string, definition: Token, fail: Fail): Token[] {
     offsets.push(definition.range[0] + i);
   }
   const written = ([start, end]: TextRange): TextRange => [offsets[start], offsets[end]];
-  return tokenize(value, (code, reason, range) => fail(code, reason, written(range)))
+  return tokenize(value, (code, reason, range) => fail(code, reason, written(range)), budgets)
     .map(token => ({ text: token.text, range: written(token.range) }));
 }
 
@@ -81,7 +79,7 @@ const durationPattern = /^:(w|h|q|1|2|4|8|16|32|64|128|256)(\.{0,2})$/;
 const notePattern = /^[A-G](?:bb|##|b|#|n)?[0-9]$/;
 const positionPattern = /^(x|0|[1-9]\d?)\/([1-8])$/;
 const builtInMarks = new Set([
-  'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'line', 'ink', 'label',
+  'sustain', 'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'diagram', 'line', 'ink', 'label',
   'tap', 'vibrato', 'brush', 'roll', 'stroke', 'rasgueado', 'symbol', 'write', 'staccato', 'fermata',
   'dynamic', 'harmony', 'onStaff', 'sharedStem', 'pedal', 'ossia', 'grace', 'ornament', 'verse', 'gliss', 'release', 'articulation', 'lyric', 'bend', 'prebend', 'finger',
 ]);
@@ -91,10 +89,10 @@ function isPartKind(name: string): name is PartKind {
 }
 
 /** Parse a bounded syntax tree. A pattern may refer only to already completed definitions. */
-export function readScore(source: string, fail: Fail) {
+export function readScore(source: string, fail: Fail, budgets: Budgets = limits) {
   let drums = new Set(standardDrums);
   const tempoRanges = new Map<number, TextRange>();
-  let tokens = tokenize(source, fail);
+  let tokens = tokenize(source, fail, budgets);
   let cursor = 0, depth = 0;
   const peek = (): string => tokens[Math.min(cursor, tokens.length - 1)].text;
   const take = (): Token => {
@@ -127,6 +125,7 @@ export function readScore(source: string, fail: Fail) {
   let playback: import('./model.js').ScoreV2['playback'];
   let transpose: number | undefined;
   let measureNumbers: boolean | undefined;
+  const groups: import('./model.js').StaffGroup[] = [];
   const editions: import('./model.js').Edition[] = [];
   let layout: import('./model.js').ScoreLayout | undefined;
   let pickup: Fraction | undefined, pickupToken: Token | undefined;
@@ -164,7 +163,7 @@ export function readScore(source: string, fail: Fail) {
   }
 
   function isEventMark(mark: HeadMark | EventMark): mark is EventMark {
-    return ['dynamic','harmony','onStaff','sharedStem','pedal','ossia','grace','ornament','slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
+    return ['spanEndpoint','dynamic','harmony','onStaff','sharedStem','pedal','ossia','grace','ornament','slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'diagram', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
   }
 
   /** JSON quoting handles embedded punctuation and escaped quotes in musical text. */
@@ -233,7 +232,7 @@ export function readScore(source: string, fail: Fail) {
   /** Display and playback metadata are shared by instrument and staff declarations. */
   function identityFields(id?: string): InstrumentIdentity {
     const fields: InstrumentIdentity = id ? { id } : {};
-    while (peek() === 'name' || peek() === 'shortName' || peek() === 'sounds') {
+    while (peek() === 'name' || peek() === 'shortName' || (peek() === 'sounds' && tokens[cursor + 2]?.text !== 'at')) {
       const field = take();
       if (Object.prototype.hasOwnProperty.call(fields, field.text)) error('Duplicate instrument field', field);
       if (field.text === 'sounds') {
@@ -273,6 +272,18 @@ export function readScore(source: string, fail: Fail) {
     return style;
   }
 
+  /** Reduce exact author-supplied timing within the compiler precision budget. */
+  function readTiming(token: Token, value: string, share = false): string {
+    const match = /^([1-9]\d{0,9})\/([1-9]\d{0,9})$/.exec(value);
+    if (!match) error('Expected a positive fraction', token);
+    const [n, d] = match.slice(1).map(Number);
+    if (n > limits.fraction || d > limits.fraction) error('Timing fraction exceeds precision limit', token);
+    if (share && n >= d) error('Grace share must be smaller than one', token);
+    let a = n, b = d;
+    while (b) [a, b] = [b, a % b];
+    return (n / a) + '/' + (d / a);
+  }
+
   /** Each mark keeps the written token range even after pattern expansion. */
   function readMark(): HeadMark | EventMark {
     const mark = take();
@@ -287,7 +298,21 @@ export function readScore(source: string, fail: Fail) {
       const name = identifier();
       return { kind: mark.text, name, range: range() };
     }
-    if (mark.text === 'frame') {
+    if (mark.text === 'sustain') {
+      const token = take();
+      return { kind: 'sustain', duration: readTiming(token, token.text), range: range() };
+    }
+    if (['slurStart', 'slurEnd', 'beamStart', 'beamEnd', 'crescendoStart', 'diminuendoStart', 'hairpinEnd'].includes(mark.text)) {
+      const name = identifier();
+      const span = mark.text.startsWith('slur') ? 'slur' : mark.text.startsWith('beam') ? 'beam' : 'hairpin';
+      const edge = mark.text.endsWith('Start') ? 'start' : 'end';
+      const hairpin = mark.text === 'crescendoStart' ? 'crescendo' : mark.text === 'diminuendoStart' ? 'diminuendo' : undefined;
+      const side = mark.text === 'slurStart' && (peek() === 'above' || peek() === 'below') ? take().text as 'above' | 'below' : undefined;
+      const niente = !!hairpin && peek() === 'niente';
+      if (niente) take();
+      return { kind: 'spanEndpoint', name, span, edge, hairpin, side, niente, range: range() };
+    }
+    if (mark.text === 'frame' || mark.text === 'diagram') {
       expect('(');
       const frets: (number | 'x')[] = [];
       while (peek() !== ')') {
@@ -302,7 +327,7 @@ export function readScore(source: string, fail: Fail) {
         if (!parsed) error('Expected barre=fret/from..to', cell);
         barre = [Number(parsed[1]), Number(parsed[2]), Number(parsed[3])];
       }
-      return { kind: 'frame', frets, barre, range: range() };
+      return { kind: mark.text, frets, barre, range: range() };
     }
     if (mark.text === 'line') {
       const value = take();
@@ -358,7 +383,9 @@ export function readScore(source: string, fail: Fail) {
     if (mark.text === 'pedal') {
       const action = take();
       if (action.text !== 'down' && action.text !== 'up') error('Expected pedal down or up', action);
-      return { kind: 'pedal', action: action.text, range: range() };
+      const onset = action.text === 'up' && peek() === 'onset';
+      if (onset) take();
+      return { kind: 'pedal', action: action.text, ...(onset && { onset }), range: range() };
     }
     if (mark.text === 'ossia') {
       const duration = take();
@@ -386,6 +413,8 @@ export function readScore(source: string, fail: Fail) {
       if (side.text !== 'before' && side.text !== 'after') error('Expected before or after', side);
       const slash = peek() === 'slashed';
       if (slash) take();
+      const token = peek().startsWith('steal=') ? take() : undefined;
+      const steal = token && readTiming(token, token.text.slice(6), true);
       expect('(');
       while (peek() !== ')') {
         if (pitches.length >= 16) error('Expected up to 16 grace attacks');
@@ -413,7 +442,7 @@ export function readScore(source: string, fail: Fail) {
       }
       expect(')');
       if (!pitches.length) error('Expected a grace pitch', side);
-      return { kind: 'grace', side: side.text, pitches, ...(fingerings.length && { fingerings }), ...(slash && { slash }), range: range() };
+      return { kind: 'grace', side: side.text, pitches, ...(steal && { steal }), ...(fingerings.length && { fingerings }), ...(slash && { slash }), range: range() };
     }
     if (mark.text === 'harmony') {
       function chordPitch() {
@@ -502,7 +531,7 @@ export function readScore(source: string, fail: Fail) {
       const definition = tokens[cursor];
       const value = literal();
       const outer = tokens, next = cursor;
-      tokens = aliasTokens(value, definition, fail);
+      tokens = aliasTokens(value, definition, fail, budgets);
       cursor = 0;
       try {
         const mark = readMark();
@@ -646,17 +675,17 @@ export function readScore(source: string, fail: Fail) {
         const semitones = Number(value.text) * (token.text === 'octave' ? 12 : 1);
         if (!/^[+-]?\d{1,3}$/.test(value.text) || Math.abs(semitones) > 127) error('Invalid transposition interval', value);
         node = { kind: token.text, semitones, body: block(sequence), range: token.range };
-      } else if (token.text === 'volta') {
+      } else if (token.text === 'volta' || token.text === 'repeatCount') {
         take();
         const count = take();
         if (!/^(?:[2-9]|[12]\d|3[0-2])$/.test(count.text)) error('Expected 2 through 32 repeat passes', count);
         const body = block(sequence), endings: Node[][] = [];
-        for (let i = 1; i <= Number(count.text); i++) {
+        for (let i = 1; token.text === 'volta' && i <= Number(count.text); i++) {
           expect('ending');
           expect(String(i));
           endings.push(block(sequence));
         }
-        node = { kind: 'volta', body, endings, range: token.range };
+        node = { kind: 'volta', body, endings, ...(token.text === 'repeatCount' && {count: Number(count.text)}), range: token.range };
       } else if (token.text === 'times' || token.text === 'tuplet') {
         take();
         const parameter = take();
@@ -769,7 +798,24 @@ export function readScore(source: string, fail: Fail) {
   }
 
   /** Read settings before the part's first voice so every voice shares the same instrument. */
-  function settings(kind: PartKind, voiceOnly = false): PartSettings {
+  /** Timed declarations are bar-local. Normalize offsets so equivalent spellings compare identically. */
+  function timedPosition(first: Token) {
+    expect('at');
+    const bar = take();
+    if (!/^[1-9]\d{0,4}$/.test(bar.text)) error('Expected a positive written bar number', bar);
+    let at = '0/1', last = bar;
+    if (peek() === '+') {
+      take(); last = take();
+      if (!/^\d{1,9}\/[1-9]\d{0,8}$/.test(last.text)) error('Expected an offset in whole notes', last);
+      const [n, d] = last.text.split('/').map(Number);
+      let a = n, b = d;
+      while (b) [a, b] = [b, a % b];
+      at = (n / a) + '/' + (d / a);
+    }
+    return { bar: Number(bar.text), at, range: [first.range[0], last.range[1]] as TextRange };
+  }
+
+  function settings(kind: PartKind, voiceOnly = false, hand = false): PartSettings {
     const result: PartSettings = {};
     /** Apply shared settings to the whole part or to an authored measure boundary. */
     function atBar() {
@@ -784,7 +830,7 @@ export function readScore(source: string, fail: Fail) {
       const changes = result.changes ??= {};
       changes[at] = { ...changes[at], ...values };
     }
-    const names = voiceOnly ? ['stem', 'beams', 'flatBeams', 'beamRests', 'stemlets', 'middleRests', 'tabStems', 'tabDirection'] : ['program', 'map', 'meter', 'key', 'clef', 'view', 'capo', 'tuning', 'ink', 'stem', 'beams', 'flatBeams', 'beamRests', 'tabStems', 'stemlets', 'middleRests', 'tabDirection', 'accidentals', 'display', 'groupBeats'];
+    const names = hand ? ['key','clef','sounds'] : voiceOnly ? ['stem', 'beams', 'flatBeams', 'beamRests', 'stemlets', 'middleRests', 'tabStems', 'tabDirection'] : ['program', 'map', 'meter', 'key', 'clef', 'sounds', 'view', 'capo', 'tuning', 'ink', 'stem', 'beams', 'flatBeams', 'beamRests', 'tabStems', 'stemlets', 'middleRests', 'tabDirection', 'accidentals', 'display', 'groupBeats'];
     while (names.includes(peek())) {
       const option = take(), value = take();
       if (option.text === 'program') {
@@ -834,14 +880,23 @@ export function readScore(source: string, fail: Fail) {
       } else if (option.text === 'key') {
         if (!/^(?:Cb|Gb|Db|Ab|Eb|Bb|F|C|G|D|A|E|B|F#|C#|Abm|Ebm|Bbm|Fm|Cm|Gm|Dm|Am|Em|Bm|F#m|C#m|G#m|D#m|A#m)$/.test(value.text))
           error('Expected a key signature', value);
-        if (peek() === 'at') {
-          (result.keys ??= {})[atBar()] = value.text;
+        if (peek() === 'at' || hand) {
+          const position = peek() === 'at' ? timedPosition(option) : { bar: 1, at: '0/1', range: option.range };
+          if (!hand && position.at === '0/1' && position.bar > 1) (result.keys ??= {})[position.bar] = value.text;
+          else (result.staffChanges ??= []).push({ ...position, key: value.text });
         } else result.key = value.text;
+      } else if (option.text === 'sounds') {
+        if (!/^[+-]?\d{1,3}$/.test(value.text) || Math.abs(Number(value.text)) > 127) error('Invalid sounding interval', value);
+        (result.staffChanges ??= []).push({ ...timedPosition(option), sounds: Number(value.text) });
       } else if (option.text === 'clef') {
-        if (kind === 'piano' || kind === 'drums') error('This part supplies its own clefs', option);
+        if ((kind === 'piano' && !hand) || kind === 'drums') error('Declare the clef on a pitched staff', option);
         const clefs = ['treble', 'bass', 'alto', 'tenor', 'none', 'soprano', 'mezzo-soprano', 'baritone-c', 'baritone-f', 'subbass', 'french', 'percussion'];
         if (!clefs.includes(value.text)) error('Unknown clef', value);
-        result.clef = value.text as PartSettings['clef'];
+        if (peek() === 'at' || hand) {
+          if (value.text === 'none') error('A timed clef must be visible', value);
+          const position = peek() === 'at' ? timedPosition(option) : { bar: 1, at: '0/1', range: option.range };
+          (result.staffChanges ??= []).push({ ...position, clef: value.text });
+        } else result.clef = value.text as PartSettings['clef'];
       } else if (kind !== 'guitar') error('This setting needs a guitar part', option);
       else if (option.text === 'view') {
         if (value.text !== 'tab' && value.text !== 'both' && value.text !== 'notation') error('Expected tab, notation or both', value);
@@ -942,11 +997,13 @@ export function readScore(source: string, fail: Fail) {
             const tempo = take();
             if (!/^[1-9]\d{0,2}$/.test(tempo.text)) error('Expected a positive tempo', tempo);
             if (peek() === 'at') {
-              take(); const bar = take();
-              if (!/^[1-9]\d{0,3}$/.test(bar.text)) error('Expected a written bar number', bar);
-              if (tempoRanges.has(Number(bar.text))) error('Duplicate tempo change at this bar', bar);
-              tempoRanges.set(Number(bar.text), bar.range);
-              (playback!.tempos ??= {})[Number(bar.text)] = Number(tempo.text);
+              const pos = timedPosition(field);
+              if (pos.at !== '0/1') (playback!.tempoChanges ??= []).push({ ...pos, bpm: Number(tempo.text) });
+              else {
+                if (tempoRanges.has(pos.bar)) error('Duplicate tempo change at this bar', tempo);
+                tempoRanges.set(pos.bar, pos.range);
+                (playback!.tempos ??= {})[pos.bar] = Number(tempo.text);
+              }
             } else playback!.tempo = Number(tempo.text);
           } else if (field.text === 'controls' || field.text === 'controlSize' || field.text === 'position' || field.text === 'inset') {
             const value = take(), controls = playback!.controls ??= {};
@@ -997,6 +1054,14 @@ export function readScore(source: string, fail: Fail) {
       const name = identifier();
       if (patterns.has(name)) error('Duplicate pattern ' + name, nameToken);
       patterns.set(name, block(sequence));
+    } else if (token.text === 'group') {
+      const type = take();
+      if (type.text !== 'brace' && type.text !== 'bracket') error('Expected brace or bracket', type);
+      expect('('); const names: string[] = [];
+      while (peek() !== ')') names.push(identifier());
+      const end = take();
+      if (names.length < 2) error('A group needs at least two parts', type);
+      groups.push({ type: type.text as 'brace' | 'bracket', parts: names, range: [token.range[0], end.range[1]] });
     } else if (isPartKind(token.text)) {
       drums = new Set(standardDrums);
       const idToken = tokens[cursor];
@@ -1016,9 +1081,9 @@ export function readScore(source: string, fail: Fail) {
             const staffId = peek() === '{' ? undefined : identifier();
             if (staves.some(staff => (staff.id ?? staff.name) === (staffId ?? hand)))
               error('Duplicate staff ID ' + (staffId ?? hand), staffId ? key : handToken);
-            let fields: InstrumentIdentity;
-            const music = block(() => { fields = identityFields(staffId); return voices(); });
-            staves.push({ ...staffFields(fields), name: hand, range: handToken.range, voices: music });
+            let fields: InstrumentIdentity, handSettings: PartSettings;
+            const music = block(() => { fields = identityFields(staffId); handSettings = settings('piano', false, true); return voices(); });
+            staves.push({ ...staffFields(fields), ...handSettings, name: hand, range: handToken.range, voices: music });
           }
           lanes = readLanes();
         });
@@ -1043,5 +1108,5 @@ export function readScore(source: string, fail: Fail) {
     } else error('Expected a score setting, alias, pattern or part', token);
   }
   if (!parts.length) error('Expected a part');
-  return { tempoRanges, editions, patterns, parts, scoreMeters, pickup, pickupRange: pickupToken?.range, playback, measureNumbers, layout, transpose };
+  return { groups, tempoRanges, editions, patterns, parts, scoreMeters, pickup, pickupRange: pickupToken?.range, playback, measureNumbers, layout, transpose };
 }

@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!-- One held chord head, a crossing slur and crescendo, and two syllables sharing a verse. -->
+<score-partwise version="4.0">
+  <part-list><score-part id="P1"><part-name>Voice</part-name></score-part></part-list>
+  <part id="P1"><measure number="1">
+    <attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>
+    <direction><direction-type><dynamics><p/></dynamics></direction-type></direction>
+    <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><tie type="start"/><type>quarter</type>
+      <notations><tied type="start"/><slur number="1" type="start" placement="above"/></notations>
+      <lyric number="1"><syllabic>begin</syllabic><text>Fly</text></lyric></note>
+    <note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    <direction><direction-type><wedge type="crescendo" number="1"/></direction-type></direction>
+    <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><tie type="stop"/><type>quarter</type><notations><tied type="stop"/></notations></note>
+    <note><chord/><pitch><step>G</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    <note><pitch><step>A</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type><notations><slur number="1" type="stop"/></notations>
+      <lyric number="1"><syllabic>end</syllabic><text>ing</text></lyric></note>
+    <direction><direction-type><wedge type="stop" number="1"/></direction-type></direction>
+    <direction><direction-type><dynamics><f/></dynamics></direction-type></direction>
+    <note><pitch><step>B</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+  </measure></part>
+</score-partwise>

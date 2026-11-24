@@ -17,6 +17,116 @@ function host() {
 }
 
 QUnit.module('Expressive notation and performance', () => {
+  QUnit.test('a harmony diagram has its own strings on a melody note or rest', assert => {
+    const spec = '[harmony C "m7", diagram (x 3 1 3 1 3) barre=1/4..2]';
+    const score = parseScore('meter 2/4 staff { E4' + spec + ' rest' + spec + ' | }');
+    const target = host();
+    const view = renderConductor(target, score);
+    const page = renderScorePart(host(), score, 'notation').publication.pages[0].svg;
+    for (const root of [target, page]) {
+      const diagrams = [...root.querySelectorAll('.vf-fret-diagram')];
+      assert.equal(diagrams.length, 2);
+      for (const diagram of diagrams) {
+        assert.equal(diagram.getAttribute('aria-label'), 'Chord frame, low to high: x, 3, 1, 3, 1, 3, barre at fret 1');
+        assert.ok(diagram.querySelectorAll('path').length >= 12, 'grid, frets and barre are drawn');
+      }
+    }
+    assert.deepEqual(scorePerformance(view.score, 60).events.flatMap(e => e.notes.map(n => n.pitch)), [64]);
+    assert.throws(() => renderConductor(host(), parseScore('meter 1/4 staff { E4' + spec.replace('diagram', 'frame') + ' | }')), /Frame disagrees/);
+  });
+
+  QUnit.test('each expanded phrase owns its partial tie, slur and hairpin across a tempo change', assert => {
+    const score = parseScore('play { tempo 60 tempo 120 at 1 + 1/8 } '
+      + 'pattern start { (C4[tieStart t] E4[sustain 3/16])[slurStart s] } '
+      + 'pattern stop { (C4[tieEnd t, sustain 1/8] F4)[crescendoStart h] } '
+      + 'pattern pair { use start use stop E4[slurEnd s] G4[hairpinEnd h] | } '
+      + 'staff { times 2 { use pair } }');
+    const view = renderConductor(host(), score);
+    assert.equal(new Set(view.score.ties.map(tie => tie.id)).size, 2);
+    const spans = view.composition.sheet.getContinuousLayout().fragments;
+    for (const kind of ['tie','slur','crescendo']) assert.equal(spans.filter(s => s.kind === kind).length, 2, kind);
+    const notes = scorePerformance(view.score, 60).events.flatMap(e => e.notes.map(n => [e.time, n.pitch, n.duration]));
+    assert.deepEqual(notes.filter(n => n[1] === 60 || n[1] === 65), [[0,60,1], [.75,65,.5], [2.25,60,.75], [2.75,65,.5]]);
+    assert.deepEqual(notes[1], [0, 64, .625], 'the short head traverses both tempo segments');
+    assert.throws(() => parseScore('staff { :8 beam { C4[beamStart b] D4 E4[beamEnd b] } F4 :h G4 | }'), /only one beam/);
+  });
+
+  QUnit.test('grace borrows score time and preserves early releases in chord order', assert => {
+    function notes(source: string) {
+      const view = renderConductor(host(), parseScore(source));
+      return scorePerformance(view.score, 60).events.flatMap(e => e.notes.map(n => [e.time, n.pitch, n.duration]));
+    }
+    const input = 'meter 1/4 staff { :q (C4[sustain 1/16] E4)[grace after steal=1/4 (B4)] | }';
+    assert.deepEqual(notes(input), [[0,60,.25], [0,64,.75], [.75,71,.25]]);
+    assert.throws(() => parseScore(input.replace('after', 'before')), /consume the entire sounding head/);
+    assert.deepEqual(notes('play { tempo 60 tempo 120 at 1 + 1/8 } meter 1/4 staff { :q C4[grace before steal=1/2 (B4)] | }'),
+      [[0,71,.5], [.5,60,.25]]);
+  });
+
+  QUnit.test('imported crossing endpoints, unequal chord releases and partial ties', assert => {
+    const score = parseScore('staff { (C4[tieStart c] E4[sustain 1/8])[slurStart a above] '
+      + '(G4 C4[tieEnd c])[crescendoStart b niente] E4[slurEnd a] F4[hairpinEnd b, dynamic f] | }');
+    for (const renderer of ['svg', 'canvas'] as const) {
+      const view = renderConductor(host(), score, { renderer });
+      assert.deepEqual(view.diagnostics, []);
+      const spans = view.composition.sheet.getContinuousLayout().fragments;
+      assert.deepEqual(spans.map(s => s.kind).sort(), ['crescendo', 'slur', 'tie']);
+      const [tie] = view.score.ties;
+      assert.deepEqual([tie.fromHead, tie.toHead], [0, 1], 'tie follows the reordered head');
+      const notes = scorePerformance(view.score, 60).events.map(e => e.notes);
+      assert.deepEqual(notes[0].map(n => [n.pitch, n.duration]), [[60, 2], [64, .5]]);
+      assert.deepEqual(notes[1].map(n => n.pitch), [67], 'other head attacks during the tie');
+      assert.deepEqual(notes.slice(1).map(chord => chord[0].velocity), [1, 50, 98]);
+    }
+    const part = renderScorePart(host(), score, 'notation');
+    assert.deepEqual(part.diagnostics, []);
+    const page = part.publication.pages[0].svg;
+    // Publication paints native paths into the physical page. Removing one span removes its ink.
+    for (const [start, end] of [['[slurStart a above]', '[slurEnd a]'], ['[crescendoStart b niente]', 'hairpinEnd b, '], ['[tieStart c]', '[tieEnd c]']]) {
+      const without = parseScore(score.source.replace(start, '').replace(end, ''));
+      const control = renderScorePart(host(), without, 'notation').publication.pages[0].svg;
+      assert.ok(page.querySelectorAll('path').length > control.querySelectorAll('path').length, 'printed ' + start);
+    }
+  });
+
+  QUnit.test('named beam crosses the physical staves in the screen and complete printed piano part', assert => {
+    const score = parseScore('meter 2/4 piano { upper treble { :8 G4[beamStart b] F4 E4[onStaff lower] D4[onStaff lower, beamEnd b] | } '
+      + 'lower bass { :h C3 | } }');
+    function check(notes: StemmableNote[]) {
+      assert.equal(notes.length, 4);
+      assert.ok(notes.every(n => n.getBeam() === notes[0].getBeam()));
+      assert.equal(notes[0].getBeam().getNotes().length, 4);
+      assert.deepEqual(notes.map(note => note.getStemDirection()), [-1, -1, 1, 1], 'stems reach toward the shared beam');
+      assert.notStrictEqual(notes[0].getStave(), notes[2].getStave(), 'third head is on the opposite hand');
+      assert.ok(notes[0].getBeam().getBoundingBox().getW() > 10, 'native beam has ink');
+    }
+    for (const renderer of ['svg', 'canvas'] as const) {
+      const view = renderConductor(host(), score, { renderer });
+      assert.deepEqual(view.diagnostics, []);
+      check(view.composition.notes[0][0][0] as StemmableNote[]);
+    }
+    // Publication prepares individual notes before it builds the beam. Inspect the finished page.
+    const sheet = renderEdition(host(), score, 'conductor');
+    assert.deepEqual(sheet.diagnostics, []);
+    const beams = sheet.publication.pages[0].svg.querySelectorAll<SVGGElement>('.vf-beam');
+    assert.equal(beams.length, 1, 'one printed beam connects the two staves');
+    const stems = [...beams[0].querySelectorAll<SVGPathElement>('.vf-stem path')];
+    assert.deepEqual(stems.map(stem => Math.sign(stem.getPointAtLength(0).y - stem.getPointAtLength(stem.getTotalLength()).y)),
+      [-1, -1, 1, 1], 'all four printed stems point toward the shared beam');
+    assert.ok(beams[0].getBBox().width > 10, 'the printed beam spans the notes');
+  });
+
+  QUnit.test('authored grace shares and pedal lift on the written onset', assert => {
+    const score = parseScore('piano { upper treble { C4[pedal down] D4 E4[pedal up onset] F4[grace before steal=1/8 (G4)] | } '
+      + 'lower bass { :w rest | } }');
+    const notes = scorePerformance(renderConductor(host(), score).score, 60).events.flatMap(e => e.notes.map(n => [n.pitch, e.time, n.duration]));
+    assert.deepEqual(notes, [[60, 0, 2], [62, 1, 1], [64, 2, 1], [67, 3, .125], [65, 3.125, .875]]);
+    assert.throws(() => parseScore('staff { :w C4[slurStart a] | }'), /Missing end/);
+    assert.throws(() => parseScore('staff { :q C4[beamStart a] D4[beamEnd a] E4 F4 | }'), /Beam short notes/);
+    assert.throws(() => parseScore('staff { :q C4[sustain 1/2] D4 E4 F4 | }'), /sustain exceeds/);
+    assert.throws(() => parseScore('staff { :w C4[grace after steal=1/1 (D4)] | }'), /Grace share/);
+  });
+
   QUnit.test('named verses, elision, transposed harmony and a hairpin across a forced break', assert => {
     const score = parseScore(voice);
     for (const renderer of ['svg', 'canvas'] as const) {

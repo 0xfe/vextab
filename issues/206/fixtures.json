@@ -1,0 +1,72 @@
+[
+  {
+    "file": "haydn.mxl",
+    "source": "https://raw.githubusercontent.com/OpenScore/StringQuartets/2614b0b2958dd1ce3f52e172a43e5f4d0e29570f/scores/Haydn,_Joseph/String_Quartet_in_C_major,_Hob.III77,_Op.76_No.3/sq20428156.mxl",
+    "sha256": "3bd97417c8e7a5b80fba5821ec4d80d8bde19f030f169ac3cfba17f3a70492dd",
+    "bytes": 197968,
+    "rights": "OpenScore CC0",
+    "profile": "4.0, partwise",
+    "expected": "Four parts, each 531 measures, 10,014 timed non-chord-member records.",
+    "scope": "Full-score scan counts grace and chord members separately."
+  },
+  {
+    "file": "backup.musicxml",
+    "source": "https://raw.githubusercontent.com/w3c-cg/musicxmlTestSuite/0618bdee1bfcb965ffdd9f4e52271c909d744fd1/xmlFiles/03b-Rhythm-Backup.musicxml",
+    "sha256": "6a03c9a2f22997145f45695dc03bb2a6ef790dded508d9f8e133e02b9af58bda",
+    "bytes": 2004,
+    "rights": "MIT, retain upstream notice",
+    "profile": "4.0",
+    "expected": "Voice 2 starts on beat two after a partial backup.",
+    "scope": "Scan measures structural counts only."
+  },
+  {
+    "file": "divisions.musicxml",
+    "source": "https://raw.githubusercontent.com/w3c-cg/musicxmlTestSuite/0618bdee1bfcb965ffdd9f4e52271c909d744fd1/xmlFiles/03c-Rhythm-DivisionChange.musicxml",
+    "sha256": "9795a6ffef846fc5d38947f3123d9b635d098763600a7bf72e5f10f0ab2fed8d",
+    "bytes": 2898,
+    "rights": "MIT, retain upstream notice",
+    "profile": "4.0",
+    "expected": "Divisions change within a measure.",
+    "scope": "No onset reconstruction in M0."
+  },
+  {
+    "file": "hidden.musicxml",
+    "source": "https://raw.githubusercontent.com/vexflow/vexflow/5.9.0/tests/web/fixtures/hidden-duration.musicxml",
+    "sha256": "a2d985a92cd53cf7a393cb862702b5e8b54602d4c4d3de149e1c92593e3b09d1",
+    "bytes": 3460,
+    "rights": "OSMD BSD-3-Clause, see adjacent OSMD-LICENSE",
+    "profile": "3.1",
+    "expected": "Two spellings of a hidden rest leave both final attacks at 5/8.",
+    "scope": "Native control isolates one bar."
+  },
+  {
+    "file": "maple.ly",
+    "source": "https://www.mutopiaproject.org/ftp/JoplinS/maple/maple.ly",
+    "sha256": "043e9d9207b771658a9afa51e2aa2537c448ecfd602e78ae50110cf3b12209fd",
+    "bytes": 10361,
+    "rights": "Public domain, Chris Sawer, Mutopia-2011/11/13-23",
+    "profile": "2.14.2",
+    "expected": "Separate print and MIDI scores, piano staff changes and voltas.",
+    "scope": "Tokens only. No Scheme evaluation or repeat unfolding."
+  },
+  {
+    "file": "tuplet.ly",
+    "source": "https://raw.githubusercontent.com/lilypond/lilypond/v2.26.0/input/regression/tuplet-nest.ly",
+    "sha256": "caa2bb81ac9a748523015f78127da0dd7ec46053994a7b5c0d973a2dc9d34f85",
+    "bytes": 649,
+    "rights": "LilyPond source distribution, fetch only",
+    "profile": "2.19.21, regression release 2.26.0",
+    "expected": "The opening outer tuplet contains three inner triplets.",
+    "scope": "Lexical coverage only."
+  },
+  {
+    "file": "guide/scores/haydn-emperor-variation.vextab",
+    "source": "repository at 21cd31b00a709567fcba38c0c74ea494ccd455c6",
+    "sha256": "21085b3bc1cbef6ba54d5f1e99c8fc5707526d18768db6b7e1ef65614245acc5",
+    "bytes": 9155,
+    "rights": "OpenScore CC0 adaptation in VexTab",
+    "profile": "grammar v2",
+    "expected": "42 written measures per part, 772 principal events.",
+    "scope": "Omits grace, auxiliary voice and selected markings."
+  }
+]

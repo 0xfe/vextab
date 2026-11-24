@@ -16,7 +16,7 @@ import type { PlaybackPlugin } from './playback/transport';
 import type { SourceRange } from './score/source';
 import type { ScoreReadingEvent } from 'vexflow';
 import { projectScoreV2 } from './score/grammar2/project';
-import { parseScore, ScoreV2Error } from './score/parse';
+import { parseScore, ScoreV2Error, type ScoreCapacity } from './score/parse';
 import { selectedPart, type PartSelector } from './score/conductor';
 import { renderScore, renderConductor, type Part } from './score/layout';
 import type { ParsedScore } from './score/model';
@@ -60,6 +60,8 @@ export function usesFlowLayout(host: HTMLElement, source: string): boolean {
 /** Host integrations can supply an instrument without loading any synthesizer into VexTab. */
 export interface DivOptions {
   language?: 1 | 2;
+  /** The host can opt into bounded large grammar-v2 documents. */
+  capacity?: ScoreCapacity;
   partIndex?: number;
   partId?: string;
   view?: 'parts' | 'conductor';
@@ -87,6 +89,7 @@ class Div {
   private scale: number;
   private rendererBackend: string;
   private flow: boolean;
+  private readonly capacity: ScoreCapacity;
   private readonly grammar2: boolean;
   private partIndex?: number;
   private partId?: string;
@@ -155,6 +158,9 @@ class Div {
     const language = options.language ?? Number(embedAttribute(host, 'language') ?? 2);
     if (language !== 1 && language !== 2) throw new RangeError('Expected VexTab language 1 or 2');
     this.grammar2 = language === 2;
+    const capacity = options.capacity ?? embedAttribute(host, 'capacity') ?? 'default';
+    if (capacity !== 'default' && capacity !== 'large') throw new RangeError('Expected score capacity default or large');
+    this.capacity = capacity;
     this.partIndex = options.partIndex;
     this.partId = options.partId ?? embedAttribute(host, 'part-id') ?? undefined;
     this.conductor = (options.view ?? embedAttribute(host, 'view')) === 'conductor';
@@ -459,7 +465,7 @@ class Div {
     try {
       if (this.flow) {
         this.candidate = undefined;
-        this.document = this.grammar2 ? parseScore(this.code) : undefined;
+        this.document = this.grammar2 ? parseScore(this.code, { capacity: this.capacity }) : undefined;
         this.candidate = this.document ? projectScoreV2(this.document, selectedPart(this.document, { partId: this.partId, partIndex: this.partIndex })) : parseScore(this.code, { language: 1 });
       } else {
         this.artist.reset();

@@ -1,6 +1,6 @@
 // Public stateful parser for checked scores and the original fixed-layout Artist pipeline.
 import type Artist from '../artist/Artist';
-import { parseScore, type ScoreV2 } from '../score/parse';
+import { parseScore, type ScoreCapacity, type ScoreV2 } from '../score/parse';
 import { readSyntax, ScoreError } from '../score/source';
 import Vex from '../vexflow';
 import { VexTabParser } from './VexTabParser';
@@ -17,14 +17,15 @@ function isArtist(value: unknown): value is Artist {
 export default class VexTab<Language extends 1 | 2 = 2> {
   static DEBUG = false;
   private valid = false;
+  private readonly capacity?: ScoreCapacity;
   private readonly artist?: Artist;
   private readonly compiler?: VexTabParser;
 
   /** Modern callers can pass the returned document to renderScore, renderScorePart or Player. */
-  constructor(...mode: Language extends 2 ? [options?: { language?: 2 }] : never);
+  constructor(...mode: Language extends 2 ? [options?: { language?: 2; capacity?: ScoreCapacity }] : never);
   /** Fixed engraving uses the original Artist instance and preserves its v1 syntax elements. */
   constructor(artist: Artist, options: { language: Language } & { language: 1 });
-  constructor(target?: Artist | { language?: number }, options?: { language: number }) {
+  constructor(target?: Artist | { language?: number; capacity?: ScoreCapacity }, options?: { language: number }) {
     if (isArtist(target)) {
       if (options?.language !== 1) {
         throw new TypeError('Use new VexTab(artist, { language: 1 }) for fixed engraving, or new VexTab() and renderScore() for language 2.');
@@ -35,6 +36,8 @@ export default class VexTab<Language extends 1 | 2 = 2> {
       throw new TypeError('Language 1 fixed engraving requires new VexTab(artist, { language: 1 }).');
     } else if (target?.language !== undefined && target.language !== 2) {
       throw new RangeError('Expected VexTab language 1 or 2');
+    } else {
+      this.capacity = target?.capacity;
     }
   }
 
@@ -57,7 +60,7 @@ export default class VexTab<Language extends 1 | 2 = 2> {
   parse(source = ''): ParseResult<Language> {
     this.reset();
     if (VexTab.DEBUG) console.log('(Vex.Flow.VexTab) Parsing:\n' + source);
-    const score = this.compiler ? this.parseFixed(source) : parseScore(source, { language: 2 });
+    const score = this.compiler ? this.parseFixed(source) : parseScore(source, { language: 2, capacity: this.capacity });
     this.valid = Boolean(score);
     return score as ParseResult<Language>;
   }

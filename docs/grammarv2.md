@@ -2,6 +2,9 @@
 
 **VexTab 6 reads grammar v2 by default.** This document records the language design and distinguishes runnable examples from proposals. See the [guide](https://vexflow.com/vextab/guide/) for released syntax and the [migration guide](migrate-scores.md) for the v1 reader.
 
+For a large score, the host can call `parseScore(source, { capacity: 'large' })`, `new VexTab({ capacity: 'large' })` or `new Div(element, { capacity: 'large' })`. An embed can set `data-capacity="large"`. The resulting document goes directly to the editor, conductor, print renderer or player. The default permits 64 KiB of source, 8,192 tokens, 4,096 events and 32,768 compiler steps. The large profile permits 1 MiB, 131,072 tokens, 32,768 events and 524,288 steps respectively. The host chooses the profile for every edit. Both profiles enforce the same limits on expression depth, ratios, chord heads and repeat counts.
+
+
 **Design goals.** Keep the compact fret/string pair. Give each voice a sequence, each chord one attack, and each technique a typed attachment. Use named musical phrases and bounded repetition for reuse. A shared score model should drive engraving, reading, parts, and playback.
 
 A first guitar score fits on one line. Play four quarter notes on the high E string in standard tuning.
@@ -325,7 +328,9 @@ As an extension example, reserve qualified mark names such as `[ornament.turn ab
 
 **Ordering.** A `pattern` is an immutable declaration in the score. `use` can name a previously completed declaration only. This gives a directed acyclic dependency graph by construction, including unused definitions. `times 3 { … }` emits three written copies with separate event IDs. A `volta` instead emits its body once in the written score and schedules bounded visits in the proposed performance plan. Endings select passes by ordinal. Give every traversal a separate visit budget and report the repeat that exhausts it. Start with structured repeats and named endings. Navigation signs such as segno can be engraved independently until their playback semantics are specified.
 
-The following proposed repeat prints a first and second ending. Its four performed bars are body, first ending, body, second ending. Only three written bars exist. A fixed-count `times 2` of the body alone prints two copies. At a shared repeat boundary the same traversal drives every voice and part.
+In VexTab 6.5.0, use `repeatCount 5 { :w C4 | }` to print one bar with a repeat count and play it five times. The count must be an integer from 2 through 32, and the body must contain whole written bars. Use the same form in each staff that shares the itinerary.
+
+The following repeat prints a first and second ending. Its four performed bars are body, first ending, body, second ending. Only three written bars exist. A fixed-count `times 2` of the body alone prints two copies. At a shared repeat boundary the same traversal drives every voice and part.
 
 ```text
 meter 2/4
@@ -403,6 +408,7 @@ Read `result.diagnostics` for source ranges and `result.publication.pages` for s
 | `C4[verse one "ev" hyphen, verse two "I" elide "am"]` | Attach independent named underlays to one attack. A hyphen finds the next syllable of its verse. `extend=2` carries a word through two following events in the same voice, including across a bar. |
 | `C4[harmony C "m7" bass Bb]` | Specify root, quality and optional slash bass. Score transposition spells both pitches. |
 | `crescendo niente { :q C4[dynamic p] D4 E4 F4[dynamic f] }` | Draw a native hairpin. `niente` marks the closed end. Dynamics range from ppp through fff. Diminuendos use the same syntax. |
+| `E4[harmony C "m7", diagram (x 3 1 3 1 3) barre=1/4..2]` | Draw an independent low-to-high guitar grip for the chord above a melody note or rest. Only the written notes sound. A `frame` requires the chord’s actual frets and strings. |
 | `Ab3[onStaff lower]` and `C5[sharedStem opening]` | In a piano part, move a written note or rest to the named hand’s stave. A shared stem joins simultaneously marked upper and lower notes with the same name. The original hand retains playback and source ownership. |
 | `continuousBeam { :8 C5 D5 E5 F5 }` and `feather right { :16 C5 D5 E5 F5 }` | Carry a beam across bars or systems, or fan a single-bar group toward the specified end. A feathered beam preserves the authored durations. |
 | `tuplet 3:2 { :q C5 tuplet 3:2 { :8 D5 E5 F5 } :q G5 }` | Multiply each nested ratio on the voice clock. The example occupies one half note. |
@@ -418,6 +424,35 @@ Read `result.diagnostics` for source ranges and `result.publication.pages` for s
 | `slur below { C4 D4 E4 }` | Choose the side of a phrase slur. An unqualified slur uses the native placement. |
 | `map bell "Ride bell" line 4.5 head triangle stem up midi 53` | Declare a named hit inside a drums part. Use its ID as a note or chord head. Available shapes are normal, cross, circle-cross and triangle. |
 
+### Independent durations and named endpoints
+
+A chord shares its written note value. Use a head's `sustain` mark for a shorter
+sounding duration in whole notes. Use separate voices when the printed rhythms
+differ. Ties can join individual heads even when the chord order changes.
+
+```vextab
+staff {
+  :q (C4[tieStart c] E4[sustain 1/8])[slurStart phrase above]
+     (G4 C4[tieEnd c])[crescendoStart swell niente]
+     E4[slurEnd phrase] F4[hairpinEnd swell, dynamic f] |
+}
+```
+
+Here C4 sounds for two beats. E4 releases after half a beat. The slur
+ends on the third beat, and the crescendo reaches forte on the fourth.
+Use `diminuendoStart` for a falling hairpin. Slur, beam and hairpin names
+are local to a voice. `beamStart group` and `beamEnd group` join short
+events in one measure, including notes moved with `onStaff`. A named
+beam can start outside a tuplet and end inside it.
+
+Use `F4[grace before slashed steal=1/5 (D4 E4)]` to assign one fifth
+of F4's time to the grace group. `grace after` takes time at the end
+of its anchor. An explicit share follows the written tempo changes and overrides the performer's grace setting.
+A before-grace must leave sounding time for each head. Each expansion of a
+self-contained phrase owns its named ties and expressive spans.
+On a piano part, `pedal up onset` lifts the sustain pedal when the marked
+event starts. `pedal up` lifts it when that event finishes.
+
 ### Playing expression
 
 Use `play { controls always position top-right inset 16 }` to place persistent playback buttons near the score’s visible top-right edge. The default is `controls hover controlSize large position bottom-center inset 12`. Use `controls off` to hide the buttons. [Sheet controls and embed settings](playback.md)
@@ -432,3 +467,23 @@ await player.play();
 Written order is the default. Performed order revisits repeat bodies and selects successive endings. Equal bar grids share an authored repeat across instruments. Repeated attacks retain their written source IDs. A display staff, printed cue or paired guitar TAB adds no playback voice.
 
 Dynamics set attack velocity. Hairpins interpolate between endpoint velocities in their own voice. An unmarked open end uses a 24-step change and niente uses the softest sounding velocity. Glissandi and tied bends supply timed pitch ramps to the playback plugin. Grace pitches share a quarter of the principal attack’s time. The five ornamental signs use short diatonic figures in the written key and resolve to the principal. These are playback interpretations of unmeasured signs. [Complete musical examples and controls](../issues/199/README.md)
+
+### Staff changes and ensemble groups
+
+```text
+meter 2/4
+play { tempo 120 tempo 80 at 2 + 1/8 }
+group bracket (reed horn)
+staff reed {
+  sounds -2
+  clef bass at 1 + 1/4
+  key G at 1 + 1/4
+  sounds -3 at 2
+  :q F4 F4 | :h F4 |
+}
+staff horn { :h C3 | C3 | }
+```
+
+Bar numbers start at one and include pickups. The optional offset is a fraction of a whole note measured from the beginning of that written bar. Settings persist until changed. A sounding interval specifies semitones added to the written pitch. Put a hand-specific declaration inside the corresponding piano hand. An inline clef or key uses a shared onset in every music voice on that stave. A separate text lane with an inline visual change currently produces an alignment diagnostic. A tempo change can fall inside a held note. Its release follows both tempo segments. Global inline tempos require a shared bar grid through the referenced position.
+
+A top-level `group brace (a b)` or `group bracket (a b c)` names consecutive parts in written order. The conductor and its printed edition use those groups. Part extraction keeps the selected instrument's own staves.

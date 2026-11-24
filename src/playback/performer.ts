@@ -9,6 +9,10 @@ export type { Performance, PlaybackEvent, PlaybackNote } from './transport';
 export interface PerformanceBar {
   duration: number;
   quarter: number;
+  /** For varying tempos, beat ends and full beats' written eighth positions, in seconds from bar start. */
+  beats?: readonly { end: number; eighth?: number }[];
+  /** Quarter length at the end of a tempo-changing bar, for any unmetered tail. */
+  endingQuarter?: number;
   /** Seconds already elapsed in the first quarter beat of a pickup. */
   beatOffset?: number;
   /** False for meters whose written eighths should stay even. */
@@ -28,6 +32,8 @@ interface Beat {
   velocity: number;
   swing: number;
   fullBeat: boolean;
+  /** Fraction of elapsed beat time at its written eighth subdivision. */
+  middle: number;
 }
 
 /** Counter-based noise makes a take independent of part traversal and chord size. */
@@ -53,9 +59,22 @@ function barGrid(input: readonly PerformanceBar[], end: number, tempo: number): 
     if (!(bar.duration > 0 && Number.isFinite(bar.duration) && bar.quarter > 0 && Number.isFinite(bar.quarter)) ||
         !((bar.beatOffset ?? 0) >= 0 && (bar.beatOffset ?? 0) < bar.quarter)) throw new RangeError('Invalid performance bar');
     time += bar.duration;
-    beatCount += Math.ceil((bar.duration + (bar.beatOffset ?? 0)) / bar.quarter);
+    if (bar.endingQuarter !== undefined && !(bar.endingQuarter > 0 && Number.isFinite(bar.endingQuarter)))
+      throw new RangeError('Invalid final quarter duration');
+    if (bar.beats) {
+      let start = 0;
+      for (const beat of bar.beats) {
+        if (!(beat.end > start && Number.isFinite(beat.end)) ||
+            (beat.eighth !== undefined && !(beat.eighth > start && beat.eighth < beat.end)))
+          throw new RangeError('Invalid written beat grid');
+        start = beat.end;
+      }
+      if (!bar.beats.length || Math.abs(start - bar.duration) > 1e-9) throw new RangeError('Incomplete written beat grid');
+      beatCount += bar.beats.length;
+    } else beatCount += Math.ceil((bar.duration + (bar.beatOffset ?? 0)) / bar.quarter);
   }
-  const quarter = bars[bars.length - 1]?.quarter ?? 60 / tempo;
+  const finalBar = bars[bars.length - 1];
+  const quarter = finalBar?.endingQuarter ?? finalBar?.quarter ?? 60 / tempo;
   // Reject impractically fine public grids before allocating beats or losing clock precision.
   if (beatCount + Math.ceil(Math.max(0, end - time) / quarter) > 1_000_000)
     throw new RangeError('Performance exceeds one million beats');
@@ -80,9 +99,11 @@ function conduct(bars: PerformanceBar[], profile: PerformerProfile, seed: number
     for (let i = first; i <= last; i++) {
       const bar = bars[i], barEnd = time + bar.duration;
       const barStart = time;
+      let beatIndex = 0;
       let remaining = bar.quarter - (bar.beatOffset ?? 0);
       while (time < barEnd - 1e-9) {
-        const end = Math.min(time + remaining, barEnd);
+        const written = bar.beats?.[beatIndex++];
+        const end = written ? barStart + written.end : Math.min(time + remaining, barEnd);
         const width = end - time;
         if (width <= 0) throw new RangeError('Beat is below clock precision');
         const phase = (time + width / 2 - phraseStart) / span;
@@ -91,10 +112,12 @@ function conduct(bars: PerformanceBar[], profile: PerformerProfile, seed: number
         const held = !literal && bar.fermatas?.some(at => at > time - barStart + 1e-9 && at <= end - barStart + 1e-9);
         const length = width * (1 - profile.rubato * arch + profile.drift * drift + (held ? .35 : 0));
         // At brisk tempos straight eighths converge. Partial beats and compound meters stay literal.
-        const fullBeat = bar.swingable !== false && Math.abs(width / bar.quarter - 1) < 1e-6;
-        const bpm = 60 / bar.quarter;
+        const fullBeat = bar.swingable !== false &&
+          (written ? written.eighth !== undefined : Math.abs(width / bar.quarter - 1) < 1e-6);
+        const middle = written?.eighth === undefined ? .5 : (written.eighth - (time - barStart)) / width;
+        const bpm = 60 / (written ? width : bar.quarter);
         const swing = fullBeat ? profile.swing * Math.max(0, Math.min(.22, .25 - (bpm - 60) / 750)) : 0;
-        beats.push({ start: time, end, played, length, velocity: arch * profile.swell, swing, fullBeat });
+        beats.push({ start: time, end, played, length, velocity: arch * profile.swell, swing, fullBeat, middle });
         time = end;
         played += length;
         remaining = bar.quarter;
@@ -124,7 +147,7 @@ function straightBeats(events: PlaybackEvent[], beats: Beat[]): Set<number> {
     for (const time of [event.time, event.time + event.duration]) {
       const i = beatAt(beats, time), beat = beats[i];
       const phase = (time - beat.start) / (beat.end - beat.start);
-      if (phase > 1e-6 && phase < 1 - 1e-6 && Math.abs(phase - .5) > 1e-6) straight.add(i);
+      if (phase > 1e-6 && phase < 1 - 1e-6 && Math.abs(phase - beat.middle) > 1e-6) straight.add(i);
     }
   }
   return straight;
@@ -144,9 +167,10 @@ function partClock(part: Performance, index: number, beats: Beat[], profile: Per
     const i = beatAt(beats, time), beat = beats[i];
     const phase = Math.max(0, (time - beat.start) / (beat.end - beat.start));
     const start = beat.played + displacement(i);
-    const middle = beat.played + beat.length * (.5 + (straight.has(i) ? 0 : beat.swing));
+    const middle = beat.played + beat.length * (beat.middle + (straight.has(i) ? 0 : 2 * (1 - beat.middle) * beat.swing));
     const end = beat.played + beat.length + displacement(i + 1);
-    return phase < .5 ? start + 2 * phase * (middle - start) : middle + 2 * (phase - .5) * (end - middle);
+    return phase < beat.middle ? start + phase / beat.middle * (middle - start) :
+      middle + (phase - beat.middle) / (1 - beat.middle) * (end - middle);
   }
   return clock;
 }

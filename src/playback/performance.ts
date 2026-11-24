@@ -41,6 +41,12 @@ function scoreNote(event: Attack, head: Head, duration: number) {
 /** Resolve tempo and attack velocities on the written clock so a repeat restores its own expression. */
 function expression(score: ParsedScore, tempo: number, expressive: boolean) {
   const tempi: number[] = [];
+  const tempoChanges = new Map<number, { at: number; bpm: number }[]>();
+  for (const e of score.playback?.tempoChanges ?? []) {
+    const list = tempoChanges.get(e.bar) ?? [];
+    list.push({at: seconds(e.at, 1), bpm: e.bpm * tempo / (score.playback.tempo ?? 120)});
+    tempoChanges.set(e.bar, list);
+  }
   const velocities = new Map<string, number>();
   type Position = { id: string; time: number; explicit: boolean; index: number; voice: number };
   const positions = new Map<string, Position>();
@@ -56,6 +62,8 @@ function expression(score: ParsedScore, tempo: number, expressive: boolean) {
     const change = score.playback?.tempos?.[m.number];
     if (change) bpm = change * tempo / (score.playback.tempo ?? 120);
     tempi.push(bpm);
+    const inside = tempoChanges.get(m.number);
+    if (inside) bpm = inside[inside.length - 1].bpm;
     const byTime = m.voices.flatMap((voice, index) => voice.events.map(attack => ({
       attack, voice: index, onset: seconds(attack.onset, 1),
     }))).sort((a, b) => a.onset - b.onset || Number(!!b.attack.dynamic) - Number(!!a.attack.dynamic));
@@ -87,7 +95,7 @@ function expression(score: ParsedScore, tempo: number, expressive: boolean) {
       velocities.set(point.id, Math.round(start + (end - start) * (point.time - first.time) / (last.time - first.time)));
     }
   }
-  return { tempi, velocities };
+  return { tempi, tempoChanges, velocities };
 }
 
 /** Dampers affect both hands. Repeated strikes of the same key still get their own attack. */
@@ -124,22 +132,35 @@ function sustainNotes(events: PlaybackEvent[], windows: { start: number; end: nu
 }
 
 /** Translate meter, pickup and phrasing marks to seconds on this performed visit. */
-function performanceBar(measure: Measure, whole: number, slurEnds: Set<string>): PerformanceBar {
-  const duration = seconds(measure.span, whole), quarter = whole / 4;
+function performanceBar(measure: Measure, whole: number, slurEnds: Set<string>, elapsed: (position: number) => number,
+  endingQuarter?: number): PerformanceBar {
+  const duration = elapsed(seconds(measure.span, 1)), quarter = whole / 4;
   const [count, unit] = measure.state.meter.split('/').map(Number);
   // A fractional pickup ends on the downbeat even if it starts halfway through a beat.
-  const missing = Math.max(0, count / unit * whole - duration) / quarter;
+  const missing = Math.max(0, count / unit - seconds(measure.span, 1)) * 4;
   const beatOffset = Math.abs(missing - Math.round(missing)) > 1e-8 ? (missing % 1) * quarter : 0;
+  // A tempo inside this measure can move a quarter boundary and its intervening eighth independently.
+  // Project the written beats with the same piecewise clock as the note onsets and releases.
+  const beats: {end: number; eighth?: number}[] = [];
+  if (endingQuarter !== undefined) {
+    const span = seconds(measure.span, 1);
+    let start = 0, remaining = (1 - beatOffset / quarter) / 4;
+    while (start < span - 1e-12) {
+      const end = Math.min(start + remaining, span);
+      beats.push({ end: elapsed(end), ...(end - start >= .25 - 1e-12 && {eighth: elapsed(start + .125)}) });
+      start = end; remaining = .25;
+    }
+  }
   const fermatas: number[] = [];
   let phraseEnd = false;
   for (const voice of measure.voices) {
     for (const attack of voice.events) {
-      const release = seconds(attack.onset, whole) + seconds(attack.duration, whole);
+      const release = elapsed(seconds(attack.onset, 1) + seconds(attack.duration, 1));
       if (attack.heads.some(h => h.marks?.some(m => m.articulation?.startsWith('a@')))) fermatas.push(release);
       if (release >= duration - 1e-8 && slurEnds.has(attack.id)) phraseEnd = true;
     }
   }
-  return { duration, quarter, beatOffset, swingable: unit === 2 || unit === 4, fermatas, phraseEnd: phraseEnd || !!fermatas.length };
+  return { duration, quarter, beatOffset, ...(endingQuarter !== undefined && { beats, endingQuarter }), swingable: unit === 2 || unit === 4, fermatas, phraseEnd: phraseEnd || !!fermatas.length };
 }
 
 /** Conduct from the lead meter. A held beat in another part also holds the ensemble.
@@ -176,16 +197,17 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
   take?: ReturnType<typeof createPerformer>, bars?: PerformanceBar[]): Performance {
   const events: PlaybackEvent[] = [];
   const prior = new Map(score.ties.map(tie => [tie.to + ':' + tie.toHead, tie]));
-  const sounding = new Map<string, { note: PlaybackNote; start: number }>();
+  const sounding = new Map<string, { note: PlaybackNote; start: number; barNumber:number; writtenEnd:number }>();
   const expressive = !!take && !take.literal;
-  const { tempi, velocities } = expression(score, tempo, expressive);
+  const { tempi, tempoChanges, velocities } = expression(score, tempo, expressive);
   const slurEnds = new Set((score.spans ?? []).filter(s => s.kind === 'slur').map(s => s.to));
   const tremolos = new Map((score.spans ?? []).filter(span => span.kind === 'tremolo').map(span => [span.from, span]));
   const glissandi = new Map((score.spans ?? []).flatMap(span => span.kind === 'glissando' ? [[span.to + ':' + span.toHead, span] as const] : []));
-  const decorations = new Map<string, { attack: Attack; key: KeyManager }>();
+  const decorations = new Map<string, { attack: Attack; key: KeyManager; graceShare?: number }>();
   const keys = new Map<string, KeyManager>();
   const pedals = (score.spans ?? []).filter(s => s.kind === 'pedal');
   const downs = new Map(pedals.map(s => [s.from, s.to]));
+  const onsetLifts = new Set(pedals.filter(s => s.onset).map(s => s.to));
   const held = new Map<string, number>();
   const windows: { start: number; end: number }[] = [];
   // A repeat jump or a partial playback selection releases any unfinished pedal.
@@ -193,47 +215,90 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
     for (const start of held.values()) windows.push({ start, end });
     held.clear();
   }
+  const alternateBodies = new Map((score.repeats ?? []).flatMap(repeat =>
+    repeat.endings.slice(1).map(ending => [ending.first, repeat.bodyEnd] as const)));
   let previousBar = 0;
   let bar = 0;
   for (const number of visits) {
     const measure = score.measures[number - 1];
-    if (number !== previousBar + 1) { sounding.clear(); liftAll(bar); }
+    if (number !== previousBar + 1) {
+      // The head sounding at the end of the body can tie into the selected alternative.
+      if (alternateBodies.get(number) === previousBar) {
+        for (const [id, head] of sounding) {
+          if (head.barNumber !== previousBar || Math.abs(head.writtenEnd - bar) > 1e-8) sounding.delete(id);
+        }
+      } else sounding.clear();
+      liftAll(bar);
+    } else if (alternateBodies.has(number)) {
+      // Consecutive written playback arrived from an earlier ending, not from this ending's body.
+      const bodyEnd = alternateBodies.get(number);
+      for (const [id, head] of sounding) if (head.barNumber === bodyEnd) sounding.delete(id);
+    }
     previousBar = number;
     const whole = 240 / tempi[number - 1];
+    // Integrate each tempo segment. A note that spans the change keeps its exact written release.
+    let start = 0, timeAtStart = 0, rate = whole;
+    const segments = [{ start, timeAtStart, rate }];
+    for (const change of tempoChanges.get(number) ?? []) {
+      timeAtStart += (change.at - start) * rate;
+      start = change.at; rate = 240 / change.bpm;
+      segments.push({ start, timeAtStart, rate });
+    }
+    const elapsed = (position: number) => {
+      let low = 0, high = segments.length;
+      while (low + 1 < high) {
+        const middle = (low + high) >>> 1;
+        if (segments[middle].start <= position) low = middle;
+        else high = middle;
+      }
+      const segment = segments[low];
+      return segment.timeAtStart + (position - segment.start) * segment.rate;
+    };
     // Process by onset so an earlier attack in a later-written voice can start a named tie.
-    const attacks = measure.voices.flatMap(v => v.events).map(attack => ({ attack, time: bar + seconds(attack.onset, whole) }));
+    const attacks = measure.voices.flatMap(v => v.events).map(attack => ({ attack, time: bar + elapsed(seconds(attack.onset, 1)) }));
     attacks.sort((a, b) => a.time - b.time);
-    if (bars && seconds(measure.span, whole) > 0) bars.push(performanceBar(measure, whole, slurEnds));
+    if (bars && seconds(measure.span, whole) > 0) bars.push(performanceBar(measure, whole, slurEnds, elapsed, segments.length > 1 ? rate / 4 : undefined));
     const inBar = new Map<string, PlaybackEvent>();
     for (const { attack, time } of attacks) {
-      const duration = seconds(attack.duration, whole);
+      const duration = elapsed(seconds(attack.onset, 1) + seconds(attack.duration, 1)) - elapsed(seconds(attack.onset, 1));
       if (downs.has(attack.id)) held.set(downs.get(attack.id), time);
       if (held.has(attack.id)) {
-        windows.push({ start: held.get(attack.id), end: time + duration });
+        windows.push({ start: held.get(attack.id), end: onsetLifts.has(attack.id) ? time : time + duration });
         held.delete(attack.id);
       }
       const notes: PlaybackNote[] = [];
       if (attack.grace || attack.ornament) {
-        const key = measure.state.key ?? 'C';
+        const key = attack.activeKey ?? measure.state.key ?? 'C';
         if (!keys.has(key)) keys.set(key, new KeyManager(key));
-        decorations.set(attack.id, { attack, key: keys.get(key) });
+        // Explicit grace stealing is a fraction of score time; a tempo boundary can divide that window.
+        let graceShare: number | undefined;
+        if (attack.grace?.steal) {
+          const onset = seconds(attack.onset, 1), span = seconds(attack.duration, 1);
+          const window = span * seconds(attack.grace.steal, 1);
+          const start = attack.grace.side === 'before' ? onset : onset + span - window;
+          graceShare = (elapsed(start + window) - elapsed(start)) / duration;
+        }
+        decorations.set(attack.id, { attack, key: keys.get(key), graceShare });
       }
       attack.heads.forEach((head, i) => {
+        const headDuration = head.sustain
+          ? elapsed(seconds(attack.onset, 1) + seconds(head.sustain, 1)) - elapsed(seconds(attack.onset, 1))
+          : duration;
         const id = attack.id + ':' + i;
         const tie = prior.get(id);
         const tied = tie && sounding.get(tie.from + ':' + tie.fromHead);
         if (tied) {
           if (expressive) tied.note.holdRelease = true;
-          tied.note.duration = Math.max(tied.note.duration, time + duration - tied.start);
+          tied.note.duration = Math.max(tied.note.duration, time + headDuration - tied.start);
           if (tie.bend) {
             const { semitones, hold, release } = tie.bend;
             tied.note.bend = [...(tied.note.bend ?? []),
-              { time: time - tied.start + duration * hold[0] / hold[1], semitones },
-              { time: time - tied.start + duration * release[0] / release[1], semitones: 0 }];
+              { time: time - tied.start + headDuration * hold[0] / hold[1], semitones },
+              { time: time - tied.start + headDuration * release[0] / release[1], semitones: 0 }];
           }
-          sounding.set(id, tied);
+          sounding.set(id, { ...tied, barNumber: number, writtenEnd: time + headDuration });
         } else {
-          const note = scoreNote(attack, head, duration);
+          const note = scoreNote(attack, head, headDuration);
           if (note) {
             const gliss = glissandi.get(id);
             const source = gliss && sounding.get(gliss.from + ':' + gliss.fromHead);
@@ -247,7 +312,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
                 note.duration *= .58;
             }
             if (score.program !== undefined) note.program = score.program;
-            notes.push(note); sounding.set(id, { note, start: time });
+            notes.push(note); sounding.set(id, { note, start: time, barNumber: number, writtenEnd: time + headDuration });
           }
         }
       });
@@ -265,13 +330,13 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
       }
       inBar.delete(span.to);
     }
-    bar += seconds(measure.span, whole);
+    bar += elapsed(seconds(measure.span, 1));
   }
   const sounded = decorations.size ? events.flatMap(event => {
     const word = decorations.get(String(event.source));
     if (!word) return [event];
     const grace = word.attack.grace;
-    const share = grace && take?.graceFraction(event.time, event.duration, grace.pitches.length, grace.slash);
+    const share = word.graceShare ?? (grace && take?.graceFraction(event.time, event.duration, grace.pitches.length, grace.slash));
     return decorateAttack(event, word.attack, word.key, share);
   }) : events;
   sounded.sort((a,b) => a.time - b.time);

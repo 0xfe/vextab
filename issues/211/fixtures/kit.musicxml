@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!-- MusicXML midi-unpitched is one-based. The sounding test expects GM acoustic snare 38. -->
+<score-partwise version="4.0">
+  <part-list><score-part id="P1"><part-name>Kit</part-name>
+    <score-instrument id="S1"><instrument-name>Snare</instrument-name></score-instrument>
+    <midi-instrument id="S1"><midi-channel>10</midi-channel><midi-unpitched>39</midi-unpitched></midi-instrument>
+  </score-part></part-list>
+  <part id="P1"><measure number="1">
+    <attributes><divisions>1</divisions><time><beats>2</beats><beat-type>4</beat-type></time>
+      <clef><sign>percussion</sign><line>2</line></clef></attributes>
+    <note><unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><instrument id="S1"/><type>quarter</type><stem>up</stem><notehead>x</notehead></note>
+    <note><rest/><duration>1</duration><type>quarter</type></note>
+  </measure></part>
+</score-partwise>

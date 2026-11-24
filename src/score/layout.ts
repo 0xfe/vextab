@@ -92,18 +92,34 @@ function guitarNotation(event: Attack, instrument: FrettedInstrument) {
   return labels;
 }
 
+/** An authored beam crossing piano staves needs opposite stems to reach the shared beam. */
+function crossStaffBeamStems(voice: MeasureVoice) {
+  const stems = new Map<Attack, number>();
+  if (!voice.hand) return stems;
+  for (const group of voice.beamGroups ?? []) {
+    const members = voice.events.slice(group.start, group.end + 1);
+    const hands = members.map(event => event.displayHand ?? voice.hand);
+    if (hands.some(hand => hand !== hands[0])) {
+      members.forEach((event, i) => stems.set(event, hands[i] === 'right' ? -1 : 1));
+    }
+  }
+  return stems;
+}
+
 /** Both projections use the written duration, including dots before tuplet scaling. */
 function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources: Sources): EasyScoreVoiceSpec {
   const direction = voice.stem;
   const stemDirection = direction ? (direction === 'up' ? 1 : -1) : staff === 'tab' ? voice.tabDirection : undefined;
   const instrument = new FrettedInstrument(measure.state.tuning, measure.state.capo);
   const clef = staff === 'left' ? 'bass' : measure.state.clef;
+  const crossingStems = crossStaffBeamStems(voice);
   let pairStem: number;
   const notes: EasyScoreContent[] = voice.events.map(event => {
     const id = sources.project(staff, event.id, event.range);
     event.heads.forEach((head, i) => sources.project(staff, event.id + '-head-' + i, head.range));
     const destination = measure.state.piano ? event.displayHand : undefined;
-    const rhythm = { duration: event.base, dots: event.dots, stemDirection,
+    const crossingStem = crossingStems.get(event);
+    const rhythm = { duration: event.base, dots: event.dots, stemDirection: crossingStem ?? stemDirection,
       headSource: { event: event.id } };
     if (event.silent) return { id, skip: rhythm };
     if (!event.heads.length) {
@@ -121,13 +137,21 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     if (staff === 'tab') {
       return { id, tab: { ...rhythm, keys, notation, positions: event.heads.map(h => ({ ...h.position! })) }, drawStem: voice.tabStems && !['w', '1'].includes(event.base) };
     }
-    const writtenClef = destination === 'left' ? 'bass' : destination === 'right' ? 'treble' : clef;
+    let writtenClef = event.writtenClef ?? clef;
+    if (destination && destination !== voice.hand) {
+      const display = measure.staffState?.[destination];
+      writtenClef = display?.clef ?? (destination === 'left' ? 'bass' : 'treble');
+      for (const change of display?.changes ?? []) {
+        if (new Fraction().parse(change.at).greaterThan(new Fraction().parse(event.onset))) break;
+        writtenClef = change.clef ?? writtenClef;
+      }
+    }
     const heads = event.heads.map((head, i) => {
       const finger = typedFingering(head.marks, event.heads);
       return { key: keys[i], ...(finger && { fingering: { finger: finger.finger, position: finger.position } }),
         ...(head.accidental && { accidental: head.cautionary ? 'cautionary' as const : 'force' as const }) };
     });
-    const note = { ...rhythm, heads, notation, clef: writtenClef, type: event.slash ? 's' : 'n', autoStem: !direction };
+    const note = { ...rhythm, heads, notation, clef: writtenClef, type: event.slash ? 's' : 'n', autoStem: !direction && crossingStem === undefined };
     if (event.tremolo) {
       // Decide once before layout. An automatic second endpoint can otherwise flip across the middle line.
       if (pairStem === undefined) {
@@ -143,8 +167,18 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
       ...(event.grace && { grace: { side: event.grace.side, slur: true, beam: event.grace.pitches.length > 1,
         notes: event.grace.pitches.map(key => ({ keys: Array.isArray(key) ? key : [key], duration: event.grace.slash ? '8' : '16', slash: event.grace.slash, clef: writtenClef })) } }) };
   });
+  // VexFlow compares every voice's changes and emits glyphs only in the first.
+  const visual = new Map<string, { clef?: string; key?: string }>();
+  if (staff !== 'tab') for (const change of measure.staffState?.[staff]?.changes ?? []) {
+    if (!change.clef && !change.key) continue;
+    visual.set(change.at, { ...visual.get(change.at), ...(change.clef && {clef: change.clef}), ...(change.key && {key: change.key}) });
+  }
+  const withChanges = visual.size ? notes.flatMap((note, i) => {
+    const change = visual.get(voice.events[i].onset);
+    return change ? [{ change }, note] : [note];
+  }) : notes;
   return {
-    notes, stem: direction ?? 'auto',
+    notes: withChanges, stem: direction ?? 'auto',
     // The native auto-beamer reads divided tremolo ticks as shorter beamable notes.
     // Explicit beams in this voice/bar own their stems alongside the alternating strokes.
     autoBeam: !voice.events.some(e => e.tremolo) && voice.beams && (staff !== 'tab' || voice.tabStems) && {
@@ -230,9 +264,10 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
           }
         }
         const showMarks = staff === staves[0] || m.state.piano;
-        const clef = staff === 'tab' ? 'tab' : staff === 'left' ? 'bass' : m.state.clef;
+        const local = staff === 'tab' ? undefined : m.staffState?.[staff];
+        const clef = local?.clef ?? (staff === 'tab' ? 'tab' : staff === 'left' ? 'bass' : m.state.clef);
         return {
-          clef, key: m.state.key, time: m.state.meterSign ?? m.state.meter, span: m.span === '0/1' ? '1/1' : m.span,
+          clef, key: local?.key ?? m.state.key, time: m.state.meterSign ?? m.state.meter, span: m.span === '0/1' ? '1/1' : m.span,
           showTimeSignature: m.state.showTime && !(staff === 'tab' && staves.includes('notation')),
           endBarline: writtenEndBar(m),
           ...(showMarks && leadMarks({ ...m, voices }, staff === 'tab' ? 'tab' : 'notation',

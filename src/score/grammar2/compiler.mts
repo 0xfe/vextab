@@ -1,9 +1,12 @@
 // Compile finite phrases on a separate measure grid for each instrument.
 /// <reference lib="es2020.bigint" />
+import { resolveSpanEndpoints, validateBeam } from './span-endpoints.mts';
 import { duplicateMark } from './marks.mts';
 import { limits, readScore, type DiagnosticCode, type Fail, type Fraction, type Node, type TimedNode,
   type PartSyntax, type StaffSyntax, type VoiceSyntax } from './reader.mts';
 import type { ExpansionFrame, Head, HeadRef, ScoreEvent, ScoreV2, ScoreVoice, TextRange, WrittenMeter } from './model.js';
+import { capacityLimits, type ScoreCapacity } from './capacity.mts';
+
 export { limits };
 
 /** V2 diagnostics keep selection offsets and the invocation stack that led to a bad event. */
@@ -62,9 +65,10 @@ function hammerSource(head: Head, previous: ScoreEvent | undefined, kind: 'hamme
 }
 
 /** Every invocation has fresh budgets and IDs. No parsing or expansion state survives an edit. */
-export function compile(source: string): ScoreV2 {
+export function compile(source: string, capacity?: ScoreCapacity): ScoreV2 {
+  const budgets = capacityLimits(capacity);
   const fail: Fail = (code, reason, range, trace = []) => { throw new ScoreV2Error(code, reason, source, range, trace); };
-  const { tempoRanges, editions, patterns, parts, scoreMeters, pickup, pickupRange, playback, measureNumbers, layout, transpose: scoreTranspose } = readScore(source, fail);
+  const { groups, tempoRanges, editions, patterns, parts, scoreMeters, pickup, pickupRange, playback, measureNumbers, layout, transpose: scoreTranspose } = readScore(source, fail, budgets);
   const meterText = scoreMeters[1]?.value ?? '4/4';
   const firstLength = pickup && fractionText(rational(...pickup, fail, pickupRange, []));
   const quarter: Fraction = [BigInt(1), BigInt(4)];
@@ -72,7 +76,7 @@ export function compile(source: string): ScoreV2 {
   let steps = 0, eventCount = 0;
 
   function spend(range: TextRange, trace: ExpansionFrame[]) {
-    if (++steps > limits.steps) fail('work-limit', 'Phrase expansion exceeded its work budget', range, trace);
+    if (++steps > budgets.steps) fail('work-limit', 'Phrase expansion exceeds ' + budgets.steps + ' work steps', range, trace);
   }
 
   /** One voice owns one clock. Patterns and tuplets temporarily change its rhythmic environment. */
@@ -102,7 +106,7 @@ export function compile(source: string): ScoreV2 {
 
     /** Advance this voice by one timed event and resolve references to earlier heads. */
     function emit(node: TimedNode, duration: Fraction, rhythmRange: TextRange | undefined, scale: Fraction, trace: ExpansionFrame[]) {
-      if (++eventCount > limits.events) fail('event-limit', 'Too many expanded attacks, rests or skips', node.range, trace);
+      if (++eventCount > budgets.events) fail('event-limit', 'Score exceeds ' + budgets.events + ' expanded attacks, rests or skips', node.range, trace);
       const length = rational(duration[0] * scale[0], duration[1] * scale[1], fail, node.range, trace);
       const duplicate = duplicateMark(node.marks ?? []);
       if (duplicate) fail('syntax', duplicate.reason, duplicate.range, trace);
@@ -113,6 +117,17 @@ export function compile(source: string): ScoreV2 {
         const duplicate = duplicateMark(head.marks);
         if (duplicate) fail('syntax', duplicate.reason, duplicate.range, trace);
         for (const mark of head.marks) {
+          if (mark.kind === 'sustain') {
+            const [n, d] = asFraction(mark.duration);
+            if (n * length[1] > length[0] * d)
+              fail('syntax', 'Head sustain exceeds this attack; write a separate voice or tie', mark.range, trace);
+            const grace = node.marks?.find(m => m.kind === 'grace');
+            if (grace?.kind === 'grace' && grace.steal && grace.side === 'before') {
+              const [a, b] = asFraction(grace.steal);
+              if (n * length[1] * b <= length[0] * d * a)
+                fail('syntax', 'Before-grace would consume the entire sounding head', grace.range, trace);
+            }
+          }
           if (['bend', 'prebend', 'slideIn', 'slideOut'].includes(mark.kind) && (!('fret' in head) || typeof head.fret !== 'number'))
             fail('instrument', 'This technique needs a pitched fret', mark.range, trace);
         }
@@ -209,9 +224,7 @@ export function compile(source: string): ScoreV2 {
             if (!members.length || (node.kind !== 'palmMute' && members.length < 2))
               fail('syntax', 'This span needs more notes', node.range, trace);
             if (node.kind === 'palmMute' && part.kind !== 'guitar') fail('instrument', 'Palm mute needs a guitar', node.range, trace);
-            if (node.kind === 'beam' && (members[0].bar !== members[members.length - 1].bar ||
-              members.some(e => Number(e.writtenDuration.split('/')[0]) * 4 >= Number(e.writtenDuration.split('/')[1]))))
-              fail('syntax', 'Beam short notes within one bar', node.range, trace);
+            if (node.kind === 'beam') validateBeam(events, start, events.length - 1, node.range, trace, fail);
             spans.push({ kind: node.kind, first: members[0].id, last: members[members.length - 1].id, side: node.side, strings: node.strings ?? [], range: node.range });
             break;
           }
@@ -237,7 +250,7 @@ export function compile(source: string): ScoreV2 {
               if (beat[0] || bar === start) fail('bar-length', 'Each ending needs at least one complete bar', node.range, trace);
               return { first: start, last: bar - 1 };
             });
-            (result.repeats ??= []).push({ first, bodyEnd, endings, range: node.range });
+            (result.repeats ??= []).push({ first, bodyEnd, endings, ...(node.count && {count:node.count}), range: node.range });
             break;
           }
           case 'tuplet': {
@@ -259,6 +272,7 @@ export function compile(source: string): ScoreV2 {
       const last = events[events.length - 1];
       fail('bar-length', 'End the final measure with |', last.range, last.trace);
     }
+    resolveSpanEndpoints(result, fail);
     if (!measures.length) fail('bar-length', 'Expected at least one measure', voice.range);
     if (clock.voiceLength !== undefined && clock.voiceLength !== measures.length) fail('alignment', 'Every voice in a part must cover the same number of bars', voice.range);
     clock.voiceLength = measures.length;
@@ -303,6 +317,19 @@ export function compile(source: string): ScoreV2 {
     }
   }
 
+  /** Sort and validate attribute anchors against the actual measure spans, including pickups. */
+  function track<T extends import('./model.js').WrittenPosition>(entries: T[], spans: string[]) {
+    const scaled = (a: string, b: string) => {
+      const [an, ad] = asFraction(a), [bn, bd] = asFraction(b);
+      return Number(an * bd - bn * ad);
+    };
+    entries.sort((a, b) => a.bar - b.bar || scaled(a.at, b.at));
+    for (const e of entries) {
+      if (!spans[e.bar - 1] || scaled(e.at, spans[e.bar - 1]) >= 0)
+        fail('alignment', 'Timed setting lies outside its written measure', e.range);
+    }
+  }
+
   const compiled = parts.map((part, index) => {
     const { lanes, ...instrument } = part;
     const clock: PartClock = { bars: [], meters: { ...part.meters } };
@@ -323,6 +350,23 @@ export function compile(source: string): ScoreV2 {
     for (const n of Object.keys(part.keys ?? {})) {
       if (Number(n) > measureCount) fail('alignment', 'Key change lies beyond the score', part.range);
     }
+    for (const staff of staves) {
+      const changes = [...(part.staffChanges ?? []), ...(staff.staffChanges ?? [])];
+      if (!changes.length) continue;
+      track(changes, clock.bars);
+      const seen = new Set<string>();
+      const onsets = staff.voices.map(v => new Set(v.events.map(e => e.bar + ':' + e.at)));
+      for (const e of changes) {
+        for (const field of ['key','clef','sounds'] as const) if (e[field] !== undefined) {
+          const id = field + ':' + e.bar + ':' + e.at;
+          if (seen.has(id)) fail('alignment', 'Duplicate timed ' + field, e.range);
+          seen.add(id);
+        }
+        if ((e.key || e.clef) && e.at !== '0/1' && (onsets.some(set => !set.has(e.bar + ':' + e.at)) || text?.length))
+          fail('alignment', 'Inline clef and key changes need a shared music-voice onset without a separate text lane', e.range);
+      }
+      staff.staffChanges = changes;
+    }
     applyMeters(clock, staves.flatMap(staff => staff.voices), text?.map(lane => lane.voice) ?? []);
     return { ...instrument, ...(Object.keys(clock.meters).length && { meters: clock.meters }), measureCount, staves, ...(text && { text }) };
   });
@@ -332,6 +376,29 @@ export function compile(source: string): ScoreV2 {
   }
   for (const [bar, range] of tempoRanges) {
     if (bar > measureCount) fail('alignment', 'Tempo change lies beyond the score', range);
+  }
+  if (playback?.tempoChanges) {
+    const reference = compiled[0].staves[0].voices[0].measures;
+    for (const part of compiled) {
+      const bars = part.staves[0].voices[0].measures;
+      track(playback.tempoChanges, bars.map(m => m.span));
+      // A global bar-relative tempo must denote the same absolute instant in each part.
+      const last = playback.tempoChanges[playback.tempoChanges.length - 1];
+      for (let i = 0; i < last.bar - 1; i++) if (bars[i].span !== reference[i].span)
+        fail('alignment', 'Share the written bar grid before a global inline tempo', last.range);
+    }
+    const seen = new Set<string>();
+    for (const e of playback.tempoChanges) {
+      const id = e.bar + ':' + e.at;
+      if (seen.has(id)) fail('alignment', 'Duplicate timed tempo', e.range);
+      seen.add(id);
+    }
+  }
+  const partIndices = new Map(compiled.map((part, i) => [part.id, i]));
+  for (const group of groups) {
+    const first = partIndices.get(group.parts[0]);
+    if (first === undefined || group.parts.some((name, i) => partIndices.get(name) !== first + i))
+      fail('alignment', 'Group members must be adjacent named parts in score order', group.range);
   }
   for (const edition of editions) {
     const target = compiled.find(p => p.id === edition.part);
@@ -347,5 +414,5 @@ export function compile(source: string): ScoreV2 {
         fail('alignment', 'Missing cue instrument or measure', cue.range);
     }
   }
-  return { language: 2, ...(editions.length && { editions }), ...(scoreTranspose && { transpose: scoreTranspose }), ...(layout && { layout }), ...(playback && { playback }), ...(measureNumbers !== undefined && { measureNumbers }), source, meter: meterText, meterRange: scoreMeters[1]?.range, ...(pickup && { pickup: firstLength }), measureCount, parts: compiled };
+  return { language: 2, ...(groups.length && { groups }), ...(editions.length && { editions }), ...(scoreTranspose && { transpose: scoreTranspose }), ...(layout && { layout }), ...(playback && { playback }), ...(measureNumbers !== undefined && { measureNumbers }), source, meter: meterText, meterRange: scoreMeters[1]?.range, ...(pickup && { pickup: firstLength }), measureCount, parts: compiled };
 }
