@@ -12,6 +12,12 @@ npm run whatsnew:verify
 
 Open `build/reports/index.html` for the quality archive or `build/whatsnew/index.html` for **What's New?**. Both work offline. The first build needs registry access to install the dependencies locked by each historical revision. Subsequent builds reuse matching installs in `build/report-cache/`. The reporting tools have a separate lockfile in `tools/`.
 
+The historical browser harness uses QUnit 2.9.2 for revisions whose test page
+names that release. The `qunit-classic` override in `tools/package.json`
+updates its pinned `minimatch` dependency within version 3. This preserves the
+browser runner used by the original tests. Run `npm run report -- 4.0.0` to
+exercise that path. The TypeScript parser uses its own version of minimatch.
+
 The **Engineering reports** GitHub Actions workflow runs on numeric release tags and on manual dispatch. Download its artifact and keep the two report directories together to follow links between them. Website publication is a separate command.
 
 ## Quality archive
