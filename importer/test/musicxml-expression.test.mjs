@@ -217,3 +217,17 @@ test('overlong bars require independent part cursors to agree under the written 
     assert.match(source.slice(...error.range), /^<measure/);
   }
 });
+
+test('notated tie placement can be supplied at either endpoint', () => {
+  const tied = (start, end) => score(note('C', mark('<tied type="start" ' + start + '/>')) +
+    note('C', mark('<tied type="stop" ' + end + '/>')));
+  for (const [start, end, side] of [['placement="above" orientation="over"', '', 'above'], ['', 'orientation="under"', 'below']]) {
+    const result = importMusicXML(tied(start, end), expressive);
+    assert.equal(result.status, 'exact');
+    assert.equal(result.target.minimumVersion, '6.6.0');
+    assert.match(result.documents[0].text, new RegExp('tieStart [a-z0-9]+ ' + side));
+  }
+  const result = importMusicXML(tied('placement="above"', 'placement="below"'), {...expressive, mode: 'partial'});
+  assert.equal(result.status, 'partial');
+  assert.ok(result.diagnostics.some(d => d.message.includes('change of tie side')));
+});

@@ -38,6 +38,7 @@ interface HeadInfo {
   start: boolean;
   stop: boolean;
   gestures: GestureEdge[];
+  stopSide?: HeadDetail['tieSide'];
 }
 interface Extension {
   verse: string;
@@ -203,10 +204,24 @@ export function noteMarks(
   }
   for (const mark of [...node.children.filter((c) => c.name === 'tie'), ...(marks?.children ?? [])]) {
     if (mark.name === 'tie' || mark.name === 'tied') {
-      attributesExcept(mark, ['type', 'number'], input);
+      const notated = mark.name === 'tied';
+      attributesExcept(mark, notated ? ['type', 'number', 'placement', 'orientation'] : ['type', 'number'], input);
       const info = metadata();
-      if (mark.attributes.type === 'start') info.start = true;
-      else if (mark.attributes.type === 'stop') info.stop = true;
+      let placement = side(mark, input);
+      const arch = mark.attributes.orientation;
+      if (arch) {
+        const sideFromArch = arch === 'over' ? 'above' : arch === 'under' ? 'below' : undefined;
+        if (!sideFromArch || (placement && placement !== sideFromArch))
+          input.omit('Omitted independent tie orientation.', mark.range);
+        placement ??= sideFromArch;
+      }
+      if (mark.attributes.type === 'start') {
+        info.start = true;
+        if (placement) headDetail(e).tieSide = placement;
+      } else if (mark.attributes.type === 'stop') {
+        info.stop = true;
+        if (placement) info.stopSide = placement;
+      }
       else input.fail('unsupported', 'Unsupported tie boundary.', mark.range);
     } else if (mark.name === 'slur') {
       attributesExcept(mark, ['type', 'number', 'placement'], input);
@@ -382,6 +397,7 @@ interface TiePoint {
   range: TextRange;
   voice: string;
   bar: Measure;
+  stopSide?: HeadDetail['tieSide'];
 }
 type TiePoints = Map<string, {starts: TiePoint[]; stops: TiePoint[]}>;
 
@@ -389,6 +405,11 @@ type TiePoints = Map<string, {starts: TiePoint[]; stops: TiePoint[]}>;
 function connectTies(points: TiePoints, input: Input) {
   for (const {starts, stops} of points.values()) {
     const connect = (start: TiePoint, stop: TiePoint) => {
+      if (start.detail.tieSide && stop.stopSide && start.detail.tieSide !== stop.stopSide) {
+        context(input, stop.bar, stop.voice);
+        input.omit('Omitted change of tie side at its endpoint.', stop.range);
+      }
+      start.detail.tieSide ??= stop.stopSide;
       stop.detail.tieEndId = start.detail.tieStartId = 't' + start.range[0];
       starts.splice(starts.indexOf(start), 1);
       stops.splice(stops.indexOf(stop), 1);
@@ -435,7 +456,7 @@ function resolveHeads(events: VoiceEvent[], voice: string, state: NotationState,
         const key = JSON.stringify([bar.staff, position.numerator + '/' + position.denominator, p!.step, p!.alter, p!.octave, detail.string, detail.drum]);
         const entry = ties.get(key) ?? {starts: [], stops: []};
         if (!ties.has(key)) ties.set(key, entry);
-        entry[start ? 'starts' : 'stops'].push({detail, range, voice, bar});
+        entry[start ? 'starts' : 'stops'].push({detail, range, voice, bar, stopSide: info!.stopSide});
       }
       if (info.stop) endpoint(at, false);
       if (info.start) endpoint(at.plus(detail.releaseAfter ?? event.elapsed), true);
