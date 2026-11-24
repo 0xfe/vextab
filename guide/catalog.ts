@@ -16,7 +16,10 @@ import duet from './scores/guitar-duet.vextab';
 import workbench from './scores/embed-workbench.vextab';
 import sor from './scores/sor-op35-no22.vextab';
 import pocketChange from './scores/pocket-change.vextab';
+import etudeThirds from './scores/chopin-etude-op25-no6.vextab';
 import chopin from './scores/chopin-ballade-no3.vextab';
+import consolation from './scores/liszt-consolation-no5.vextab';
+import liszt from './scores/liszt-hungarian-rhapsody-no2.vextab';
 import allOfMe from './scores/all-of-me.vextab';
 import solea from './scores/flamenco-tab.vextab';
 import joplin from './scores/joplin-maple-leaf.vextab';
@@ -66,6 +69,18 @@ export const lessons: Lesson[] = [
     goal:'In the first eight bars of Sor’s Op. 35 No. 22, listen for the half-note melody above the moving eighths. The bass sounds across the first barline.',
     edit:'Change finger 2 to finger 3 on the opening note. Switch to Guitar · TAB and find the new fingering beside the same fret on string two.',
     edition:{ credit:'Glen Larsen’s Mutopia engraving after N. Simrock (CC BY-SA 3.0). This adaptation uses editorial string choices and the original three voices. The adaptation shares the same license.', url:'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1850' } },
+  { id:'liszt-consolation-no5', title:'Liszt · Consolation No. 5', source:consolation, views:staff, demo:true,
+    goal:'The left hand begins the Andantino alone. Follow its dotted pickup into the right hand, then listen for the melody above the repeated eighth notes at “espressivo con anima”.',
+    edit:'Change the two tempo settings of 76 to 60 and the two settings of 68 to 54. Play from “poco rit.” and listen for the pulse to return at “a tempo”.',
+    edition:{ credit:'Franz Liszt, Consolation No. 5 in E major, S.172/5. This excerpt follows the upbeat and first twenty bars of the Hal Leonard preview, with selected fingerings. The playback tempos are editorial.', url:'https://s3.amazonaws.com/halleonard-pagepreviews/HL_DDS_135672407UXxb3Nd2.png' } },
+  { id:'liszt-hungarian-rhapsody-no2', title:'Liszt · Hungarian Rhapsody No. 2', source:liszt, views:staff, demo:true,
+    goal:'In this passage from the Friska, the right hand plays a dotted eighth and a sixteenth against two even bass notes. Follow the accents across the barlines until the right hand changes to even eighths at “leggieriss.”',
+    edit:'Lower the tempo from 144 to 96 and play the opening bars. The bass plays its fourth note before the right hand lands its short final chord.',
+    edition:{ credit:'Franz Liszt, Hungarian Rhapsody No. 2, S.244/2. The nineteen-bar excerpt follows the Tempo giusto Vivace score reproduced by SE22 Piano School. The playback tempo is editorial.', url:'https://se22pianoschool.wordpress.com/wp-content/uploads/2011/08/screen-shot-2011-08-10-at-21-53-39.jpg' } },
+  { id:'chopin-etude-op25-no6', title:'Chopin · Étude in thirds, Op. 25 No. 6', source:etudeThirds, views:staff, demo:true,
+    goal:'Chopin opens with two bars of alternating thirds in the right hand. Listen for the bass entering in bar 3, then follow the first chromatic climb in bar 5.',
+    edit:'Slow the quarter-note tempo from 138 to 90 to practise the thirds. In bar 5, change use ascent to use alternate to try the alternative fingering from the foot of the page.',
+    edition:{ credit:'Frédéric Chopin, Étude in G-sharp minor, Op. 25 No. 6, bars 1–17. The six systems follow the Cantorion scan, with selected fingerings and fixed piano clefs. The printed half note at 69 gives 138 quarter notes per minute.', url:'https://cantorion.org/music/621/Etude-No.-6-Original-version' } },
   { id:'chopin-ballade-no3', title:'Chopin · Ballade No. 3', source:chopin, views:staff, demo:true,
     goal:'The opening 24 bars of Chopin’s A-flat major Ballade fit six to a system. In bars 2–4, follow the high E-flat while the voices underneath it move. The small staff below bar 3 offers another way to play the ornament.',
     edit:'Change the tempo from 132 to 96 and start at the opening. In bar 14, count the seven-note right-hand flourish against the bass. Listen for the hands to meet on the next downbeat.',

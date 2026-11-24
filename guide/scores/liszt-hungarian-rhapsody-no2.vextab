@@ -1,0 +1,66 @@
+// Franz Liszt, Hungarian Rhapsody No. 2, S.244/2. Nineteen bars from the Friska.
+// Transcribed from the six-sharp Tempo giusto Vivace excerpt reproduced by SE22 Piano School.
+// https://se22pianoschool.wordpress.com/wp-content/uploads/2011/08/screen-shot-2011-08-10-at-21-53-39.jpg
+layout { width 1200 scale 0.695 spacing optical top 27 staffDistance 11 rowGap 0 }
+meter 2/4
+play { tempo 144 instrument 0 }
+edition { paper A4 margins 10 8 10 8 staffSize 5.1 }
+piano keys { key F# groupBeats (2) beamRests off
+  upper { name ""
+    voice treble stem down {
+      :8 (B#5[finger 5 above] E5[finger 3 above] B#4)[staccato above] (C6[finger 5 above] G5[finger 3 above] C5)[staccato above] slur above { :8. (Bn5[finger 5 above] E5 Bn4)[accent above] :16 (C6[finger 4 above] C5) |
+      :8 (B#5[finger 5 above] E5 B#4)[staccato above] } (C6[finger 5 above] G5[finger 3 above] C5)[staccato above] slur above { :8. (Bn5[finger 5 above] E5 Bn4)[accent above] :16 (C6[finger 4 above] C5) |
+      :8 (B#5[finger 5 above] G##5[finger 3 above] B#4)[staccato above] } (C6[finger 5 above] A5[finger 4 above] C5)[staccato above] slur above { :8. (A5[finger 3 above] F5 A4)[accent above] :16 (C6[finger 5 above] A5[finger 4 above] C5) |
+      :8 (B#5[finger 5 above] G##5[finger 3 above] B#4)[staccato above] } (C6[finger 5 above] A5[finger 4 above] C5)[staccato above] slur above { :8. (A5[finger 3 above] F5 A4)[accent above] :16 (C6[finger 4 above] C5) |
+      :8 (B#5[finger 5 above] B#4)[staccato above] } (C6[finger 4 above] G5 C5)[staccato above] slur above { :8. (D6[finger 5 above] B5[finger 3 above] D5)[accent above] :16 (C6[finger 4 above] G5 C5) |
+      :8 (B#5[finger 5 above] B#4)[staccato above] } (C6[finger 4 above] G5 C5)[staccato above] slur above { :8. (D6[finger 5 above] B5[finger 3 above] D5)[accent above] :16 (C6[finger 4 above] G5 C5) |
+      break system
+      :8 (B#5[finger 5 above] G##5[finger 3 above] B#4)[staccato above] } (C6[finger 4 above] A5[finger 2 above] C5)[staccato above] slur above { :8. (F6 A5 F5)[accent above] :16 (C6[finger 4 above] C5) |
+      :8 (B#5[finger 5 above] G##5[finger 3 above] B#4)[staccato above] } (C6[finger 4 above] A5[finger 2 above] C5)[staccato above] slur above { :8. (F6 A5 F5)[accent above] :16 (C6[finger 4 above] C5) |
+      :8 (B#5[finger 5 above] E5[finger 3 above] B#4)[dynamic p, staccato above] } (C6 G5 C5)[staccato above] slur above { :8. (Bn5[finger 5 above] E5 Bn4)[accent above] :16 (C6[finger 4 above] C5) |
+      :8 (B#5 E5 B#4)[staccato above] } (C6 G5 C5)[staccato above] slur above { :8. (Bn5 E5 Bn4)[accent above] :16 (C6[finger 4 above] C5) |
+      :8 (B#5[finger 5 above] G##5[finger 3 above] B#4)[staccato above] } (C6[finger 5 above] A5[finger 4 above] C5)[staccato above] slur above { :8. (A5[finger 3 above] F5 A4)[accent above] :16 (C6[finger 5 above] C5[finger 4 above]) |
+      :8 (B#5[finger 5 above] G##5[finger 3 above] B#4)[staccato above] } (C6[finger 5 above] A5[finger 4 above] C5)[staccato above] slur above { :8. (A5[finger 3 above] F5 A4) :16 (C6[finger 4 above] C5) |
+      break system
+      :8 (B#5[finger 5 above] B#4)[dynamic pp, staccato above] } (C6[finger 4 above] G5 C5)[staccato above] slur above { :8. (D6 B5 D5)[accent below] :16 (C6[finger 4 above] G5 C5) |
+      :8 (B#5[finger 5 above] B#4)[staccato above] } (C6[finger 4 above] G5 C5)[staccato above] slur above { :8. (D6[finger 5 above] B5[finger 3 above] D5)[accent below] :16 (C6[finger 4 above] G5 C5) |
+      :8 (B#5[finger 5 above] G##5[finger 3 above] B#4)[staccato above] } (C6[finger 4 above] A5[finger 2 above] C5)[staccato above] slur above { :8. (F6 A5 F5)[accent above] :16 (C6[finger 4 above] C5) |
+      :8 (B#5[finger 5 above] G##5[finger 3 above] B#4)[staccato above] } (C6[finger 4 above] A5[finger 2 above] C5)[staccato above] slur above { :8. (F6 A5 F5)[accent above] :16 (C6[finger 4 above] C5) |
+      :8 (D6 B5 D5)[staccato above] } (B5[finger 5 above] F5[finger 3 above])[staccato above] (F5 D5)[staccato above] (D5[finger 2 above] B4[finger 1 above])[staccato above] |
+      :8 (F5 D5)[staccato above] (B5[finger 5 above] F5[finger 3 above])[staccato above] (D6[finger 3 above] B5[finger 1 above])[staccato above] (F6 D6)[staccato above] |
+      :8 (C6 A5 C5)[staccato above] (A5 F5)[staccato above] (F5[finger 3 above] C5[finger 1 above])[staccato above] (C5[finger 2 above] A4[finger 1 above])[staccato above] |
+    }
+  }
+  lower { name ""
+    voice bass flatBeams on {
+      :8 (G2 G3)[pedal down] (G3 C4 E4) (C2 C3) (G3 C4 E4) |
+      :8 (G2 G3) (G3 C4 E4) (C2 C3) (G3 C4 E4)[pedal up] |
+      :8 (F2 F3)[pedal down] (A3 C4 F4) (C2 C3) (A3 C4 F4) |
+      :8 (F2 F3) (A3 C4 F4) (C2 C3) (A3 C4 F4)[pedal up] |
+      :8 (G2 G3)[pedal down] (Bn3 C4 E4) (C2 C3) (Bn3 C4 E4) |
+      :8 (G2 G3) (Bn3 C4 E4) (C2 C3) (Bn3 C4 E4)[pedal up] |
+      :8 (F2 F3)[pedal down] (A3 C4 F4) (C2 C3) (A3 C4 F4) |
+      :8 (F2 F3) (A3 C4 F4) (C2 C3) (A3 C4 F4)[pedal up] |
+      :8 G3 (C4 E4) C3 (G3 C4 E4) |
+      beam { :8 G2[finger 4 below] (G3 C4 E4) C2[finger 5 below] (G3 C4 E4) } |
+      :8 F3 (A3 C4 F4) C3 (A3 C4 F4) |
+      :8 F2 (A3 C4 F4) C2 (A3 C4 F4) |
+      :8 G3 (C4 E4) C3 (G3 C4 E4) |
+      :8 G2 (G3 C4 E4) C2 (G3 C4 E4) |
+      :8 F3 (A3 C4 F4) C3 (A3 C4 F4) |
+      :8 F2 (A3 C4 F4) C2 (A3 C4 F4) |
+      :8 F3 (B3 D4) C3 (D4 F4) |
+      :8 F3 (B3 D4) C3 (D4 F4) |
+      :8 F3 (A3 C4) C3 (C4 F4) |
+    }
+  }
+  text tempo spacing smooth align center font "Academico" {
+    :q skip line -4 size 19 style bold "Tempo giusto Vivace" | :h skip | skip | skip | skip | skip | skip | skip | skip | skip | skip | skip | skip | skip | skip | skip | skip | skip | skip |
+  }
+  text expression spacing smooth align left font "Academico" {
+    :h line 8 size 15 style italic "marc. assai" | skip | skip | skip | skip | skip | skip | skip | :8 skip :q. line 8 size 14 style italic "scherz." | :h skip | skip | skip | skip | skip | skip | skip | line 8 size 14 style italic "leggieriss." | skip | skip |
+  }
+  text bassinstruction spacing smooth align left font "Academico" {
+    :h skip | skip | skip | skip | skip | skip | skip | skip | line 20 size 15 style italic "il basso sempre stacc." | skip | skip | skip | skip | skip | skip | skip | skip | skip | skip |
+  }
+}

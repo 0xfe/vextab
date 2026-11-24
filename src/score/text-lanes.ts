@@ -1,5 +1,5 @@
 // Recreate timed text in each screen or print composition using its own formatted voice.
-import { TextNote, type Note, type CompositionMark, type EasyScoreComposition, type EasyScoreContent, type ScoreHitRegion } from 'vexflow';
+import { TextNote, type Bounds, type Stave, type Note, type CompositionMark, type EasyScoreComposition, type EasyScoreContent, type ScoreHitRegion } from 'vexflow';
 import { scoreMusicFont } from './engraving';
 import { inkStyle } from './color';
 import type { MeasuredText } from './model';
@@ -32,10 +32,16 @@ function followsOpeningSign(cell: MeasuredText) {
 export class TextLanes {
   readonly regions = new Map<string, ScoreHitRegion>();
   private readonly cells = new Map<string, MeasuredText & { belowBassStaff?: boolean }>();
+  private readonly smoothMeasures = new Map<string, number>();
+  private readonly smoothNotes = new Map<number, Map<string, Note>>();
 
   /** Put simultaneous edge signs in separate voices so each keeps its beat, style and source ID. */
-  voices(lane: MeasuredText[], project: (id: string, range: SourceRange) => string) {
-    const beat = lane.map(cell => this.anchor(cell, project(cell.id, cell.range)));
+  voices(lane: MeasuredText[], measure: number, project: (id: string, range: SourceRange) => string) {
+    const beat = lane.map(cell => {
+      const id = project(cell.id, cell.range);
+      if (cell.text && cell.style.smooth && !cell.boundaries?.length) this.smoothMeasures.set(id, measure);
+      return this.anchor(cell, id);
+    });
     const voices = [{ notes: beat }];
     const edgeCount = Math.max(0, ...lane.map(cell => cell.boundaries?.length ?? 0));
     for (let i = 0; i < edgeCount; i++) {
@@ -70,7 +76,48 @@ export class TextLanes {
 
   /** Only the smooth label draws at this timed rest, including in a fresh part. */
   prepare(id: string, note: Note) {
-    if (!(note instanceof TextNote) && this.cells.has(id)) note.renderOptions.draw = false;
+    const measure = this.smoothMeasures.get(id);
+    if (measure === undefined || note instanceof TextNote) return;
+    note.renderOptions.draw = false;
+    let notes = this.smoothNotes.get(measure);
+    if (!notes) this.smoothNotes.set(measure, notes = new Map());
+    notes.set(id, note);
+  }
+
+  /** The layout solver and the drawing hook must measure the same label at its formatted beat. */
+  private smoothLabel(note: Note, cell: MeasuredText, id: string) {
+    const { family, size, style, align, line } = cell.style;
+    const label = new TextNote({ duration: cell.base, ...(cell.glyph ? { glyph: cell.text } : { text: cell.text }), line })
+      .setDirectionAnchor('beat').setAttribute('id', id);
+    if (cell.glyph) {
+      if (size) label.setFontSize(size);
+    } else label.setFont(family ?? label.fontInfo.family, size ?? label.fontInfo.size as number,
+      style === 'bold' ? 'bold' : undefined, style === 'italic' ? 'italic' : undefined);
+    label.setJustification(align === 'right' ? TextNote.Justification.RIGHT : align === 'left' ? TextNote.Justification.LEFT : TextNote.Justification.CENTER);
+    label.setStave(note.checkStave()).setTickContext(note.checkTickContext());
+    label.preFormat();
+    return label;
+  }
+
+  /** Supply the ink of smooth labels before VexFlow fits neighboring staves and systems. */
+  inkBounds(stave: Stave, measure: number): Bounds[] {
+    const bounds: Bounds[] = [];
+    for (const [id, note] of this.smoothNotes.get(measure) ?? []) {
+      if (note.getStave() !== stave) continue;
+      const cell = this.cells.get(id)!;
+      const label = this.smoothLabel(note, cell, id);
+      this.positionLabel(label, stave, cell.glyph);
+      bounds.push(label.getBoundingBox());
+    }
+    return bounds;
+  }
+
+  /** Move below-staff labels from the text baseline to the first clear line below the staff. */
+  private positionLabel(label: TextNote, stave: Stave, glyph?: boolean) {
+    if (label.getLine() - 3 < stave.getNumLines()) return;
+    label.setYShift(0);
+    const ascent = glyph ? -label.getTextInk(0, 0).y : label.getTextMetrics().fontBoundingBoxAscent;
+    label.setYShift(stave.getSpacingBetweenLines() + ascent);
   }
 
   /** Native directions own their hit boxes. Smooth text uses a placed mark to leave beat spacing alone. */
@@ -87,24 +134,11 @@ export class TextLanes {
       }
     } else {
       if (!cell.style.smooth) return;
-      const { family, size, style, align, line } = cell.style;
-      label = new TextNote({ duration: cell.base, ...(cell.glyph ? { glyph: cell.text } : { text: cell.text }), line })
-        .setDirectionAnchor('beat').setAttribute('id', id);
-      if (cell.glyph) {
-        if (size) label.setFontSize(size);
-      } else label.setFont(family ?? label.fontInfo.family, size ?? label.fontInfo.size as number,
-        style === 'bold' ? 'bold' : undefined, style === 'italic' ? 'italic' : undefined);
-      label.setJustification(align === 'right' ? TextNote.Justification.RIGHT : align === 'left' ? TextNote.Justification.LEFT : TextNote.Justification.CENTER);
-      label.setStave(note.checkStave()).setTickContext(note.checkTickContext());
-      label.preFormat();
+      label = this.smoothLabel(note, cell, id);
     }
     if (cell.style.ink) label.setStyle(inkStyle(cell.style.ink));
     const stave = note.checkStave();
-    if (label.getLine() - 3 >= stave.getNumLines()) {
-      label.setYShift(0);
-      const ascent = cell.glyph ? -label.getTextInk(0, 0).y : label.getTextMetrics().fontBoundingBoxAscent;
-      label.setYShift(stave.getSpacingBetweenLines() + ascent);
-    }
+    this.positionLabel(label, stave, cell.glyph);
     if (cell.belowBassStaff) {
       // A long instruction can reach the next bar's down-stem beam.
       const ink = label.getBoundingBox();

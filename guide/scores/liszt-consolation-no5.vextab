@@ -1,0 +1,98 @@
+// Franz Liszt, Consolation No. 5 in E major, S.172/5. Opening upbeat and bars 1–20.
+// After the Hal Leonard page preview. Written bar 1 in VexTab is the upbeat.
+// https://s3.amazonaws.com/halleonard-pagepreviews/HL_DDS_135672407UXxb3Nd2.png
+// The Andantino has no metronome marking in the source; the tempo choices are editorial.
+layout {
+  width 1330 scale 0.64 spacing optical firstSystemIndent 86
+  heading { align center title "CONSOLATION NO. 5" dedication "from SIX CONSOLATIONS" composer "Franz Liszt (1811–1886)" }
+}
+meter 3/4 pickup 1/4
+play { performer chopin tempo 76 tempo 68 at 12 tempo 76 at 13 tempo 68 at 21 }
+edition { paper A4 margins 10 8 10 8 staffSize 5.6 }
+piano keys { key E program 0 groupBeats (3) beamRests off
+  upper { name ""
+    voice melody stem up {
+      :q rest[dynamic p, line 2] | :h. rest | :h. rest |
+      :h rest slur below { beam { :8. G4[finger 2 above] :16 C5 } } |
+      slur above { :q. B4[finger 4 above] beam { :8 A4 :8. A4[finger 2 above] :16 D5 } } |
+      slur above { :q. C5[finger 4 above] beam { crescendo { :8 B4[finger 3 above] :8. B4[finger 1 above] :16 G5 } } } |
+      break system
+      slur above { diminuendo { :q. G5[finger 5 above] beam { :8 F5 C5 D5[grace before (E5)] } } } |
+      slur above { :q C5[finger 3 above] :8 B4 } :8 rest slur above { beam { :8. (E4 G4[finger 2 above])[dynamic p] :16 C5 } |
+      :q. B4[finger 4 above] beam { :8 A4 :8. F4 :16 D5 } } |
+      slur above { :q. C5[finger 5 above] beam { crescendo { :8 B4[finger 4 above] :8. B4[finger 2 above] :16 G5 } } } |
+      diminuendo { :q G5 tuplet 3:2 { :q G5[tie] :8 (G4 E5[finger 3 above]) } }
+      diminuendo { slur below { tuplet 3:2 { beam { :8 (E4 C5[finger 5 above]) (G4 E5[finger 4 above]) (F4 D5[finger 5 above]) } } } } |
+      break system
+      :q (D4 B4) rest :8 rest (A4 B4) |
+      slur above { :q B4[finger 4 above] :q. (Cn5 E5[finger 5 above])[accent above] :8 (B4 Dn5) } |
+      slur above { beam { :8. (Cn5 E5[finger 5 above])[roll up] :16 (B4 Dn5[finger 5 above]) } :q A4[finger 3 above] }
+      slur below { tuplet 3:2 { beam { :8 Cn5[finger 5 above] :8. B4[finger 4 above] :16 A4[finger 3 above] } } } |
+      slur above { :q Gn4[finger 4 above] :q. (A4 Cn5[finger 5 above])[accent above] :8 (Gn4 B4) } |
+      slur above { beam { :8. (A4 Cn5[finger 5 above]) :16 (Gn4 B4) } :q F4[finger 3 above] }
+      slur below { tuplet 3:2 { beam { :8 A4[finger 5 above] :8. Gn4 :16 F4 } } } |
+      break system
+      slur above { :q E4[finger 4 above] :q. (Fn4 A4)[accent above] :8 Gn4 } |
+      slur above { :q E4[finger 4 above] :q. (Fn4 A4)[accent above] :8 Gn4 } |
+      :q E4[finger 4 above] E4 slur above { beam { :8. E4[finger 4 above] :16 D4 } } |
+      diminuendo { slur above { :q. C5[finger 5 above] beam { :8 B4[finger 4 above] A#4[finger 3 above] An4[finger 1 above] } } } |
+      diminuendo { slur above { :8 G5[finger 5 above] F5 E5 D5 E5[finger 4 above] D5[finger 3 above] } } |
+    }
+    voice inner stem down {
+      :8 skip skip | times 3 { :h. skip | }
+      :q (E#4 G4) F4 skip | :q (F##4 A#4) G4 skip |
+      :h A#4 :q An4 | :q G4 :8 (E4 G4[tie]) :q. skip |
+      :q (Dn4 G4) :h C4 | :q F##4 G4 E4 |
+      :q (E4 A#4)[roll up] :h skip | :h. skip |
+      :8 Gn4 Dn4 Gn4 Dn4 Gn4 Dn4 | :8 F4 Dn4 F4 Dn4 :q skip |
+      :8 E4 B3 E4 B3 E4 B3 | :8 D4 B3 D4 B3 :q skip |
+      times 2 { :8 Cn4 Gn3 B3 Gn3 (B3 Fn4) Gn3 | }
+      beam { :8 Cn4 Gn3 B3 Gn3 } :q A#3 |
+      :h. D4 | :h. skip |
+    }
+    voice held stem down {
+      :8 skip skip | times 8 { :h. skip | } :h E4 :q skip | times 11 { :h. skip | }
+    }
+  }
+  lower { name ""
+    voice sustained stem up {
+      :8 skip skip | times 4 { :h. skip | }
+      :h skip :q G4[finger 1 above] |
+      :q E4[finger 1 left] E4 F4[finger 5 above] |
+      :q E4 :h skip | times 10 { :h. skip | }
+      :h skip :q Cn3 | times 2 { :h. skip | }
+    }
+    voice bass {
+      slur above { :8. G2[finger 5 above] :16 C3 |
+      :q. B2[finger 3 above] beam { :8 F3[finger 1 above] E3[finger 3 above] A3[finger 1 above] } |
+      beam { crescendo above { :8 G3[finger 4 above] C4 B3 } diminuendo above { :8 E4[grace before slashed (F4), finger 2 above] G3[finger 5 above] C4[finger 2 above] } } |
+      :h B3[fermata above, finger 3 below] } slur above { beam { :8 E4[finger 1 below] B3[finger 3 below] } } |
+      slur above { :8 Dn4[finger 1 below] B3[finger 3 below] C4[finger 2 below] B3[finger 3 below] F4[finger 1 below] B3[finger 3 below] } |
+      slur below { :8 E4[finger 1 below] B3 E4[finger 1 below] B3[finger 5 below] E4 B3[finger 5 below] } |
+      slur below { :8 C4[finger 3 left] B3 C4 B3 D4 B3 } |
+      :8 skip slur below { beam { :8 B3 E4 B3 E3 B3 } } |
+      slur above { :8 E#3[finger 4 above] B3 F3[finger 3 above] B3 A3 B3 } |
+      slur above { :8 A#3[finger 3 above] B3 E4[finger 1 above] B3[finger 2 above] G3[finger 4 above] E3[finger 5 above] } |
+      slur above { :8 C3[finger 4 above] E3 A#3 F2[finger 5 above] F3[finger 2 above] A#3[finger 1 above] } |
+      :8 rest slur above { B2 F3 D4 B4[finger 2 below] } rest |
+      :q rest (Gn2 B3)[roll up] rest |
+      :q rest (Dn3 Cn4) slur above { tuplet 3:2 { beam { :8 E4 :8. Dn4 :16 Cn4 } } } |
+      :q rest (E2 Gn3)[roll up] rest |
+      :q rest (B2 A3) slur above { tuplet 3:2 { beam { :8 Cn4 :8. B3 :16 A3 } } } |
+      times 2 { :q (Cn3 Gn3) :h (Cn2 Dn3)[roll up] | }
+      :h (Cn3 Gn3) beam { :8 Gn3 F3 } |
+      :h (B2 F3 A3)[roll up] :q rest | :h. rest |
+    }
+  }
+  text tempo spacing smooth align left font "Academico" {
+    :q line 1 size 20 style bold "Andantino" | :h. skip | skip | skip | skip | skip |
+    skip | skip | skip | skip | skip | skip | line -2 size 15 style italic "a tempo" |
+    skip | skip | skip | skip | skip | skip | skip | skip |
+  }
+  text expression spacing smooth align left font "Academico" {
+    :8 skip line 8 size 15 style italic "con grazia" | :h. skip | skip |
+    :h line 8 size 15 style italic "dolce" :q skip | :h. skip | skip | skip | skip | skip | skip | skip |
+    line 8 size 15 style italic "poco rit." | line 11 size 15 style italic "espressivo con anima" |
+    skip | skip | skip | skip | skip | skip | skip | line 11 size 15 style italic "rit." |
+  }
+}
