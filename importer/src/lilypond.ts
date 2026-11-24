@@ -189,7 +189,7 @@ class Resolver {
     // Explicit unfolding has already removed the unused branches. Only surviving alternate
     // destinations need the player's corrected tie traversal on a forward volta jump.
     if (bars.some(bar=>[...bar.voices.values()].some(events=>events.some(e=>
-      e.headDetails?.some(h=>h.tieStartIds?.length))))) this.input.minimumVersion='6.5.0';
+      e.headDetails?.some(h=>h.tieStartIds?.length))))) this.input.requireVersion('6.5.0');
     return bars;
   }
 

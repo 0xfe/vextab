@@ -112,6 +112,11 @@ export class Input {
   readonly rootFile: string;
   constructor(public file: string, readonly options: ImportOptions) { this.rootFile = file; }
 
+  /** A later repeat or lyric must never lower the version required by an earlier mark. */
+  requireVersion(version: '6.5.0' | '6.6.0') {
+    if (this.minimumVersion !== '6.6.0') this.minimumVersion = version;
+  }
+
   /** A known loss can continue only when the caller selected partial conversion. */
   omit(message: string, range: TextRange) {
     if (this.options.mode !== 'partial') this.fail('unsupported', message, range);

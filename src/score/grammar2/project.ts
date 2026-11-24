@@ -222,6 +222,10 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         result.harmony = NotationSpelling.transposeChord({ root, quality, bass }, interval?.semitones ?? 0, interval?.steps ?? 0);
         result.chord = { text: NotationSpelling.chordText(result.harmony), range: locate(mark.range) };
       }
+      if (mark.kind === 'stem') {
+        if (!heads.length) throw new ScoreError('measure', 'A stem needs a written head', locate(mark.range));
+        result.stem = mark.value;
+      }
       if (mark.kind === 'dynamic') result.dynamic = mark.value;
       if ((mark.kind === 'ossia' || mark.kind === 'ornament' || mark.kind === 'grace') && (!heads.length || (!state.notation && mark.kind !== 'grace') || heads.some(h => !!h.drum)))
         throw new ScoreError('measure', 'Grace notes, ornaments and ossias need a pitched notation anchor', locate(mark.range));

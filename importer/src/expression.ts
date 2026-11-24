@@ -55,6 +55,8 @@ export interface Syllable {
 }
 /** Attach expression to a measured event, keeping all literal strings separate from grammar tokens. */
 export interface Expression {
+  /** Explicit written stem direction for this attack. */
+  stem?: 'up' | 'down';
   label?: string;
   lyrics?: Syllable[];
   harmony?: { root: string; quality: string; bass?: string };

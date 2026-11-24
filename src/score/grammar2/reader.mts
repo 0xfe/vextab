@@ -81,7 +81,7 @@ const positionPattern = /^(x|0|[1-9]\d?)\/([1-8])$/;
 const builtInMarks = new Set([
   'sustain', 'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'diagram', 'line', 'ink', 'label',
   'tap', 'vibrato', 'brush', 'roll', 'stroke', 'rasgueado', 'symbol', 'write', 'staccato', 'fermata',
-  'dynamic', 'harmony', 'onStaff', 'sharedStem', 'pedal', 'ossia', 'grace', 'ornament', 'verse', 'gliss', 'release', 'articulation', 'lyric', 'bend', 'prebend', 'finger',
+  'stem', 'dynamic', 'harmony', 'onStaff', 'sharedStem', 'pedal', 'ossia', 'grace', 'ornament', 'verse', 'gliss', 'release', 'articulation', 'lyric', 'bend', 'prebend', 'finger',
 ]);
 const standardDrums = ['kick', 'snare', 'hat'];
 function isPartKind(name: string): name is PartKind {
@@ -163,7 +163,7 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
   }
 
   function isEventMark(mark: HeadMark | EventMark): mark is EventMark {
-    return ['spanEndpoint','dynamic','harmony','onStaff','sharedStem','pedal','ossia','grace','ornament','slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'diagram', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
+    return ['spanEndpoint','stem','dynamic','harmony','onStaff','sharedStem','pedal','ossia','grace','ornament','slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'diagram', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
   }
 
   /** JSON quoting handles embedded punctuation and escaped quotes in musical text. */
@@ -365,6 +365,11 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
       const position = peek() === 'below' ? 'below' : 'above';
       if (peek() === 'below' || peek() === 'above') take();
       return { kind: 'sign', code, position, range: range() };
+    }
+    if (mark.text === 'stem') {
+      const value = take();
+      if (value.text !== 'up' && value.text !== 'down') error('Expected stem up or down', value);
+      return { kind: 'stem', value: value.text as 'up' | 'down', range: range() };
     }
     if (mark.text === 'dynamic') {
       const value = take();

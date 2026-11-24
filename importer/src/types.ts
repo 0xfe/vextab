@@ -35,7 +35,7 @@ export interface ImportedDocument {
 
 /** A fatal failure never returns a misleading partial document. */
 export type ImportResult = {
-  target: { language: 2; minimumVersion: '6.2.3' | '6.3.0' | '6.4.0' | '6.5.0'; capacity?: 'large' };
+  target: { language: 2; minimumVersion: '6.2.3' | '6.3.0' | '6.4.0' | '6.5.0' | '6.6.0'; capacity?: 'large' };
   diagnostics: ImportDiagnostic[];
 } & (
   | { status: 'exact' | 'partial'; documents: [ImportedDocument] }

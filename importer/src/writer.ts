@@ -77,6 +77,9 @@ class Writer {
 
   event(event: Event, bar: Measure) {
     this.groups(event.tuplets ?? [], event.range);
+    if (event.expression?.stem || event.headDetails?.some(head => head && 'velocity' in head)) {
+      this.input.requireVersion('6.6.0');
+    }
     const dots = event.dots ?? 0;
     if (!Number.isSafeInteger(event.denominator) || event.denominator <= 0 || ![0,1,2].includes(dots))
       this.input.fail('unsupported', 'Invalid written duration.', event.range);
@@ -191,7 +194,7 @@ function repeatForms(bars: Measure[], input: Input, range: TextRange) {
         structured.set(i, 'volta');
       } else if (bars[start].repeatStart! > 2) {
         if (input.options.targetProfile !== 'expressive') fail();
-        input.minimumVersion = '6.5.0';
+        input.requireVersion('6.5.0');
         structured.set(start, 'repeatCount');
         structured.set(i, 'repeatCount');
       }

@@ -35,6 +35,7 @@ export interface SpanEndpoint {
   hairpin?: 'crescendo' | 'diminuendo'; side?: 'above' | 'below'; niente?: boolean; range: TextRange;
 }
 export type EventMark = SpanEndpoint |
+  { kind: 'stem'; value: 'up' | 'down'; range: TextRange } |
   { kind: 'dynamic'; value: Dynamic; range: TextRange } |
   { kind: 'harmony'; root: string; quality: string; bass?: string; range: TextRange } |
   { kind: 'onStaff'; hand: 'upper' | 'lower'; range: TextRange } |

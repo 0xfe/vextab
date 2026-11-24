@@ -44,6 +44,8 @@ export interface VerseSyllable {
   crossConnector?: boolean;
 }
 export interface Attack {
+  /** Per-attack notation direction takes precedence over the voice default. */
+  stem?: 'up' | 'down';
   writtenClef?: string;
   activeKey?: string;
   verses?: VerseSyllable[];

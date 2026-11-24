@@ -119,7 +119,8 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     event.heads.forEach((head, i) => sources.project(staff, event.id + '-head-' + i, head.range));
     const destination = measure.state.piano ? event.displayHand : undefined;
     const crossingStem = crossingStems.get(event);
-    const rhythm = { duration: event.base, dots: event.dots, stemDirection: crossingStem ?? stemDirection,
+    const writtenStem = event.stem === 'up' ? 1 : event.stem === 'down' ? -1 : undefined;
+    const rhythm = { duration: event.base, dots: event.dots, stemDirection: writtenStem ?? crossingStem ?? stemDirection,
       headSource: { event: event.id } };
     if (event.silent) return { id, skip: rhythm };
     if (!event.heads.length) {
@@ -129,7 +130,7 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
       return { id, ...(destination && { stave: destination }), note: { ...rhythm, keys: ['r/4'], clef: 'treble', type: 'r', restLine } };
     }
     if (event.heads[0].drum) {
-      const hit = (measure.state.kit ?? drumKit).note(event.heads.map(head => head.drum), event.base, direction);
+      const hit = (measure.state.kit ?? drumKit).note(event.heads.map(head => head.drum), event.base, event.stem ?? direction);
       return { id, note: { ...hit, dots: event.dots, headSource: rhythm.headSource } };
     }
     const notation = guitarNotation(event, instrument);
@@ -151,11 +152,11 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
       return { key: keys[i], ...(finger && { fingering: { finger: finger.finger, position: finger.position } }),
         ...(head.accidental && { accidental: head.cautionary ? 'cautionary' as const : 'force' as const }) };
     });
-    const note = { ...rhythm, heads, notation, clef: writtenClef, type: event.slash ? 's' : 'n', autoStem: !direction && crossingStem === undefined };
+    const note = { ...rhythm, heads, notation, clef: writtenClef, type: event.slash ? 's' : 'n', autoStem: rhythm.stemDirection === undefined };
     if (event.tremolo) {
       // Decide once before layout. An automatic second endpoint can otherwise flip across the middle line.
       if (pairStem === undefined) {
-        pairStem = stemDirection ?? new StaveNote({ ...note, autoStem: true }).getStemDirection();
+        pairStem = rhythm.stemDirection ?? new StaveNote({ ...note, autoStem: true }).getStemDirection();
         note.stemDirection = pairStem;
       } else {
         note.stemDirection = pairStem;

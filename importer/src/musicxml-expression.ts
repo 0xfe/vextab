@@ -113,7 +113,7 @@ function lyric(node: Element, e: Event, state: NotationState, input: Input) {
   if (words.length) {
     if (e.kind === 'skip' || words.some((w) => !w.text.trim()))
       return input.omit('Empty lyric or lyric without a visible note or rest.', node.range);
-    if (e.kind === 'rest') input.minimumVersion = '6.5.0';
+    if (e.kind === 'rest') input.requireVersion('6.5.0');
     const elisions = node.children.filter((c) => c.name === 'elision');
     for (const child of [...words, ...elisions]) attributesExcept(child, [], input);
     if (words.length > 2 || (words.length === 2 && elisions.length !== 1))
