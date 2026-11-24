@@ -8,7 +8,7 @@ import type { PartSelector } from '../src/score/conductor';
 import type { ScoreV2 } from '../src/score/grammar2/model';
 import { lessons, type Lesson } from './catalog';
 import { highlightEditor } from './highlight';
-import { chapterBooks, tutorial, quickstart, features, groups, link, node, showCover, showChapter, showFeatures, showReference } from './book';
+import { chapterBooks, tutorial, quickstart, features, importing, groups, link, node, showCover, showChapter, showFeatures, showImporting, showReference } from './book';
 
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const button = (id: string) => el<HTMLButtonElement>(id);
@@ -256,6 +256,7 @@ function sidebar(section: string, active: string) {
     list('Beyond the tutorial', section, features);
     list('Practice scores', 'lesson', lessons.filter(l => !l.demo));
   }
+  if (section === 'importing') list('Importing', section, importing);
   if (section === 'studies') list('Studies', 'lesson', lessons.filter(l => l.demo));
   if (section === 'reference') list('Reference categories', section, groups);
   if (section === 'playground') list('Score library', section, lessons);
@@ -299,12 +300,13 @@ function navigate() {
   } else if (section === 'studies') {
     showStudies(host);
   } else {
-    const book = section === 'features' || section === 'quickstart' ? section : 'tutorial';
+    const book = section === 'features' || section === 'quickstart' || section === 'importing' ? section : 'tutorial';
     tab = book;
     const chapter = chapterBooks[book].find(c => c.id === id) ?? (book === 'quickstart' ? quickstart[0] : undefined);
     if (chapter) active = '#' + book + '/' + chapter.id;
     if (chapter) chapterEditors = showChapter(host, book, chapter, draft);
     else if (book === 'features') showFeatures(host);
+    else if (book === 'importing') showImporting(host);
     else chapterEditors = [showCover(host)];
   }
   sidebar(tab, active);

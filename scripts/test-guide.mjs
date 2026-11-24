@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { testGuideImporting } from './test-guide-importing.mjs';
 
 export async function testGuide(page, dist) {
   const url = pathToFileURL(resolve(dist, 'guide/index.html')).href;
@@ -29,7 +30,7 @@ export async function testGuide(page, dist) {
   assert.equal(await page.locator('.book-cover .vextab-play').count(), 0);
   const coverLinks = page.getByRole('navigation', { name: 'More ways to use VexTab' });
   assert.deepEqual(await coverLinks.locator('a').evaluateAll(links => links.map(a => a.hash)),
-    ['#quickstart', '#features', '#reference']);
+    ['#quickstart', '#features', '#importing', '#reference']);
   await coverLinks.getByRole('link', { name: 'Embed in your code' }).click();
   await page.locator('#main[data-route="#quickstart"]').waitFor();
   assert.equal(await page.locator('#contents a[aria-current]').getAttribute('href'), '#quickstart/install');
@@ -108,6 +109,7 @@ export async function testGuide(page, dist) {
     const extraStaff = hash === '#features/measured-music' ? 1 : 0;
     assert.equal(await chapter.locator('svg').count(), editors + extraStaff, hash);
   }
+  await testGuideImporting(page, url);
   await go('#demos');
   assert.equal(await page.locator('#entries a').count(), 16);
   const routes = await page.locator('#picker option').evaluateAll(options => options.map(o => '#lesson/' + o.value));

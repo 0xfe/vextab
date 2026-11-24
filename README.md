@@ -37,6 +37,8 @@ guitar { :q 0/1 2/1 3/1 2/1 | }</div>
 <script src="./div.prod.js"></script>
 ```
 
+The optional `vextab-import` package converts MusicXML, compressed MXL and LilyPond into editable VexTab. Run `npm start` to try the [importing lessons](http://127.0.0.1:9005/guide/index.html#importing) and [score gallery](http://127.0.0.1:9005/guide/gallery/index.html). [Package API and compatibility](importer/README.md)
+
 See the [interactive guide](https://vexflow.com/vextab/guide/) and [integration reference](https://vexflow.com/vextab/guide/#reference) for typed imports, keyboard controls, print, and migration from fixed layout. The [developer guide](docs/developers.md) covers testing and releases. Compare engravings and explore new features since VexTab 4.0.0 in [What's New?](https://vexflow.com/vextab/reports/whatsnew/), or inspect a release’s test coverage and bundle sizes in the [quality archive](https://vexflow.com/vextab/reports/). [GitHub Release downloads](https://github.com/0xfe/vextab/releases) · [Security and score limits](SECURITY.md)
 
 ## License

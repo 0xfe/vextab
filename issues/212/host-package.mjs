@@ -6,7 +6,7 @@ import { join } from 'node:path';
 const root = process.argv[2];
 assert.ok(root && process.argv[3], 'Pass the unpacked vextab package directory and its webpack stats JSON');
 const manifest = JSON.parse(await readFile(join(root, 'package.json')));
-const forbidden = /(?:^|\/)(?:vextab-import|importer|saxes|xmlchars)(?:\/|$)/;
+const forbidden = /(?:^|\/)(?:vextab-import|importers?|gallery|saxes|xmlchars)(?:\/|$)/;
 const files = await readdir(root, { recursive: true });
 assert.ok(
   files.every((file) => !forbidden.test(file)),

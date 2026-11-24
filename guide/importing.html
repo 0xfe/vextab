@@ -1,0 +1,127 @@
+<section id="lilypond">
+  <h2>Import a LilyPond score</h2>
+  <p>Start with a two-bar phrase. The first attack is a C-major chord. The next two notes share an eighth-note duration. In the VexTab editor below, the same three chord heads sit inside parentheses and each octave is written out.</p>
+  <div class="import-example" data-format="lilypond">
+    <label>LilyPond source<textarea rows="5" spellcheck="false">\relative c' {
+  \time 2/4
+  &lt;c e g&gt;4 d8 e | f2 |
+}</textarea></label>
+  </div>
+  <pre data-score>meter 2/4
+staff {
+  key C
+  voice upper { :q (C4 E4 G4) :8 D4 E4 |
+    :h F4 | }
+}</pre>
+  <p>Change <code>f2</code> to <code>g2</code>, convert the source, then play the result. Only the long note in the second bar should move. Changing that half note to a quarter leaves the measure short and produces a timing diagnostic.</p>
+  <h3>Choose the music to read</h3>
+  <p>With multiple <code>\score</code> blocks, select one by its zero-based index or by <code>'print'</code> or <code>'midi'</code>. The reader resolves variables, relative pitches and known pitch-language includes. Give it the text of your own includes by their source names. A guitar edition written on a conventional staff can request paired notation and TAB with <code>guitar: true</code>.</p>
+  <figure class="code-sample"><figcaption>Using a named score and include</figcaption><pre data-language="javascript"><code>const result = importLilyPond(scoreText, {
+  filename: 'study.ly',
+  score: 'print',
+  includes: { 'theme.ly': themeText },
+  targetProfile: 'expressive',
+});</code></pre></figure>
+  <p>Computed Scheme music and unresolved includes stop conversion. See <a href="#importing/limitations">Read the diagnostics</a> for the difference between an omitted engraving detail and a passage that cannot be timed.</p>
+</section>
+<section id="musicxml">
+  <h2>Import a MusicXML score</h2>
+  <p>Read a dotted quarter and an eighth in 2/4. Two divisions make one quarter note, so the first attack lasts three divisions and the second lasts one. VexTab writes those values as <code>:q.</code> and <code>:8</code>.</p>
+  <div class="import-example" data-format="musicxml">
+    <label>MusicXML source<textarea rows="14" spellcheck="false">&lt;score-partwise version="4.0"&gt;
+  &lt;part-list&gt;&lt;score-part id="P1"&gt;&lt;part-name&gt;Flute&lt;/part-name&gt;&lt;/score-part&gt;&lt;/part-list&gt;
+  &lt;part id="P1"&gt;&lt;measure number="1"&gt;
+    &lt;attributes&gt;
+      &lt;divisions&gt;2&lt;/divisions&gt;
+      &lt;time&gt;&lt;beats&gt;2&lt;/beats&gt;&lt;beat-type&gt;4&lt;/beat-type&gt;&lt;/time&gt;
+    &lt;/attributes&gt;
+    &lt;note&gt;&lt;pitch&gt;&lt;step&gt;G&lt;/step&gt;&lt;octave&gt;4&lt;/octave&gt;&lt;/pitch&gt;
+      &lt;duration&gt;3&lt;/duration&gt;&lt;type&gt;quarter&lt;/type&gt;&lt;dot/&gt;&lt;/note&gt;
+    &lt;note&gt;&lt;pitch&gt;&lt;step&gt;A&lt;/step&gt;&lt;octave&gt;4&lt;/octave&gt;&lt;/pitch&gt;
+      &lt;duration&gt;1&lt;/duration&gt;&lt;type&gt;eighth&lt;/type&gt;&lt;/note&gt;
+  &lt;/measure&gt;&lt;/part&gt;
+&lt;/score-partwise&gt;</textarea></label>
+  </div>
+  <pre data-score>meter 2/4
+staff {
+  name "Flute"
+  key C
+  voice upper { :q. G4 :8 A4 | }
+}</pre>
+  <p>Change the last <code>&lt;step&gt;A&lt;/step&gt;</code> to B and convert again. The second pitch moves up and its onset stays three eighths into the bar. A <code>&lt;chord/&gt;</code> note instead joins the previous attack. In scores with several voices, <code>&lt;backup&gt;</code> and <code>&lt;forward&gt;</code> move the source cursor.</p>
+  <h3>Select a part or open a compressed score</h3>
+  <p>In a long work, select the original part ID and inclusive measure positions. Position 1 means the first measure in the file, even if its printed number is 0. Compressed <code>.mxl</code> files have a separate asynchronous reader that opens the archive manifest. Pass it the original bytes.</p>
+  <figure class="code-sample"><figcaption>Opening a compressed MusicXML file</figcaption><pre data-language="javascript"><code>import { importMXL } from 'vextab-import/mxl';
+
+const bytes = new Uint8Array(await file.arrayBuffer());
+const result = await importMXL(bytes, {
+  filename: file.name,
+  targetProfile: 'expressive',
+  selection: { parts: ['P1'], firstMeasure: 1, lastMeasure: 8 },
+});</code></pre></figure>
+  <p>Use <a href="#importing/integration">the integration example</a> to open the resulting document in an editor or validate it in Node.</p>
+</section>
+<section id="integration">
+  <h2>Use an importer in your application</h2>
+  <p>Load the reader for the file your user chose. Conversion produces editable VexTab text in Node or a browser worker. Your application can save that text, validate it without a browser, or open it in an editor.</p>
+  <h3>Install the separate package</h3>
+  <p>From a VexTab source checkout, build a local importer tarball. Install the resulting file in your application alongside a compatible VexTab host.</p>
+  <figure class="code-sample"><figcaption>Building and installing the importer</figcaption><pre data-language="bash"><code>cd importer
+npm ci
+npm pack --pack-destination /tmp
+
+cd /path/to/your/application
+npm install /tmp/vextab-import-0.1.0-alpha.6.tgz
+</code></pre></figure>
+  <p>The public entries are <code>vextab-import/lilypond</code>, <code>vextab-import/musicxml</code> and <code>vextab-import/mxl</code>. Only MXL needs archive decompression. A dynamic import lets an editor wait until someone actually opens a source file.</p>
+  <figure class="code-sample"><figcaption>Choosing a reader by file type</figcaption><pre data-language="javascript"><code>async function readScore(file) {
+  const options = { filename: file.name, targetProfile: 'expressive' };
+  if (/\.ly$/i.test(file.name)) {
+    const { importLilyPond } = await import('vextab-import/lilypond');
+    return importLilyPond(await file.text(), options);
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (/\.mxl$/i.test(file.name)) {
+    const { importMXL } = await import('vextab-import/mxl');
+    return importMXL(bytes, options);
+  }
+  const { importMusicXML } = await import('vextab-import/musicxml');
+  return importMusicXML(bytes, options);
+}</code></pre></figure>
+  <h3>Open the generated text</h3>
+  <p>Check the result and <code>target.minimumVersion</code> before rendering. A compatible host can mount a <code>Div</code> in a connected HTML element. Node applications can import <code>parseScore</code> from <code>vextab/parse</code> to inspect the generated parts, voices and durations.</p>
+  <figure class="code-sample"><figcaption>Mounting the VexTab editor</figcaption><pre data-language="javascript"><code>import { Div } from 'vextab/browser';
+
+const result = await readScore(file);
+diagnostics.textContent = result.diagnostics.map(d =&gt; d.message).join('\n');
+if (result.status !== 'failed') {
+  host.textContent = result.documents[0].text;
+  host.setAttribute('editor', 'true');
+  const editor = new Div(host);
+  // Call editor.dispose() when the editor leaves the page.
+}</code></pre></figure>
+  <p>For substantial files, send the source to a worker and return the result to the UI thread. Use a part or measure selection to reduce the work. When a conversion requires <code>capacity: 'large'</code>, enable the same capacity on the consuming parser or editor. See the <a href="#quickstart/embed">embedding lesson</a> for the editor lifecycle.</p>
+</section>
+<section id="limitations">
+  <h2>Read the diagnostics</h2>
+  <p>Strict mode is the default. A faithful import returns <code>exact</code>. A known loss makes strict conversion fail. Partial mode can emit an editable score and a warning for each supported omission. An unresolved musical duration can make both modes fail.</p>
+  <table>
+    <thead><tr><th>Result</th><th>What your application receives</th></tr></thead>
+    <tbody>
+      <tr><td><code>exact</code></td><td>One document and no known losses in the selected passage under the chosen profile. Page breaks, spacing and automatic engraving can differ between engines.</td></tr>
+      <tr><td><code>partial</code></td><td>One document and located warnings. Show the musician the affected passages before they accept the result.</td></tr>
+      <tr><td><code>failed</code></td><td>Diagnostics and zero documents. Show the source location, then let the user correct the input or choose a supported passage.</td></tr>
+    </tbody>
+  </table>
+  <p>On the <a href="#importing/lilypond">LilyPond example</a>, insert <code>\break</code> immediately after the first barline. Try strict conversion, then choose partial mode. The source requests a particular system break. Partial conversion keeps the two bars and reports the break.</p>
+  <p>Each diagnostic has a file name, message and half-open UTF-16 range. The part, measure and voice identify musical context when the reader knows them. With <code>sourceMap: true</code>, a document also records ranges for generated and original tokens. The reader can synthesize silence when a voice enters late, so some generated events have no source token.</p>
+  <h3>Choose a target profile</h3>
+  <p>The standard profile covers measured notes, rests, basic voices and rhythm. Extended adds timed clefs, keys, tempo, transposition and staff groups. Expressive adds per-head ties, lyrics, dynamics, harmony and instrument notation. The profiles begin at VexTab 6.2.3, 6.3.0 and 6.4.0 respectively. A score using newer features reports its own minimum, such as 6.6.0 for a named cross-bar beam.</p>
+  <p>The readers cover score-partwise MusicXML, selected MXL score members and static LilyPond music. Source material with arbitrary Scheme, filesystem includes, unsupported navigation or inconsistent written and elapsed timing can require re-authoring. The <a href="#importing/gallery">score gallery</a> shows which losses remain in complete editions.</p>
+</section>
+<section id="gallery">
+  <h2>Explore the imported score gallery</h2>
+  <p>Open a complete edition and follow a passage from its source file to the editable VexTab and its engraved pages. The Bach C-major fugue has four independent voices on two piano staves. The Beethoven Fifth example opens the first oboe’s cadenza and also includes the full movement.</p>
+  <p><a data-edition-gallery href="gallery/index.html">Open the score gallery</a></p>
+  <p>Compare the native source and generated score at the same measure. A reliable check follows one voice through its pitch, onset, release and staff assignment. Look at a tie or beam on either side of a barline, then inspect the same position in print. Consult the edition’s diagnostics for engraving choices the importer could not retain.</p>
+</section>

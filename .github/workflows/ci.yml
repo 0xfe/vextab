@@ -58,6 +58,15 @@ jobs:
           node issues/212/musicxml-surfaces.mjs
           node issues/219/engraving.mjs
           node issues/219/lilypond-directions.mjs
+      - name: Verify the hosted guide and optional importer gallery
+        run: npm run test:import-guide
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+      - name: Audit the independent npm dependency graphs
+        run: |
+          npm audit --prefix tools
+          npm audit --prefix importer
+          npm audit --prefix issues/206
       - run: npm run build -- --json "$RUNNER_TEMP/vextab-webpack.json"
       - name: Pack the distribution and test the files consumers receive
         env:

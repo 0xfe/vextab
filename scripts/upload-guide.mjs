@@ -36,11 +36,12 @@ try {
   const pages = readdirSync(staging).filter(name => name.endsWith('.html') && name !== 'index.html');
   pages.push('index.html');
   // Only fingerprinted bundles have immutable URLs. Keep old bundles available to open tabs.
-  for (const folder of ['assets', 'licenses', 'scores']) {
+  for (const folder of ['assets', 'licenses', 'scores', 'fonts', 'importers', 'gallery']) {
     const cache = folder === 'assets' ? '--cache-control=public,max-age=31536000,immutable' : pageCache;
-    storage('rsync', join(staging, folder), destination + folder + '/', '--recursive', '--checksums-only', publicRead, cache);
+    storage('rsync', join(staging, folder), destination + folder + '/', '--recursive', '--checksums-only', publicRead, cache, ...(folder === 'gallery' ? ['--exclude=.*\\.html$'] : []));
   }
-  for (const page of pages) {
+  const galleryPages = readdirSync(join(staging, 'gallery')).filter(name => name.endsWith('.html'));
+  for (const page of [...galleryPages.map(name => 'gallery/' + name), ...pages]) {
     const file = join(staging, page);
     const expected = readFileSync(file);
     storage('cp', file, destination + page, publicRead, pageCache, '--content-type=text/html');

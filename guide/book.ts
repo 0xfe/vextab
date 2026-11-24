@@ -7,6 +7,8 @@ import historical from '../doc/tutorial.html?guide-content';
 import gettingStarted from './quickstart.html?guide-content';
 import additions from './features.html?guide-content';
 import api from './reference.html?guide-content';
+import imports from './importing.html?guide-content';
+import { hasImportAssets, hostedGuide, mountImportExample } from './import-example';
 import { lessons, reference } from './catalog';
 
 type Draft = (id: string, value?: string) => string | undefined;
@@ -25,7 +27,8 @@ function chapters(html: string, selector: string, language: 'vextab' | 'javascri
 export const tutorial = chapters(historical, 'section[data-step]', 'vextab');
 export const features = chapters(additions, 'section[id]', 'vextab');
 export const quickstart = chapters(gettingStarted, 'section[id]', 'javascript');
-export const chapterBooks = { tutorial, quickstart, features };
+export const importing = chapters(imports, 'section[id]', 'javascript');
+export const chapterBooks = { tutorial, quickstart, features, importing };
 export const groups = chapters(api, 'section[id]', 'javascript');
 
 /** Keep the notation glossary searchable alongside the JavaScript API. */
@@ -117,7 +120,7 @@ export function showCover(host: HTMLElement): Div {
   paths.className = 'cover-links';
   paths.setAttribute('aria-label', 'More ways to use VexTab');
   paths.append(node('span', 'Or'), link('Embed in your code', '#quickstart'),
-    link('Explore features', '#features'), link('Read the API reference', '#reference'));
+    link('Explore features', '#features'), link('Import a score', '#importing'), link('Read the API reference', '#reference'));
   introduction.append(start, paths);
   const figure = document.createElement('figure');
   const sample = document.createElement('div');
@@ -160,6 +163,11 @@ export function showFeatures(host: HTMLElement) {
   host.append(practice);
 }
 
+export function showImporting(host: HTMLElement) {
+  heading(host, '', 'Importing', 'Bring a LilyPond or MusicXML edition into VexTab, edit the score and check the musical details against the source.');
+  directory(host, importing, 'importing', 'Import a score');
+}
+
 /** Display the original prose, tables and examples in their written sequence. */
 export function showChapter(host: HTMLElement, section: keyof typeof chapterBooks, chapter: Chapter, draft: Draft): Div[] {
   const sequence = chapterBooks[section];
@@ -169,10 +177,15 @@ export function showChapter(host: HTMLElement, section: keyof typeof chapterBook
   body.querySelector('h2').remove();
   body.className = 'chapter-body';
   const label = section === 'tutorial' ? 'Tutorial · Step ' + (index + 1) + ' of ' + sequence.length
-    : section === 'quickstart' ? 'Developer quickstart' : 'Beyond the tutorial';
+    : section === 'quickstart' ? 'Developer quickstart' : section === 'importing' ? 'Importing' : 'Beyond the tutorial';
   heading(host, label, chapter.title);
   host.append(body);
   const editors = examples(body, chapter, section, draft);
+  if (section === 'importing') {
+    const gallery = body.querySelector<HTMLAnchorElement>('[data-edition-gallery]');
+    if (gallery && !hasImportAssets) gallery.href = hostedGuide + 'gallery/index.html';
+    mountImportExample(body, editors[0]);
+  }
   const pages = node('nav', '');
   pages.className = 'page-turn';
   pages.setAttribute('aria-label', 'Chapter navigation');
@@ -180,7 +193,7 @@ export function showChapter(host: HTMLElement, section: keyof typeof chapterBook
   else pages.append(section === 'quickstart' ? link('← Guide home', '#tutorial') : link('← Contents', '#' + section));
   const next = sequence[index + 1];
   pages.append(next ? link(next.title + ' →', '#' + section + '/' + next.id)
-    : section === 'features' ? link('Read the studies →', '#studies') : link('Explore features →', '#features'));
+    : section === 'features' ? link('Read the studies →', '#studies') : section === 'importing' ? link('Importing contents →', '#importing') : link('Explore features →', '#features'));
   host.append(pages);
   return editors;
 }

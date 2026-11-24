@@ -29,6 +29,19 @@ The development server watches the source. Open the [project index](http://127.0
 | `npm run watch` | Development bundles rebuilt on source changes |
 | `npm run clean` | Removes the generated `dist/` directory |
 
+## Importer guide and gallery
+
+Use `npm start` and open the [importing lessons](http://127.0.0.1:9005/guide/index.html#importing) or the [13-score gallery](http://127.0.0.1:9005/guide/gallery/index.html). The first build installs the importer’s locked build tools and downloads six checksum-pinned editions. Later builds reuse the archives in `build/import-guide/sources/`. Restart the server after changing the importer or the gallery generator.
+
+| Command | Purpose |
+| --- | --- |
+| `npm run guide:build` | Build the complete static site in `build/guide/`, including download links, separate format readers and license notices |
+| `npm run test:import-guide` | Build the site and test the lessons, nested gallery links, conversions and downloads in Chrome |
+| `npm test --prefix importer` | Build and test the converter on its own after `npm ci --prefix importer` |
+| `(cd importer && npm pack)` | Create the independent importer package |
+
+Add editions in [the gallery builder](../guide/gallery/build.mjs). Record the upstream revision, checksum and license, retain special selection options, and include an opening score image. After the guide build, run `node scripts/test-import-guide.mjs --previews` to regenerate the images from the rendered scores. [Per-format qualification and reference suites](../issues/212/README.md) · [Importer package API](../importer/README.md)
+
 ## Engineering reports
 
 Generate the quality archive to track how VexTab has changed since 4.0.0. The accompanying **What's New?** report illustrates those changes with scores you can compare side by side. Both reports open locally in a browser. [Build and publication commands](reports.md)
@@ -133,3 +146,10 @@ npm whoami
 npm publish "$download_dir/vextab-$release_version.tgz" --access public --tag latest
 npm view "vextab@$release_version" version dist.integrity
 ```
+
+## Prepare the separate importer release
+
+1. Run the hosted guide checks, the corpus comparisons and the packed importer consumer checks from CI on the proposed release commit. Verify both `package.json` versions and the host version that each target profile advertises. [Importer qualification](../issues/212/README.md)
+2. Build the importer tarball from `importer/` on that commit. Check its file list, TypeScript declarations, per-format gzip sizes, license notices and SHA-512 integrity. The host’s numeric tag workflow publishes only host release assets.
+3. Before publishing the importer for the first time, confirm registry ownership of `vextab-import`, choose its dist-tag, and record the verified importer tarball and checksum as separate release assets. An alpha should use an explicit prerelease dist-tag such as `next`.
+4. Once the intended host and importer are published, install them together by exact registry versions in an empty project. Convert one source of each format, render and play both results, then publish the guide built from the same commit.
