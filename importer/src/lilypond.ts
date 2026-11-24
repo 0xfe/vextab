@@ -132,6 +132,7 @@ class Resolver {
     if (!bars) this.parts.set(s.part, bars = []);
     if (!bars[s.index]) {
       const previous = bars[s.index - 1], bar = new Measure();
+      if (previous?.fragment) this.input.fail('unsupported','A shortened final ending must terminate the piece.',previous.range ?? [0,0]);
       if (previous) {
         bar.beats = previous.beats; bar.beatType = previous.beatType;
         bar.key = previous.key; bar.clef = previous.clef;
@@ -181,7 +182,12 @@ class Resolver {
       if (first && !first.tempos.some(t=>!t.at.compare(zero))) first.tempos.push({...expr.outputTempo,at:zero});
     }
     this.lanes.attach([...this.parts.values()],this.input);
-    return [...this.parts.values()].flat();
+    const bars=[...this.parts.values()].flat();
+    // Explicit unfolding has already removed the unused branches. Only surviving alternate
+    // destinations need the player's corrected tie traversal on a forward volta jump.
+    if (bars.some(bar=>[...bar.voices.values()].some(events=>events.some(e=>
+      e.headDetails?.some(h=>h.tieStartIds?.length))))) this.input.minimumVersion='6.5.0';
+    return bars;
   }
 
   /** Resolve staff declarations after all voices have contributed their own source-time cursors. */
@@ -624,7 +630,8 @@ class Resolver {
       const copy = Object.assign(new Measure(), bar, { label: String(start + out.length + 1) });
       copy.voices=new Map([...bar.voices].map(([voice,events])=>[voice,events.map(event=>{
         const headDetails=event.headDetails?.map(h=>({...h,
-          tieEndId:h.tieEndId && endId(h.tieEndId), tieStartId:h.tieStartId && startId(h.tieStartId)}));
+          tieEndId:h.tieEndId && endId(h.tieEndId), tieStartId:h.tieStartId && startId(h.tieStartId),
+          tieStartIds:h.tieStartIds?.map(startId)}));
         const expression=event.expression && {...event.expression};
         if (expression?.spans) expression.spans=expression.spans.map(p=>({...p,id:p.edge==='start'?startId(p.id):endId(p.id)}));
         return {...event,headDetails,expression,tuplets:event.tuplets?.map(group=>({...group,id:group.id+'-'+pass}))};
@@ -650,6 +657,13 @@ class Resolver {
         for (let j = body; j < end; j++) append(bars[j],pass);
         for (const bar of choices[pass] ?? []) append(bar,pass);
       }
+    }
+    // An unfolded body copy has just one performed destination for a branched tie.
+    const heads=out.flatMap(bar=>[...bar.voices.values()].flatMap(events=>events.flatMap(e=>e.headDetails ?? [])));
+    const ends=new Set(heads.map(h=>h.tieEndId));
+    for (const h of heads) if (h.tieStartIds?.length) {
+      const visited=[h.tieStartId,...h.tieStartIds].filter((id):id is string=>!!id && ends.has(id));
+      h.tieStartId=visited.shift(); h.tieStartIds=visited;
     }
     bars.splice(start, bars.length - start, ...out);
     s.index = bars.length;
@@ -704,10 +718,33 @@ class Resolver {
         }
       }
       if (endings.length !== +n) input.fail('unsupported', 'Expected one ending per pass.', choices.range);
+      const bodyTie=s.tie, bodyFrom=s.tieFrom, partials=s.headTies && new Map(s.headTies), last=s.lastEvent;
+      if ((bodyTie || partials?.size) && input.options.targetProfile!=='expressive')
+        input.fail('unsupported','A tie into alternate endings needs the expressive target.',choices.range);
       for (const [j, ending] of endings.entries()) {
+        if (j>0) {
+          if (s.tie || s.headTies?.size) input.fail('unsupported','Ties leaving a nonfinal ending need a backward repeat connection.',ending.range);
+          s.tie=bodyTie; s.tieFrom=bodyFrom;
+          if (partials) {
+            s.headTies=new Map();
+            for (const [spelling,id] of partials) {
+              const head=last?.headDetails?.find(h=>h.tieStartId===id);
+              if (!head) input.fail('timing','Missing source head for an ending tie.',ending.range);
+              const newId='tie'+ ++this.serial;
+              (head!.tieStartIds ??= []).push(newId); s.headTies.set(spelling,newId);
+            }
+          }
+        }
         const before = s.index;
         this.measure(s).ending = j + 1;
         this.sequence(ending.children!, s, scope, depth + 1);
+        const pickup=this.parts.get(s.part)?.[0].pickup;
+        if (j===endings.length-1 && pickup && s.at.compare(zero) && (input.options as LilyPondOptions).finalFragment) {
+          const last=this.measure(s);
+          if (!s.at.plus(pickup).compare(new Time(last.beats,last.beatType))) {
+            last.fragment=s.at; last.range=ending.range; s.index++; s.at=zero;
+          }
+        }
         if (s.index === before || s.at.compare(zero)) input.fail('unsupported', 'Ending must fill written bars.', ending.range);
         this.parts.get(s.part)![s.index - 1].endingEnd = true;
       }
@@ -814,7 +851,10 @@ class Resolver {
           const dest=heads.findIndex(p=>spelling(p)===spelling(old));
           if (dest<0) continue;
           const id='tie'+ ++this.serial;
-          s.tieFrom.headDetails![j].tieStartId=id; details[dest].tieEndId=id; count++;
+          const start=s.tieFrom.headDetails![j];
+          if (start.tieStartId) (start.tieStartIds ??= []).push(id);
+          else start.tieStartId=id;
+          details[dest].tieEndId=id; count++;
         }
         if (!count) input.fail('timing','No matching destination for a tie.',range);
         delete s.tie; delete s.tieFrom;

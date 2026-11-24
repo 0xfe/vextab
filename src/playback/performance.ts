@@ -197,7 +197,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
   take?: ReturnType<typeof createPerformer>, bars?: PerformanceBar[]): Performance {
   const events: PlaybackEvent[] = [];
   const prior = new Map(score.ties.map(tie => [tie.to + ':' + tie.toHead, tie]));
-  const sounding = new Map<string, { note: PlaybackNote; start: number }>();
+  const sounding = new Map<string, { note: PlaybackNote; start: number; barNumber:number; writtenEnd:number }>();
   const expressive = !!take && !take.literal;
   const { tempi, tempoChanges, velocities } = expression(score, tempo, expressive);
   const slurEnds = new Set((score.spans ?? []).filter(s => s.kind === 'slur').map(s => s.to));
@@ -215,11 +215,25 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
     for (const start of held.values()) windows.push({ start, end });
     held.clear();
   }
+  const alternateBodies = new Map((score.repeats ?? []).flatMap(repeat =>
+    repeat.endings.slice(1).map(ending => [ending.first, repeat.bodyEnd] as const)));
   let previousBar = 0;
   let bar = 0;
   for (const number of visits) {
     const measure = score.measures[number - 1];
-    if (number !== previousBar + 1) { sounding.clear(); liftAll(bar); }
+    if (number !== previousBar + 1) {
+      // The head sounding at the end of the body can tie into the selected alternative.
+      if (alternateBodies.get(number) === previousBar) {
+        for (const [id, head] of sounding) {
+          if (head.barNumber !== previousBar || Math.abs(head.writtenEnd - bar) > 1e-8) sounding.delete(id);
+        }
+      } else sounding.clear();
+      liftAll(bar);
+    } else if (alternateBodies.has(number)) {
+      // Consecutive written playback arrived from an earlier ending, not from this ending's body.
+      const bodyEnd = alternateBodies.get(number);
+      for (const [id, head] of sounding) if (head.barNumber === bodyEnd) sounding.delete(id);
+    }
     previousBar = number;
     const whole = 240 / tempi[number - 1];
     // Integrate each tempo segment. A note that spans the change keeps its exact written release.
@@ -282,7 +296,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
               { time: time - tied.start + headDuration * hold[0] / hold[1], semitones },
               { time: time - tied.start + headDuration * release[0] / release[1], semitones: 0 }];
           }
-          sounding.set(id, tied);
+          sounding.set(id, { ...tied, barNumber: number, writtenEnd: time + headDuration });
         } else {
           const note = scoreNote(attack, head, headDuration);
           if (note) {
@@ -298,7 +312,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
                 note.duration *= .58;
             }
             if (score.program !== undefined) note.program = score.program;
-            notes.push(note); sounding.set(id, { note, start: time });
+            notes.push(note); sounding.set(id, { note, start: time, barNumber: number, writtenEnd: time + headDuration });
           }
         }
       });

@@ -28,6 +28,8 @@ export interface HeadDetail {
   drum?: string;
   tieStop?: boolean;
   tieStartId?: string;
+  /** Additional destinations reached on alternate volta passes. */
+  tieStartIds?: string[];
   tieEndId?: string;
   finger?: { value: string; side: Side | 'left' | 'right' };
   forcedAccidental?: boolean;

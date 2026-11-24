@@ -1,0 +1,66 @@
+// Historical source forms and the bounded failure cases that protect repeat navigation.
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {importLilyPond as read} from 'vextab-import/lilypond';
+
+const ly=String.raw;
+const expressive={targetProfile:'expressive'};
+
+test('historical language includes and numbered bar checks retain scoped meaning',()=>{
+  const source=ly`\include "deutsch.ly" { h'1 | \barNumberCheck #2 b'1 }`;
+  const result=read(source,expressive);
+  assert.equal(result.status,'exact');
+  assert.match(result.documents[0].text,/B4 \|[\s\S]*Bb4/);
+  const mismatch=source.replace('#2','#4');
+  const failure=read(mismatch,expressive).diagnostics.at(-1);
+  assert.equal(failure.code,'timing');
+  assert.equal(mismatch.slice(...failure.range),'4');
+  const overriding=read(ly`\include "deutsch.ly" { b'1 }`,{...expressive,includes:{'deutsch.ly':ly`\language "english"`}});
+  assert.match(overriding.documents[0].text,/B4/);
+});
+
+test('only literal historical staff size can be omitted',()=>{
+  const source=ly`#(set-global-staff-size 20) { c'1 }`;
+  const r=read(source,{...expressive,mode:'partial'});
+  assert.equal(r.status,'partial');
+  assert.equal(source.slice(...r.diagnostics[0].range),'#(set-global-staff-size 20)');
+  for (const expr of ['#(set-global-staff-size (custom))','#(set-global-staff-size 20 extra)','#(run 20)'])
+    assert.equal(read(expr+" { c'1 }",{...expressive,mode:'partial'}).status,'failed');
+});
+
+test('head-specific ties split across alternate endings while unfolded heads keep one destination',()=>{
+  const body=ly`{ \repeat volta 2 { <c'~ e'>1 } \alternative { { <c' g'>1 } { <c' f'>1 } } }`;
+  const r=read(body,expressive);
+  assert.equal(r.status,'exact');
+  assert.equal(r.target.minimumVersion,'6.5.0');
+  assert.equal((r.documents[0].text.match(/tieStart/g)??[]).length,2);
+  assert.equal((r.documents[0].text.match(/tieEnd/g)??[]).length,2);
+  const u=read(ly`\unfoldRepeats `+body,expressive);
+  assert.equal(u.status,'exact');
+  assert.equal((u.documents[0].text.match(/tieStart/g)??[]).length,2);
+  assert.equal((u.documents[0].text.match(/tieEnd/g)??[]).length,2);
+  assert.equal(u.target.minimumVersion,'6.4.0');
+  assert.doesNotMatch(u.documents[0].text,/volta/);
+});
+
+test('a final ending may complement the opening pickup only on explicit fragment import',()=>{
+  const body=ly`{ \partial 4 c'4 \repeat volta 2 { c'1 } \alternative { { d'1 } { e'2. } } }`;
+  assert.equal(read(body,expressive).status,'failed');
+  const options={...expressive,finalFragment:true};
+  const result=read(body,options);
+  assert.equal(result.status,'exact');
+  assert.match(result.documents[0].text,/ending 2 \{ fragment \{/);
+  assert.equal(read(body.slice(0,-1)+" f'1 }",options).status,'failed');
+  assert.equal(read(body.replace("e'2.","e'2"),options).status,'failed');
+});
+
+test('located physical constraint conflicts retain both source marks only in partial mode',()=>{
+  const source=ly`{ b1-0\4 }`;
+  const options={...expressive,guitar:true};
+  assert.equal(read(source,options).status,'failed');
+  const result=read(source,{...options,mode:'partial'});
+  assert.equal(result.status,'partial');
+  assert.match(result.diagnostics[0].message,/finger zero conflicts/);
+  assert.match(result.documents[0].text,/9\/4\[write B4, finger 0 left\]/);
+});
+

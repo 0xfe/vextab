@@ -128,6 +128,19 @@ export function afterNote(
     }
     (x.spans ??= []).push({ ...current!, edge: start ? 'start' : 'stop', side: side ?? state.side });
   };
+  if (value==='\\markup') {
+    const block=words[j+1];
+    const fields=block?.children?.map(t=>t.value) ?? [];
+    // Literal labels and dynamic/text pairs are common in historical Mutopia scores.
+    if (fields[0]==='\\large' && fields.length===2 && /^"[^"\\]+"$/.test(fields[1])) {
+      x.label=fields[1].slice(1,-1);
+    } else if (fields[0]==='\\dynamic' && fields[2]==='\\italic' && fields.length===4 &&
+        /^(?:ppp|pp|p|mp|mf|f|ff|fff)$/.test(fields[1]) && /^"[^"\\]+"$/.test(fields[3])) {
+      x.dynamic=fields[1] as Expression['dynamic']; x.label=fields[3].slice(1,-1);
+    } else return i;
+    input.omit('Markup font and explicit placement omitted.',[t.range[0],block.range[1]]);
+    event.expression=x; return j+2;
+  }
   if (/^\\(?:ppp|pp|p|mp|mf|f|ff|fff)$/.test(value)) {
     if (state.spans.has('hairpin')) point('hairpin', 'crescendo', false);
     if (side) input.omit('Explicit dynamic placement omitted.', t.range);

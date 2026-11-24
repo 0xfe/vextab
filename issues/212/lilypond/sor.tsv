@@ -1,0 +1,1111 @@
+upperVoice	W	0	768	solo	1,0,4
+upperVoice	W	768	384	solo	1,0,4
+upperVoice	W	1152	768	solo	3,1,4
+upperVoice	W	1920	384	solo	3,1,4
+upperVoice	W	2304	768	solo	2,0,4
+upperVoice	W	3072	384	solo	2,0,4
+upperVoice	W	3456	768	solo	1,0,4
+upperVoice	W	4224	384	solo	1,0,4
+upperVoice	W	4608	768	solo	0,1,4
+upperVoice	W	5376	384	solo	0,1,4
+upperVoice	W	5760	768	solo	1,0,4
+upperVoice	W	6528	384	solo	1,0,4
+upperVoice	W	6912	768	solo	2,0,4
+upperVoice	W	7680	384	solo	2,1,4
+upperVoice	W	8064	768	solo	3,1,4
+upperVoice	W	8832	384	solo	3,1,3
+upperVoice	W	9216	768	solo	1,0,4
+upperVoice	W	9984	384	solo	1,0,4
+upperVoice	W	10368	768	solo	3,1,4
+upperVoice	W	11136	384	solo	3,1,4
+upperVoice	W	11520	768	solo	2,0,4
+upperVoice	W	12288	384	solo	2,0,4
+upperVoice	W	12672	768	solo	1,0,4
+upperVoice	W	13440	384	solo	1,0,4
+upperVoice	W	13824	768	solo	2,0,4
+upperVoice	W	14592	384	solo	2,0,4
+upperVoice	W	14976	768	solo	1,0,4
+upperVoice	W	15744	384	solo	1,0,4
+upperVoice	W	16128	768	solo	0,1,4
+upperVoice	W	16896	384	solo	0,1,4
+upperVoice	W	17280	768	solo	6,0,3
+upperVoice	W	18240	192	solo	rest
+upperVoice	W	18432	768	solo	3,1,4
+upperVoice	W	19200	384	solo	3,1,4
+upperVoice	W	19584	768	solo	2,0,4
+upperVoice	W	20352	384	solo	2,0,4
+upperVoice	W	20736	768	solo	1,0,4
+upperVoice	W	21504	384	solo	1,0,4
+upperVoice	W	21888	768	solo	0,1,4
+upperVoice	W	22656	384	solo	0,1,4
+upperVoice	W	23040	768	solo	1,0,4
+upperVoice	W	23808	384	solo	3,1,4
+upperVoice	W	24192	768	solo	2,0,4
+upperVoice	W	24960	384	solo	0,1,4
+upperVoice	W	25344	768	solo	1,0,4
+upperVoice	W	26112	384	solo	1,0,4
+upperVoice	W	26496	768	solo	0,1,4
+upperVoice	W	27648	768	solo	1,1,4
+upperVoice	W	28416	384	solo	1,1,4
+upperVoice	W	28800	768	solo	2,0,4
+upperVoice	W	29568	384	solo	6,0,3
+upperVoice	W	29952	768	solo	0,1,4
+upperVoice	W	30720	384	solo	0,1,4
+upperVoice	W	31104	768	solo	1,0,4
+upperVoice	W	31872	384	solo	1,0,4
+upperVoice	W	32256	768	solo	0,0,4
+upperVoice	W	33024	384	solo	0,0,4
+upperVoice	W	33408	384	solo	4,0,4
+upperVoice	W	33792	384	solo	2,0,4
+upperVoice	W	34176	384	solo	0,0,4
+upperVoice	W	34560	768	solo	6,0,3
+upperVoice	W	35328	384	solo	6,0,3
+upperVoice	W	35712	768	solo	5,1,3
+upperVoice	W	36864	768	solo	1,0,4
+upperVoice	W	37632	384	solo	1,0,4
+upperVoice	W	38016	768	solo	3,1,4
+upperVoice	W	38784	384	solo	3,1,4
+upperVoice	W	39168	768	solo	2,0,4
+upperVoice	W	39936	384	solo	2,0,4
+upperVoice	W	40320	768	solo	1,0,4
+upperVoice	W	41088	384	solo	1,0,4
+upperVoice	W	41472	768	solo	0,1,4
+upperVoice	W	42240	384	solo	0,1,4
+upperVoice	W	42624	768	solo	1,0,4
+upperVoice	W	43392	384	solo	1,0,4
+upperVoice	W	43776	768	solo	2,0,4
+upperVoice	W	44544	384	solo	2,1,4
+upperVoice	W	44928	768	solo	3,1,4
+upperVoice	W	46080	768	solo	3,1,4
+upperVoice	W	46848	384	solo	4,0,4
+upperVoice	W	47232	768	solo	4,1,4
+upperVoice	W	48000	384	solo	4,1,4
+upperVoice	W	48384	768	solo	5,1,4
+upperVoice	W	49152	384	solo	5,1,4
+upperVoice	W	49536	768	solo	6,0,4
+upperVoice	W	50304	384	solo	6,0,4
+upperVoice	W	50688	768	solo	4,0,4
+upperVoice	W	51456	384	solo	4,0,4
+upperVoice	W	51840	768	solo	3,1,4
+upperVoice	W	52608	384	solo	3,1,4
+upperVoice	W	52992	768	solo	3,1,4
+upperVoice	W	53760	192	solo	3,1,4
+upperVoice	W	53952	192	solo	5,1,3
+upperVoice	W	54144	768	solo	1,0,3
+upperVoice	W	54144	768	solo	6,0,2
+upperVoice	W	54144	768	solo	6,0,3
+upperVoice	W	54912	384	solo	rest
+upperVoice	P	0	62	768
+upperVoice	P	768	62	1152
+upperVoice	P	1152	66	1920
+upperVoice	P	1920	66	2304
+upperVoice	P	2304	64	3072
+upperVoice	P	3072	64	3456
+upperVoice	P	3456	62	4224
+upperVoice	P	4224	62	4608
+upperVoice	P	4608	61	5376
+upperVoice	P	5376	61	5760
+upperVoice	P	5760	62	6528
+upperVoice	P	6528	62	6912
+upperVoice	P	6912	64	7680
+upperVoice	P	7680	65	8064
+upperVoice	P	8064	66	8832
+upperVoice	P	8832	54	9216
+upperVoice	P	9216	62	9984
+upperVoice	P	9984	62	10368
+upperVoice	P	10368	66	11136
+upperVoice	P	11136	66	11520
+upperVoice	P	11520	64	12288
+upperVoice	P	12288	64	12672
+upperVoice	P	12672	62	13440
+upperVoice	P	13440	62	13824
+upperVoice	P	13824	64	14592
+upperVoice	P	14592	64	14976
+upperVoice	P	14976	62	15744
+upperVoice	P	15744	62	16128
+upperVoice	P	16128	61	16896
+upperVoice	P	16896	61	17280
+upperVoice	P	17280	59	18048
+upperVoice	P	18432	66	19200
+upperVoice	P	19200	66	19584
+upperVoice	P	19584	64	20352
+upperVoice	P	20352	64	20736
+upperVoice	P	20736	62	21504
+upperVoice	P	21504	62	21888
+upperVoice	P	21888	61	22656
+upperVoice	P	22656	61	23040
+upperVoice	P	23040	62	23808
+upperVoice	P	23808	66	24192
+upperVoice	P	24192	64	24960
+upperVoice	P	24960	61	25344
+upperVoice	P	25344	62	26112
+upperVoice	P	26112	62	26496
+upperVoice	P	26496	61	27264
+upperVoice	P	27648	63	28416
+upperVoice	P	28416	63	28800
+upperVoice	P	28800	64	29568
+upperVoice	P	29568	59	29952
+upperVoice	P	29952	61	30720
+upperVoice	P	30720	61	31104
+upperVoice	P	31104	62	31872
+upperVoice	P	31872	62	32256
+upperVoice	P	32256	60	33024
+upperVoice	P	33024	60	33408
+upperVoice	P	33408	67	33792
+upperVoice	P	33792	64	34176
+upperVoice	P	34176	60	34560
+upperVoice	P	34560	59	35328
+upperVoice	P	35328	59	35712
+upperVoice	P	35712	58	36480
+upperVoice	P	36864	62	37632
+upperVoice	P	37632	62	38016
+upperVoice	P	38016	66	38784
+upperVoice	P	38784	66	39168
+upperVoice	P	39168	64	39936
+upperVoice	P	39936	64	40320
+upperVoice	P	40320	62	41088
+upperVoice	P	41088	62	41472
+upperVoice	P	41472	61	42240
+upperVoice	P	42240	61	42624
+upperVoice	P	42624	62	43392
+upperVoice	P	43392	62	43776
+upperVoice	P	43776	64	44544
+upperVoice	P	44544	65	44928
+upperVoice	P	44928	66	45696
+upperVoice	P	46080	66	46848
+upperVoice	P	46848	67	47232
+upperVoice	P	47232	68	48000
+upperVoice	P	48000	68	48384
+upperVoice	P	48384	70	49152
+upperVoice	P	49152	70	49536
+upperVoice	P	49536	71	50304
+upperVoice	P	50304	71	50688
+upperVoice	P	50688	67	51456
+upperVoice	P	51456	67	51840
+upperVoice	P	51840	66	52608
+upperVoice	P	52608	66	52992
+upperVoice	P	52992	66	53760
+upperVoice	P	53760	66	53952
+upperVoice	P	53952	58	54144
+upperVoice	P	54144	47	54912
+upperVoice	P	54144	50	54912
+upperVoice	P	54144	59	54912
+upperVoice	P	55296	66	56064
+upperVoice	P	56064	66	56448
+upperVoice	P	56448	64	57216
+upperVoice	P	57216	64	57600
+upperVoice	P	57600	62	58368
+upperVoice	P	58368	62	58752
+upperVoice	P	58752	61	59520
+upperVoice	P	59520	61	59904
+upperVoice	P	59904	62	60672
+upperVoice	P	60672	66	61056
+upperVoice	P	61056	64	61824
+upperVoice	P	61824	61	62208
+upperVoice	P	62208	62	62976
+upperVoice	P	62976	62	63360
+upperVoice	P	63360	61	64128
+upperVoice	P	64512	63	65280
+upperVoice	P	65280	63	65664
+upperVoice	P	65664	64	66432
+upperVoice	P	66432	59	66816
+upperVoice	P	66816	61	67584
+upperVoice	P	67584	61	67968
+upperVoice	P	67968	62	68736
+upperVoice	P	68736	62	69120
+upperVoice	P	69120	60	69888
+upperVoice	P	69888	60	70272
+upperVoice	P	70272	67	70656
+upperVoice	P	70656	64	71040
+upperVoice	P	71040	60	71424
+upperVoice	P	71424	59	72192
+upperVoice	P	72192	59	72576
+upperVoice	P	72576	58	73344
+upperVoice	P	73728	62	74496
+upperVoice	P	74496	62	74880
+upperVoice	P	74880	66	75648
+upperVoice	P	75648	66	76032
+upperVoice	P	76032	64	76800
+upperVoice	P	76800	64	77184
+upperVoice	P	77184	62	77952
+upperVoice	P	77952	62	78336
+upperVoice	P	78336	61	79104
+upperVoice	P	79104	61	79488
+upperVoice	P	79488	62	80256
+upperVoice	P	80256	62	80640
+upperVoice	P	80640	64	81408
+upperVoice	P	81408	65	81792
+upperVoice	P	81792	66	82560
+upperVoice	P	82944	66	83712
+upperVoice	P	83712	67	84096
+upperVoice	P	84096	68	84864
+upperVoice	P	84864	68	85248
+upperVoice	P	85248	70	86016
+upperVoice	P	86016	70	86400
+upperVoice	P	86400	71	87168
+upperVoice	P	87168	71	87552
+upperVoice	P	87552	67	88320
+upperVoice	P	88320	67	88704
+upperVoice	P	88704	66	89472
+upperVoice	P	89472	66	89856
+upperVoice	P	89856	66	90624
+upperVoice	P	90624	66	90816
+upperVoice	P	90816	58	91008
+upperVoice	P	91008	47	91776
+upperVoice	P	91008	50	91776
+upperVoice	P	91008	59	91776
+lowerVoice	W	0	192	solo	1,0,4
+lowerVoice	W	192	192	solo	6,0,3
+lowerVoice	W	384	192	solo	3,1,3
+lowerVoice	W	576	192	solo	6,0,3
+lowerVoice	W	768	192	solo	1,0,4
+lowerVoice	W	960	192	solo	6,0,3
+lowerVoice	W	1152	192	solo	3,1,4
+lowerVoice	W	1344	192	solo	1,0,4
+lowerVoice	W	1536	192	solo	3,1,3
+lowerVoice	W	1728	192	solo	1,0,4
+lowerVoice	W	1920	192	solo	3,1,4
+lowerVoice	W	2112	192	solo	1,0,4
+lowerVoice	W	2304	192	solo	2,0,4
+lowerVoice	W	2496	192	solo	0,1,4
+lowerVoice	W	2688	192	solo	3,1,3
+lowerVoice	W	2880	192	solo	0,1,4
+lowerVoice	W	3072	192	solo	2,0,4
+lowerVoice	W	3264	192	solo	0,1,4
+lowerVoice	W	3456	192	solo	1,0,4
+lowerVoice	W	3648	192	solo	6,0,3
+lowerVoice	W	3840	192	solo	3,1,3
+lowerVoice	W	4032	192	solo	6,0,3
+lowerVoice	W	4224	192	solo	1,0,4
+lowerVoice	W	4416	192	solo	6,0,3
+lowerVoice	W	4608	192	solo	0,1,4
+lowerVoice	W	4800	192	solo	5,1,3
+lowerVoice	W	4992	192	solo	3,1,3
+lowerVoice	W	5184	192	solo	5,1,3
+lowerVoice	W	5376	192	solo	0,1,4
+lowerVoice	W	5568	192	solo	5,1,3
+lowerVoice	W	5760	192	solo	1,0,4
+lowerVoice	W	5952	192	solo	6,0,3
+lowerVoice	W	6144	192	solo	3,1,3
+lowerVoice	W	6336	192	solo	6,0,3
+lowerVoice	W	6528	192	solo	1,0,4
+lowerVoice	W	6720	192	solo	6,0,3
+lowerVoice	W	6912	192	solo	2,0,4
+lowerVoice	W	7104	192	solo	6,0,3
+lowerVoice	W	7296	192	solo	4,0,3
+lowerVoice	W	7488	192	solo	6,0,3
+lowerVoice	W	7680	192	solo	2,1,4
+lowerVoice	W	7872	192	solo	6,0,3
+lowerVoice	W	8064	192	solo	3,1,4
+lowerVoice	W	8256	192	solo	0,1,4
+lowerVoice	W	8448	192	solo	5,1,3
+lowerVoice	W	8640	192	solo	0,1,4
+lowerVoice	W	8832	192	solo	3,1,3
+lowerVoice	W	9024	192	solo	5,1,3
+lowerVoice	W	9216	192	solo	1,0,4
+lowerVoice	W	9408	192	solo	6,0,3
+lowerVoice	W	9600	192	solo	3,1,3
+lowerVoice	W	9792	192	solo	6,0,3
+lowerVoice	W	9984	192	solo	1,0,4
+lowerVoice	W	10176	192	solo	6,0,3
+lowerVoice	W	10368	192	solo	3,1,4
+lowerVoice	W	10560	192	solo	1,0,4
+lowerVoice	W	10752	192	solo	3,1,3
+lowerVoice	W	10944	192	solo	1,0,4
+lowerVoice	W	11136	192	solo	3,1,4
+lowerVoice	W	11328	192	solo	1,0,4
+lowerVoice	W	11520	192	solo	2,0,4
+lowerVoice	W	11712	192	solo	0,1,4
+lowerVoice	W	11904	192	solo	3,1,3
+lowerVoice	W	12096	192	solo	0,1,4
+lowerVoice	W	12288	192	solo	2,0,4
+lowerVoice	W	12480	192	solo	0,1,4
+lowerVoice	W	12672	192	solo	1,0,4
+lowerVoice	W	12864	192	solo	6,0,3
+lowerVoice	W	13056	192	solo	4,0,3
+lowerVoice	W	13248	192	solo	6,0,3
+lowerVoice	W	13440	192	solo	1,0,4
+lowerVoice	W	13632	192	solo	6,0,3
+lowerVoice	W	13824	192	solo	2,0,4
+lowerVoice	W	14016	192	solo	0,1,4
+lowerVoice	W	14208	192	solo	4,0,3
+lowerVoice	W	14400	192	solo	0,1,4
+lowerVoice	W	14592	192	solo	2,0,4
+lowerVoice	W	14784	192	solo	0,1,4
+lowerVoice	W	14976	192	solo	1,0,4
+lowerVoice	W	15168	192	solo	6,0,3
+lowerVoice	W	15360	192	solo	3,1,3
+lowerVoice	W	15552	192	solo	6,0,3
+lowerVoice	W	15744	192	solo	1,0,4
+lowerVoice	W	15936	192	solo	6,0,3
+lowerVoice	W	16128	192	solo	0,1,4
+lowerVoice	W	16320	192	solo	5,1,3
+lowerVoice	W	16512	192	solo	3,1,3
+lowerVoice	W	16704	192	solo	5,1,3
+lowerVoice	W	16896	192	solo	0,1,4
+lowerVoice	W	17088	192	solo	5,1,3
+lowerVoice	W	17280	192	solo	6,0,3
+lowerVoice	W	17472	192	solo	1,0,4
+lowerVoice	W	17664	192	solo	3,1,3
+lowerVoice	W	17856	192	solo	6,0,3
+lowerVoice	W	18048	384	solo	6,0,2
+lowerVoice	W	18432	192	solo	3,1,4
+lowerVoice	W	18624	192	solo	1,0,4
+lowerVoice	W	18816	192	solo	3,1,3
+lowerVoice	W	19008	192	solo	1,0,4
+lowerVoice	W	19200	192	solo	3,1,4
+lowerVoice	W	19392	192	solo	1,0,4
+lowerVoice	W	19584	192	solo	2,0,4
+lowerVoice	W	19776	192	solo	5,0,3
+lowerVoice	W	19968	192	solo	3,1,3
+lowerVoice	W	20160	192	solo	0,1,4
+lowerVoice	W	20352	192	solo	2,0,4
+lowerVoice	W	20544	192	solo	0,1,4
+lowerVoice	W	20736	192	solo	1,0,4
+lowerVoice	W	20928	192	solo	6,0,3
+lowerVoice	W	21120	192	solo	3,1,3
+lowerVoice	W	21312	192	solo	6,0,3
+lowerVoice	W	21504	192	solo	1,0,4
+lowerVoice	W	21696	192	solo	6,0,3
+lowerVoice	W	21888	192	solo	0,1,4
+lowerVoice	W	22080	192	solo	5,1,3
+lowerVoice	W	22272	192	solo	3,1,3
+lowerVoice	W	22464	192	solo	5,1,3
+lowerVoice	W	22656	192	solo	0,1,4
+lowerVoice	W	22848	192	solo	5,1,3
+lowerVoice	W	23040	192	solo	1,0,4
+lowerVoice	W	23232	192	solo	6,0,3
+lowerVoice	W	23424	192	solo	3,1,3
+lowerVoice	W	23616	192	solo	6,0,3
+lowerVoice	W	23808	192	solo	3,1,4
+lowerVoice	W	24000	192	solo	1,0,4
+lowerVoice	W	24192	192	solo	2,0,4
+lowerVoice	W	24384	192	solo	0,1,4
+lowerVoice	W	24576	192	solo	3,1,3
+lowerVoice	W	24768	192	solo	5,1,3
+lowerVoice	W	24960	192	solo	0,1,4
+lowerVoice	W	25152	192	solo	5,1,3
+lowerVoice	W	25344	192	solo	1,0,4
+lowerVoice	W	25536	192	solo	6,0,3
+lowerVoice	W	25728	192	solo	3,1,3
+lowerVoice	W	25920	192	solo	6,0,3
+lowerVoice	W	26112	192	solo	1,0,4
+lowerVoice	W	26304	192	solo	6,0,3
+lowerVoice	W	26496	192	solo	0,1,4
+lowerVoice	W	26688	192	solo	3,1,4
+lowerVoice	W	26880	192	solo	5,1,3
+lowerVoice	W	27072	192	solo	0,1,4
+lowerVoice	W	27264	384	solo	3,1,3
+lowerVoice	W	27648	192	solo	1,1,4
+lowerVoice	W	27840	192	solo	5,0,3
+lowerVoice	W	28032	192	solo	3,1,3
+lowerVoice	W	28224	192	solo	5,0,3
+lowerVoice	W	28416	192	solo	1,1,4
+lowerVoice	W	28608	192	solo	5,0,3
+lowerVoice	W	28800	192	solo	2,0,4
+lowerVoice	W	28992	192	solo	4,0,3
+lowerVoice	W	29184	192	solo	2,0,3
+lowerVoice	W	29376	192	solo	4,0,3
+lowerVoice	W	29568	192	solo	6,0,3
+lowerVoice	W	29760	192	solo	4,0,3
+lowerVoice	W	29952	192	solo	0,1,4
+lowerVoice	W	30144	192	solo	4,0,3
+lowerVoice	W	30336	192	solo	2,0,3
+lowerVoice	W	30528	192	solo	4,0,3
+lowerVoice	W	30720	192	solo	0,1,4
+lowerVoice	W	30912	192	solo	4,0,3
+lowerVoice	W	31104	192	solo	1,0,4
+lowerVoice	W	31296	192	solo	1,0,3
+lowerVoice	W	31488	192	solo	3,1,3
+lowerVoice	W	31680	192	solo	5,0,3
+lowerVoice	W	31872	192	solo	1,0,4
+lowerVoice	W	32064	192	solo	5,0,3
+lowerVoice	W	32256	192	solo	0,0,4
+lowerVoice	W	32448	192	solo	4,0,3
+lowerVoice	W	32640	192	solo	2,0,3
+lowerVoice	W	32832	192	solo	4,0,3
+lowerVoice	W	33024	192	solo	0,0,4
+lowerVoice	W	33216	192	solo	4,0,3
+lowerVoice	W	33408	192	solo	2,0,3
+lowerVoice	W	33600	192	solo	4,0,3
+lowerVoice	W	33792	192	solo	2,0,3
+lowerVoice	W	33984	192	solo	4,0,3
+lowerVoice	W	34176	192	solo	2,0,3
+lowerVoice	W	34368	192	solo	4,0,3
+lowerVoice	W	34560	192	solo	6,0,3
+lowerVoice	W	34752	192	solo	4,1,3
+lowerVoice	W	34944	192	solo	1,0,3
+lowerVoice	W	35136	192	solo	4,1,3
+lowerVoice	W	35328	192	solo	6,0,3
+lowerVoice	W	35520	192	solo	4,1,3
+lowerVoice	W	35712	192	solo	5,1,3
+lowerVoice	W	35904	192	solo	0,1,3
+lowerVoice	W	36096	192	solo	3,1,3
+lowerVoice	W	36288	192	solo	5,1,3
+lowerVoice	W	36480	192	solo	0,1,4
+lowerVoice	W	36672	192	solo	3,1,4
+lowerVoice	W	36864	192	solo	1,0,4
+lowerVoice	W	37056	192	solo	6,0,3
+lowerVoice	W	37248	192	solo	3,1,3
+lowerVoice	W	37440	192	solo	6,0,3
+lowerVoice	W	37632	192	solo	1,0,4
+lowerVoice	W	37824	192	solo	6,0,3
+lowerVoice	W	38016	192	solo	3,1,4
+lowerVoice	W	38208	192	solo	1,0,4
+lowerVoice	W	38400	192	solo	3,1,3
+lowerVoice	W	38592	192	solo	1,0,4
+lowerVoice	W	38784	192	solo	3,1,4
+lowerVoice	W	38976	192	solo	1,0,4
+lowerVoice	W	39168	192	solo	2,0,4
+lowerVoice	W	39360	192	solo	0,1,4
+lowerVoice	W	39552	192	solo	3,1,3
+lowerVoice	W	39744	192	solo	0,1,4
+lowerVoice	W	39936	192	solo	2,0,4
+lowerVoice	W	40128	192	solo	0,1,4
+lowerVoice	W	40320	192	solo	1,0,4
+lowerVoice	W	40512	192	solo	6,0,3
+lowerVoice	W	40704	192	solo	3,1,3
+lowerVoice	W	40896	192	solo	6,0,3
+lowerVoice	W	41088	192	solo	1,0,4
+lowerVoice	W	41280	192	solo	6,0,3
+lowerVoice	W	41472	192	solo	0,1,4
+lowerVoice	W	41664	192	solo	5,1,3
+lowerVoice	W	41856	192	solo	3,1,3
+lowerVoice	W	42048	192	solo	5,1,3
+lowerVoice	W	42240	192	solo	0,1,4
+lowerVoice	W	42432	192	solo	5,1,3
+lowerVoice	W	42624	192	solo	1,0,4
+lowerVoice	W	42816	192	solo	6,0,3
+lowerVoice	W	43008	192	solo	3,1,3
+lowerVoice	W	43200	192	solo	6,0,3
+lowerVoice	W	43392	192	solo	1,0,4
+lowerVoice	W	43584	192	solo	6,0,3
+lowerVoice	W	43776	192	solo	2,0,4
+lowerVoice	W	43968	192	solo	6,0,3
+lowerVoice	W	44160	192	solo	4,0,3
+lowerVoice	W	44352	192	solo	6,0,3
+lowerVoice	W	44544	192	solo	2,1,4
+lowerVoice	W	44736	192	solo	6,0,3
+lowerVoice	W	44928	192	solo	3,1,4
+lowerVoice	W	45120	192	solo	3,1,3
+lowerVoice	W	45312	192	solo	5,1,3
+lowerVoice	W	45504	192	solo	0,1,4
+lowerVoice	W	45696	192	solo	2,0,3
+lowerVoice	W	45888	192	solo	0,1,4
+lowerVoice	W	46080	192	solo	3,1,4
+lowerVoice	W	46272	192	solo	1,0,4
+lowerVoice	W	46464	192	solo	6,0,3
+lowerVoice	W	46656	192	solo	1,0,4
+lowerVoice	W	46848	192	solo	4,0,4
+lowerVoice	W	47040	192	solo	1,0,4
+lowerVoice	W	47232	192	solo	4,1,4
+lowerVoice	W	47424	192	solo	2,1,4
+lowerVoice	W	47616	192	solo	6,0,3
+lowerVoice	W	47808	192	solo	2,1,4
+lowerVoice	W	48000	192	solo	4,1,4
+lowerVoice	W	48192	192	solo	2,1,4
+lowerVoice	W	48384	192	solo	5,1,4
+lowerVoice	W	48576	192	solo	2,0,4
+lowerVoice	W	48768	192	solo	0,1,4
+lowerVoice	W	48960	192	solo	2,0,4
+lowerVoice	W	49152	192	solo	5,1,4
+lowerVoice	W	49344	192	solo	2,0,4
+lowerVoice	W	49536	192	solo	6,0,4
+lowerVoice	W	49728	192	solo	6,0,3
+lowerVoice	W	49920	192	solo	1,0,4
+lowerVoice	W	50112	192	solo	6,0,3
+lowerVoice	W	50304	192	solo	6,0,4
+lowerVoice	W	50496	192	solo	6,0,3
+lowerVoice	W	50688	192	solo	4,0,4
+lowerVoice	W	50880	192	solo	0,1,4
+lowerVoice	W	51072	192	solo	6,0,3
+lowerVoice	W	51264	192	solo	0,1,4
+lowerVoice	W	51456	192	solo	4,0,4
+lowerVoice	W	51648	192	solo	0,1,4
+lowerVoice	W	51840	192	solo	3,1,4
+lowerVoice	W	52032	192	solo	1,0,4
+lowerVoice	W	52224	192	solo	6,0,3
+lowerVoice	W	52416	192	solo	1,0,4
+lowerVoice	W	52608	192	solo	3,1,4
+lowerVoice	W	52800	192	solo	1,0,4
+lowerVoice	W	52992	192	solo	3,1,4
+lowerVoice	W	53184	192	solo	0,1,4
+lowerVoice	W	53376	192	solo	5,1,3
+lowerVoice	W	53568	192	solo	0,1,4
+lowerVoice	P	0	62	192
+lowerVoice	P	192	59	384
+lowerVoice	P	384	54	576
+lowerVoice	P	576	59	768
+lowerVoice	P	768	62	960
+lowerVoice	P	960	59	1152
+lowerVoice	P	1152	66	1344
+lowerVoice	P	1344	62	1536
+lowerVoice	P	1536	54	1728
+lowerVoice	P	1728	62	1920
+lowerVoice	P	1920	66	2112
+lowerVoice	P	2112	62	2304
+lowerVoice	P	2304	64	2496
+lowerVoice	P	2496	61	2688
+lowerVoice	P	2688	54	2880
+lowerVoice	P	2880	61	3072
+lowerVoice	P	3072	64	3264
+lowerVoice	P	3264	61	3456
+lowerVoice	P	3456	62	3648
+lowerVoice	P	3648	59	3840
+lowerVoice	P	3840	54	4032
+lowerVoice	P	4032	59	4224
+lowerVoice	P	4224	62	4416
+lowerVoice	P	4416	59	4608
+lowerVoice	P	4608	61	4800
+lowerVoice	P	4800	58	4992
+lowerVoice	P	4992	54	5184
+lowerVoice	P	5184	58	5376
+lowerVoice	P	5376	61	5568
+lowerVoice	P	5568	58	5760
+lowerVoice	P	5760	62	5952
+lowerVoice	P	5952	59	6144
+lowerVoice	P	6144	54	6336
+lowerVoice	P	6336	59	6528
+lowerVoice	P	6528	62	6720
+lowerVoice	P	6720	59	6912
+lowerVoice	P	6912	64	7104
+lowerVoice	P	7104	59	7296
+lowerVoice	P	7296	55	7488
+lowerVoice	P	7488	59	7680
+lowerVoice	P	7680	65	7872
+lowerVoice	P	7872	59	8064
+lowerVoice	P	8064	66	8256
+lowerVoice	P	8256	61	8448
+lowerVoice	P	8448	58	8640
+lowerVoice	P	8640	61	8832
+lowerVoice	P	8832	54	9024
+lowerVoice	P	9024	58	9216
+lowerVoice	P	9216	62	9408
+lowerVoice	P	9408	59	9600
+lowerVoice	P	9600	54	9792
+lowerVoice	P	9792	59	9984
+lowerVoice	P	9984	62	10176
+lowerVoice	P	10176	59	10368
+lowerVoice	P	10368	66	10560
+lowerVoice	P	10560	62	10752
+lowerVoice	P	10752	54	10944
+lowerVoice	P	10944	62	11136
+lowerVoice	P	11136	66	11328
+lowerVoice	P	11328	62	11520
+lowerVoice	P	11520	64	11712
+lowerVoice	P	11712	61	11904
+lowerVoice	P	11904	54	12096
+lowerVoice	P	12096	61	12288
+lowerVoice	P	12288	64	12480
+lowerVoice	P	12480	61	12672
+lowerVoice	P	12672	62	12864
+lowerVoice	P	12864	59	13056
+lowerVoice	P	13056	55	13248
+lowerVoice	P	13248	59	13440
+lowerVoice	P	13440	62	13632
+lowerVoice	P	13632	59	13824
+lowerVoice	P	13824	64	14016
+lowerVoice	P	14016	61	14208
+lowerVoice	P	14208	55	14400
+lowerVoice	P	14400	61	14592
+lowerVoice	P	14592	64	14784
+lowerVoice	P	14784	61	14976
+lowerVoice	P	14976	62	15168
+lowerVoice	P	15168	59	15360
+lowerVoice	P	15360	54	15552
+lowerVoice	P	15552	59	15744
+lowerVoice	P	15744	62	15936
+lowerVoice	P	15936	59	16128
+lowerVoice	P	16128	61	16320
+lowerVoice	P	16320	58	16512
+lowerVoice	P	16512	54	16704
+lowerVoice	P	16704	58	16896
+lowerVoice	P	16896	61	17088
+lowerVoice	P	17088	58	17280
+lowerVoice	P	17280	59	17472
+lowerVoice	P	17472	62	17664
+lowerVoice	P	17664	54	17856
+lowerVoice	P	17856	59	18048
+lowerVoice	P	18048	47	18432
+lowerVoice	P	18432	66	18624
+lowerVoice	P	18624	62	18816
+lowerVoice	P	18816	54	19008
+lowerVoice	P	19008	62	19200
+lowerVoice	P	19200	66	19392
+lowerVoice	P	19392	62	19584
+lowerVoice	P	19584	64	19776
+lowerVoice	P	19776	57	19968
+lowerVoice	P	19968	54	20160
+lowerVoice	P	20160	61	20352
+lowerVoice	P	20352	64	20544
+lowerVoice	P	20544	61	20736
+lowerVoice	P	20736	62	20928
+lowerVoice	P	20928	59	21120
+lowerVoice	P	21120	54	21312
+lowerVoice	P	21312	59	21504
+lowerVoice	P	21504	62	21696
+lowerVoice	P	21696	59	21888
+lowerVoice	P	21888	61	22080
+lowerVoice	P	22080	58	22272
+lowerVoice	P	22272	54	22464
+lowerVoice	P	22464	58	22656
+lowerVoice	P	22656	61	22848
+lowerVoice	P	22848	58	23040
+lowerVoice	P	23040	62	23232
+lowerVoice	P	23232	59	23424
+lowerVoice	P	23424	54	23616
+lowerVoice	P	23616	59	23808
+lowerVoice	P	23808	66	24000
+lowerVoice	P	24000	62	24192
+lowerVoice	P	24192	64	24384
+lowerVoice	P	24384	61	24576
+lowerVoice	P	24576	54	24768
+lowerVoice	P	24768	58	24960
+lowerVoice	P	24960	61	25152
+lowerVoice	P	25152	58	25344
+lowerVoice	P	25344	62	25536
+lowerVoice	P	25536	59	25728
+lowerVoice	P	25728	54	25920
+lowerVoice	P	25920	59	26112
+lowerVoice	P	26112	62	26304
+lowerVoice	P	26304	59	26496
+lowerVoice	P	26496	61	26688
+lowerVoice	P	26688	66	26880
+lowerVoice	P	26880	58	27072
+lowerVoice	P	27072	61	27264
+lowerVoice	P	27264	54	27648
+lowerVoice	P	27648	63	27840
+lowerVoice	P	27840	57	28032
+lowerVoice	P	28032	54	28224
+lowerVoice	P	28224	57	28416
+lowerVoice	P	28416	63	28608
+lowerVoice	P	28608	57	28800
+lowerVoice	P	28800	64	28992
+lowerVoice	P	28992	55	29184
+lowerVoice	P	29184	52	29376
+lowerVoice	P	29376	55	29568
+lowerVoice	P	29568	59	29760
+lowerVoice	P	29760	55	29952
+lowerVoice	P	29952	61	30144
+lowerVoice	P	30144	55	30336
+lowerVoice	P	30336	52	30528
+lowerVoice	P	30528	55	30720
+lowerVoice	P	30720	61	30912
+lowerVoice	P	30912	55	31104
+lowerVoice	P	31104	62	31296
+lowerVoice	P	31296	50	31488
+lowerVoice	P	31488	54	31680
+lowerVoice	P	31680	57	31872
+lowerVoice	P	31872	62	32064
+lowerVoice	P	32064	57	32256
+lowerVoice	P	32256	60	32448
+lowerVoice	P	32448	55	32640
+lowerVoice	P	32640	52	32832
+lowerVoice	P	32832	55	33024
+lowerVoice	P	33024	60	33216
+lowerVoice	P	33216	55	33408
+lowerVoice	P	33408	52	33600
+lowerVoice	P	33600	55	33792
+lowerVoice	P	33792	52	33984
+lowerVoice	P	33984	55	34176
+lowerVoice	P	34176	52	34368
+lowerVoice	P	34368	55	34560
+lowerVoice	P	34560	59	34752
+lowerVoice	P	34752	56	34944
+lowerVoice	P	34944	50	35136
+lowerVoice	P	35136	56	35328
+lowerVoice	P	35328	59	35520
+lowerVoice	P	35520	56	35712
+lowerVoice	P	35712	58	35904
+lowerVoice	P	35904	49	36096
+lowerVoice	P	36096	54	36288
+lowerVoice	P	36288	58	36480
+lowerVoice	P	36480	61	36672
+lowerVoice	P	36672	66	36864
+lowerVoice	P	36864	62	37056
+lowerVoice	P	37056	59	37248
+lowerVoice	P	37248	54	37440
+lowerVoice	P	37440	59	37632
+lowerVoice	P	37632	62	37824
+lowerVoice	P	37824	59	38016
+lowerVoice	P	38016	66	38208
+lowerVoice	P	38208	62	38400
+lowerVoice	P	38400	54	38592
+lowerVoice	P	38592	62	38784
+lowerVoice	P	38784	66	38976
+lowerVoice	P	38976	62	39168
+lowerVoice	P	39168	64	39360
+lowerVoice	P	39360	61	39552
+lowerVoice	P	39552	54	39744
+lowerVoice	P	39744	61	39936
+lowerVoice	P	39936	64	40128
+lowerVoice	P	40128	61	40320
+lowerVoice	P	40320	62	40512
+lowerVoice	P	40512	59	40704
+lowerVoice	P	40704	54	40896
+lowerVoice	P	40896	59	41088
+lowerVoice	P	41088	62	41280
+lowerVoice	P	41280	59	41472
+lowerVoice	P	41472	61	41664
+lowerVoice	P	41664	58	41856
+lowerVoice	P	41856	54	42048
+lowerVoice	P	42048	58	42240
+lowerVoice	P	42240	61	42432
+lowerVoice	P	42432	58	42624
+lowerVoice	P	42624	62	42816
+lowerVoice	P	42816	59	43008
+lowerVoice	P	43008	54	43200
+lowerVoice	P	43200	59	43392
+lowerVoice	P	43392	62	43584
+lowerVoice	P	43584	59	43776
+lowerVoice	P	43776	64	43968
+lowerVoice	P	43968	59	44160
+lowerVoice	P	44160	55	44352
+lowerVoice	P	44352	59	44544
+lowerVoice	P	44544	65	44736
+lowerVoice	P	44736	59	44928
+lowerVoice	P	44928	66	45120
+lowerVoice	P	45120	54	45312
+lowerVoice	P	45312	58	45504
+lowerVoice	P	45504	61	45696
+lowerVoice	P	45696	52	45888
+lowerVoice	P	45888	61	46080
+lowerVoice	P	46080	66	46272
+lowerVoice	P	46272	62	46464
+lowerVoice	P	46464	59	46656
+lowerVoice	P	46656	62	46848
+lowerVoice	P	46848	67	47040
+lowerVoice	P	47040	62	47232
+lowerVoice	P	47232	68	47424
+lowerVoice	P	47424	65	47616
+lowerVoice	P	47616	59	47808
+lowerVoice	P	47808	65	48000
+lowerVoice	P	48000	68	48192
+lowerVoice	P	48192	65	48384
+lowerVoice	P	48384	70	48576
+lowerVoice	P	48576	64	48768
+lowerVoice	P	48768	61	48960
+lowerVoice	P	48960	64	49152
+lowerVoice	P	49152	70	49344
+lowerVoice	P	49344	64	49536
+lowerVoice	P	49536	71	49728
+lowerVoice	P	49728	59	49920
+lowerVoice	P	49920	62	50112
+lowerVoice	P	50112	59	50304
+lowerVoice	P	50304	71	50496
+lowerVoice	P	50496	59	50688
+lowerVoice	P	50688	67	50880
+lowerVoice	P	50880	61	51072
+lowerVoice	P	51072	59	51264
+lowerVoice	P	51264	61	51456
+lowerVoice	P	51456	67	51648
+lowerVoice	P	51648	61	51840
+lowerVoice	P	51840	66	52032
+lowerVoice	P	52032	62	52224
+lowerVoice	P	52224	59	52416
+lowerVoice	P	52416	62	52608
+lowerVoice	P	52608	66	52800
+lowerVoice	P	52800	62	52992
+lowerVoice	P	52992	66	53184
+lowerVoice	P	53184	61	53376
+lowerVoice	P	53376	58	53568
+lowerVoice	P	53568	61	53760
+lowerVoice	P	55296	66	55488
+lowerVoice	P	55488	62	55680
+lowerVoice	P	55680	54	55872
+lowerVoice	P	55872	62	56064
+lowerVoice	P	56064	66	56256
+lowerVoice	P	56256	62	56448
+lowerVoice	P	56448	64	56640
+lowerVoice	P	56640	57	56832
+lowerVoice	P	56832	54	57024
+lowerVoice	P	57024	61	57216
+lowerVoice	P	57216	64	57408
+lowerVoice	P	57408	61	57600
+lowerVoice	P	57600	62	57792
+lowerVoice	P	57792	59	57984
+lowerVoice	P	57984	54	58176
+lowerVoice	P	58176	59	58368
+lowerVoice	P	58368	62	58560
+lowerVoice	P	58560	59	58752
+lowerVoice	P	58752	61	58944
+lowerVoice	P	58944	58	59136
+lowerVoice	P	59136	54	59328
+lowerVoice	P	59328	58	59520
+lowerVoice	P	59520	61	59712
+lowerVoice	P	59712	58	59904
+lowerVoice	P	59904	62	60096
+lowerVoice	P	60096	59	60288
+lowerVoice	P	60288	54	60480
+lowerVoice	P	60480	59	60672
+lowerVoice	P	60672	66	60864
+lowerVoice	P	60864	62	61056
+lowerVoice	P	61056	64	61248
+lowerVoice	P	61248	61	61440
+lowerVoice	P	61440	54	61632
+lowerVoice	P	61632	58	61824
+lowerVoice	P	61824	61	62016
+lowerVoice	P	62016	58	62208
+lowerVoice	P	62208	62	62400
+lowerVoice	P	62400	59	62592
+lowerVoice	P	62592	54	62784
+lowerVoice	P	62784	59	62976
+lowerVoice	P	62976	62	63168
+lowerVoice	P	63168	59	63360
+lowerVoice	P	63360	61	63552
+lowerVoice	P	63552	66	63744
+lowerVoice	P	63744	58	63936
+lowerVoice	P	63936	61	64128
+lowerVoice	P	64128	54	64512
+lowerVoice	P	64512	63	64704
+lowerVoice	P	64704	57	64896
+lowerVoice	P	64896	54	65088
+lowerVoice	P	65088	57	65280
+lowerVoice	P	65280	63	65472
+lowerVoice	P	65472	57	65664
+lowerVoice	P	65664	64	65856
+lowerVoice	P	65856	55	66048
+lowerVoice	P	66048	52	66240
+lowerVoice	P	66240	55	66432
+lowerVoice	P	66432	59	66624
+lowerVoice	P	66624	55	66816
+lowerVoice	P	66816	61	67008
+lowerVoice	P	67008	55	67200
+lowerVoice	P	67200	52	67392
+lowerVoice	P	67392	55	67584
+lowerVoice	P	67584	61	67776
+lowerVoice	P	67776	55	67968
+lowerVoice	P	67968	62	68160
+lowerVoice	P	68160	50	68352
+lowerVoice	P	68352	54	68544
+lowerVoice	P	68544	57	68736
+lowerVoice	P	68736	62	68928
+lowerVoice	P	68928	57	69120
+lowerVoice	P	69120	60	69312
+lowerVoice	P	69312	55	69504
+lowerVoice	P	69504	52	69696
+lowerVoice	P	69696	55	69888
+lowerVoice	P	69888	60	70080
+lowerVoice	P	70080	55	70272
+lowerVoice	P	70272	52	70464
+lowerVoice	P	70464	55	70656
+lowerVoice	P	70656	52	70848
+lowerVoice	P	70848	55	71040
+lowerVoice	P	71040	52	71232
+lowerVoice	P	71232	55	71424
+lowerVoice	P	71424	59	71616
+lowerVoice	P	71616	56	71808
+lowerVoice	P	71808	50	72000
+lowerVoice	P	72000	56	72192
+lowerVoice	P	72192	59	72384
+lowerVoice	P	72384	56	72576
+lowerVoice	P	72576	58	72768
+lowerVoice	P	72768	49	72960
+lowerVoice	P	72960	54	73152
+lowerVoice	P	73152	58	73344
+lowerVoice	P	73344	61	73536
+lowerVoice	P	73536	66	73728
+lowerVoice	P	73728	62	73920
+lowerVoice	P	73920	59	74112
+lowerVoice	P	74112	54	74304
+lowerVoice	P	74304	59	74496
+lowerVoice	P	74496	62	74688
+lowerVoice	P	74688	59	74880
+lowerVoice	P	74880	66	75072
+lowerVoice	P	75072	62	75264
+lowerVoice	P	75264	54	75456
+lowerVoice	P	75456	62	75648
+lowerVoice	P	75648	66	75840
+lowerVoice	P	75840	62	76032
+lowerVoice	P	76032	64	76224
+lowerVoice	P	76224	61	76416
+lowerVoice	P	76416	54	76608
+lowerVoice	P	76608	61	76800
+lowerVoice	P	76800	64	76992
+lowerVoice	P	76992	61	77184
+lowerVoice	P	77184	62	77376
+lowerVoice	P	77376	59	77568
+lowerVoice	P	77568	54	77760
+lowerVoice	P	77760	59	77952
+lowerVoice	P	77952	62	78144
+lowerVoice	P	78144	59	78336
+lowerVoice	P	78336	61	78528
+lowerVoice	P	78528	58	78720
+lowerVoice	P	78720	54	78912
+lowerVoice	P	78912	58	79104
+lowerVoice	P	79104	61	79296
+lowerVoice	P	79296	58	79488
+lowerVoice	P	79488	62	79680
+lowerVoice	P	79680	59	79872
+lowerVoice	P	79872	54	80064
+lowerVoice	P	80064	59	80256
+lowerVoice	P	80256	62	80448
+lowerVoice	P	80448	59	80640
+lowerVoice	P	80640	64	80832
+lowerVoice	P	80832	59	81024
+lowerVoice	P	81024	55	81216
+lowerVoice	P	81216	59	81408
+lowerVoice	P	81408	65	81600
+lowerVoice	P	81600	59	81792
+lowerVoice	P	81792	66	81984
+lowerVoice	P	81984	54	82176
+lowerVoice	P	82176	58	82368
+lowerVoice	P	82368	61	82560
+lowerVoice	P	82560	52	82752
+lowerVoice	P	82752	61	82944
+lowerVoice	P	82944	66	83136
+lowerVoice	P	83136	62	83328
+lowerVoice	P	83328	59	83520
+lowerVoice	P	83520	62	83712
+lowerVoice	P	83712	67	83904
+lowerVoice	P	83904	62	84096
+lowerVoice	P	84096	68	84288
+lowerVoice	P	84288	65	84480
+lowerVoice	P	84480	59	84672
+lowerVoice	P	84672	65	84864
+lowerVoice	P	84864	68	85056
+lowerVoice	P	85056	65	85248
+lowerVoice	P	85248	70	85440
+lowerVoice	P	85440	64	85632
+lowerVoice	P	85632	61	85824
+lowerVoice	P	85824	64	86016
+lowerVoice	P	86016	70	86208
+lowerVoice	P	86208	64	86400
+lowerVoice	P	86400	71	86592
+lowerVoice	P	86592	59	86784
+lowerVoice	P	86784	62	86976
+lowerVoice	P	86976	59	87168
+lowerVoice	P	87168	71	87360
+lowerVoice	P	87360	59	87552
+lowerVoice	P	87552	67	87744
+lowerVoice	P	87744	61	87936
+lowerVoice	P	87936	59	88128
+lowerVoice	P	88128	61	88320
+lowerVoice	P	88320	67	88512
+lowerVoice	P	88512	61	88704
+lowerVoice	P	88704	66	88896
+lowerVoice	P	88896	62	89088
+lowerVoice	P	89088	59	89280
+lowerVoice	P	89280	62	89472
+lowerVoice	P	89472	66	89664
+lowerVoice	P	89664	62	89856
+lowerVoice	P	89856	66	90048
+lowerVoice	P	90048	61	90240
+lowerVoice	P	90240	58	90432
+lowerVoice	P	90432	61	90624
+middleVoice	W	0	1152	solo	6,0,2
+middleVoice	W	1152	1152	solo	6,0,2
+middleVoice	W	2688	768	solo	3,1,3
+middleVoice	W	3840	768	solo	3,1,3
+middleVoice	W	4992	768	solo	3,1,3
+middleVoice	W	6144	768	solo	3,1,3
+middleVoice	W	7296	768	solo	4,0,3
+middleVoice	W	9216	768	solo	6,0,2
+middleVoice	W	10752	768	solo	3,1,3
+middleVoice	W	11904	768	solo	3,1,3
+middleVoice	W	13056	768	solo	4,0,3
+middleVoice	W	14592	384	solo	2,0,3
+middleVoice	W	15360	768	solo	3,1,3
+middleVoice	W	16512	768	solo	3,1,3
+middleVoice	W	17664	384	solo	3,1,3
+middleVoice	W	18816	768	solo	3,1,3
+middleVoice	W	19968	768	solo	3,1,3
+middleVoice	W	21120	768	solo	3,1,3
+middleVoice	W	22272	768	solo	3,1,3
+middleVoice	W	23424	768	solo	3,1,3
+middleVoice	W	24576	768	solo	3,1,3
+middleVoice	W	25728	768	solo	3,1,3
+middleVoice	W	27648	1152	solo	0,1,3
+middleVoice	W	28800	1152	solo	2,0,2
+middleVoice	W	29952	1152	solo	5,0,2
+middleVoice	W	32256	1152	solo	2,0,2
+middleVoice	W	34560	1152	solo	2,1,2
+middleVoice	W	35712	1152	solo	3,1,2
+middleVoice	W	36864	1152	solo	6,0,2
+middleVoice	W	38400	768	solo	3,1,3
+middleVoice	W	39552	768	solo	3,1,3
+middleVoice	W	40704	768	solo	3,1,3
+middleVoice	W	41856	768	solo	3,1,3
+middleVoice	W	43008	768	solo	3,1,3
+middleVoice	W	44160	768	solo	4,0,3
+middleVoice	W	45696	384	solo	2,0,3
+middleVoice	W	46080	1152	solo	1,0,3
+middleVoice	W	47232	1152	solo	0,1,3
+middleVoice	W	48384	1152	solo	3,1,3
+middleVoice	W	49536	1152	solo	4,0,3
+middleVoice	W	50688	1152	solo	2,0,3
+middleVoice	W	51840	1152	solo	3,1,3
+middleVoice	W	52992	768	solo	3,1,2
+middleVoice	W	53760	384	solo	2,0,3
+middleVoice	P	0	47	2304
+middleVoice	P	2688	54	3456
+middleVoice	P	3840	54	4608
+middleVoice	P	4992	54	5760
+middleVoice	P	6144	54	6912
+middleVoice	P	7296	55	8064
+middleVoice	P	9216	47	9984
+middleVoice	P	10752	54	11520
+middleVoice	P	11904	54	12672
+middleVoice	P	13056	55	13824
+middleVoice	P	14592	52	14976
+middleVoice	P	15360	54	16128
+middleVoice	P	16512	54	17280
+middleVoice	P	17664	54	18048
+middleVoice	P	18816	54	19584
+middleVoice	P	19968	54	20736
+middleVoice	P	21120	54	21888
+middleVoice	P	22272	54	23040
+middleVoice	P	23424	54	24192
+middleVoice	P	24576	54	25344
+middleVoice	P	25728	54	26496
+middleVoice	P	27648	49	28800
+middleVoice	P	28800	40	29952
+middleVoice	P	29952	45	31104
+middleVoice	P	32256	40	33408
+middleVoice	P	34560	41	35712
+middleVoice	P	35712	42	36864
+middleVoice	P	36864	47	38016
+middleVoice	P	38400	54	39168
+middleVoice	P	39552	54	40320
+middleVoice	P	40704	54	41472
+middleVoice	P	41856	54	42624
+middleVoice	P	43008	54	43776
+middleVoice	P	44160	55	44928
+middleVoice	P	45696	52	46080
+middleVoice	P	46080	50	47232
+middleVoice	P	47232	49	48384
+middleVoice	P	48384	54	49536
+middleVoice	P	49536	55	50688
+middleVoice	P	50688	52	51840
+middleVoice	P	51840	54	52992
+middleVoice	P	52992	42	53760
+middleVoice	P	53760	52	54144
+middleVoice	P	55680	54	56448
+middleVoice	P	56832	54	57600
+middleVoice	P	57984	54	58752
+middleVoice	P	59136	54	59904
+middleVoice	P	60288	54	61056
+middleVoice	P	61440	54	62208
+middleVoice	P	62592	54	63360
+middleVoice	P	64512	49	65664
+middleVoice	P	65664	40	66816
+middleVoice	P	66816	45	67968
+middleVoice	P	69120	40	70272
+middleVoice	P	71424	41	72576
+middleVoice	P	72576	42	73728
+middleVoice	P	73728	47	74880
+middleVoice	P	75264	54	76032
+middleVoice	P	76416	54	77184
+middleVoice	P	77568	54	78336
+middleVoice	P	78720	54	79488
+middleVoice	P	79872	54	80640
+middleVoice	P	81024	55	81792
+middleVoice	P	82560	52	82944
+middleVoice	P	82944	50	84096
+middleVoice	P	84096	49	85248
+middleVoice	P	85248	54	86400
+middleVoice	P	86400	55	87552
+middleVoice	P	87552	52	88704
+middleVoice	P	88704	54	89856
+middleVoice	P	89856	42	90624
+middleVoice	P	90624	52	91008
