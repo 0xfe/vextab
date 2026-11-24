@@ -883,7 +883,7 @@ class Resolver {
         }
         const headEnd=heads.length===1?headMark(words,i,details[0],s.marks.fingerSide,input):i;
         if (headEnd!==i) {i=headEnd;continue;}
-        const end=afterNote(words,i,event,s.marks,input,()=> 's'+ ++this.serial);
+        const end=afterNote(words,i,event,s.marks,s.index,input,()=> 's'+ ++this.serial);
         if (end===i) break;
         i=end;
       }

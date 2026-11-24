@@ -6,7 +6,7 @@ import type { Token } from './lilypond-source.js';
 
 /** Active spans can cross each other. Phrasing and ordinary slurs retain separate IDs. */
 export interface Attachments {
-  spans: Map<string, { id: string; kind: SpanPoint['kind'] }>;
+  spans: Map<string, { id: string; kind: SpanPoint['kind']; beamStart?: { bar: number; expression: Expression } }>;
   side?: Side;
   fingerSide?: NonNullable<HeadDetail['finger']>['side'];
 }
@@ -104,6 +104,7 @@ export function afterNote(
   i: number,
   event: Event,
   state: Attachments,
+  bar: number,
   input: Input,
   nextID: () => string,
 ): number {
@@ -121,12 +122,21 @@ export function afterNote(
     let current = state.spans.get(slot);
     if (start) {
       if (current) input.fail('unsupported', 'Overlapping LilyPond spans with the same identity.', t.range);
-      state.spans.set(slot, (current = { id: nextID(), kind }));
+      current = { id: nextID(), kind };
+      if (kind === 'beam') current.beamStart = { bar, expression: x };
+      state.spans.set(slot, current);
     } else {
       if (!current) input.fail('unsupported', 'Missing start for LilyPond span ' + slot + '.', t.range);
       state.spans.delete(slot);
+      if (current!.beamStart && current!.beamStart.bar !== bar) {
+        // VexTab validates both endpoints against a single bar. Keep the attacks and other spans intact.
+        input.omit('Manual beam across a barline omitted.', t.range);
+        const first = current!.beamStart.expression;
+        first.spans = first.spans!.filter(point => point.id !== current!.id);
+        return;
+      }
     }
-    (x.spans ??= []).push({ ...current!, edge: start ? 'start' : 'stop', side: side ?? state.side });
+    (x.spans ??= []).push({ id: current!.id, kind: current!.kind, edge: start ? 'start' : 'stop', side: side ?? state.side });
   };
   if (value==='\\markup') {
     const block=words[j+1];
