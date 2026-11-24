@@ -4,7 +4,7 @@
   "type": "module",
   "dependencies": {
     "@typescript-eslint/parser": "8.73.0",
-    "eslint": "9.39.5",
+    "eslint": "10.15.0",
     "istanbul-lib-coverage": "3.2.2",
     "istanbul-lib-instrument": "6.0.3",
     "qunit-classic": "npm:qunit@2.9.2",
