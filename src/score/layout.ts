@@ -280,12 +280,13 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
               : { notes: [{ id: eventId(staff, 'blank-' + m.number + '-' + index), skip: 'w' }] }),
             ...(m.state.piano && staves.length === 2 ? pianoTextLanes(m.text ?? [], staff === 'left', parsed.layout?.staffDistance ?? 9)
               : staff === staves[0] ? m.text ?? [] : []).flatMap(lane =>
-                textLanes.voices(lane, (id, range) => sources.project(staff, id, range))),
+                textLanes.voices(lane, m.number, (id, range) => sources.project(staff, id, range))),
           ],
         };
       }),
     })),
     continuous: {
+      inkBounds: (stave, measure) => textLanes.inkBounds(stave, measure),
       verticalSpacing: parsed.measures[0].state.piano || staves.length > 1 ? 'profile' : 'envelope',
       textLanes: 'system',
       opening: { indent: parsed.layout?.firstSystemIndent, blocks },
@@ -327,7 +328,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
         const from = eventId(staff, mark.from), to = eventId(staff, mark.to);
         if (!sources.ids[from] || !sources.ids[to] || staff === 'tab') continue;
         spans.push({ kind: mark.kind === 'continuousBeam' ? 'beam' : mark.kind, from, to,
-          ...('niente' in mark && { niente: mark.niente }),
+          ...('niente' in mark && { niente: mark.niente }), ...(mark.side && { side: mark.side }),
           id: sources.project(staff, mark.id, mark.range) });
       }
       continue;

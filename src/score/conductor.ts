@@ -93,6 +93,7 @@ export function conductorSpec(scores: ParsedScore[], specs: EasyScoreComposition
     prepareNote(options, note, builder) { for (const spec of specs) spec.engraving?.prepareNote?.(options, note, builder); },
     place(score, add) { for (const spec of specs) spec.engraving?.place?.(score, add); },
   }, continuous: { ...specs[0].continuous, groups,
+    inkBounds: (stave, measure) => specs.flatMap(spec => spec.continuous.inkBounds?.(stave, measure) ?? []),
     verticalSpacing: specs.some(s => s.continuous.verticalSpacing === 'profile') ? 'profile' : specs[0].continuous.verticalSpacing,
     boundaries: boundaries(scores, specs),
     opening: { ...specs[0].continuous.opening, blocks: [...(specs[0].continuous.opening?.blocks ?? []),

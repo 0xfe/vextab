@@ -101,7 +101,7 @@ const pickup = parseScore('meter 2/4 pickup 1/8 staff { :8 G4 | :q A4 G4 | }');
 | Set engraving or playback defaults | `voice bass stem down { … }` sets a voice’s stem direction. `layout { width 640 rowGap 36 }`, `measureNumbers on`, and `play { tempo 84 instrument 24 }` go before the first part. |
 | Use handwritten engraving | `layout { font Petaluma }` pairs Petaluma music glyphs with Petaluma Script lettering on screen and in print. `font Bravura` selects the standard Bravura and Academico faces. |
 | Fit more bars in a responsive embed | `layout { scale 0.75 spacing optical }` draws at three-quarter size and reflows to fill the host. Add `width` for fixed system breaks, as in the Ballade. |
-| Space neighboring piano systems | Adjacent grand staves share space where their markings fall at different horizontal positions. Ossias and pedal symbols count toward clearance. Increase `rowGap` for more space on screen. Printed editions use the page’s system gap. |
+| Space neighboring piano systems | Adjacent grand staves share space where their markings fall at different horizontal positions. Timed words, rolled chords, ossias and pedal symbols count toward clearance. Increase `rowGap` for more space on screen. Printed editions use the page’s system gap. |
 | Center the heading above the diagram key | `layout { heading { align center title "All of Me" composer "Chord melody for guitar" } }` stacks the title and credits above the music on screen and in print. Diagrams wrap and center by row. |
 | Indent the first system | `layout { firstSystemIndent 80 }` reserves 80 engraving pixels before the opening brace or staff, in addition to any instrument labels. Screen and print use this space when choosing system breaks. The default is zero. |
 
@@ -407,7 +407,7 @@ Read `result.diagnostics` for source ranges and `result.publication.pages` for s
 | --- | --- |
 | `C4[verse one "ev" hyphen, verse two "I" elide "am"]` | Attach independent named underlays to one attack. A hyphen finds the next syllable of its verse. `extend=2` carries a word through two following events in the same voice, including across a bar. |
 | `C4[harmony C "m7" bass Bb]` | Specify root, quality and optional slash bass. Score transposition spells both pitches. |
-| `crescendo niente { :q C4[dynamic p] D4 E4 F4[dynamic f] }` | Draw a native hairpin. `niente` marks the closed end. Dynamics range from ppp through fff. Diminuendos use the same syntax. |
+| `crescendo above niente { :q C4[dynamic p] D4 E4 F4[dynamic f] }` | Place a hairpin above the staff and mark its closed end with a circle. The side and `niente` are both optional. The default side is below. Dynamics range from ppp through fff. Diminuendos use the same syntax. |
 | `E4[harmony C "m7", diagram (x 3 1 3 1 3) barre=1/4..2]` | Draw an independent low-to-high guitar grip for the chord above a melody note or rest. Only the written notes sound. A `frame` requires the chord’s actual frets and strings. |
 | `layout { stemPolicy pitch }` | Let the native note and beam choose neutral stems from the pitches. The default `activeVoices` separates overlapping voices. Explicit stems take precedence in either policy. |
 | `C4[stem up]` and `(C4 E4)[stem down]` | Give one note or chord an explicit stem direction. Other attacks keep the voice default. An outgoing named tie can independently take a side, as in `C4[tieStart held below]`. |

@@ -16,16 +16,16 @@ export function drawHeading(ctx: RenderContext, heading: ScoreHeading, left: num
   function line(text: string | undefined, position: number, lift: number, size: number, align = 0) {
     if (!text) return;
     // Raised ordinals and metronome marks each need their own size or typeface in portable SVG.
-    const runs = text.split(/(\^\{[^{}]+\}|♩)/).filter(Boolean).map(token => {
+    const runs = text.split(/(\^\{[^{}]+\}|♩|𝅗𝅥)/u).filter(Boolean).map(token => {
       const raised = token.startsWith('^{') && token.endsWith('}');
       const content = raised ? token.slice(2, -1) : token;
-      const quarter = token === '♩';
-      const family = quarter ? scoreMusicFont() : scoreTextFont();
-      const weight = quarter ? 'normal' : headingWeight();
-      const label = quarter ? VexFlow.Glyphs.metNoteQuarterUp : content.trim();
+      const beat = token === '♩' ? VexFlow.Glyphs.metNoteQuarterUp : token === '𝅗𝅥' ? VexFlow.Glyphs.metNoteHalfUp : undefined;
+      const family = beat ? scoreMusicFont() : scoreTextFont();
+      const weight = beat ? 'normal' : headingWeight();
+      const label = beat ?? content.trim();
       const fontSize = size * factor * (raised ? 0.62 : 1);
       ctx.setFont(family, fontSize, weight, 'normal');
-      const space = quarter ? 0 : ctx.measureText('a a').width - ctx.measureText('aa').width;
+      const space = beat ? 0 : ctx.measureText('a a').width - ctx.measureText('aa').width;
       const leading = (content.length - content.trimStart().length) * space;
       const advance = (content.length - label.length) * space + ctx.measureText(label).width;
       return { label, family, weight, fontSize, raised, leading, advance };

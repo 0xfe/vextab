@@ -46,6 +46,12 @@ Add editions in [the gallery builder](../guide/gallery/build.mjs). Record the up
 
 Generate the quality archive to track how VexTab has changed since 4.0.0. The accompanying **What's New?** report illustrates those changes with scores you can compare side by side. Both reports open locally in a browser. [Build and publication commands](reports.md)
 
+## Diagnosing loose piano spacing
+
+Compare the distance between the nearest staff lines in staff spaces so that zoom and print size do not affect the result. In the Consolation, a timed word and a low note on the opposite staff can share vertical space when they fall on different beats. Move the word under the note and the gap should open. The piano tests exercise both arrangements in SVG, Canvas and print. [Piano layout regressions](../tests/piano.ts)
+
+VexTab passes the stave, beat and placement of each timed word to VexFlow. Piano parts use the public profile-spacing mode so the formatter can measure noteheads, stems, beams, strokes, curves and text where they occur. When diagnosing a gap, compare the measured staff distance with the same passage after moving the timed word or changing the slur. The VexFlow migration report records the API and the repertoire used to check it. [Score layout](../src/score/layout.ts) · [Engraving migration](../issues/213/README.md)
+
 ## Upload the user guide
 
 Run these commands from the VexTab checkout. The dry run builds the production guide and prints the Cloud Storage operations. The live command uses your authenticated Google Cloud CLI.
