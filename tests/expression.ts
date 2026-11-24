@@ -151,6 +151,17 @@ QUnit.module('Expressive notation and performance', () => {
     assert.ok(page.textContent.includes('two') && page.textContent.includes('on'));
   });
 
+  QUnit.test('authored beams choose one stem side across the middle line', assert => {
+    // Echigo-Jishi opens with four eighths. Its middle-line B alone would receive a down-stem.
+    for (const [stem, direction] of [['', 1], ['stem down', -1]] as const) {
+      const score = parseScore(`meter 2/4 staff { voice melody ${stem} { :8 beam { A4 A4 B4 A4 } | } }`);
+      const view = renderConductor(host(), score, { width: 600 });
+      const notes = view.navigation.events.map(event => view.composition.getNote(event.id) as StaveNote);
+      assert.deepEqual(notes.map(note => note.getStemDirection()), Array(4).fill(direction));
+      assert.ok(notes.every(note => note.getBeam() === notes[0].getBeam()));
+    }
+  });
+
   QUnit.test('native beams, divided tremolo time, nested tuplets and a shared piano stem', assert => {
     const target = host(), score = parseScore(rhythm);
     const view = renderConductor(target, score, { width: 600 });
