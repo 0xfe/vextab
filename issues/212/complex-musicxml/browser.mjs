@@ -18,9 +18,12 @@ const cases = [
     conductor: true,
     selection: { firstMeasure: 1, lastMeasure: 8 },
   },
+  { file: 'Bach_BWV.1048_1.mxl', bars: 137, parts: 11, partIndex: 0, preview: 'violin' },
   { file: 'Bach_BWV.1048_3.mxl', bars: 48, parts: 11, partIndex: 0 },
   { file: 'lc7111114.mxl', bars: 120, parts: 2, partIndex: 0 },
+  { file: 'lc7111114.mxl', bars: 120, parts: 2, partIndex: 1, preview: 'piano' },
   { file: 'lc29062370.mxl', bars: 148, parts: 2, partIndex: 1 },
+  { file: 'Beethoven_Op.67_1.mxl', bars: 502, parts: 18, partIndex: 2 },
 ];
 const browser = await chromium.launch(
   process.env.CHROME_BIN ? { executablePath: process.env.CHROME_BIN } : { channel: 'chrome' },
@@ -72,7 +75,7 @@ try {
       assert.equal(proof.parts, c.parts);
       assert.ok(proof.screenHeads > 0 && proof.printHeads > 0);
       if (c.conductor) assert.ok(proof.screenHeads > proof.printHeads);
-      await page.screenshot({ path: join(cache, c.file + '.preview.png') });
+      await page.screenshot({ path: join(cache, c.file + (c.preview ? '.' + c.preview : '') + '.preview.png') });
       console.log(
         c.file +
           ' → ' +

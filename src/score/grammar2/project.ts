@@ -121,6 +121,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       result.cautionary = true;
     }
     for (const mark of head.marks) {
+      if (mark.kind === 'velocity') result.velocity = mark.value;
       if (mark.kind === 'sustain') result.sustain = mark.duration;
       if (mark.kind === 'prebend') result.prebend = { semitones: mark.semitones, release: mark.release };
       if (mark.kind === 'slideIn' || mark.kind === 'slideOut') result.openSlide = { edge: mark.kind === 'slideIn' ? 'in' : 'out', side: mark.side };
@@ -222,6 +223,10 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         result.harmony = NotationSpelling.transposeChord({ root, quality, bass }, interval?.semitones ?? 0, interval?.steps ?? 0);
         result.chord = { text: NotationSpelling.chordText(result.harmony), range: locate(mark.range) };
       }
+      if (mark.kind === 'stem') {
+        if (!heads.length) throw new ScoreError('measure', 'A stem needs a written head', locate(mark.range));
+        result.stem = mark.value;
+      }
       if (mark.kind === 'dynamic') result.dynamic = mark.value;
       if ((mark.kind === 'ossia' || mark.kind === 'ornament' || mark.kind === 'grace') && (!heads.length || (!state.notation && mark.kind !== 'grace') || heads.some(h => !!h.drum)))
         throw new ScoreError('measure', 'Grace notes, ornaments and ossias need a pitched notation anchor', locate(mark.range));
@@ -265,7 +270,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     return result;
   }
 
-  type Endpoint = { event: Attack; index: number; bar: number; hand?: string; range: SourceRange; scope: string; start: boolean };
+  type Endpoint = { event: Attack; index: number; bar: number; hand?: string; side?: 'above' | 'below'; range: SourceRange; scope: string; start: boolean };
   const tieEndpoints = new Map<string, Endpoint[]>();
 
   /** Two uses of a self-contained phrase each own its ties. Tuplets can start or end within a tie. */
@@ -290,7 +295,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       first.position?.str !== last.position?.str || start.hand !== end.hand)
       throw new ScoreError('measure', 'Named tie needs a later matching head on the same staff', end.range);
     const id = 'named-tie-' + name + (expanded ? '-' + start.event.id : '');
-    projected.ties.push({ id, from: start.event.id, fromHead: start.index, to: end.event.id, toHead: end.index, range: end.range });
+    projected.ties.push({ id, from: start.event.id, fromHead: start.index, to: end.event.id, toHead: end.index, ...(start.side && { side: start.side }), range: end.range });
   }
 
   /** Preserve a single cross-scope pair. Repeated pairs must resolve within each individual expansion. */
@@ -357,7 +362,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
           const points = tieEndpoints.get(mark.name) ?? [];
           if (!points.length) tieEndpoints.set(mark.name, points);
           points.push({ event: next, index: i, bar: event.bar, hand, range: locate(mark.range),
-            scope: tieScope(event), start: mark.kind === 'tieStart' });
+            scope: tieScope(event), side: mark.side, start: mark.kind === 'tieStart' });
         }
         const gliss = next.heads[i].glissFrom;
         if (gliss !== undefined) {
@@ -489,9 +494,22 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         if (!state.notation) throw new ScoreError('measure', 'This expression span needs a notation staff', range);
         projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, niente: mark.niente, strokes: mark.strokes, range, id: mark.kind + '-' + mark.first + (mark.name ? '-' + mark.name : '') });
         if (mark.kind === 'tremolo' || mark.kind === 'continuousBeam') {
-          for (const v of voices) for (const event of v.events) if (indices.get(event.id) >= indices.get(mark.first) && indices.get(event.id) <= indices.get(mark.last)) {
+          let beamStem: 'up' | 'down' | undefined;
+          const last = indices.get(mark.last);
+          for (let i = indices.get(mark.first); i <= last; i++) {
+            const bar = voice.events[i].bar - 1, v = voices[bar];
+            const event = v.events[i - voice.measures[bar].start];
             if (mark.kind === 'tremolo') event.tremolo = mark.strokes;
-            else event.continuousBeam = true;
+            else {
+              if (event.displayHand && event.displayHand !== v.hand)
+                throw new ScoreError('measure', 'A continuous beam must stay on its owning staff', range);
+              const drum = event.heads[0]?.drum;
+              const stem = event.stem ?? v.stem ?? (drum && kit.instruments.find(entry => entry.id === drum)?.stem);
+              if (stem && beamStem && stem !== beamStem)
+                throw new ScoreError('measure', 'Stems in a continuous beam must agree in direction', range);
+              if (stem) beamStem = stem;
+              event.continuousBeam = true;
+            }
           }
         }
       } else if (mark.kind === 'slur' || mark.kind === 'palmMute') {

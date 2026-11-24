@@ -177,7 +177,12 @@ function attributes(node: Element, state: PartState, cursor: Time, input: Input,
 /** Derive omitted note types only when an exact binary or dotted spelling exists. */
 function rhythm(node: Element, duration: Time, input: Input) {
   const typeNode = one(node, 'type', input, true);
-  const type = typeNode && scalar(node, 'type', input);
+  if (typeNode) {
+    shape(typeNode, input, [], input.options.targetProfile === 'expressive' ? ['size'] : []);
+    if (typeNode.attributes.size && typeNode.attributes.size !== 'full')
+      input.omit('Omitted ' + typeNode.attributes.size + ' note engraving size.', typeNode.range);
+  }
+  const type = typeNode?.text.trim();
   const dots = node.children.filter((c) => c.name === 'dot').length;
   const ratio = one(node, 'time-modification', input, true);
   let actual = 1,
@@ -345,7 +350,7 @@ function note(
       'time-modification',
       'tie',
     ],
-    ['default-x', 'default-y', 'print-object'],
+    ['default-x', 'default-y', 'print-object', ...(input.options.targetProfile === 'expressive' ? ['dynamics'] : [])],
   );
   if (node.attributes['default-x'] || node.attributes['default-y'])
     input.omit('Omitted engraved note position.', node.range);
@@ -362,6 +367,7 @@ function note(
   if (!bar || !bars[staff - 1]) input.fail('syntax', 'Note refers to undeclared staff.', node.range);
   const grace = one(node, 'grace', input, true);
   if (grace) {
+    if (node.attributes.dynamics !== undefined) input.omit('Omitted grace-note velocity.', node.range);
     if (grace.attributes['make-time'])
       input.fail('unsupported', 'Measured grace playback requires a separate time model.', grace.range);
     if (one(node, 'duration', input, true))
@@ -487,10 +493,39 @@ function measureTempos(record: BarInput, ordinal: number, divisions: number, tem
 
   return divisions;
 }
-function scopeTempos(records: BarInput[], input: Input) {
+/** Corroborate a selected cadenza against excluded parts without importing their notation.
+ * Unknown duration or conflicting cursors leave that ordinal unconfirmed.
+ */
+type ExcludedSpans = Map<number, Time | undefined>;
+function observeSpan(record: BarInput, ordinal: number, divisions: number, spans: ExcludedSpans) {
+  let cursor = zero, extent = zero;
+  for (const child of record.children) {
+    if (child.name === 'attributes') {
+      const change = child.children.find(c => c.name === 'divisions');
+      if (change) divisions = Number(change.text);
+    }
+    if (child.name === 'backup' || child.name === 'forward' ||
+        child.name === 'note' && !child.children.some(c => c.name === 'chord' || c.name === 'grace')) {
+      const duration = Number(child.children.find(c => c.name === 'duration')?.text);
+      if (!(Number.isSafeInteger(duration) && duration > 0 && Number.isSafeInteger(divisions) && divisions > 0)) {
+        spans.set(ordinal, undefined);
+        return;
+      }
+      const delta = new Time(duration, 4 * divisions);
+      cursor = child.name === 'backup' ? cursor.minus(delta) : cursor.plus(delta);
+      if (cursor.compare(extent) > 0) extent = cursor;
+    }
+  }
+  if (!spans.has(ordinal)) spans.set(ordinal, extent);
+  else if (spans.get(ordinal)?.compare(extent)) spans.set(ordinal, undefined);
+}
+function scopeTempos(records: BarInput[], input: Input, excluded?: ExcludedSpans) {
   const tempos: GlobalTempo[] = [];
   let divisions = 0;
-  for (const [i, record] of records.entries()) divisions = measureTempos(record, i + 1, divisions, tempos, input);
+  for (const [i, record] of records.entries()) {
+    if (excluded) observeSpan(record, i + 1, divisions, excluded);
+    divisions = measureTempos(record, i + 1, divisions, tempos, input);
+  }
   return tempos;
 }
 
@@ -602,7 +637,8 @@ function measure(data: BarInput, state: PartState, index: number, input: Input) 
   attachDirections(pending, bars, input);
   if (!extent.compare(zero)) input.fail('timing', 'Empty measured timeline.', node.range);
   const length = new Time(state.beats, state.beatType);
-  if (extent.compare(length) > 0) input.fail('timing', 'Events exceed the active meter.', node.range);
+  const overfull = extent.compare(length) > 0;
+  if (overfull && input.options.targetProfile !== 'expressive') input.fail('timing', 'Events exceed the active meter.', node.range);
   const boundary = data.children.some(
     (c) =>
       c.name === 'barline' &&
@@ -649,6 +685,7 @@ function measure(data: BarInput, state: PartState, index: number, input: Input) 
     if (!bar.voices.size) bar.voices.set('1', []);
     bar.instrument = state.instruments.staffs[bar.staff - 1];
     bar.extent = length;
+    if (overfull) bar.fragment = bar.extent = extent;
     const complement = boundary && state.pickup && extent.plus(state.pickup).compare(length) === 0;
     if (extent.compare(length) < 0 && (node.attributes.implicit === 'yes' || (index === 0 && label === '0') || complement || split)) {
       bar.extent = extent;
@@ -860,6 +897,7 @@ function readScore(
   registry?: Map<string, PartState>,
   tempos: GlobalTempo[] = [],
   form: Boundaries = new Map(),
+  excluded?: ExcludedSpans,
 ): [Measure[], TextRange] {
   if (
     !['score-timewise', 'score-partwise'].includes(root.name) ||
@@ -913,8 +951,9 @@ function readScore(
       input.context = {part:state.id, measure:record.measure.attributes.number};
       collectForm(record.children, index + 1, form, selection?.firstMeasure ?? 1, input);
     }
-    if (selection && includesExtended(input.options)) tempos.push(...scopeTempos(data.get(state.id)!, input));
-    if (selection?.parts && !selection.parts.includes(state.id)) continue;
+    const skip = selection?.parts && !selection.parts.includes(state.id);
+    if (selection && includesExtended(input.options)) tempos.push(...scopeTempos(data.get(state.id)!, input, skip ? excluded : undefined));
+    if (skip) continue;
     bars.push(...readPart(data.get(state.id)!, state, input, selection, root.range));
   }
   return [bars, root.range];
@@ -932,6 +971,7 @@ interface StreamingPart {
 /** Incrementally build partwise music while preserving the document offsets and root validation of timewise scores. */
 export function musicXMLReader(size: number, asText: boolean, input: Input, options: MusicXMLOptions) {
   const form: Boundaries = new Map();
+  const excluded: ExcludedSpans | undefined = options.selection?.parts && options.targetProfile === 'expressive' ? new Map() : undefined;
   const resolved = new Map<string, Measure[]>(),
     tempos: GlobalTempo[] = [];
   let registry: Map<string, PartState> | undefined;
@@ -964,6 +1004,8 @@ export function musicXMLReader(size: number, asText: boolean, input: Input, opti
       input.context = {part:current.state.id, measure:node.attributes.number};
       collectForm(node.children, ordinal, form, first, input);
     }
+    if (excluded && !current.selected && ordinal >= first && ordinal <= last)
+      observeSpan(record, ordinal, current.divisions, excluded);
     if (selection && includesExtended(options) && ordinal <= last)
       current.divisions = measureTempos(record, ordinal, current.divisions, tempos, input);
     if (!current.selected || ordinal > last) return;
@@ -1010,7 +1052,24 @@ export function musicXMLReader(size: number, asText: boolean, input: Input, opti
       registry,
       tempos,
       form,
+      excluded,
     );
+    // Some orchestral editions write a cadenza as an extended bar under the original time signature.
+    // Independent part cursors must corroborate that span before we emit an unmetered fragment.
+    if (bars.some(bar => bar.fragment && bar.fragment.compare(new Time(bar.beats, bar.beatType)) > 0)) {
+      const staves = [...groupStaves(bars).values()];
+      for (const staff of staves) for (const [index, bar] of staff.entries()) {
+        if (!bar.fragment || bar.fragment.compare(new Time(bar.beats, bar.beatType)) <= 0) continue;
+        const ordinal = first + index;
+        const omitted = excluded?.has(ordinal);
+        if ((!omitted && !staves.some(other => other[0].part !== bar.part)) ||
+            (omitted && excluded!.get(ordinal)?.compare(bar.extent) !== 0) ||
+            staves.some(other => !other[index] || other[index].extent.compare(bar.extent))) {
+          input.context = { part: bar.part, measure: bar.label };
+          input.fail('timing', 'Events exceed the active meter without matching spans in other parts.', bar.range ?? range);
+        }
+      }
+    }
     if (form.size) {
       const staves = groupStaves(bars);
       const reference = staves.values().next().value!;

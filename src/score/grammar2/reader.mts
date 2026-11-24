@@ -79,9 +79,9 @@ const durationPattern = /^:(w|h|q|1|2|4|8|16|32|64|128|256)(\.{0,2})$/;
 const notePattern = /^[A-G](?:bb|##|b|#|n)?[0-9]$/;
 const positionPattern = /^(x|0|[1-9]\d?)\/([1-8])$/;
 const builtInMarks = new Set([
-  'sustain', 'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'diagram', 'line', 'ink', 'label',
+  'velocity', 'sustain', 'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'diagram', 'line', 'ink', 'label',
   'tap', 'vibrato', 'brush', 'roll', 'stroke', 'rasgueado', 'symbol', 'write', 'staccato', 'fermata',
-  'dynamic', 'harmony', 'onStaff', 'sharedStem', 'pedal', 'ossia', 'grace', 'ornament', 'verse', 'gliss', 'release', 'articulation', 'lyric', 'bend', 'prebend', 'finger',
+  'stem', 'dynamic', 'harmony', 'onStaff', 'sharedStem', 'pedal', 'ossia', 'grace', 'ornament', 'verse', 'gliss', 'release', 'articulation', 'lyric', 'bend', 'prebend', 'finger',
 ]);
 const standardDrums = ['kick', 'snare', 'hat'];
 function isPartKind(name: string): name is PartKind {
@@ -163,7 +163,7 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
   }
 
   function isEventMark(mark: HeadMark | EventMark): mark is EventMark {
-    return ['spanEndpoint','dynamic','harmony','onStaff','sharedStem','pedal','ossia','grace','ornament','slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'diagram', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
+    return ['spanEndpoint','stem','dynamic','harmony','onStaff','sharedStem','pedal','ossia','grace','ornament','slash', 'line', 'accent', 'symbol', 'lyric', 'frame', 'diagram', 'ink', 'label', 'tap', 'vibrato', 'stroke', 'brush', 'roll', 'rasgueado'].includes(mark.kind);
   }
 
   /** JSON quoting handles embedded punctuation and escaped quotes in musical text. */
@@ -296,7 +296,14 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
     }
     if (mark.text === 'tieStart' || mark.text === 'tieEnd') {
       const name = identifier();
-      return { kind: mark.text, name, range: range() };
+      const side = mark.text === 'tieStart' && (peek() === 'above' || peek() === 'below') ? take().text as 'above' | 'below' : undefined;
+      return { kind: mark.text, name, ...(side && { side }), range: range() };
+    }
+    if (mark.text === 'velocity') {
+      const token = take();
+      if (!/^(?:0|[1-9]\d{0,2})$/.test(token.text) || Number(token.text) > 127)
+        error('Expected an integer MIDI velocity from 0 to 127', token);
+      return { kind: 'velocity', value: Number(token.text), range: range() };
     }
     if (mark.text === 'sustain') {
       const token = take();
@@ -365,6 +372,11 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
       const position = peek() === 'below' ? 'below' : 'above';
       if (peek() === 'below' || peek() === 'above') take();
       return { kind: 'sign', code, position, range: range() };
+    }
+    if (mark.text === 'stem') {
+      const value = take();
+      if (value.text !== 'up' && value.text !== 'down') error('Expected stem up or down', value);
+      return { kind: 'stem', value: value.text as 'up' | 'down', range: range() };
     }
     if (mark.text === 'dynamic') {
       const value = take();
@@ -969,6 +981,11 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
           if (field.text === 'font') {
             if (value.text !== 'Petaluma' && value.text !== 'Bravura') error('Expected Petaluma or Bravura', value);
             layout!.font = value.text;
+            continue;
+          }
+          if (field.text === 'stemPolicy') {
+            if (value.text !== 'pitch' && value.text !== 'activeVoices') error('Expected pitch or activeVoices', value);
+            layout!.stemPolicy = value.text as 'pitch' | 'activeVoices';
             continue;
           }
           if (field.text === 'spacing') {

@@ -102,19 +102,14 @@ for (let seed = 1; seed <= 64; seed++) {
 const crossBarBeam = "{ \\time 2/4 c'4. d'8[( | e'8] f') g'4 | a'8[ b'] c''4 | }";
 for (const mode of ['strict', 'partial']) {
   const result = importLilyPond(crossBarBeam, { targetProfile: 'expressive', mode });
-  assert.equal(result.diagnostics.length, 1);
-  assert.equal(crossBarBeam.slice(...result.diagnostics[0].range), ']');
-  if (mode === 'strict') {
-    assert.equal(result.status, 'failed');
-    assert.equal(result.documents.length, 0);
-    continue;
-  }
-  assert.equal(result.status, 'partial');
+  assert.equal(result.status, 'exact');
+  assert.equal(result.target.minimumVersion, '6.6.0');
   const voice = parseScore(result.documents[0].text).parts[0].staves[0].voices[0];
   assert.deepEqual(voice.events.map(event => event.heads[0].pitch), ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5']);
   assert.deepEqual(voice.events.map(event => event.duration), ['3/8','1/8','1/8','1/8','1/4','1/8','1/8','1/4']);
   assert.equal(voice.spans.filter(span => span.kind === 'slur').length, 1);
   assert.equal(voice.spans.filter(span => span.kind === 'beam').length, 1);
+  assert.equal(voice.spans.filter(span => span.kind === 'continuousBeam').length, 1);
 }
 
 // Both readers use the same counted-repeat writer. The written body occurs exactly once.

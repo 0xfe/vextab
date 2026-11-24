@@ -14,8 +14,8 @@ export type ExpansionFrame = { range: TextRange } & (
   { pattern: string } | { iteration: number } | { tuplet: string }
 );
 
-/** Fingering, technique and sounding duration (whole notes) belong to an individual head. */
-export type HeadMark = { kind: 'sustain'; duration: string; range: TextRange } | { kind: 'tieStart' | 'tieEnd'; name: string; range: TextRange } | { kind: 'write'; pitch: string; range: TextRange } | { kind: 'sign'; code: string; position: 'above' | 'below'; range: TextRange } | { kind: 'bend'; semitones: number; rise: [number, number]; hold?: [number, number]; release?: [number, number]; range: TextRange } |
+/** Fingering, technique, velocity and sounding duration (whole notes) belong to an individual head. */
+export type HeadMark = { kind: 'velocity'; value: number; range: TextRange } | { kind: 'sustain'; duration: string; range: TextRange } | { kind: 'tieStart' | 'tieEnd'; name: string; side?: 'above' | 'below'; range: TextRange } | { kind: 'write'; pitch: string; range: TextRange } | { kind: 'sign'; code: string; position: 'above' | 'below'; range: TextRange } | { kind: 'bend'; semitones: number; rise: [number, number]; hold?: [number, number]; release?: [number, number]; range: TextRange } |
   { kind: 'slideIn' | 'slideOut'; side: 'above' | 'below'; range: TextRange } |
   { kind: 'prebend'; semitones: number; release: boolean; range: TextRange } |
 { kind: 'release'; hold: [number, number]; release: [number, number]; range: TextRange } |
@@ -35,6 +35,7 @@ export interface SpanEndpoint {
   hairpin?: 'crescendo' | 'diminuendo'; side?: 'above' | 'below'; niente?: boolean; range: TextRange;
 }
 export type EventMark = SpanEndpoint |
+  { kind: 'stem'; value: 'up' | 'down'; range: TextRange } |
   { kind: 'dynamic'; value: Dynamic; range: TextRange } |
   { kind: 'harmony'; root: string; quality: string; bass?: string; range: TextRange } |
   { kind: 'onStaff'; hand: 'upper' | 'lower'; range: TextRange } |
@@ -110,7 +111,10 @@ export interface InstrumentIdentity { id?: string; name?: string; shortName?: st
 export interface ScoreStaff extends Omit<InstrumentIdentity, 'name'> { staffChanges?: StaffChange[]; displayName?: string; name: StaffName; range: TextRange; voices: ScoreVoice[] }
 /** Optional front matter shared by the screen engraving and its printed edition. */
 export interface ScoreHeading { align?: 'center'; title?: string; dedication?: string; tempo?: string; composer?: string }
-export interface ScoreLayout { font?: 'Bravura' | 'Petaluma'; heading?: ScoreHeading; spacing?: 'optical'; firstSystemIndent?: number; width?: number; scale?: number; rowGap?: number; staffDistance?: number; top?: number }
+export interface ScoreLayout {
+  /** Pitch-driven stems leave neutral attacks to the native note and beam defaults in every voice. */
+  stemPolicy?: 'pitch' | 'activeVoices';
+  font?: 'Bravura' | 'Petaluma'; heading?: ScoreHeading; spacing?: 'optical'; firstSystemIndent?: number; width?: number; scale?: number; rowGap?: number; staffDistance?: number; top?: number }
 /** Instrument declarations apply to every voice of the part. */
 export interface PartSettings {
   staffChanges?: StaffChange[];

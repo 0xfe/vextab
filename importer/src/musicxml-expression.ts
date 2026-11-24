@@ -38,6 +38,7 @@ interface HeadInfo {
   start: boolean;
   stop: boolean;
   gestures: GestureEdge[];
+  stopSide?: HeadDetail['tieSide'];
 }
 interface Extension {
   verse: string;
@@ -113,7 +114,7 @@ function lyric(node: Element, e: Event, state: NotationState, input: Input) {
   if (words.length) {
     if (e.kind === 'skip' || words.some((w) => !w.text.trim()))
       return input.omit('Empty lyric or lyric without a visible note or rest.', node.range);
-    if (e.kind === 'rest') input.minimumVersion = '6.5.0';
+    if (e.kind === 'rest') input.requireVersion('6.5.0');
     const elisions = node.children.filter((c) => c.name === 'elision');
     for (const child of [...words, ...elisions]) attributesExcept(child, [], input);
     if (words.length > 2 || (words.length === 2 && elisions.length !== 1))
@@ -177,6 +178,19 @@ export function noteMarks(
   isDrum: boolean,
   marks: Element | undefined,
 ) {
+  const raw = node.attributes.dynamics;
+  if (raw !== undefined) {
+    // MusicXML expresses velocity as a percentage of the default forte velocity, 90.
+    const value = raw.trim();
+    if (!/^\+?(?:\d+(?:\.\d*)?|\.\d+)$/.test(value))
+      input.fail('syntax', 'Expected a nonnegative MusicXML dynamics percentage.', node.range);
+    const velocity = Math.round(Number(value) * 90 / 100);
+    if (!e.pitch) input.omit('Omitted velocity on a rest.', node.range);
+    else {
+      if (velocity > 127) input.omit('Clipped note velocity to MIDI maximum 127.', node.range);
+      headDetail(e).velocity = Math.min(127, velocity);
+    }
+  }
   function metadata() {
     if (!e.pitch)
       return input.fail('unsupported', 'A head-specific mark needs a pitch or instrument position.', node.range);
@@ -190,10 +204,24 @@ export function noteMarks(
   }
   for (const mark of [...node.children.filter((c) => c.name === 'tie'), ...(marks?.children ?? [])]) {
     if (mark.name === 'tie' || mark.name === 'tied') {
-      attributesExcept(mark, ['type', 'number'], input);
+      const notated = mark.name === 'tied';
+      attributesExcept(mark, notated ? ['type', 'number', 'placement', 'orientation'] : ['type', 'number'], input);
       const info = metadata();
-      if (mark.attributes.type === 'start') info.start = true;
-      else if (mark.attributes.type === 'stop') info.stop = true;
+      let placement = side(mark, input);
+      const arch = mark.attributes.orientation;
+      if (arch) {
+        const sideFromArch = arch === 'over' ? 'above' : arch === 'under' ? 'below' : undefined;
+        if (!sideFromArch || (placement && placement !== sideFromArch))
+          input.omit('Omitted independent tie orientation.', mark.range);
+        placement ??= sideFromArch;
+      }
+      if (mark.attributes.type === 'start') {
+        info.start = true;
+        if (placement) headDetail(e).tieSide = placement;
+      } else if (mark.attributes.type === 'stop') {
+        info.stop = true;
+        if (placement) info.stopSide = placement;
+      }
       else input.fail('unsupported', 'Unsupported tie boundary.', mark.range);
     } else if (mark.name === 'slur') {
       attributesExcept(mark, ['type', 'number', 'placement'], input);
@@ -248,7 +276,14 @@ export function noteMarks(
       else input.omit('Accidental glyph differs from written pitch.', child.range);
       attributesExcept(child, [], input);
     }
-    if (!isDrum && ['stem', 'notehead', 'instrument'].includes(child.name)) omitElement(child, input);
+    if (child.name === 'stem' && !isDrum) {
+      const stem = child.text.trim();
+      if (e.pitch && (stem === 'up' || stem === 'down')) {
+        attributesExcept(child, [], input);
+        expression(e).stem = stem;
+      } else omitElement(child, input);
+    }
+    if (!isDrum && ['notehead', 'instrument'].includes(child.name)) omitElement(child, input);
   }
 }
 /** An after-grace steals from the preceding principal. A before-grace waits for its following principal. */
@@ -333,6 +368,11 @@ export function appendHead(first: Event, head: Event, state: NotationState, inpu
     (first.headDetails ??= Array.from({ length: first.pitches?.length ?? 1 }, () => ({}))).push(detail);
   }
   if (head.expression) {
+    if (head.expression.stem) {
+      if (first.expression?.stem && first.expression.stem !== head.expression.stem)
+        input.fail('unsupported', 'Conflicting stem directions on one chord.', head.range);
+      expression(first).stem = head.expression.stem;
+    }
     for (const s of head.expression.spans ?? []) span(first, s);
     if (head.expression.lyrics) (expression(first).lyrics ??= []).push(...head.expression.lyrics);
     if (head.expression.articulations)
@@ -357,6 +397,7 @@ interface TiePoint {
   range: TextRange;
   voice: string;
   bar: Measure;
+  stopSide?: HeadDetail['tieSide'];
 }
 type TiePoints = Map<string, {starts: TiePoint[]; stops: TiePoint[]}>;
 
@@ -364,6 +405,11 @@ type TiePoints = Map<string, {starts: TiePoint[]; stops: TiePoint[]}>;
 function connectTies(points: TiePoints, input: Input) {
   for (const {starts, stops} of points.values()) {
     const connect = (start: TiePoint, stop: TiePoint) => {
+      if (start.detail.tieSide && stop.stopSide && start.detail.tieSide !== stop.stopSide) {
+        context(input, stop.bar, stop.voice);
+        input.omit('Omitted change of tie side at its endpoint.', stop.range);
+      }
+      start.detail.tieSide ??= stop.stopSide;
       stop.detail.tieEndId = start.detail.tieStartId = 't' + start.range[0];
       starts.splice(starts.indexOf(start), 1);
       stops.splice(stops.indexOf(stop), 1);
@@ -410,7 +456,7 @@ function resolveHeads(events: VoiceEvent[], voice: string, state: NotationState,
         const key = JSON.stringify([bar.staff, position.numerator + '/' + position.denominator, p!.step, p!.alter, p!.octave, detail.string, detail.drum]);
         const entry = ties.get(key) ?? {starts: [], stops: []};
         if (!ties.has(key)) ties.set(key, entry);
-        entry[start ? 'starts' : 'stops'].push({detail, range, voice, bar});
+        entry[start ? 'starts' : 'stops'].push({detail, range, voice, bar, stopSide: info!.stopSide});
       }
       if (info.stop) endpoint(at, false);
       if (info.start) endpoint(at.plus(detail.releaseAfter ?? event.elapsed), true);

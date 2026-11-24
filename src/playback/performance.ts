@@ -199,6 +199,7 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
   const prior = new Map(score.ties.map(tie => [tie.to + ':' + tie.toHead, tie]));
   const sounding = new Map<string, { note: PlaybackNote; start: number; barNumber:number; writtenEnd:number }>();
   const expressive = !!take && !take.literal;
+  let hasSilentHeads = false;
   const { tempi, tempoChanges, velocities } = expression(score, tempo, expressive);
   const slurEnds = new Set((score.spans ?? []).filter(s => s.kind === 'slur').map(s => s.to));
   const tremolos = new Map((score.spans ?? []).filter(span => span.kind === 'tremolo').map(span => [span.from, span]));
@@ -311,8 +312,14 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
               if (!note.bend && !attack.grace && !attack.ornament && head.marks.some(m => m.articulation === 'a.'))
                 note.duration *= .58;
             }
+            if (head.velocity !== undefined) {
+              note.velocity = head.velocity;
+              note.fixedVelocity = true;
+              if (head.velocity === 0) hasSilentHeads = true;
+            }
             if (score.program !== undefined) note.program = score.program;
-            notes.push(note); sounding.set(id, { note, start: time, barNumber: number, writtenEnd: time + headDuration });
+            notes.push(note);
+            sounding.set(id, { note, start: time, barNumber: number, writtenEnd: time + headDuration });
           }
         }
       });
@@ -339,6 +346,8 @@ export function scorePerformance(score: ParsedScore, tempo: number, mark?: (id: 
     const share = word.graceShare ?? (grace && take?.graceFraction(event.time, event.duration, grace.pitches.length, grace.slash));
     return decorateAttack(event, word.attack, word.key, share);
   }) : events;
+  // Zero-velocity principals still own their ties and ornaments, but MIDI Note On 0 is a note-off.
+  if (hasSilentHeads) for (const event of sounded) event.notes = event.notes.filter(note => note.velocity !== 0);
   sounded.sort((a,b) => a.time - b.time);
   liftAll(bar);
   sustainNotes(sounded, windows, expressive);

@@ -190,7 +190,8 @@ export function treeReader(
       if (
         selection &&
         barEnd &&
-        (ordinal < first || (selected && !selected.has(part))) &&
+        // Expressive selections can use another part's clock to confirm a cadenza.
+        (ordinal < first || (input.options.targetProfile !== 'expressive' && selected && !selected.has(part))) &&
         !current.children.some(
           (c) =>
             (c.name === 'attributes' && c.children.some((a) => a.name !== 'divisions')) ||

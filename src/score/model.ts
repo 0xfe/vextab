@@ -21,6 +21,8 @@ export interface Head {
   marks?: HeadMark[]; // Bracketed fingering or accent attached to this head.
   /** Explicit sounding length for this head, in whole notes. The attack keeps its written rhythm. */
   sustain?: string;
+  /** Explicit Note On velocity on this head. A zero head occupies its written time silently. */
+  velocity?: number;
   tiedBendStart?: boolean;
   glissFrom?: number;
   release?: { hold: [number, number]; release: [number, number] };
@@ -44,6 +46,8 @@ export interface VerseSyllable {
   crossConnector?: boolean;
 }
 export interface Attack {
+  /** Per-attack notation direction takes precedence over the voice default. */
+  stem?: 'up' | 'down';
   writtenClef?: string;
   activeKey?: string;
   verses?: VerseSyllable[];
@@ -149,6 +153,8 @@ export interface Measure {
 
 /** Endpoints identify particular chord members, even across a measure boundary. */
 export interface Tie {
+  /** Source-authored notation arc, independent of the voice and stem defaults. */
+  side?: 'above' | 'below';
   bend?: import('vexflow').TiedBend;
   string?: number;
   id: string;

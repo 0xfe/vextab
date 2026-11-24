@@ -25,10 +25,12 @@ function fraction(time: Time) {
 /** Head-specific marks stay inside the chord so a tie or fingering never affects a neighboring note. */
 export function headMarks(head: HeadDetail, names: Names) {
   const marks: string[] = [];
+  if (head.velocity !== undefined) marks.push('velocity ' + head.velocity);
   if (head.tieStop && !head.tieEndId) marks.push('tie');
   if (head.tieEndId) marks.push('tieEnd ' + names.get('tie', head.tieEndId));
-  for (const id of head.tieStartIds ?? []) marks.push('tieStart ' + names.get('tie',id));
-  if (head.tieStartId) marks.push('tieStart ' + names.get('tie', head.tieStartId));
+  const side = head.tieSide ? ' ' + head.tieSide : '';
+  for (const id of head.tieStartIds ?? []) marks.push('tieStart ' + names.get('tie', id) + side);
+  if (head.tieStartId) marks.push('tieStart ' + names.get('tie', head.tieStartId) + side);
   if (head.string !== undefined && (head.fret === undefined || head.stringSide))
     marks.push('stringNumber ' + head.string + (head.stringSide ? ' ' + head.stringSide : ''));
   if (head.finger) marks.push('finger ' + head.finger.value + ' ' + head.finger.side);
@@ -42,6 +44,7 @@ export function headMarks(head: HeadDetail, names: Names) {
 /** Preserve syllabification, verse identity and original lyric text independently. */
 export function eventMarks(expression: Expression, names: Names) {
   const marks: string[] = [];
+  if (expression.stem) marks.push('stem ' + expression.stem);
   if (expression.label !== undefined) marks.push('label ' + JSON.stringify(expression.label));
   for (const lyric of expression.lyrics ?? []) {
     const fields = [

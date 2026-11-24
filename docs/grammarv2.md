@@ -409,6 +409,8 @@ Read `result.diagnostics` for source ranges and `result.publication.pages` for s
 | `C4[harmony C "m7" bass Bb]` | Specify root, quality and optional slash bass. Score transposition spells both pitches. |
 | `crescendo niente { :q C4[dynamic p] D4 E4 F4[dynamic f] }` | Draw a native hairpin. `niente` marks the closed end. Dynamics range from ppp through fff. Diminuendos use the same syntax. |
 | `E4[harmony C "m7", diagram (x 3 1 3 1 3) barre=1/4..2]` | Draw an independent low-to-high guitar grip for the chord above a melody note or rest. Only the written notes sound. A `frame` requires the chord’s actual frets and strings. |
+| `layout { stemPolicy pitch }` | Let the native note and beam choose neutral stems from the pitches. The default `activeVoices` separates overlapping voices. Explicit stems take precedence in either policy. |
+| `C4[stem up]` and `(C4 E4)[stem down]` | Give one note or chord an explicit stem direction. Other attacks keep the voice default. An outgoing named tie can independently take a side, as in `C4[tieStart held below]`. |
 | `Ab3[onStaff lower]` and `C5[sharedStem opening]` | In a piano part, move a written note or rest to the named hand’s stave. A shared stem joins simultaneously marked upper and lower notes with the same name. The original hand retains playback and source ownership. |
 | `continuousBeam { :8 C5 D5 E5 F5 }` and `feather right { :16 C5 D5 E5 F5 }` | Carry a beam across bars or systems, or fan a single-bar group toward the specified end. A feathered beam preserves the authored durations. |
 | `tuplet 3:2 { :q C5 tuplet 3:2 { :8 D5 E5 F5 } :q G5 }` | Multiply each nested ratio on the voice clock. The example occupies one half note. |
@@ -442,8 +444,11 @@ Here C4 sounds for two beats. E4 releases after half a beat. The slur
 ends on the third beat, and the crescendo reaches forte on the fourth.
 Use `diminuendoStart` for a falling hairpin. Slur, beam and hairpin names
 are local to a voice. `beamStart group` and `beamEnd group` join short
-events in one measure, including notes moved with `onStaff`. A named
-beam can start outside a tuplet and end inside it.
+events, including a group that starts outside a tuplet and ends inside it.
+Within one measure, a named beam can include rests or notes moved with
+`onStaff`. Across a barline, it becomes a continuous beam. Its attacks must
+stay on their owning notation staff and their fixed stems must agree. The
+engraver splits this beam into connected pieces at system breaks.
 
 Use `F4[grace before slashed steal=1/5 (D4 E4)]` to assign one fifth
 of F4's time to the grace group. `grace after` takes time at the end
@@ -465,6 +470,12 @@ await player.play();
 ```
 
 Written order is the default. Performed order revisits repeat bodies and selects successive endings. Equal bar grids share an authored repeat across instruments. Repeated attacks retain their written source IDs. A display staff, printed cue or paired guitar TAB adds no playback voice.
+
+An individual head can carry an integer MIDI velocity from 0 through 127. In
+`(C4[velocity 60] E4[velocity 95])`, the player sounds E more strongly than C.
+A zero leaves a visible, silent head. The authored velocity survives accents,
+hairpins, and performer chord balancing. A tied continuation keeps the original
+attack and its velocity.
 
 Dynamics set attack velocity. Hairpins interpolate between endpoint velocities in their own voice. An unmarked open end uses a 24-step change and niente uses the softest sounding velocity. Glissandi and tied bends supply timed pitch ramps to the playback plugin. Grace pitches share a quarter of the principal attack’s time. The five ornamental signs use short diatonic figures in the written key and resolve to the principal. These are playback interpretations of unmeasured signs. [Complete musical examples and controls](../issues/199/README.md)
 

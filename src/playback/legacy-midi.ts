@@ -9,7 +9,7 @@ export function legacyMidiPlayback(instrument: string, url: string, cache: Recor
       MIDI.programChange(0, program);
       return {
         playNote(note) {
-          MIDI.noteOn(0, note.pitch, literal ? 127 : note.velocity, 0);
+          MIDI.noteOn(0, note.pitch, literal && !note.fixedVelocity ? 127 : note.velocity, 0);
           MIDI.noteOff(0, note.pitch, note.duration);
         },
         stop() { /* MIDI.js owns the scheduled releases. */ },

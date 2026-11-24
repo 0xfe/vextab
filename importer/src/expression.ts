@@ -22,12 +22,16 @@ export interface Drum {
 export type Instrument = Guitar | { kind: 'drums'; map: Drum[] };
 /** Head details index the authored pitches or drum positions in their original order. */
 export interface HeadDetail {
+  /** Authored MIDI Note On velocity, including a silent zero. */
+  velocity?: number;
   string?: number;
   stringSide?: Side | 'left' | 'right';
   fret?: number | 'x';
   drum?: string;
   tieStop?: boolean;
   tieStartId?: string;
+  /** Engrave an outgoing tie on the source's chosen side, regardless of stem direction. */
+  tieSide?: Side;
   /** Additional destinations reached on alternate volta passes. */
   tieStartIds?: string[];
   tieEndId?: string;
@@ -55,6 +59,8 @@ export interface Syllable {
 }
 /** Attach expression to a measured event, keeping all literal strings separate from grammar tokens. */
 export interface Expression {
+  /** Explicit written stem direction for this attack. */
+  stem?: 'up' | 'down';
   label?: string;
   lyrics?: Syllable[];
   harmony?: { root: string; quality: string; bass?: string };

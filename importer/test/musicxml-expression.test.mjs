@@ -175,3 +175,59 @@ test('streaming partwise and timewise selection retain the same inherited state 
     assert.equal(result.documents.length, 0);
   }
 });
+
+test('numerical dynamics belong to individual heads and one direction controls the written chord', () => {
+  const authored = (letter, percentage, extra = '', prefix = '') =>
+    note(letter, extra, prefix).replace('<note>', '<note dynamics="' + percentage + '">');
+  const source = score(authored('C', '0') + authored('E', '132.22', '<stem>down</stem>', '<chord/>') +
+    authored('F', '100') + authored('G', '54.44'));
+  const result = importMusicXML(source, expressive);
+  assert.equal(result.status, 'exact', JSON.stringify(result.diagnostics));
+  assert.equal(result.target.minimumVersion, '6.6.0');
+  assert.match(result.documents[0].text, /\(C4\[velocity 0\] E4\[velocity 119\]\)\[stem down\] F4\[velocity 90\] G4\[velocity 49\]/);
+  assert.equal(importMusicXML(source, {targetProfile: 'extended'}).status, 'failed');
+  const clipped = importMusicXML(score(authored('C', '200')), {...expressive, mode: 'partial'});
+  assert.equal(clipped.status, 'partial');
+  assert.match(clipped.documents[0].text, /velocity 127/);
+  assert.ok(clipped.diagnostics.some(d => d.message.includes('Clipped note velocity')));
+  for (const value of ['-1', '1e2', 'NaN', '']) {
+    const malformed = score(authored('C', value));
+    const error = importMusicXML(malformed, expressive).diagnostics.at(-1);
+    assert.equal(error.code, 'syntax');
+    assert.match(malformed.slice(...error.range), /^<note/);
+  }
+  const opposing = score(note('C', '<stem>down</stem>') + note('E', '<stem>up</stem>', '<chord/>'));
+  assert.match(importMusicXML(opposing, expressive).diagnostics.at(-1).message, /Conflicting stem directions/);
+});
+
+test('overlong bars require independent part cursors to agree under the written meter', () => {
+  const long = score(note('C').repeat(5));
+  const two = other => long.replace('</part-list>', '<score-part id="B"><part-name>Oboe</part-name></score-part></part-list>')
+    .replace('</score-partwise>', '<part id="B"><measure number="1"><attributes><divisions>2</divisions></attributes>' + other + '</measure></part></score-partwise>');
+  const result = importMusicXML(two(note('D').repeat(5)), expressive);
+  assert.equal(result.status, 'exact', JSON.stringify(result.diagnostics));
+  assert.equal((result.documents[0].text.match(/fragment \{/g) ?? []).length, 2);
+  const selected = {...expressive, selection: {parts: ['B']}};
+  assert.equal(importMusicXML(two(note('D').repeat(5)), selected).status, 'exact');
+  assert.equal(importMusicXML(two(note('D').repeat(4)), {...expressive, selection: {parts: ['P']}}).status, 'failed');
+  for (const source of [long, two(note('D').repeat(4))]) {
+    const error = importMusicXML(source, expressive).diagnostics.at(-1);
+    assert.equal(error.code, 'timing');
+    assert.equal(error.measure, '1');
+    assert.match(source.slice(...error.range), /^<measure/);
+  }
+});
+
+test('notated tie placement can be supplied at either endpoint', () => {
+  const tied = (start, end) => score(note('C', mark('<tied type="start" ' + start + '/>')) +
+    note('C', mark('<tied type="stop" ' + end + '/>')));
+  for (const [start, end, side] of [['placement="above" orientation="over"', '', 'above'], ['', 'orientation="under"', 'below']]) {
+    const result = importMusicXML(tied(start, end), expressive);
+    assert.equal(result.status, 'exact');
+    assert.equal(result.target.minimumVersion, '6.6.0');
+    assert.match(result.documents[0].text, new RegExp('tieStart [a-z0-9]+ ' + side));
+  }
+  const result = importMusicXML(tied('placement="above"', 'placement="below"'), {...expressive, mode: 'partial'});
+  assert.equal(result.status, 'partial');
+  assert.ok(result.diagnostics.some(d => d.message.includes('change of tie side')));
+});

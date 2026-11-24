@@ -119,7 +119,8 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     event.heads.forEach((head, i) => sources.project(staff, event.id + '-head-' + i, head.range));
     const destination = measure.state.piano ? event.displayHand : undefined;
     const crossingStem = crossingStems.get(event);
-    const rhythm = { duration: event.base, dots: event.dots, stemDirection: crossingStem ?? stemDirection,
+    const writtenStem = event.stem === 'up' ? 1 : event.stem === 'down' ? -1 : undefined;
+    const rhythm = { duration: event.base, dots: event.dots, stemDirection: writtenStem ?? crossingStem ?? stemDirection,
       headSource: { event: event.id } };
     if (event.silent) return { id, skip: rhythm };
     if (!event.heads.length) {
@@ -129,7 +130,7 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
       return { id, ...(destination && { stave: destination }), note: { ...rhythm, keys: ['r/4'], clef: 'treble', type: 'r', restLine } };
     }
     if (event.heads[0].drum) {
-      const hit = (measure.state.kit ?? drumKit).note(event.heads.map(head => head.drum), event.base, direction);
+      const hit = (measure.state.kit ?? drumKit).note(event.heads.map(head => head.drum), event.base, event.stem ?? direction);
       return { id, note: { ...hit, dots: event.dots, headSource: rhythm.headSource } };
     }
     const notation = guitarNotation(event, instrument);
@@ -151,11 +152,11 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
       return { key: keys[i], ...(finger && { fingering: { finger: finger.finger, position: finger.position } }),
         ...(head.accidental && { accidental: head.cautionary ? 'cautionary' as const : 'force' as const }) };
     });
-    const note = { ...rhythm, heads, notation, clef: writtenClef, type: event.slash ? 's' : 'n', autoStem: !direction && crossingStem === undefined };
+    const note = { ...rhythm, heads, notation, clef: writtenClef, type: event.slash ? 's' : 'n', autoStem: rhythm.stemDirection === undefined };
     if (event.tremolo) {
       // Decide once before layout. An automatic second endpoint can otherwise flip across the middle line.
       if (pairStem === undefined) {
-        pairStem = stemDirection ?? new StaveNote({ ...note, autoStem: true }).getStemDirection();
+        pairStem = rhythm.stemDirection ?? new StaveNote({ ...note, autoStem: true }).getStemDirection();
         note.stemDirection = pairStem;
       } else {
         note.stemDirection = pairStem;
@@ -183,7 +184,8 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     // Explicit beams in this voice/bar own their stems alongside the alternating strokes.
     autoBeam: !voice.events.some(e => e.tremolo) && voice.beams && (staff !== 'tab' || voice.tabStems) && {
       groups: voice.beatGroups?.map(n => new Fraction(n, Number(measure.state.meter.split('/')[1]))),
-      stemDirection, flatBeams: voice.flatBeams, beamRests: voice.beamRests, showStemlets: voice.stemlets, beamMiddleOnly: voice.middleRests },
+      // A global direction makes the native auto-beamer overwrite per-note exceptions.
+      stemDirection: voice.events.some(event => event.stem) ? undefined : stemDirection, flatBeams: voice.flatBeams, beamRests: voice.beamRests, showStemlets: voice.stemlets, beamMiddleOnly: voice.middleRests },
     // The native group resolves one stem side across the middle line and preserves an authored direction.
     beams: staff === 'tab' && !voice.tabStems ? [] : voice.beamGroups?.map(group => ({
       start: group.start, count: group.end - group.start + 1, flatBeams: voice.flatBeams,
@@ -244,7 +246,8 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
   const notationTieSides = new Map<string, 'above' | 'below'>();
   const mixedEndings: ScoreSpan[] = [];
   const spec: EasyScoreCompositionSpec = {
-    stemPolicy: 'active-voices', accidentals: 'key-aware', graceAccidentals: 'ordered', sheet: { width, x: 10, y: parsed.layout?.top ?? 14, rowGap: parsed.layout?.rowGap ?? 36,
+    stemPolicy: parsed.layout?.stemPolicy === 'pitch' ? undefined : 'active-voices',
+    accidentals: 'key-aware', graceAccidentals: 'ordered', sheet: { width, x: 10, y: parsed.layout?.top ?? 14, rowGap: parsed.layout?.rowGap ?? 36,
       ...(parsed.layout?.spacing && { measurePadding: 18, measureGap: 0 }) },
     system: { ...(parsed.layout?.spacing && { details: { spacing: { mode: parsed.layout.spacing } } }),
       spaceBetweenStaves: parsed.layout?.staffDistance ?? 9 },
@@ -303,7 +306,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
       const from = eventId(staff, tie.from);
       if (!sources.ids[from]) continue;
       spans.push({ kind: 'tie', id: sources.project(staff, tie.id, tie.range), from,
-        to: eventId(staff, tie.to), side: staff === 'tab' ? undefined : notationTieSides.get(tie.from) ?? notationTieSides.get(tie.to),
+        to: eventId(staff, tie.to), side: staff === 'tab' ? undefined : tie.side ?? notationTieSides.get(tie.from) ?? notationTieSides.get(tie.to),
         ...(staff === 'tab' && tie.bend && { bend: tie.bend, string: tie.string }), fromHead: tie.fromHead, toHead: tie.toHead });
     }
   }

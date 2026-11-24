@@ -1,6 +1,6 @@
 # Local importer gallery
 
-Open an edition to read, play or edit the imported VexTab. Each page offers the original input and the converted document for download. The Haydn pages use separate movement selections from the same complete archive. Import notes below each score list the markings the conversion changed or omitted.
+Open an edition to read, play or edit the imported VexTab. Each page offers the original input and the converted document for download. Use the view menu on ensemble pages to switch instruments. Beethoven opens on the first oboe, which carries the cadenza in bar 268. The Haydn pages use separate movement selections from the same complete archive. Import notes below each score list the markings the conversion changed or omitted.
 
 From the repository root, use the Node version in `.nvmrc`, Python 3 and Chrome.
 

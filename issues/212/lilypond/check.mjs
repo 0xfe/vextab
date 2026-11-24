@@ -68,6 +68,24 @@ try {
       assert.equal(order.length,played);
       const targets=part.staves.flatMap(stave=>stave.voices.map(voice=>({stave,voice})));
       assert.equal(targets.length,voices.length);
+      if(name==='bwv846'){
+        // Native voiceOne/Two set ties independently of later stemUp commands in the tenor.
+        assert.equal(result.target.minimumVersion,'6.6.0');
+        assert.deepEqual(targets.map(({voice})=>{
+          const stems=voice.events.filter(e=>e.writtenDuration!=='1/1').flatMap(e=>e.marks.filter(m=>m.kind==='stem').map(m=>m.value));
+          const ties=voice.events.flatMap(e=>e.heads.flatMap(h=>h.marks?.filter(m=>m.kind==='tieStart').map(m=>m.side)??[]));
+          return [stems.filter(s=>s==='up').length,stems.filter(s=>s==='down').length,
+            ties.filter(s=>s==='above').length,ties.filter(s=>s==='below').length];
+        }),[[224,0,9,0],[12,195,0,19],[188,0,13,0],[0,151,0,12]]);
+        const beams=targets.map(({voice})=>voice.spans.filter(s=>s.kind==='continuousBeam').map(span=>
+          [span.first,span.last].map(id=>voice.events.find(e=>e.id===id).bar)));
+        assert.deepEqual(beams,[[[20,21]],[[10,11]],[],[]]);
+        const losses=result.diagnostics.map(d=>source.slice(...d.range)).sort();
+        assert.deepEqual(losses,[
+          '\\voiceOne','\\voiceOne','\\voiceTwo','\\voiceTwo','^\\downmordent','^\\prall','^\\prall',
+          '\\break','\\break','\\break','\\break','\\bar "|."',
+        ].sort());
+      }
       const attacks=new Map(projection.measures.flatMap(m=>m.voices.flatMap(v=>v.events.map(e=>[e.id,e]))));
       const midiTempo=name!=='maple' && selection==='midi'?tempo:undefined;
       assert.equal(model.playback?.tempos?.[1],midiTempo);

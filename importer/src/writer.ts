@@ -77,6 +77,9 @@ class Writer {
 
   event(event: Event, bar: Measure) {
     this.groups(event.tuplets ?? [], event.range);
+    if (event.expression?.stem || event.headDetails?.some(head => head?.velocity !== undefined || head?.tieSide)) {
+      this.input.requireVersion('6.6.0');
+    }
     const dots = event.dots ?? 0;
     if (!Number.isSafeInteger(event.denominator) || event.denominator <= 0 || ![0,1,2].includes(dots))
       this.input.fail('unsupported', 'Invalid written duration.', event.range);
@@ -130,8 +133,8 @@ class Writer {
     const range = bar.range ?? this.range;
     const full = new Time(bar.beats, bar.beatType);
     const length = bar.pickup ?? bar.fragment ?? full;
-    if (!bar.voices.size || bar.extent.compare(length) !== 0 || length.compare(zero) <= 0 || length.compare(full) > 0)
-      this.input.fail('timing', 'Expected one complete measure or a declared short measure.', range);
+    if (!bar.voices.size || bar.extent.compare(length) !== 0 || length.compare(zero) <= 0 || (!bar.fragment && length.compare(full) > 0))
+      this.input.fail('timing', 'Expected one complete measure or an explicitly sized fragment.', range);
     if (bar.pickup && !first) this.input.fail('unsupported', 'Pickup must be the first measure.', range);
     if (bar.ending) this.text += ' ending ' + bar.ending + ' {';
     if (bar.repeatStart) {
@@ -191,7 +194,7 @@ function repeatForms(bars: Measure[], input: Input, range: TextRange) {
         structured.set(i, 'volta');
       } else if (bars[start].repeatStart! > 2) {
         if (input.options.targetProfile !== 'expressive') fail();
-        input.minimumVersion = '6.5.0';
+        input.requireVersion('6.5.0');
         structured.set(start, 'repeatCount');
         structured.set(i, 'repeatCount');
       }
@@ -218,6 +221,10 @@ export function writeScore(bars: Measure[], input: Input, range: TextRange): Imp
   const first = bars[0], writer = new Writer(input, range);
   const meter = (bar: Measure) => bar.beats + '/' + bar.beatType;
   writer.text = 'meter ' + meter(first) + '\n';
+  if (input.pitchStemPolicy) {
+    writer.text += 'layout { stemPolicy pitch }\n';
+    input.requireVersion('6.6.0');
+  }
   if (first.pickup) writer.text += 'pickup ' + first.pickup.numerator + '/' + first.pickup.denominator + '\n';
   const staves: NonNullable<ImportedDocument['staves']> = [];
   const extended = includesExtended(input.options);

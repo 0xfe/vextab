@@ -3,11 +3,34 @@ import type { Expression, Guitar, HeadDetail, Side, SpanPoint } from './expressi
 import { Input, pitch } from './score.js';
 import type { Event, Pitch } from './score.js';
 import type { Token } from './lilypond-source.js';
+import { drumByName } from './lilypond-drums.js';
+
+/** A native continuous beam accepts short notes on their owning notation staff with compatible stems. */
+interface ManualBeam {
+  bar: number;
+  first: Expression;
+  longNote?: boolean;
+  stem?: Expression['stem'];
+  crossBarIssue?: string;
+}
+
+/** Inspect each member once. Local beams can include rests and can cross piano staves. */
+export function trackBeamMember(beam: ManualBeam, event: Event, homeStaff: number) {
+  if (event.denominator < 8) beam.longNote = true;
+  if (!homeStaff) beam.crossBarIssue ??= 'a notation staff is required';
+  if (event.kind !== 'attack') beam.crossBarIssue ??= 'it contains a rest or skip';
+  if (event.staff !== homeStaff) beam.crossBarIssue ??= 'it leaves the owning staff';
+  const drum = event.headDetails?.[0]?.drum;
+  const stem = event.expression?.stem ?? (drum ? drumByName(drum)?.stem : undefined);
+  if (stem && beam.stem && stem !== beam.stem) beam.crossBarIssue ??= 'its stems have opposite directions';
+  if (stem) beam.stem = stem;
+}
 
 /** Active spans can cross each other. Phrasing and ordinary slurs retain separate IDs. */
 export interface Attachments {
-  spans: Map<string, { id: string; kind: SpanPoint['kind']; beamStart?: { bar: number; expression: Expression } }>;
+  spans: Map<string, { id: string; kind: SpanPoint['kind']; beamStart?: ManualBeam }>;
   side?: Side;
+  phrasingSide?: Side;
   fingerSide?: NonNullable<HeadDetail['finger']>['side'];
 }
 export const standardGuitar = (): Guitar => ({
@@ -105,6 +128,7 @@ export function afterNote(
   event: Event,
   state: Attachments,
   bar: number,
+  homeStaff: number,
   input: Input,
   nextID: () => string,
 ): number {
@@ -123,20 +147,27 @@ export function afterNote(
     if (start) {
       if (current) input.fail('unsupported', 'Overlapping LilyPond spans with the same identity.', t.range);
       current = { id: nextID(), kind };
-      if (kind === 'beam') current.beamStart = { bar, expression: x };
+      if (kind === 'beam') {
+        current.beamStart = { bar, first: x };
+        trackBeamMember(current.beamStart, event, homeStaff);
+      }
       state.spans.set(slot, current);
     } else {
       if (!current) input.fail('unsupported', 'Missing start for LilyPond span ' + slot + '.', t.range);
       state.spans.delete(slot);
-      if (current!.beamStart && current!.beamStart.bar !== bar) {
-        // VexTab validates both endpoints against a single bar. Keep the attacks and other spans intact.
-        input.omit('Manual beam across a barline omitted.', t.range);
-        const first = current!.beamStart.expression;
-        first.spans = first.spans!.filter(point => point.id !== current!.id);
-        return;
+      const beam = current!.beamStart;
+      if (beam) {
+        const acrossBars = beam.bar !== bar;
+        const issue = beam.longNote ? 'it contains a quarter note or longer' : beam.first === x ? 'it has one note' : acrossBars && beam.crossBarIssue;
+        if (issue) {
+          input.omit('Manual beam omitted because ' + issue + '.', t.range);
+          beam.first.spans = beam.first.spans!.filter(point => point.id !== current!.id);
+          return;
+        }
+        if (acrossBars) input.requireVersion('6.6.0');
       }
     }
-    (x.spans ??= []).push({ id: current!.id, kind: current!.kind, edge: start ? 'start' : 'stop', side: side ?? state.side });
+    (x.spans ??= []).push({ id: current!.id, kind: current!.kind, edge: start ? 'start' : 'stop', side: side ?? (slot === 'slur' ? state.side : slot === 'phraseSlur' ? state.phrasingSide : undefined) });
   };
   if (value==='\\markup') {
     const block=words[j+1];

@@ -13,6 +13,8 @@ export interface PlaybackNote {
   /** A tie or damper owns the release, so finger articulation must preserve its endpoint. */
   holdRelease?: boolean;
   velocity: number;
+  /** An authored velocity takes precedence over performer dynamics and backend defaults. */
+  fixedVelocity?: true;
   bend?: readonly PitchPoint[];
 }
 

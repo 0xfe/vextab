@@ -107,10 +107,17 @@ class ImportFailure extends Error {}
 export class Input {
   /** A construct may require a newer host than the requested profile's baseline. */
   minimumVersion?: ImportResult['target']['minimumVersion'];
+  /** A source with independent polyphonic voices can request pitch-driven neutral stems. */
+  pitchStemPolicy = false;
   readonly diagnostics: ImportDiagnostic[] = [];
   context: Pick<ImportDiagnostic, 'part' | 'measure' | 'voice'> = {};
   readonly rootFile: string;
   constructor(public file: string, readonly options: ImportOptions) { this.rootFile = file; }
+
+  /** A later repeat or lyric must never lower the version required by an earlier mark. */
+  requireVersion(version: '6.5.0' | '6.6.0') {
+    if (this.minimumVersion !== '6.6.0') this.minimumVersion = version;
+  }
 
   /** A known loss can continue only when the caller selected partial conversion. */
   omit(message: string, range: TextRange) {

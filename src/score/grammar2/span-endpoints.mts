@@ -2,12 +2,13 @@
 import type { ScoreEvent, ScoreVoice, SpanEndpoint, TextRange, ExpansionFrame } from './model.js';
 import type { Fail } from './reader.mts';
 
-/** Scoped and named beams have the same short-note, single-measure contract. */
-export function validateBeam(events: ScoreEvent[], first: number, last: number, range: TextRange, trace: ExpansionFrame[], fail: Fail) {
-  if (first >= last || events[first].bar !== events[last].bar) fail('syntax', 'Beam short notes within one bar', range, trace);
+/** Scoped ordinary beams stay inside one bar. Named endpoints can also describe a continuous beam. */
+export function validateBeam(events: ScoreEvent[], first: number, last: number, range: TextRange, trace: ExpansionFrame[], fail: Fail, continuous = false) {
+  if (first >= last || (!continuous && events[first].bar !== events[last].bar)) fail('syntax', 'Beam short notes within one bar', range, trace);
   for (let i = first; i <= last; i++) {
     const [n, d] = events[i].writtenDuration.split('/').map(Number);
-    if (n * 4 >= d) fail('syntax', 'Beam short notes within one bar', range, trace);
+    if (n * 4 >= d) fail('syntax', 'Beam short notes with written values shorter than a quarter', range, trace);
+    if (continuous && !events[i].heads.length) fail('syntax', 'A continuous beam requires pitched attacks', range, trace);
   }
 }
 
@@ -52,9 +53,14 @@ export function resolveSpanEndpoints(voice: ScoreVoice, fail: Fail): void {
         voice.spans.push({ kind: start.mark.hairpin!, first, last, range, name, niente: start.mark.niente });
       } else {
         if (mark.span === 'beam') {
-          validateBeam(voice.events, start.index, index, mark.range, event.trace, fail);
+          const continuous = voice.events[start.index].bar !== event.bar;
+          validateBeam(voice.events, start.index, index, mark.range, event.trace, fail, continuous);
           claimBeam(start.index, index, mark, event.trace);
           openBeam = false;
+          if (continuous) {
+            voice.spans.push({ kind: 'continuousBeam', first, last, range, name });
+            continue;
+          }
         }
         voice.spans.push({ kind: mark.span, first, last, range, name, side: start.mark.side, strings: [] });
       }

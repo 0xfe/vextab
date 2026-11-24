@@ -15,6 +15,20 @@ function line(count: number, step: number): Performance {
 }
 
 QUnit.module('Performers', () => {
+  QUnit.test('authored head velocities survive dynamics, ties and performer chord balancing', assert => {
+    const source = 'meter 2/4 staff { (C4[velocity 0] E4[velocity 65, tieStart t] G4[velocity 111])[dynamic pp] (E4[velocity 99, tieEnd t] F4[velocity 1]) | }';
+    const score = projectScoreV2(parseScore(source), 0);
+    for (const style of ['robot', 'human'] as const) {
+      const player = createPerformer(style, 42);
+      const performance = scorePerformance(score, 120, undefined, [1], player);
+      const [take] = player.perform([performance]);
+      assert.deepEqual(take.events.flatMap(e => e.notes.map(n => [n.pitch, n.velocity])), [[64, 65], [67, 111], [65, 1]]);
+    }
+    for (const value of ['128', '-1', '0.1']) assert.throws(() => parseScore('meter 1/4 staff { C4[velocity ' + value + '] | }'));
+    for (const event of ['C4[velocity 1, velocity 2]', 'rest[velocity 64]'])
+      assert.throws(() => parseScore('meter 1/4 staff { ' + event + ' | }'));
+  });
+
   QUnit.test('literal playback, repeatable chord voicing and bent sustains', assert => {
     const part = line(16, .25);
     const held: PlaybackNote = part.events[0].notes[0];
