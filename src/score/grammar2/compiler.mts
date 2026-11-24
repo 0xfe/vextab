@@ -199,7 +199,7 @@ export function compile(source: string): ScoreV2 {
             if (node.kind === 'tremolo' && (members.length !== 2 || first.bar !== last.bar || !first.heads.length || !last.heads.length ||
                 first.writtenDuration !== last.writtenDuration || !['1/1','1/2','1/4'].includes(first.writtenDuration)))
               fail('syntax', 'Tremolo needs two equal whole, half or quarter attacks in one measure', node.range, trace);
-            spans.push({ kind: node.kind, first: first.id, last: last.id, niente: node.niente, feather: node.feather, strokes: node.strokes, range: node.range });
+            spans.push({ kind: node.kind, first: first.id, last: last.id, niente: node.niente, ...(node.side && { side: node.side }), feather: node.feather, strokes: node.strokes, range: node.range });
             break;
           }
           case 'palmMute': case 'slur': case 'beam': {

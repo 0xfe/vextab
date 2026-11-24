@@ -1,7 +1,8 @@
 // Fit hands and adjacent piano systems against the horizontal extent of their engraved ink.
-import { Beam, Clef, FretHandFinger, KeySignature, Modifier, Note, StaveNote, TimeSignature, measureEngraving,
+import { Beam, Clef, FretHandFinger, KeySignature, Modifier, Note, StaveNote, Stroke, TimeSignature, Tuplet, measureEngraving,
   type Bounds, type ContinuousRow, type ContinuousSpan, type EasyScoreComposition, type SpanFragment } from 'vexflow';
 import { ossiaLift, ossiaReadings, pedalInk, placeOssia } from './score-details';
+import { timedTextInk } from './text-lanes';
 
 /** Each strip covers half a staff space at typical page widths. Rounding outwards protects thin stems. */
 class StaffProfile {
@@ -36,6 +37,17 @@ function fingeringInk(mark: FretHandFinger, note: StaveNote) {
   return mark.getTextInk(x + dx, y + (above ? -7 : below ? 15 : 5));
 }
 
+/** Add the piano modifiers whose pre-draw geometry VexFlow omits from its note report. */
+function pianoNoteInk(note: StaveNote) {
+  return measureEngraving(note, { extension: owner => {
+    if (owner instanceof FretHandFinger) return { parts: [fingeringInk(owner, owner.checkAttachedNote() as StaveNote)], anchors: {} };
+    if (owner instanceof Stroke) {
+      const stroke = owner as Stroke & { getLayoutBounds(): Bounds };
+      return { parts: [stroke.getLayoutBounds()], anchors: {} };
+    }
+  } });
+}
+
 /** Measure at the coordinates chosen by the native formatter. Keep special cross-staff structures on its own solver. */
 function profile(score: EasyScoreComposition, row: ContinuousRow, staff: number) {
   const first = score.staves[row.measures[0] - 1][staff];
@@ -55,12 +67,16 @@ function profile(score: EasyScoreComposition, row: ContinuousRow, staff: number)
       if (note instanceof Note && note.renderOptions.draw === false) continue;
       if (!(note instanceof StaveNote)) return;
       if (note.getStave() !== stave) return;
+      const words = timedTextInk.get(note);
+      if (words) {
+        for (const box of words()) result.add(box);
+        continue;
+      }
       if (ossiaReadings.has(note)) cues.push(note);
       const pedal = pedalInk(note);
       if (pedal) for (const part of pedal) result.add(part);
       else canFitOutside = false;
-      const shape = measureEngraving(note, { extension: owner => owner instanceof FretHandFinger
-        ? { parts: [fingeringInk(owner, note)], anchors: {} } : undefined });
+      const shape = pianoNoteInk(note);
       if (shape.diagnostics.length) return;
       for (const box of shape.parts) result.add(box);
       for (const element of [note.getBeam(), ...note.getTupletStack()]) {
@@ -100,6 +116,48 @@ function reserveCurve(profile: StaffProfile, f: SpanFragment) {
   slice(f.x1, f.x2 - f.x1, controls);
 }
 
+/** A slur leaving beside a note can need a tall arch to clear the very next attack.
+ * Try leaving over the note instead. Keep the native route unless the new curve
+ * clears the same obstacles and recovers at least half a staff space at its crown. */
+export function compactPianoSlur(f: SpanFragment, start: Note, end: Note,
+  notes: Note[], fit: (curve: SpanFragment, parts: Bounds[]) => boolean) {
+  if (f.part !== 'single' || f.rise < 4 * f.space || !(start instanceof StaveNote) || !(end instanceof StaveNote)) return;
+  const sign = f.above ? -1 : 1;
+  function anchor(note: StaveNote, initialY: number) {
+    const heads = note.getHeadInk();
+    if (!heads.length) return;
+    const head = heads.reduce((a, b) => sign * (b.y - a.y) > 0 ? b : a);
+    const edge = f.above ? head.y : head.y + head.h;
+    return { x: head.x + head.w / 2, y: sign * Math.max(sign * initialY, sign * edge + f.space * 0.35) };
+  }
+  const a = anchor(start, f.y1), b = anchor(end, f.y2);
+  if (!a || !b || a.x >= b.x) return;
+  // The native tie anchors start past the endpoint ink. Moving over the heads
+  // brings fingers, beams and stems on the endpoints themselves into the route.
+  const parts: Bounds[] = [];
+  const groups = new Set<Beam | Tuplet>();
+  for (const note of notes) {
+    if (note.renderOptions.draw === false) continue;
+    const words = timedTextInk.get(note);
+    if (words) { parts.push(...words()); continue; }
+    if (!(note instanceof StaveNote)) return;
+    const shape = pianoNoteInk(note);
+    if (shape.diagnostics.length) return;
+    parts.push(...shape.parts);
+    if (note.getBeam()) groups.add(note.getBeam());
+    for (const tuplet of note.getTupletStack()) groups.add(tuplet);
+  }
+  for (const group of groups) parts.push(...(group instanceof Beam ? group.getStripBounds() : [group.getBoundingBox()]));
+  const obstacles = parts.filter(box => box.x <= b.x && box.x + box.w >= a.x);
+  // At the midpoint of a cubic, the two raised controls each have weight 3/8.
+  const crown = (curve: SpanFragment) => sign * (curve.y1 + curve.y2) / 2 + 0.75 * curve.rise;
+  for (const lift of [0.5, 1, 1.5]) {
+    const dy = sign * lift * f.space;
+    const trial = { ...f, x1: a.x, x2: b.x, y1: a.y + dy, y2: b.y + dy };
+    if (fit(trial, obstacles) && crown(trial) + f.space * 0.5 < crown(f)) Object.assign(f, trial);
+  }
+}
+
 interface RowSpan { spec: ContinuousSpan; first: { staff: number }; last: { staff: number } }
 interface Brace { type: string; first: number; last: number }
 
@@ -131,12 +189,12 @@ export function includeSystemBottom(score: EasyScoreComposition, row: Continuous
 
 /** How much of the two rectangular system margins can safely be shared at this width? */
 export function sharedSystemSpace(score: EasyScoreComposition, previous: FittedRow | undefined,
-  current: ContinuousRow, edges: SystemEdges) {
+  current: ContinuousRow, edges: SystemEdges, topInset: number) {
   if (!previous?.systemEdges || !edges || previous.x !== current.x || Math.abs(previous.width - current.width) > 0.01) return 0;
   const above = previous.systemEdges.lower.bottom, below = edges.upper.top;
   if (above.length !== below.length || edges.space !== previous.systemEdges.space) return 0;
   const bass = score.staves[previous.measures[0] - 1][1], treble = score.staves[current.measures[0] - 1][0];
-  const margins = previous.y + previous.height - bass.getYForLine(0) + treble.getYForLine(0) - current.y;
+  const margins = previous.y + previous.height - bass.getYForLine(0) + treble.getYForLine(0) - current.y + topInset;
   // Keep a visual break between systems even where both hands stay inside the staff.
   // The authored screen or page gap is added after this minimum clearance.
   let needed = edges.space * 8;
@@ -193,7 +251,11 @@ export function fitGrandStaff(score: EasyScoreComposition, row: ContinuousRow, g
     distances.set(group.last, distance);
   }
   const staves = score.staves[row.measures[0] - 1];
+  // The first system on a page needs its full top margin, even when a word extends
+  // above the native row. An adjacent measured system can share that margin.
+  const topInset = systemEdges ? Math.max(0, row.y + systemEdges.space / 2 -
+    (staves[0].getYForLine(0) + Math.min(...systemEdges.upper.top))) : 0;
   const needsRefit = [...distances].some(([b, distance]) =>
     Math.abs(staves[b].getY() - staves[b - 1].getY() - distance) > 0.01);
-  return { distances, baselines, systemEdges, needsRefit: needsRefit || baselines.size > 0 };
+  return { distances, baselines, systemEdges, topInset, needsRefit: needsRefit || baselines.size > 0 || topInset > 0 };
 }

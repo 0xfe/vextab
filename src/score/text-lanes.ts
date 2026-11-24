@@ -1,7 +1,28 @@
 // Recreate timed text in each screen or print composition using its own formatted voice.
-import { TextNote, type ScoreHitRegion, type PublicationOptions } from 'vexflow';
+import { TextNote, type Bounds, type Note, type ScoreHitRegion, type PublicationOptions } from 'vexflow';
 import { inkStyle } from './color';
 import type { MeasuredText } from './model';
+
+/** A timed word replaces its anchor's rest. Resolve its ink anew whenever a row moves. */
+export const timedTextInk = new WeakMap<Note, () => Bounds[]>();
+
+/** A line written beyond the piano's nominal lower staff belongs to that hand.
+ * Keep its beat and source while measuring it below the bass as the hands move apart. */
+export function pianoTextLanes(lanes: MeasuredText[][], lower: boolean, distance: number) {
+  return lanes.flatMap(lane => {
+    let visible = false;
+    const cells = lane.map(cell => {
+      // TextNote line 3 is the top staff line. Four more spaces reach the bottom line.
+      const belowBass = (line = 0) => line - 3 > distance + 4;
+      const text = cell.text && belowBass(cell.style.line) === lower ? cell.text : '';
+      const boundaries = cell.boundaries?.filter(b => belowBass(b.style.line) === lower)
+        .map(b => lower ? { ...b, style: { ...b.style, line: b.style.line - distance } } : b);
+      if (text || boundaries?.length) visible = true;
+      return { ...cell, text, boundaries, style: text && lower ? { ...cell.style, line: cell.style.line - distance } : cell.style };
+    });
+    return visible ? [cells] : [];
+  });
+}
 
 /** Resolve source ranges and fresh VexFlow text objects separately for each composition. */
 export class TextLanes {
@@ -57,12 +78,12 @@ export class TextLanes {
         rightDisplacedHeadPx: Math.max(metrics.rightDisplacedHeadPx, right + edges.end) };
     };
 
-    note.draw = () => {
-      const ctx = note.checkContext(), stave = note.checkStave(), tick = note.checkTickContext();
+    function placeLabels() {
+      const stave = note.checkStave(), tick = note.checkTickContext();
       let start = stave.getNoteStartX(), end = stave.getNoteEndX();
-      for (const { item, label, ink, offset } of entries) {
+      return entries.map(({ item, label, ink, offset }) => {
         const id = item.edge ? options.id + '-at-' + item.range.start : options.id;
-        label.setStave(stave).setTickContext(tick).setContext(ctx);
+        label.setStave(stave).setTickContext(tick);
         label.preFormat();
         const anchor = label.getAbsoluteX() + tick.getMetrics().glyphPx / 2;
         let x = anchor + offset;
@@ -73,10 +94,17 @@ export class TextLanes {
         const ascent = item.glyph ? -ink.y : (label.getTextMetrics().fontBoundingBoxAscent ?? -ink.y);
         const y = line >= stave.getNumLines() ? baseline + stave.getSpacingBetweenLines() + ascent : baseline;
         label.setXShift(x - anchor).setYShift(y - baseline);
+        return { id, label, box: { x: x + ink.x, y: y + ink.y, w: ink.w, h: ink.h } };
+      });
+    }
+    timedTextInk.set(note, () => placeLabels().map(entry => entry.box));
+    note.draw = () => {
+      const ctx = note.checkContext();
+      for (const { id, label, box } of placeLabels()) {
         ctx.openGroup('timed-text', id);
-        label.drawWithStyle();
+        label.setContext(ctx).drawWithStyle();
         ctx.closeGroup();
-        this.regions.set(id, { id, source: cell.id, kind: 'event', x: x + ink.x, y: y + ink.y, w: ink.w, h: ink.h });
+        this.regions.set(id, { id, source: cell.id, kind: 'event', ...box });
       }
       note.setRendered();
     };

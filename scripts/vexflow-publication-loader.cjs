@@ -42,6 +42,16 @@ function tabSlurs(source) {
                     fragment.y2 = (above ? right.y : right.y + right.h) + sign * space * 0.35;
                 }
                 if ((left || right) && fragment.x2 > fragment.x1) fitted = fitSpan(fragment, obstacles);
+                // Long piano phrases may need to leave above a column of fingerings on the
+                // very next chord. Give the endpoints room before trying a steeper arc.
+                if (!fitted && (left || right) && fragment.x2 > fragment.x1) {
+                    const startY = fragment.y1, endY = fragment.y2;
+                    for (const lift of [0.75, 1.5, 2.25, 3]) {
+                        if (left) fragment.y1 = startY + sign * lift * space;
+                        if (right) fragment.y2 = endY + sign * lift * space;
+                        if (fitSpan(fragment, obstacles)) { fitted = true; break; }
+                    }
+                }
                 if (!fitted) Object.assign(fragment, original);
             }
             if (!fitted && s.spec.guitarPhrase) {
@@ -60,6 +70,8 @@ function tabSlurs(source) {
                 }
                 if (!fitted) Object.assign(fragment, { x1, x2, y1, y2, rise });
             }
+            if (fitted && kind === 'slur' && starts && ends && s.first.staff === s.last.staff)
+                this.options.compactPianoSlur?.(fragment, s.first.note, s.last.note, events, fitSpan);
             if (!fitted)`);
   // A grace slur leaves usable space between its ribbon and the sustained chord.
   return replaceOnce(source, '.flatMap((n) => measureEngraving(n).parts);',
@@ -94,7 +106,7 @@ function pianoLayout(source) {
         if (this.splitChords.some(s => s.measure >= first && s.measure <= last) || spans.some(s => s.beam)) return row;
         const plan = fit(this.score, row, braces, spans, this.fragments.slice(fragments), this.spec.system?.spaceBetweenStaves ?? 12);
         const edges = this.options.allowSystemFit?.(row.measures) && plan.systemEdges;
-        const shared = edges ? this.options.sharedSystemSpace(this.score, this.rows[this.rows.length - 1], row, edges) : 0;
+        const shared = edges ? this.options.sharedSystemSpace(this.score, this.rows[this.rows.length - 1], row, edges, plan.topInset) : 0;
         // Publication keeps staging rows apart to identify their SVG ink. Its paginator applies the same saving.
         const shift = this.options.publication ? 0 : shared;
         let final = row;
@@ -104,17 +116,33 @@ function pianoLayout(source) {
             this.diagnostics.length = diagnostics;
             final = this.placeRow(units, options, y - shift, plan);
         }
-        if (edges) this.options.includeSystemBottom(this.score, final, edges);
+        if (plan.systemEdges) this.options.includeSystemBottom(this.score, final, plan.systemEdges);
         final.systemEdges = edges;
         final.sharedSpaceBefore = shared;
         return final;
     }
     placeRow(units, options, y, plan) {`);
+  source = replaceOnce(source, 'const origin = y + header - limits[visible[0]].top;',
+    'const origin = y + header - limits[visible[0]].top + (plan?.topInset ?? 0);');
   source = replaceOnce(source, 'Math.max(offsets[b], limits[a].bottom - limits[b].top + 8)',
     `Math.max(offsets[b], plan?.distances.get(b) ?? (limits[a].bottom - limits[b].top + 8 -
              (this.groups.some(g => g.type === 'brace' && g.first === a && g.last === b) ? this.score.staves[first][a].space(2.8) : 0)))`);
   const lane = '(s.spec.bend || spanAbove(s.spec) ? ink[staff].top - lane * 25 - 4 : ink[staff].bottom + lane * 25 + 14)';
   return replaceOnce(source, lane, '(plan?.baselines.get(s.spec.id) ?? ' + lane + ')');
+}
+
+/** VexFlow 5.9 calculates its stroke bounds while painting. Run the same geometry
+ * without a context when the formatter asks for bounds before the first draw. */
+function strokeGeometry(source) {
+  source = replaceOnce(source, 'const ctx = this.checkContext();',
+    'this.setRendered();\n        this.layoutStroke(this.checkContext());\n    }\n    layoutStroke(ctx) {');
+  source = replaceOnce(source, 'this.checkAttachedNote();\n        this.setRendered();', 'this.checkAttachedNote();');
+  // The glyph positions, rotations and union of their bounds run in both passes.
+  source = source.replaceAll('ctx.openRotation(', 'ctx?.openRotation(').replaceAll('ctx.closeRotation()', 'ctx?.closeRotation()')
+    .replaceAll('el.renderText(ctx,', 'if (ctx) el.renderText(ctx,');
+  source = replaceOnce(source, 'ctx.fillRect(', 'ctx?.fillRect(');
+  return replaceOnce(source, 'getBoundingBox() {',
+    'getLayoutBounds() {\n        this.layoutStroke();\n        return this.boundingBox;\n    }\n    getBoundingBox() {');
 }
 
 /** Apply a pair's shared margins only when both systems actually land on the same page. */
@@ -142,6 +170,7 @@ module.exports = function publicationHooks(source) {
     source = replaceOnce(source, staffBottom, "stave.getYForLine(Math.max(stave.getNumLines() + 0.6, Number(stave.getAttribute('vextab-ossia-bottom')) || 0))");
     return pianoLayout(tabSlurs(source));
   }
+  if (path.basename(this.resourcePath) === 'strokes.js') return strokeGeometry(source);
   if (path.basename(this.resourcePath) === 'gracenotegroup.js') {
     // Before-graces own left-side space. Right-side chord labels must not push TAB frets past the clef.
     return replaceOnce(source, 'tick.getXOffset() + this.afterWidth - fretOverhang',

@@ -17,7 +17,7 @@ export type Fraction = [bigint, bigint];
 export type TimedNode = { range: TextRange } & (
   { kind: 'rest' | 'skip' | 'slash'; marks?: EventMark[] } | { kind: 'attack'; heads: Head[]; marks: EventMark[] }
 );
-export type Node = TimedNode | { kind: import('./model.js').ExpressiveSpan; body: Node[]; niente?: boolean; feather?: 'left' | 'right'; strokes?: number; range: TextRange } | { range: TextRange } & (
+export type Node = TimedNode | { kind: import('./model.js').ExpressiveSpan; body: Node[]; niente?: boolean; side?: 'above' | 'below'; feather?: 'left' | 'right'; strokes?: number; range: TextRange } | { range: TextRange } & (
   { kind: 'meter'; signature: WrittenMeter } | { kind: 'duration'; value: Fraction } | { kind: 'use'; name: string } |
   { kind: 'times'; count: number; body: Node[] } | { kind: 'tuplet'; scale: Fraction; body: Node[] } |
   { kind: 'volta'; body: Node[]; endings: Node[][] } | { kind: '|'; closing?: string } |
@@ -616,6 +616,8 @@ export function readScore(source: string, fail: Fail) {
       } else if (token.text === 'crescendo' || token.text === 'diminuendo' || token.text === 'continuousBeam' || token.text === 'feather' || token.text === 'tremolo') {
         const kind = token.text;
         take();
+        const side = (kind === 'crescendo' || kind === 'diminuendo') && (peek() === 'above' || peek() === 'below')
+          ? take().text as 'above' | 'below' : undefined;
         let strokes: number, feather: 'left' | 'right', niente: boolean;
         if (kind === 'tremolo') {
           const count = take();
@@ -626,7 +628,7 @@ export function readScore(source: string, fail: Fail) {
           if (direction.text !== 'left' && direction.text !== 'right') error('Expected left or right', direction);
           feather = direction.text;
         } else if (kind !== 'continuousBeam' && peek() === 'niente') { take(); niente = true; }
-        node = { kind, strokes, feather, niente, body: block(sequence), range: token.range };
+        node = { kind, strokes, feather, niente, side, body: block(sequence), range: token.range };
       } else if (token.text === 'fragment' || token.text === 'slur' || token.text === 'beam') {
         take();
         const side = token.text === 'slur' && (peek() === 'above' || peek() === 'below') ? take().text as 'above' | 'below' : undefined;

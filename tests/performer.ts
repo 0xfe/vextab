@@ -15,6 +15,21 @@ function line(count: number, step: number): Performance {
 }
 
 QUnit.module('Performers', () => {
+  QUnit.test('expressive dynamic changes settle across attacks on the written clock', assert => {
+    const score = projectScoreV2(parseScore('meter 2/4 piano { upper { :8 C5 D5 E5 F5 | :16 G5[dynamic p] F5 E5 D5 :q C5 | } lower { :h C3 | G2 | } }'));
+    const play = (name: 'human' | 'robot', visits: number[]) =>
+      scorePerformance(score, 144, undefined, visits, createPerformer(name, 7)).events;
+    const treble = (events: Performance['events']) => events.flatMap(e => e.notes.filter(n => n.pitch >= 60).map(n => n.velocity));
+    const attacks = play('human', [1, 2]);
+    assert.deepEqual(treble(attacks), [100, 100, 100, 100, 76, 66, 58, 54, 52]);
+    assert.deepEqual(attacks.flatMap(e => e.notes.filter(n => n.pitch < 60).map(n => n.velocity)), [100, 76]);
+    assert.deepEqual(treble(play('human', [2, 2])), [...treble(attacks).slice(4), ...treble(attacks).slice(4)]);
+    assert.deepEqual(treble(play('robot', [2])), [52, 52, 52, 52, 52]);
+    const shaped = projectScoreV2(parseScore('meter 2/4 staff { :8 rest C4[dynamic p] crescendo { D4 E4[dynamic f] } | :h G4 | }'));
+    const hairpin = scorePerformance(shaped, 144, undefined, undefined, createPerformer('human', 7));
+    assert.deepEqual(hairpin.events.flatMap(e => e.notes.map(n => n.velocity)), [52, 52, 98, 98]);
+  });
+
   QUnit.test('literal playback, repeatable chord voicing and bent sustains', assert => {
     const part = line(16, .25);
     const held: PlaybackNote = part.events[0].notes[0];

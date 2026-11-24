@@ -3,12 +3,12 @@
 // https://s3.amazonaws.com/halleonard-pagepreviews/HL_DDS_135672407UXxb3Nd2.png
 // The Andantino has no metronome marking in the source; the tempo choices are editorial.
 layout {
-  width 1330 scale 0.64 spacing optical firstSystemIndent 86 staffDistance 12 rowGap 22
+  width 1330 scale 0.64 spacing optical firstSystemIndent 86
   heading { align center title "CONSOLATION NO. 5" dedication "from SIX CONSOLATIONS" composer "Franz Liszt (1811–1886)" }
 }
 meter 3/4 pickup 1/4
 play { performer chopin tempo 76 tempo 68 at 12 tempo 76 at 13 tempo 68 at 21 }
-edition { paper A4 margins 10 8 10 8 staffSize 4.8 }
+edition { paper A4 margins 10 8 10 8 staffSize 5.6 }
 piano keys { key E program 0 groupBeats (3) beamRests off
   upper { name ""
     voice melody stem up {
@@ -65,7 +65,7 @@ piano keys { key E program 0 groupBeats (3) beamRests off
     voice bass {
       slur above { :8. G2[finger 5 above] :16 C3 |
       :q. B2[finger 3 above] beam { :8 F3[finger 1 above] E3[finger 3 above] A3[finger 1 above] } |
-      beam { crescendo { :8 G3[finger 4 above] C4 B3 } diminuendo { :8 E4[grace before slashed (F4), finger 2 above] G3[finger 5 above] C4[finger 2 above] } } |
+      beam { crescendo above { :8 G3[finger 4 above] C4 B3 } diminuendo above { :8 E4[grace before slashed (F4), finger 2 above] G3[finger 5 above] C4[finger 2 above] } } |
       :h B3[fermata above, finger 3 below] } slur above { beam { :8 E4[finger 1 below] B3[finger 3 below] } } |
       slur above { :8 Dn4[finger 1 below] B3[finger 3 below] C4[finger 2 below] B3[finger 3 below] F4[finger 1 below] B3[finger 3 below] } |
       slur below { :8 E4[finger 1 below] B3 E4[finger 1 below] B3[finger 5 below] E4 B3[finger 5 below] } |
@@ -85,14 +85,14 @@ piano keys { key E program 0 groupBeats (3) beamRests off
     }
   }
   text tempo spacing smooth align left font "Academico" {
-    :q line -3 size 20 style bold "Andantino" | :h. skip | skip | skip | skip | skip |
-    skip | skip | skip | skip | skip | skip | line -4 size 15 style italic "a tempo" |
+    :q line 1 size 20 style bold "Andantino" | :h. skip | skip | skip | skip | skip |
+    skip | skip | skip | skip | skip | skip | line -2 size 15 style italic "a tempo" |
     skip | skip | skip | skip | skip | skip | skip | skip |
   }
   text expression spacing smooth align left font "Academico" {
-    :q line 9 size 15 style italic "    con grazia" | :h. skip | skip |
-    :h line 9 size 15 style italic "dolce" :q skip | :h. skip | skip | skip | skip | skip | skip | skip |
-    line 9 size 15 style italic "poco rit." | line 11 size 15 style italic "espressivo con anima" |
+    :8 skip line 8 size 15 style italic "con grazia" | :h. skip | skip |
+    :h line 8 size 15 style italic "dolce" :q skip | :h. skip | skip | skip | skip | skip | skip | skip |
+    line 8 size 15 style italic "poco rit." | line 11 size 15 style italic "espressivo con anima" |
     skip | skip | skip | skip | skip | skip | skip | line 11 size 15 style italic "rit." |
   }
 }

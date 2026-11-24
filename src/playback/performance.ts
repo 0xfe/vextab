@@ -38,6 +38,31 @@ function scoreNote(event: Attack, head: Head, duration: number) {
   return note;
 }
 
+/** A player leans into a new dynamic on its first attack and settles over the next quarter note. */
+class DynamicLevel {
+  private from = 100;
+  private target = 100;
+  private start = 0;
+  private hasSounded = false;
+
+  private at(time: number) {
+    const quarterNotes = (time - this.start) * 4;
+    const remaining = Math.max(0, 1 - quarterNotes);
+    return this.target + (this.from - this.target) * remaining * remaining;
+  }
+
+  attack(time: number, target: number | undefined, sounding: boolean, ease: boolean) {
+    if (target !== undefined && (target !== this.target || !ease)) {
+      const previous = this.at(time);
+      this.from = this.hasSounded && ease ? (previous + target) / 2 : target;
+      this.target = target;
+      this.start = time;
+    }
+    if (sounding) this.hasSounded = true;
+    return Math.round(this.at(time));
+  }
+}
+
 /** Resolve tempo and attack velocities on the written clock so a repeat restores its own expression. */
 function expression(score: ParsedScore, tempo: number, expressive: boolean) {
   const tempi: number[] = [];
@@ -50,8 +75,11 @@ function expression(score: ParsedScore, tempo: number, expressive: boolean) {
   // A dynamic written for only one staff still sets the level of the whole instrument.
   const markedHands = new Set(expressive && score.measures[0]?.state.piano
     ? score.measures.flatMap(m => m.voices.filter(v => v.hand && v.events.some(e => e.dynamic)).map(v => v.hand)) : []);
-  const handLevels = new Map<string, number>();
-  let bpm = tempo, velocity = 100, time = 0;
+  const levelsByHand = new Map<string, DynamicLevel>();
+  // Written hairpins already shape the approach to their marked endpoints.
+  const endpoints = new Set((score.spans ?? []).flatMap(s =>
+    s.kind === 'crescendo' || s.kind === 'diminuendo' ? [s.from, s.to] : []));
+  let bpm = tempo, time = 0;
   for (const m of score.measures) {
     const change = score.playback?.tempos?.[m.number];
     if (change) bpm = change * tempo / (score.playback.tempo ?? 120);
@@ -60,14 +88,11 @@ function expression(score: ParsedScore, tempo: number, expressive: boolean) {
       attack, voice: index, onset: seconds(attack.onset, 1),
     }))).sort((a, b) => a.onset - b.onset || Number(!!b.attack.dynamic) - Number(!!a.attack.dynamic));
     for (const { attack, voice, onset } of byTime) {
-      const hand = m.voices[voice].hand;
-      if (markedHands.size === 2 && hand) {
-        if (attack.dynamic) handLevels.set(hand, levels[attack.dynamic]);
-        velocities.set(attack.id, handLevels.get(hand) ?? velocity);
-      } else {
-        if (attack.dynamic) velocity = levels[attack.dynamic];
-        velocities.set(attack.id, velocity);
-      }
+      const hand = markedHands.size === 2 ? m.voices[voice].hand ?? '' : '';
+      if (!levelsByHand.has(hand)) levelsByHand.set(hand, new DynamicLevel());
+      const level = levelsByHand.get(hand);
+      velocities.set(attack.id, level.attack(time + onset, levels[attack.dynamic],
+        !attack.silent && attack.heads.length > 0, expressive && !endpoints.has(attack.id)));
       const lane = lanes[voice] ??= [];
       const point = { id: attack.id, time: time + onset, voice, explicit: !!attack.dynamic, index: lane.length };
       positions.set(attack.id, point);

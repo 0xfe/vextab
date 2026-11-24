@@ -34,6 +34,11 @@ class ChordFinger extends FretHandFinger {
         edge = outside(edge, above ? ink.y : ink.y + ink.h);
       }
     }
+    // One digit labels its head, even under an up-stem beam. A multi-digit column needs the outside lane.
+    if (column.length === 1) {
+      const anchor = note.getModifierStartXY(this.getPosition(), this.getIndex());
+      return anchor.y + (above ? -7 : 15);
+    }
     // The highest pitch gets the highest number on the page, irrespective of entry order.
     column.sort((a, b) => direction * (ys[a.getIndex()] - ys[b.getIndex()]));
     for (const digit of column) {

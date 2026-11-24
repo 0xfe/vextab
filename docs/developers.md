@@ -33,6 +33,14 @@ The development server watches the source. Open the [project index](http://127.0
 
 Generate the quality archive to track how VexTab has changed since 4.0.0. The accompanying **What's New?** report illustrates those changes with scores you can compare side by side. Both reports open locally in a browser. [Build and publication commands](reports.md)
 
+## Diagnosing loose piano spacing
+
+Compare the distance between the nearest staff lines in staff spaces so that zoom and print size do not affect the result. In the Consolation, a timed word and a low note on the opposite staff can share vertical space when they fall on different beats. Move the word under the note and the gap should open. The piano tests exercise both arrangements in SVG, Canvas and print. [Piano layout regressions](../tests/piano.ts)
+
+VexTab knows what its timed-text anchors actually draw. It measures the word at the same position used for drawing and source selection, then combines that ink with the notes, beams, curves and modifiers in narrow vertical strips. The smallest safe distance between the staves comes from the strip where their ink comes closest. Adjacent systems use the same calculation when they land on the same page. Cross-staff beams and shared stems still use VexFlow’s native spacing because moving either hand changes the shape of the connection. [Grand-staff layout](../src/score/grand-staff.ts)
+
+Two improvements belong in VexFlow. Its geometry API could return pre-draw ink for strokes and fingerings, including the arrowhead on a roll. Its continuous formatter and paginator could accept the same per-position ink from applications when placing staves and neighboring systems. VexTab currently adapts the pinned formatter to supply both. The adapter also gives steep piano slurs a chance to start over a notehead when that produces a shallower route with clearance for the intervening music. [VexFlow integration](../scripts/vexflow-publication-loader.cjs)
+
 ## Upload the user guide
 
 Run these commands from the VexTab checkout. The dry run builds the production guide and prints the Cloud Storage operations. The live command uses your authenticated Google Cloud CLI.

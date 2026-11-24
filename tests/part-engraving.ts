@@ -1,7 +1,10 @@
 // Verify that authored notes, marks and verse lanes survive each fresh screen, part and cue.
 import { Accidental, Annotation, Articulation, FretHandFinger, StaveNote, StringNumber, TabNote, type StemmableNote } from 'vexflow';
-import { renderScore, renderScorePart } from '../src/score/layout';
+import { renderEdition, renderScore, renderScorePart } from '../src/score/layout';
 import { parseScore } from '../src/score/parse';
+import { textInk } from './svg-ink';
+import ballade from '../guide/scores/chopin-ballade-no3.vextab';
+import picking from '../guide/scores/compound-picking.vextab';
 import river from '../guide/scores/slow-river.vextab';
 import sor from '../guide/scores/sor-op35-no22.vextab';
 
@@ -16,6 +19,32 @@ function verse(root: Element) {
 }
 
 QUnit.module('Independent part engraving', () => {
+  QUnit.test('the Ballade opening finger stays beside the top head under its beam on screen and paper', assert => {
+    const score = parseScore(ballade), screen = host(), print = host();
+    renderScore(screen, score);
+    renderScorePart(print, score, 'notation');
+    for (const root of [screen, print]) {
+      const chord = root.querySelector<SVGGElement>('.vf-stavenote[id$="keys.upper.melody.4"],.vf-stavenote[data-vf-id$="keys.upper.melody.4"]');
+      const texts = [...chord.querySelectorAll<SVGTextElement>('text')];
+      const digit = textInk(texts.find(el => el.textContent === '5'));
+      const heads = texts.filter(el => el.textContent === '\uE0A4').map(textInk);
+      assert.equal(heads.length, 2);
+      const gap = Math.min(...heads.map(head => head.top)) - digit.bottom;
+      assert.ok(gap >= 0 && gap < 10, 'the fingering clears the head by less than one staff space');
+    }
+  });
+
+  QUnit.test('compound picking leaves daylight between the two triplet numerals on screen and paper', assert => {
+    const score = parseScore(picking), screen = host(), print = host();
+    renderScore(screen, score);
+    renderEdition(print, score);
+    for (const root of [screen, print]) {
+      const digits = [...root.querySelectorAll<SVGTextElement>('.vf-tuplet text')].map(textInk);
+      assert.equal(digits.length, 2);
+      assert.ok(digits[1].top - digits[0].bottom > 3, 'the two triplet numbers stay individually readable');
+    }
+  });
+
   QUnit.test('centered title and credit sit above the framed chord in screen and page coordinates', assert => {
     const score = parseScore('layout { heading { align center title "Solo guitar" composer "An arrangement" } } '
       + 'guitar { view notation :w (2/3 1/2 0/1)[symbol "Am", frame (x x x 2 1 0)] | }');

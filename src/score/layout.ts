@@ -5,13 +5,13 @@ import { editionSettings, type EditionOptions } from './editions';
 import { locations, projectScoreV2 } from './grammar2/project';
 import type { ScoreV2 } from './grammar2/model';
 import { attachHeadMarks } from './head-marks';
-import { TextLanes } from './text-lanes';
+import { pianoTextLanes, TextLanes } from './text-lanes';
 import { drumKit } from './drums';
 import { attachOpenSlide, describeOpenSlide } from './open-slide';
 import { inkStyle, setFretPaper } from './color';
 import { drawPrepared, spansForInset, type PartDrawingOptions } from './publication-draw';
 import { conductorSpec, instrumentComposition, instrumentLabel, selectedPart, type PartSelector } from './conductor';
-import { fitGrandStaff, includeSystemBottom, sharedSystemSpace } from './grand-staff';
+import { compactPianoSlur, fitGrandStaff, includeSystemBottom, sharedSystemSpace } from './grand-staff';
 import { drawHeading, drawOssia, drawPedal, ossiaLines, ossiaReadings, registerPedal } from './score-details';
 import { drawSwingMark } from './swing-mark';
 import { headingWeight, scoreMusicFont, scoreTextFont, withScoreFonts } from './engraving';
@@ -195,10 +195,12 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
   const mixedEndings: ScoreSpan[] = [];
   // Both views pass this policy through to the bundled continuous-layout adapter.
   // Some decorations draw outside the native note ink. Preserve their full row margins.
-  const fullMargins = new Set(parsed.measures.filter(m => m.text?.length || m.voices.some(v =>
-    v.rehearsal || v.ending || v.events.some(e => e.tremolo || e.frame || e.chord || e.lyric || e.verses?.length || e.gestures?.length)))
+  const fullMargins = new Set(parsed.measures.filter(m => m.voices.some(v =>
+    v.rehearsal || v.ending || v.events.some(e => e.tremolo || e.frame || e.chord || e.lyric || e.verses?.length ||
+      e.gestures?.some(g => g.kind === 'tap' || g.kind === 'vibrato'))))
     .map(m => m.number));
   const flowOptions = { fitGrandStaff, publication, includeSystemBottom, sharedSystemSpace,
+    ...(parsed.measures[0].state.piano && { compactPianoSlur }),
     allowSystemFit: (bars: number[]) => !parsed.measureNumbers && bars.every(bar => !fullMargins.has(bar)), firstSystemIndent: parsed.layout?.firstSystemIndent };
   const spec: EasyScoreCompositionSpec = {
     accidentals: 'key-aware', graceAccidentals: 'ordered', sheet: { width, x: 10, y: parsed.layout?.top ?? 14, rowGap: parsed.layout?.rowGap ?? 36,
@@ -234,7 +236,8 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
           voices: [
             ...voices.map((v, index) => v.events.length ? voiceSpec(v, m, staff, sources, v === stemVoices[0], stemVoices.length, sharedPianoStaff)
               : { notes: [textLanes.anchor(eventId(staff, 'blank-' + m.number + '-' + index), null)] }),
-            ...(staff === staves[0] ? m.text ?? [] : []).map(lane => ({
+            ...(m.state.piano && staves.length === 2 ? pianoTextLanes(m.text ?? [], staff === 'left', parsed.layout?.staffDistance ?? 9)
+              : staff === staves[0] ? m.text ?? [] : []).map(lane => ({
               notes: lane.map(cell => {
                 for (const at of cell.boundaries ?? []) sources.project(staff, cell.id + '-at-' + at.range.start, at.range);
                 return textLanes.anchor(sources.project(staff, cell.id, cell.range), cell);
@@ -274,7 +277,7 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
         const from = eventId(staff, mark.from), to = eventId(staff, mark.to);
         if (!sources.ids[from] || !sources.ids[to] || staff === 'tab') continue;
         spans.push({ kind: mark.kind === 'continuousBeam' ? 'beam' : mark.kind, from, to,
-          ...('niente' in mark && { niente: mark.niente }), ...('lane' in mark && { syllableId: eventId(staff, 'lyric' + mark.range.start + '-' + mark.from) }),
+          ...('niente' in mark && { niente: mark.niente }), ...('side' in mark && { side: mark.side }), ...('lane' in mark && { syllableId: eventId(staff, 'lyric' + mark.range.start + '-' + mark.from) }),
           id: sources.project(staff, mark.id, mark.range) });
       }
       continue;

@@ -60,6 +60,16 @@ QUnit.module('Piano grand staff', () => {
     const alto = notes(7, 'inner')[1], soprano = notes(7, 'melody')[2];
     assert.deepEqual([alto.getKeys(), alto.getDuration(), alto.getStemDirection()], [['a/4'], 'q', -1]);
     assert.deepEqual([soprano.getKeys(), soprano.getDuration(), soprano.getStemDirection()], [['c#/5'], '8', 1]);
+    const [upper, lower] = composition.staves[6];
+    assert.ok(lower.getYForLine(0) - upper.getYForLine(4) < upper.space(13),
+      'a rolled chord later on the second system still permits both hands to share space');
+    const openingHairpins = composition.sheet.getContinuousLayout().fragments.filter(f => f.row === 0 &&
+      f.id.includes('-left-') && (f.kind === 'crescendo' || f.kind === 'diminuendo'));
+    assert.equal(openingHairpins.length, 2);
+    assert.ok(openingHairpins.every(f => f.above && f.y1 < composition.staves[0][1].getYForLine(0)),
+      'the opening bass hairpins sit between the hands as in the printed page');
+    const paper = renderScorePart(host(), model, 'notation').publication.pages[0].svg;
+    assert.notOk(paper.textContent.includes('roll up'), 'a printed rolled chord uses its arpeggio sign');
   });
 
   QUnit.test('Aligned beats, shared barlines, and braces survive reflow', assert => {
@@ -130,6 +140,27 @@ QUnit.module('Piano grand staff', () => {
       return b.getYForLine(0) - a.getYForLine(4);
     };
     assert.ok(distance('G4 C2') >= distance('C2 G4') + 25, 'reserve space only where the two hands meet');
+  });
+
+  QUnit.test('timed words reserve space only where they are printed', assert => {
+    const score = (words: string) => read('layout { rowGap 12 } piano { upper { :h G4 G4 | break system G4 G4 | } '
+      + 'lower { :h C1 C3 | G3 G3 | } ' + (words && 'text tempo spacing smooth align left { :w skip | :h line -8 ' + words + ' | }') + '}');
+    function screenGap(words: string, renderer: 'svg' | 'canvas') {
+      const [first, second] = renderScore(host(), score(words), { renderer, width: 550 }).composition.staves;
+      return second[0].getYForLine(0) - first[1].getYForLine(4);
+    }
+    for (const renderer of ['svg', 'canvas'] as const) {
+      assert.closeTo(screenGap('skip skip', renderer), screenGap('', renderer), 0.1, renderer + ' ignores an empty lane');
+      assert.ok(screenGap('"rit." skip', renderer) > screenGap('skip "rit."', renderer) + 10,
+        renderer + ' clears a low bass note directly above the word');
+    }
+    function pageGap(words: string) {
+      const page = renderScorePart(host(), score(words), 'notation').publication.pages[0].svg;
+      const line = (bar: number, staff: number, n: number) => page.querySelector('[data-system="' + bar + '"]')
+        .querySelectorAll('.vf-stave')[staff].children[n].getBoundingClientRect().y;
+      return line(2, 0, 0) - line(1, 1, 4);
+    }
+    assert.ok(pageGap('"rit." skip') > pageGap('skip "rit."') + 2, 'print measures the word at its own beat');
   });
 
   QUnit.test('neighboring systems share space at different beats and keep their page margins', assert => {

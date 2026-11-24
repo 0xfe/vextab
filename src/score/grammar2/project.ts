@@ -414,7 +414,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       const range = locate(mark.range);
       if (mark.kind === 'continuousBeam' || mark.kind === 'crescendo' || mark.kind === 'diminuendo' || mark.kind === 'tremolo') {
         if (!state.notation) throw new ScoreError('measure', 'This expression span needs a notation staff', range);
-        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, niente: mark.niente, strokes: mark.strokes, range, id: mark.kind + '-' + mark.first });
+        projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, niente: mark.niente, ...(mark.side && { side: mark.side }), strokes: mark.strokes, range, id: mark.kind + '-' + mark.first });
         if (mark.kind === 'tremolo' || mark.kind === 'continuousBeam') {
           for (const v of voices) for (const event of v.events) if (indices.get(event.id) >= indices.get(mark.first) && indices.get(event.id) <= indices.get(mark.last)) {
             if (mark.kind === 'tremolo') event.tremolo = mark.strokes;
