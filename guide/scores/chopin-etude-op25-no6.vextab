@@ -2,7 +2,7 @@
 // Source edition: https://cantorion.org/music/621/Etude-No.-6-Original-version
 // Pitches cross-checked against the CC0 transcription distributed by Noctave.
 // https://noctavepiano.com/en/free-library/chopin-etude-in-g-sharp-minor-thirds-op-25/
-layout { width 1650 scale 0.525 spacing optical top 8 firstSystemIndent 60 rowGap 12
+layout { width 1680 scale 0.525 spacing optical top 8 firstSystemIndent 60 rowGap 12
   heading { tempo "Allegro. 𝅗𝅥 = 69." }
 }
 meter cut
