@@ -6,28 +6,32 @@ The fixtures are complete, byte-pinned Mutopia source files. The importer reads 
 |---|---|---|
 | [Sor, Op. 35 No. 22](sor.ly) | 2.16.1 | Glen Larsen’s 2013 transcription of the N. Simrock guitar edition. The fixture, observations and adaptation retain [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). [Mutopia source](https://www.mutopiaproject.org/ftp/SorF/O35/sorf_op35_no22/sorf_op35_no22.ly) |
 | [Bach, Prelude BWV 999](bwv999.ly) | 2.16.1 | Jakob Bagterp’s D-minor lute/guitar transcription. The typesetter placed it in the public domain. [Pinned Mutopia source](https://github.com/MutopiaProject/MutopiaProject/blob/2144afd6f52d56c5b6995b8b589ef1268b3139f0/ftp/BachJS/BWV999/Bach_Prelude_BWV999/Bach_Prelude_BWV999.ly) |
+| [Bach, Fugue in C major BWV 846](../complex-lilypond/README.md) | 2.16.1 | Shay Rojansky’s four-voice piano transcription, updated by Andreas Scherer, public domain. The linked fixture includes the pinned source and native reference. |
 | [Joplin, Maple Leaf Rag](maple.ly) | 2.14.2 | Chris Sawer’s public-domain transcription of the 1899 edition. Both piano hands, four written repeats, endings, the opening pickup and the shortened final bar are present. [Mutopia source](https://www.mutopiaproject.org/ftp/JoplinS/maple/maple.ly) · [Published MIDI](https://www.mutopiaproject.org/ftp/JoplinS/maple/maple.mid) |
 
 ## Results
 
-All six output selections import in expressive partial mode at default capacity. The guitar editions use `guitar: true`. Joplin uses `finalFragment: true` to preserve the short final ending. Sor and Joplin have separate print and MIDI scores. Bach’s score contains both output blocks.
+All eight output selections import in expressive partial mode at default capacity. The guitar editions use `guitar: true`. Joplin uses `finalFragment: true` to preserve the short final ending. Sor and Joplin have separate print and MIDI scores. Each Bach score contains both output blocks.
 
 | Work and selected output | Written bars | Performed visits | Written noteheads and rests | Performed heads | Warnings |
 |---|---:|---:|---:|---:|---:|
-| Sor print | 48 | 80 | 419 | 692 | 61 |
-| Sor MIDI | 48 | 80 | 419 | 692 | 59 |
-| Bach print | 43 | 43 | 680 | 509 | 4 |
-| Bach MIDI | 43 | 43 | 680 | 509 | 4 |
-| Joplin print | 85 | 145 | 1,642 | 2,566 | 17 |
-| Joplin MIDI | 145 | 145 | 2,831 | 2,566 | 18 |
+| Sor print | 48 | 80 | 419 | 692 | 7 |
+| Sor MIDI | 48 | 80 | 419 | 692 | 5 |
+| BWV 999 print | 43 | 43 | 680 | 509 | 4 |
+| BWV 999 MIDI | 43 | 43 | 680 | 509 | 4 |
+| BWV 846 print | 27 | 27 | 848 | 734 | 12 |
+| BWV 846 MIDI | 27 | 27 | 848 | 734 | 12 |
+| Joplin print | 85 | 145 | 1,642 | 2,566 | 9 |
+| Joplin MIDI | 145 | 145 | 2,831 | 2,566 | 10 |
 
-Strict mode stops at the first known loss and returns zero documents for all six selections. Across twelve calls (three works, two selections, two modes), the score outcomes are 0 exact, 6 partial, 6 failed and 0 outside the profile. A partial score still must match every written and performed reference row.
+Strict mode stops at the first known loss and returns zero documents for all eight selections. Across sixteen calls (four works, two selections, two modes), the score outcomes are 0 exact, 8 partial, 8 failed and 0 outside the profile. A partial score still must match every written and performed reference row.
 
-- **Sor** retains the independent releases of the three voices and the printed fingerings. In bar 44 the edition requests finger zero and string four for a B above the open D. The importer preserves the printed zero, uses the fret required by the explicit string and reports the conflict. The remaining warnings cover stem, voice, tie direction, notehead-merging instructions and pitched-rest placement.
-- **Bach** resolves the historical `deutsch.ly` language include, including B-flat from `b` and B-natural from `h`. It retains the nylon-guitar program, and the MIDI selection takes its opening metronome mark from the output block. Global staff size, two voice engraving presets and the final barline style account for the four warnings.
-- **Joplin** retains the B section’s dynamic and the trio heading. Font, placement, manual breaks, stems and the final barline account for visible losses. The MIDI selection also reports its legacy MIDI configuration block. The source’s literal unfold transformation resolves the repeat graph independently for each hand. The published MIDI and native unfolded notes agree on all 2,566 attacks and releases.
+- **Sor** retains the independent releases of the three voices and the printed fingerings. In bar 44 the edition requests finger zero and string four for a B above the open D. The importer preserves the printed zero, uses the fret required by the explicit string and reports the conflict. The remaining warnings cover the other voice-preset properties, notehead-merging instructions and pitched-rest placement.
+- **BWV 999** resolves the historical `deutsch.ly` language include, including B-flat from `b` and B-natural from `h`. It retains the nylon-guitar program, and the MIDI selection takes its opening metronome mark from the output block. Global staff size, two voice engraving presets and the final barline style account for the four warnings.
+- **BWV 846** retains 770 directed stems, 53 explicitly directed ties and both beams across barlines. Four voice presets also change rest and script positions, note-column offsets and grace styling. These properties still use the host defaults. Three ornaments, four manual breaks and the final double barline account for the other eight warnings.
+- **Joplin** retains the B section’s dynamic and the trio heading. Font, placement, manual breaks and the final barline account for visible losses. The MIDI selection also reports its legacy MIDI configuration block. The source’s literal unfold transformation resolves the repeat graph independently for each hand. The published MIDI and native unfolded notes agree on all 2,566 attacks and releases.
 
-Each head tied out of Joplin’s trio body has a distinct destination in each ending. The existing 6.4.0 grammar accepts multiple named ties from that head. The 6.5.0 player retains a sounding head across the forward jump into the later ending. Imported scores with a surviving branched tie require 6.5.0. A 6.4.0 player can reattack the second-ending head. The explicitly unfolded score has separate ties on each pass.
+Each head tied out of Joplin’s trio body has a distinct destination in each ending. The existing 6.4.0 grammar accepts multiple named ties from that head. The 6.5.0 player retains a sounding head across the forward jump into the later ending. Imported scores with a surviving branched tie require at least 6.5.0. All four editions in this table also use the 6.6.0 per-attack stem or tie settings. A 6.4.0 player can reattack the second-ending head. The explicitly unfolded score has separate ties on each pass.
 
 ### Feature probes
 

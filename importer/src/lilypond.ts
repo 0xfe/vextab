@@ -1,7 +1,7 @@
 // Resolve static LilyPond music into measured voices without executing user code.
 import { drumByName } from './lilypond-drums.js';
 import { Lanes } from './lilypond-lanes.js';
-import { afterNote, frets, headMark, standardGuitar, type Attachments } from './lilypond-marks.js';
+import { afterNote, frets, headMark, standardGuitar, trackBeamMember, type Attachments } from './lilypond-marks.js';
 import type { Guitar, HeadDetail, Instrument } from './expression.js';
 import { includesExtended, convert, Input, keys, Measure, meter, minorKeys, pitch } from './score.js';
 import type { Event, Pitch } from './score.js';
@@ -27,8 +27,9 @@ interface PianoHand { declaration: Token; key: string; name?: string }
 
 interface State {
   chordMode?:boolean;
+  stem?: 'up'|'down'; tieSide?: 'above'|'below';
   marks:Attachments; instrument?:Instrument; headTies?:Map<string,string>;
-  label?:string; slideFrom?:number; lastEvent?:Event; lastDetails?:HeadDetail[]; tieFrom?:Event; graceSlashed?:boolean;
+  label?:string; slideFrom?:number; lastEvent?:Event; lastDetails?:HeadDetail[]; tieFrom?: { event: Event; side?: 'above'|'below' }; graceSlashed?:boolean;
   part: string; voice: string; group?: NonNullable<Measure['group']>; piano?: { id: string; hands: PianoHand[] }; display?: number; index: number; at: Time;
   mode: 'absolute' | 'relative' | 'fixed'; anchor: Pitch; fixed: number;
   rhythm: Rhythm; last: Pitch[]; tuplets: NonNullable<Event['tuplets']>;
@@ -293,7 +294,16 @@ class Resolver {
           const hand = s.piano?.hands.find(hand => hand.declaration === t);
           s.part = id ?? hand?.key ?? (s.part === 'staff' && !this.parts.has('staff') ? 'staff' : 'staff' + ++this.serial);
         }
-        if (['Voice','TabVoice','DrumVoice'].includes(context) && id) s.voice = id;
+        const voiceContext = ['Voice','TabVoice','DrumVoice'].includes(context);
+        // A new staff or voice has its own overrides. A reference to the current context keeps them.
+        const staffContext = ['Staff','TabStaff','DrumStaff'].includes(context);
+        const localDirections = (voiceContext || staffContext) &&
+          (command === '\\new' || (id && id !== (voiceContext ? oldVoice : oldPart)));
+        const previous = { stem: s.stem, tie: s.tieSide, slur: s.marks.side, phrasing: s.marks.phrasingSide };
+        if (localDirections) {
+          s.stem = undefined; s.tieSide = undefined; s.marks.side = undefined; s.marks.phrasingSide = undefined;
+        }
+        if (voiceContext && id) s.voice = id;
         if (words[i]?.value==='\\with') {
           i++;
           const settings=next();
@@ -303,6 +313,9 @@ class Resolver {
         }
         child();
         while (words[i]?.value==='\\addlyrics') i=this.one(words,i,s,scope,depth+1);
+        if (localDirections) {
+          s.stem = previous.stem; s.tieSide = previous.tie; s.marks.side = previous.slur; s.marks.phrasingSide = previous.phrasing;
+        }
         s.part = oldPart; s.voice = oldVoice; s.piano = oldPiano; s.display = oldDisplay; s.group = oldGroup; s.instrument = oldInstrument;
         break;
       }
@@ -401,13 +414,26 @@ class Resolver {
         break;
       }
       case '\\stemUp': case '\\stemDown': case '\\stemNeutral':
-      case '\\voiceOne': case '\\voiceTwo': case '\\voiceThree': case '\\voiceFour':
-      case '\\slurUp': case '\\slurDown': case '\\tieDown':
-      case '\\mergeDifferentlyHeadedOn': case '\\mergeDifferentlyDottedOn':
+      case '\\voiceOne': case '\\voiceTwo': case '\\voiceThree': case '\\voiceFour': case '\\oneVoice':
+      case '\\slurUp': case '\\slurDown': case '\\slurNeutral':
+      case '\\tieUp': case '\\tieDown': case '\\tieNeutral':
+      case '\\mergeDifferentlyHeadedOn': case '\\mergeDifferentlyDottedOn': {
         if (input.options.targetProfile !== 'expressive') input.fail('unsupported','Source engraving directive outside this profile.',t.range);
-        if (command==='\\slurUp' || command==='\\slurDown') s.marks.side=command==='\\slurUp'?'above':'below';
-        else input.omit('Source engraving directive '+command+' omitted.',t.range);
+        const up = command.endsWith('Up') || command === '\\voiceOne' || command === '\\voiceThree';
+        const reset = command.endsWith('Neutral') || command === '\\oneVoice';
+        const side = reset ? undefined : up ? 'above' : 'below';
+        if (command.startsWith('\\stem')) s.stem = reset ? undefined : up ? 'up' : 'down';
+        else if (command.startsWith('\\slur')) s.marks.side = side;
+        else if (command.startsWith('\\tie')) s.tieSide = side;
+        else if (command.startsWith('\\voice') || command === '\\oneVoice') {
+          s.stem = reset ? undefined : up ? 'up' : 'down';
+          s.tieSide = side;
+          s.marks.side = side;
+          s.marks.phrasingSide = side;
+          input.omit('Voice positioning of rests, scripts, note columns and grace settings from '+command+' omitted.',t.range);
+        } else input.omit('Source engraving directive '+command+' omitted.',t.range);
         break;
+      }
       case '\\override': {
         const signature=['TextScript','#',"'",'padding','=','#','2'];
         if (input.options.targetProfile !== 'expressive' || signature.some((v,k)=>words[i+k]?.value!==v))
@@ -861,7 +887,8 @@ class Resolver {
           const dest=heads.findIndex(p=>spelling(p)===spelling(old));
           if (dest<0) continue;
           const id='tie'+ ++this.serial;
-          const start=s.tieFrom.headDetails![j];
+          const start=s.tieFrom.event.headDetails![j];
+          if (s.tieFrom.side) start.tieSide = s.tieFrom.side;
           if (start.tieStartId) (start.tieStartIds ??= []).push(id);
           else start.tieStartId=id;
           details[dest].tieEndId=id; count++;
@@ -873,8 +900,13 @@ class Resolver {
         const id='tie'+ ++this.serial;
         (s.headTies ??= new Map()).set(spelling(heads[j]),id);
         details[j].tieStartId=id;
+        if (s.tieSide) details[j].tieSide = s.tieSide;
       }
       event.headDetails=details;
+      if (s.stem && kind === 'attack' && rhythm.denominator > 1) (event.expression ??= {}).stem = s.stem;
+      const beamStaff = s.instrument?.kind === 'guitar' && s.instrument.view === 'tab' ? 0 : bar.staff;
+      const openBeam = s.marks.spans.get('beam')?.beamStart;
+      if (openBeam) trackBeamMember(openBeam, event, beamStaff);
       if (s.label!==undefined) { (event.expression ??= {}).label=s.label; delete s.label; }
       if (t.value==='<') event.headRanges=headRanges;
       const previousSlide=s.slideFrom;
@@ -887,11 +919,11 @@ class Resolver {
         }
         if (words[i]?.value==='~') {
           if (!heads.length) input.fail('syntax','Cannot tie silence.',range);
-          s.tie=heads; s.tieFrom=event; i++; continue;
+          s.tie=heads; s.tieFrom={event, side:s.tieSide}; i++; continue;
         }
         const headEnd=heads.length===1?headMark(words,i,details[0],s.marks.fingerSide,input):i;
         if (headEnd!==i) {i=headEnd;continue;}
-        const end=afterNote(words,i,event,s.marks,s.index,input,()=> 's'+ ++this.serial);
+        const end=afterNote(words,i,event,s.marks,s.index,beamStaff,input,()=> 's'+ ++this.serial);
         if (end===i) break;
         i=end;
       }

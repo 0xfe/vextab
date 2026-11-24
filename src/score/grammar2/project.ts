@@ -494,9 +494,22 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
         if (!state.notation) throw new ScoreError('measure', 'This expression span needs a notation staff', range);
         projected.spans.push({ kind: mark.kind, from: mark.first, to: mark.last, niente: mark.niente, strokes: mark.strokes, range, id: mark.kind + '-' + mark.first + (mark.name ? '-' + mark.name : '') });
         if (mark.kind === 'tremolo' || mark.kind === 'continuousBeam') {
-          for (const v of voices) for (const event of v.events) if (indices.get(event.id) >= indices.get(mark.first) && indices.get(event.id) <= indices.get(mark.last)) {
+          let beamStem: 'up' | 'down' | undefined;
+          const last = indices.get(mark.last);
+          for (let i = indices.get(mark.first); i <= last; i++) {
+            const bar = voice.events[i].bar - 1, v = voices[bar];
+            const event = v.events[i - voice.measures[bar].start];
             if (mark.kind === 'tremolo') event.tremolo = mark.strokes;
-            else event.continuousBeam = true;
+            else {
+              if (event.displayHand && event.displayHand !== v.hand)
+                throw new ScoreError('measure', 'A continuous beam must stay on its owning staff', range);
+              const drum = event.heads[0]?.drum;
+              const stem = event.stem ?? v.stem ?? (drum && kit.instruments.find(entry => entry.id === drum)?.stem);
+              if (stem && beamStem && stem !== beamStem)
+                throw new ScoreError('measure', 'Stems in a continuous beam must agree in direction', range);
+              if (stem) beamStem = stem;
+              event.continuousBeam = true;
+            }
           }
         }
       } else if (mark.kind === 'slur' || mark.kind === 'palmMute') {

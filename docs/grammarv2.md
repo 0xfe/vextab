@@ -443,8 +443,11 @@ Here C4 sounds for two beats. E4 releases after half a beat. The slur
 ends on the third beat, and the crescendo reaches forte on the fourth.
 Use `diminuendoStart` for a falling hairpin. Slur, beam and hairpin names
 are local to a voice. `beamStart group` and `beamEnd group` join short
-events in one measure, including notes moved with `onStaff`. A named
-beam can start outside a tuplet and end inside it.
+events, including a group that starts outside a tuplet and ends inside it.
+Within one measure, a named beam can include rests or notes moved with
+`onStaff`. Across a barline, it becomes a continuous beam. Its attacks must
+stay on their owning notation staff and their fixed stems must agree. The
+engraver splits this beam into connected pieces at system breaks.
 
 Use `F4[grace before slashed steal=1/5 (D4 E4)]` to assign one fifth
 of F4's time to the grace group. `grace after` takes time at the end

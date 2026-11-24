@@ -89,6 +89,30 @@ QUnit.module('Expressive notation and performance', () => {
     }
   });
 
+  QUnit.test('named cross-bar beam splits across two systems in the screen view and printed edition', assert => {
+    const input = 'edition conductor { system at 2 } meter 2/4 staff { :q. C4 :8 D4[beamStart b] | '
+      + 'break system :8 E4 F4[beamEnd b] :q G4 | }';
+    const score = parseScore(input);
+    for (const renderer of ['svg', 'canvas'] as const) {
+      const view = renderConductor(host(), score, { width: 500, renderer });
+      assert.deepEqual(view.diagnostics, []);
+      const fragments = view.composition.sheet.getContinuousLayout().fragments.filter(fragment => fragment.kind === 'beam');
+      assert.deepEqual(fragments.map(f => f.part), ['first','last']);
+      assert.ok(fragments.every(f => f.x2 - f.x1 > 10) && fragments[1].y1 > fragments[0].y1);
+      const notes = view.navigation.events.map(event => view.composition.getNote(event.id) as StaveNote);
+      assert.deepEqual(notes[1].getBeam().getNotes().map(note => notes.indexOf(note as StaveNote)), [1,2,3]);
+    }
+    const print = renderEdition(host(), score, 'conductor');
+    assert.deepEqual(print.diagnostics, []);
+    const pieces = [...print.publication.pages[0].svg.querySelectorAll<SVGGElement>('.vf-beam')];
+    assert.deepEqual(pieces.map(piece => piece.querySelectorAll('.vf-stem').length), [1,2]);
+    assert.ok(pieces.every(piece => piece.getBBox().width > 10) && pieces[0].getBBox().y < pieces[1].getBBox().y);
+    assert.throws(() => parseScore(input.replace(':8 E4', ':8 rest')), /requires pitched attacks/);
+    assert.throws(() => parseScore(input.replace(':8 E4 F4[beamEnd b]', ':8 beam { E4 F4[beamEnd b] }')), /only one beam/);
+    const opposite = input.replace('beamStart b', 'beamStart b, stem up').replace('beamEnd b', 'beamEnd b, stem down');
+    assert.throws(() => renderConductor(host(), parseScore(opposite)), /must agree in direction/);
+  });
+
   QUnit.test('named beam crosses the physical staves in the screen and complete printed piano part', assert => {
     const score = parseScore('meter 2/4 piano { upper treble { :8 G4[beamStart b] F4 E4[onStaff lower] D4[onStaff lower, beamEnd b] | } '
       + 'lower bass { :h C3 | } }');
