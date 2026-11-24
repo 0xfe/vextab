@@ -25,7 +25,7 @@ export function decorateAttack(event: PlaybackEvent, attack: Attack, key: KeyMan
   function play(pitches: (number | number[])[], at: number, duration: number) {
     const step = duration / pitches.length;
     pitches.forEach((pitch, i) => out.push({ ...event, time: at + i * step, duration: step,
-      notes: (Array.isArray(pitch) ? pitch : [pitch]).map(key => ({ pitch: key, duration: step, velocity: principal.velocity, program: principal.program })) }));
+      notes: (Array.isArray(pitch) ? pitch : [pitch]).map(key => ({ pitch: key, duration: step, velocity: principal.velocity, ...(principal.fixedVelocity && { fixedVelocity: true as const }), program: principal.program })) }));
   }
   if (attack.grace) {
     const shift = principal.pitch - midiPitch(head.written);

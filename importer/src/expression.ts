@@ -22,6 +22,8 @@ export interface Drum {
 export type Instrument = Guitar | { kind: 'drums'; map: Drum[] };
 /** Head details index the authored pitches or drum positions in their original order. */
 export interface HeadDetail {
+  /** Authored MIDI Note On velocity, including a silent zero. */
+  velocity?: number;
   string?: number;
   stringSide?: Side | 'left' | 'right';
   fret?: number | 'x';

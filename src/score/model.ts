@@ -21,6 +21,8 @@ export interface Head {
   marks?: HeadMark[]; // Bracketed fingering or accent attached to this head.
   /** Explicit sounding length for this head, in whole notes. The attack keeps its written rhythm. */
   sustain?: string;
+  /** Explicit Note On velocity on this head. A zero head occupies its written time silently. */
+  velocity?: number;
   tiedBendStart?: boolean;
   glissFrom?: number;
   release?: { hold: [number, number]; release: [number, number] };

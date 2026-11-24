@@ -121,6 +121,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       result.cautionary = true;
     }
     for (const mark of head.marks) {
+      if (mark.kind === 'velocity') result.velocity = mark.value;
       if (mark.kind === 'sustain') result.sustain = mark.duration;
       if (mark.kind === 'prebend') result.prebend = { semitones: mark.semitones, release: mark.release };
       if (mark.kind === 'slideIn' || mark.kind === 'slideOut') result.openSlide = { edge: mark.kind === 'slideIn' ? 'in' : 'out', side: mark.side };

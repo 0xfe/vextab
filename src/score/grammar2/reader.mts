@@ -79,7 +79,7 @@ const durationPattern = /^:(w|h|q|1|2|4|8|16|32|64|128|256)(\.{0,2})$/;
 const notePattern = /^[A-G](?:bb|##|b|#|n)?[0-9]$/;
 const positionPattern = /^(x|0|[1-9]\d?)\/([1-8])$/;
 const builtInMarks = new Set([
-  'sustain', 'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'diagram', 'line', 'ink', 'label',
+  'velocity', 'sustain', 'hammer', 'tie', 'pull', 'slide', 'courtesy', 'slash', 'accent', 'frame', 'diagram', 'line', 'ink', 'label',
   'tap', 'vibrato', 'brush', 'roll', 'stroke', 'rasgueado', 'symbol', 'write', 'staccato', 'fermata',
   'stem', 'dynamic', 'harmony', 'onStaff', 'sharedStem', 'pedal', 'ossia', 'grace', 'ornament', 'verse', 'gliss', 'release', 'articulation', 'lyric', 'bend', 'prebend', 'finger',
 ]);
@@ -298,6 +298,12 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
       const name = identifier();
       const side = mark.text === 'tieStart' && (peek() === 'above' || peek() === 'below') ? take().text as 'above' | 'below' : undefined;
       return { kind: mark.text, name, ...(side && { side }), range: range() };
+    }
+    if (mark.text === 'velocity') {
+      const token = take();
+      if (!/^(?:0|[1-9]\d{0,2})$/.test(token.text) || Number(token.text) > 127)
+        error('Expected an integer MIDI velocity from 0 to 127', token);
+      return { kind: 'velocity', value: Number(token.text), range: range() };
     }
     if (mark.text === 'sustain') {
       const token = take();

@@ -25,6 +25,7 @@ function fraction(time: Time) {
 /** Head-specific marks stay inside the chord so a tie or fingering never affects a neighboring note. */
 export function headMarks(head: HeadDetail, names: Names) {
   const marks: string[] = [];
+  if (head.velocity !== undefined) marks.push('velocity ' + head.velocity);
   if (head.tieStop && !head.tieEndId) marks.push('tie');
   if (head.tieEndId) marks.push('tieEnd ' + names.get('tie', head.tieEndId));
   const side = head.tieSide ? ' ' + head.tieSide : '';

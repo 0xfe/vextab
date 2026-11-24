@@ -197,7 +197,7 @@ function voiceChord(notes: PlaybackNote[], duration: number, spread: number, see
     const delay = width * (rank + stagger);
     const outer = note.pitch === high ? .042 : note.pitch === low ? -.012 : -.085;
     const balance = 1 + strength * (outer + .052 * noise(finger, 4));
-    note.velocity = Math.max(1, Math.min(127, Math.round(note.velocity * balance)));
+    if (!note.fixedVelocity) note.velocity = Math.max(1, Math.min(127, Math.round(note.velocity * balance)));
     if (delay) note.onsetOffset = delay;
     // A tied, pedalled or bending head still reaches its written endpoint on the common clock.
     let lift = 0;
@@ -226,7 +226,7 @@ function playPart(part: Performance, index: number, beats: Beat[], profile: Perf
       const after = (seconds: number) => clock(written + seconds) - attack;
       return { ...note, duration: after(note.duration),
         ...(note.onsetOffset && { onsetOffset: attack - time }),
-        velocity: Math.max(1, Math.min(127, Math.round(note.velocity * gain))),
+        velocity: note.fixedVelocity ? note.velocity : Math.max(1, Math.min(127, Math.round(note.velocity * gain))),
         ...(note.bend && { bend: note.bend.map(point => ({ ...point, time: after(point.time) })) }),
       };
     });
