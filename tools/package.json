@@ -8,7 +8,7 @@
     "istanbul-lib-coverage": "3.2.2",
     "istanbul-lib-instrument": "6.0.3",
     "qunit-classic": "npm:qunit@2.9.2",
-    "typescript": "5.9.3"
+    "typescript": "7.0.2"
   },
   "overrides": {
     "qunit-classic": {
