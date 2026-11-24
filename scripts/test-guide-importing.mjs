@@ -8,12 +8,15 @@ export async function testGuideImporting(page, url, live = false) {
   page.on('request', track);
   try {
     await page.goto(url + '#importing');
+    // A same-page navigation can finish before the guide has handled hashchange.
+    await page.locator('#main[data-route="#importing"]').waitFor();
     const index = page.locator('#index');
     const links = index.locator('.chapter-list a');
     assert.deepEqual(await links.evaluateAll(items => items.map(a => a.hash)),
       ['lilypond','musicxml','integration','limitations','gallery'].map(id => '#importing/' + id));
     for (const [name,format] of [['LilyPond','lilypond'],['MusicXML','musicxml']]) {
       await page.goto(url + '#importing/' + format);
+      await page.locator('#main[data-route="#importing/' + format + '"]').waitFor();
       const input = page.getByRole('textbox', {name:name + ' source',exact:true});
       const output = index.locator('.chapter-example textarea');
       await index.locator('.chapter-example svg').waitFor();
