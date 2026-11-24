@@ -16,6 +16,7 @@ function work(id, title, credit, file, options = {}, source = {}) {
 
 const manifest = JSON.parse(await readFile(new URL('../complex-musicxml/sources.json', import.meta.url)));
 for (const [id, file, title, credit] of [
+  ['beethoven-v', 'Beethoven_Op.67_1.mxl', 'Symphony No. 5 · I', 'Ludwig van Beethoven · Op. 67'],
   ['brandenburg-i', 'Bach_BWV.1048_1.mxl', 'Brandenburg Concerto No. 3 · I', 'J. S. Bach'],
   ['brandenburg-iii', 'Bach_BWV.1048_3.mxl', 'Brandenburg Concerto No. 3 · III', 'J. S. Bach'],
   ['gretchen', 'lc7111114.mxl', 'Gretchen am Spinnrade', 'Franz Schubert · Voice and piano'],
@@ -104,9 +105,16 @@ for (const { id, title, credit, file, options, source } of rows) {
   const edition = source.url
     ? `<p class="meta"><a href="${html(source.url)}">Source edition</a> · ${html(source.credit)}</p>`
     : '';
+  // Open the full symphony on its cadenza part. Readers can switch to any instrument or the conductor.
+  const firstPart = id === 'beethoven-v' ? model.parts.findIndex(part => part.name === 'Oboe 1') : -1;
+  if (id === 'beethoven-v') assert.ok(firstPart >= 0, 'The source first oboe must be selectable');
+  const partPicker = model.parts.length > 1
+    ? '<label>View <select id="instrument"><option value="conductor">Full score</option>' +
+      model.parts.map((part, i) => `<option value="${i}"${i === firstPart ? ' selected' : ''}>${html(part.name || 'Part ' + (i + 1))}</option>`).join('') +
+      '</select></label>' : '';
   const body = `<a href="./">← All works</a><h1>${html(title)}</h1><p>${html(credit)} · ${format} · ${summary}</p>
-  <nav><span id="player"></span><button id="edit">Edit VexTab</button><a href="${id}.vextab" download>Download VexTab</a><a href="${originalFile}" download>Download ${lily ? 'LilyPond' : 'MXL'}</a></nav>${edition}
-  <div id="score" data-editor="true" data-show-errors="true" data-view="${model.parts.length > 1 ? 'conductor' : 'parts'}">${html(text)}</div>${notes}
+  <nav>${partPicker}<span id="player"></span><button id="edit">Edit VexTab</button><a href="${id}.vextab" download>Download VexTab</a><a href="${originalFile}" download>Download ${lily ? 'LilyPond' : 'MXL'}</a></nav>${edition}
+  <div id="score" data-editor="true" data-show-errors="true" data-view="${model.parts.length > 1 && firstPart === -1 ? 'conductor' : 'parts'}">${html(text)}</div>${notes}
   <script src="dist/main.prod.js"></script><script src="viewer.js"></script>`;
   await writeFile(join(out, id + '.html'), page(title, body));
   const image = previews ? `<img src="${id}.png" alt="">` : '';
