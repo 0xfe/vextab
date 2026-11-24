@@ -192,6 +192,22 @@ QUnit.module('Expressive notation and performance', () => {
     }
   });
 
+  QUnit.test('pitch-driven neutral stems stay independent of neighboring voices', assert => {
+    // Two simultaneous low voices would otherwise send the lower voice down.
+    const music = 'meter 2/4 staff { voice one { :q E4[stem up] F4[stem up] | } '
+      + 'voice two { :8 beam { C4 D4 } :q A3[stem down] | } }';
+    for (const [policy, direction] of [['activeVoices', -1], ['pitch', 1]] as const) {
+      const model = parseScore('layout { stemPolicy ' + policy + ' } ' + music);
+      const view = renderConductor(host(), model);
+      const lower = view.composition.notes[0][0][1] as StaveNote[];
+      assert.deepEqual(lower.map(note => note.getStemDirection()), [direction, direction, -1]);
+      const svg = renderScorePart(host(), model, 'notation').publication.pages[0].svg;
+      const stems = [...svg.querySelectorAll<SVGPathElement>('.vf-beam .vf-stem path')];
+      assert.deepEqual(stems.map(p => Math.sign(p.getPointAtLength(0).y - p.getPointAtLength(p.getTotalLength()).y)), [direction, direction]);
+    }
+    assert.throws(() => parseScore('layout { stemPolicy keep } ' + music), /pitch or activeVoices/);
+  });
+
   QUnit.test('per-attack stems override the voice in both screen and printed beams', assert => {
     const source = 'meter 2/4 staff { voice melody stem down { :8 beam { C4[stem up] D4[stem up] } '
       + 'E4[stem down] F4[stem down] | :q G4[stem up, tieStart g below] G4[tieEnd g] | } }';

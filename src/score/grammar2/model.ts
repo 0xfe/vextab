@@ -111,7 +111,10 @@ export interface InstrumentIdentity { id?: string; name?: string; shortName?: st
 export interface ScoreStaff extends Omit<InstrumentIdentity, 'name'> { staffChanges?: StaffChange[]; displayName?: string; name: StaffName; range: TextRange; voices: ScoreVoice[] }
 /** Optional front matter shared by the screen engraving and its printed edition. */
 export interface ScoreHeading { align?: 'center'; title?: string; dedication?: string; tempo?: string; composer?: string }
-export interface ScoreLayout { font?: 'Bravura' | 'Petaluma'; heading?: ScoreHeading; spacing?: 'optical'; firstSystemIndent?: number; width?: number; scale?: number; rowGap?: number; staffDistance?: number; top?: number }
+export interface ScoreLayout {
+  /** Pitch-driven stems leave neutral attacks to the native note and beam defaults in every voice. */
+  stemPolicy?: 'pitch' | 'activeVoices';
+  font?: 'Bravura' | 'Petaluma'; heading?: ScoreHeading; spacing?: 'optical'; firstSystemIndent?: number; width?: number; scale?: number; rowGap?: number; staffDistance?: number; top?: number }
 /** Instrument declarations apply to every voice of the part. */
 export interface PartSettings {
   staffChanges?: StaffChange[];

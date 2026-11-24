@@ -983,6 +983,11 @@ export function readScore(source: string, fail: Fail, budgets: Budgets = limits)
             layout!.font = value.text;
             continue;
           }
+          if (field.text === 'stemPolicy') {
+            if (value.text !== 'pitch' && value.text !== 'activeVoices') error('Expected pitch or activeVoices', value);
+            layout!.stemPolicy = value.text as 'pitch' | 'activeVoices';
+            continue;
+          }
           if (field.text === 'spacing') {
             if (value.text !== 'optical') error('Expected optical spacing', value);
             layout!.spacing = 'optical';

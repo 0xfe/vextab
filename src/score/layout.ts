@@ -246,7 +246,8 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
   const notationTieSides = new Map<string, 'above' | 'below'>();
   const mixedEndings: ScoreSpan[] = [];
   const spec: EasyScoreCompositionSpec = {
-    stemPolicy: 'active-voices', accidentals: 'key-aware', graceAccidentals: 'ordered', sheet: { width, x: 10, y: parsed.layout?.top ?? 14, rowGap: parsed.layout?.rowGap ?? 36,
+    stemPolicy: parsed.layout?.stemPolicy === 'pitch' ? undefined : 'active-voices',
+    accidentals: 'key-aware', graceAccidentals: 'ordered', sheet: { width, x: 10, y: parsed.layout?.top ?? 14, rowGap: parsed.layout?.rowGap ?? 36,
       ...(parsed.layout?.spacing && { measurePadding: 18, measureGap: 0 }) },
     system: { ...(parsed.layout?.spacing && { details: { spacing: { mode: parsed.layout.spacing } } }),
       spaceBetweenStaves: parsed.layout?.staffDistance ?? 9 },
