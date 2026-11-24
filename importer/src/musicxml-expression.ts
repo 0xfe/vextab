@@ -177,6 +177,19 @@ export function noteMarks(
   isDrum: boolean,
   marks: Element | undefined,
 ) {
+  const raw = node.attributes.dynamics;
+  if (raw !== undefined) {
+    // MusicXML expresses velocity as a percentage of the default forte velocity, 90.
+    const value = raw.trim();
+    if (!/^\+?(?:\d+(?:\.\d*)?|\.\d+)$/.test(value))
+      input.fail('syntax', 'Expected a nonnegative MusicXML dynamics percentage.', node.range);
+    const velocity = Math.round(Number(value) * 90 / 100);
+    if (!e.pitch) input.omit('Omitted velocity on a rest.', node.range);
+    else {
+      if (velocity > 127) input.omit('Clipped note velocity to MIDI maximum 127.', node.range);
+      headDetail(e).velocity = Math.min(127, velocity);
+    }
+  }
   function metadata() {
     if (!e.pitch)
       return input.fail('unsupported', 'A head-specific mark needs a pitch or instrument position.', node.range);
@@ -248,7 +261,14 @@ export function noteMarks(
       else input.omit('Accidental glyph differs from written pitch.', child.range);
       attributesExcept(child, [], input);
     }
-    if (!isDrum && ['stem', 'notehead', 'instrument'].includes(child.name)) omitElement(child, input);
+    if (child.name === 'stem' && !isDrum) {
+      const stem = child.text.trim();
+      if (e.pitch && (stem === 'up' || stem === 'down')) {
+        attributesExcept(child, [], input);
+        expression(e).stem = stem;
+      } else omitElement(child, input);
+    }
+    if (!isDrum && ['notehead', 'instrument'].includes(child.name)) omitElement(child, input);
   }
 }
 /** An after-grace steals from the preceding principal. A before-grace waits for its following principal. */
@@ -333,6 +353,11 @@ export function appendHead(first: Event, head: Event, state: NotationState, inpu
     (first.headDetails ??= Array.from({ length: first.pitches?.length ?? 1 }, () => ({}))).push(detail);
   }
   if (head.expression) {
+    if (head.expression.stem) {
+      if (first.expression?.stem && first.expression.stem !== head.expression.stem)
+        input.fail('unsupported', 'Conflicting stem directions on one chord.', head.range);
+      expression(first).stem = head.expression.stem;
+    }
     for (const s of head.expression.spans ?? []) span(first, s);
     if (head.expression.lyrics) (expression(first).lyrics ??= []).push(...head.expression.lyrics);
     if (head.expression.articulations)

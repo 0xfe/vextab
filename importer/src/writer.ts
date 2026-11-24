@@ -133,8 +133,8 @@ class Writer {
     const range = bar.range ?? this.range;
     const full = new Time(bar.beats, bar.beatType);
     const length = bar.pickup ?? bar.fragment ?? full;
-    if (!bar.voices.size || bar.extent.compare(length) !== 0 || length.compare(zero) <= 0 || length.compare(full) > 0)
-      this.input.fail('timing', 'Expected one complete measure or a declared short measure.', range);
+    if (!bar.voices.size || bar.extent.compare(length) !== 0 || length.compare(zero) <= 0 || (!bar.fragment && length.compare(full) > 0))
+      this.input.fail('timing', 'Expected one complete measure or an explicitly sized fragment.', range);
     if (bar.pickup && !first) this.input.fail('unsupported', 'Pickup must be the first measure.', range);
     if (bar.ending) this.text += ' ending ' + bar.ending + ' {';
     if (bar.repeatStart) {
