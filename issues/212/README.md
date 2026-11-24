@@ -28,6 +28,32 @@ The [corpus matrix](coverage.md) gives strict and partial results for every name
 
 **Known losses.** Strict mode fails at the first unsupported construct. Partial mode can keep measured music and locate omitted or approximated engraving. Examples include styled markup, a flattened secondary lyric elision, and a Sor open-string fingering that conflicts with the explicitly written string and pitch. Unresolved timing, inconsistent string/fret/pitch data and missing percussion playback identity still fail. Haydn’s first and second movements work as explicit selections. Movement I gives all four parts the same 247-bar itinerary, including when the caller selects just the cello and the ending brackets appear only on violin I. The complete four-movement archive stops at the third movement’s Fine/D.C. navigation. The held-out Schumann song stops at conflicting written and elapsed rhythm in bar 26. [Expressive fixtures and boundaries](../211/README.md) · [Pinned MuseScore and Finale exports](../210/exporters.json)
 
+## Package and performance
+
+The alpha.5 tarball is **91,009 bytes packed and 276,824 bytes unpacked** with npm 11.20.0. The gzip entry sizes are 31,738 bytes for MusicXML, 33,532 for MXL and 19,665 for LilyPond. The three ceilings are 32, 40 and 24 KiB respectively. The tarball includes declarations and licenses and declares zero runtime dependencies. The packed consumer checks Node ESM, CommonJS, strict TypeScript and independent Chrome workers. All 16 public production bundle maps and the host’s webpack module inventory exclude importer code. [Package checks](../207/consumer.mjs) · [Host graph check](host-package.mjs)
+
+The following p95 measurements use 21 fresh Node 26.13.1 processes or 21 fresh Chrome 158.0.8127.37 workers per workload on an Apple M3. Conversion starts after the source and module are loaded. Node RSS includes conversion and public reparse. The Haydn workload reads the original quartet and selects its complete second movement.
+
+| Source | Node conversion, ms | Worker conversion, ms | Node reparse, ms | Node peak RSS growth, MiB |
+| --- | ---: | ---: | ---: | ---: |
+| MusicXML, 32 bars | 12.89 | 6.40 | 3.60 | 5.39 |
+| LilyPond, same 32 bars | 4.51 | 3.60 | 2.41 | 3.45 |
+| Haydn II, plain XML | 73.83 | 66.90 | 12.47 | 36.30 |
+| Haydn II, compressed MXL | 102.83 | 81.80 | 23.30 | 42.66 |
+| *Echigo-Jishi*, compressed MXL | 23.34 | 10.60 | 6.14 | 15.45 |
+| Sor, complete print score | 15.79 | 8.10 | 9.62 | 14.08 |
+| Joplin, complete print score | 14.76 | 10.60 | 7.26 | 16.52 |
+
+Cold module load was at most 4.91 ms at p95 in Node and 4.60 ms in the worker. The benchmark checks each entry against the [original transfer, latency and memory budgets](../206/README.md).
+
+**Sustained Chrome memory.** Nine fresh sessions per profile each performed 21 consecutive conversions in one worker, with the source resident before the RSS baseline. Extended growth was 115.19–120.08 MiB and expressive growth was 118.41–125.52 MiB. The budget is 128 MiB. In the final release check, a single expressive import grew by 30.13 MiB. With source maps enabled, the 21-import expressive run grew by 122.45 MiB. These are sampled renderer RSS increases. [Memory issue and prior measurements](https://github.com/0xfe/vextab/issues/214)
+
+- Each partwise reader releases a completed XML measure and preserves any ranges and attributes needed by the score. The browser releases consumed inflater buffers after CRC and SAX processing.
+- With the browser task scheduler available, long MXL conversions process subsequent chunks in short background tasks. This leaves room for browser work between chunks. Browsers without the scheduler use the tested direct streaming path. The reported RSS numbers are for Chrome on the named machine.
+- The optimized worker and Node agree on the entire result, including all 7,277 expressive diagnostics and all 2,041 optional source mappings for Haydn II. The musical reference checks 1,990 timed notes and rests and 18 expressive grace attacks.
+
+Run `node issues/212/benchmark.mjs` on a comparable quiet machine to collect all timing and RSS series, enforce the thresholds and write `build/importer-m5/benchmark.json`. The CI suite runs the cross-platform correctness and package checks. Release qualification also runs the calibrated performance check.
+
 ## Reproduce
 
 Use the Node version in the root `.nvmrc`, Python 3 and Chrome. Set `CHROME_BIN` for a nonstandard Chrome installation. The held-out MusicXML check fetches pinned originals and verifies cached bytes before use.
