@@ -1,5 +1,21 @@
 # Guide demo engraving comparison
 
+## VexFlow 5.10.1
+
+Compared the same 19 demo sources at their authored widths or a 960-unit fallback against the 5.10.0 PR at `629c59d`. All 19 retained their reading-event counts and screen system starts. All 34 conductor and part pages retained their page and system breaks. All 19 conductor views and every printed edition reported zero diagnostics.
+
+| Passage | Result with the published patch |
+| --- | --- |
+| Ballade, opening | Staff gap 125 → 89 units. Both wedges remain. The beamed chord’s finger 5 stays by the notehead. |
+| Étude, bars 9–11 | Staff gap 180 → 167. The right-hand wedges sit closer to the upper staff and clear the left-hand slur. A diagnostic render without slurs measures 134, and one without wedges measures 132. |
+| Compound-time picking | Native profile spacing leaves eight units between the two printed triplet numerals. The earlier fallback left about 25. Both are legible. |
+| Friska, system two | The three gaps stay at 70 / 90 / 70. The bass direction keeps four units of clearance from the following beam. |
+| Soleá, All of Me and Haydn | All render with the stock TAB geometry and slur fitter. The Haydn publication still contains 14 pages across the conductor and four parts. |
+
+The other 12 demos retain their previously accepted layouts. The full gallery includes the previous build for comparison.
+
+## VexFlow 5.10.0 baseline
+
 Reviewed all 19 entries marked as demos in the guide. The comparison includes every screen system and 34 printed pages per build across conductor scores and separate ensemble parts. Screen widths use the authored layout width or 960 units. All printed editions retain their page and system breaks. This is a visual review of those widths and editions.
 
 The live localhost lesson runs the working master checkout with VexFlow 5.9.0. PR #215 uses the exact npm release 5.10.0. Sixteen older demos use VexTab 6.2.3 at `f90dc2d` as their historical reference. The two Liszt studies and the local Chopin Étude use the 5.9.0 renderer at `1eb710d`. The live Consolation has subsequent score edits. Historical-to-PR comparisons use identical sources for all 19.
@@ -28,4 +44,4 @@ The initial eleven-demo check used a 1,080-unit fallback and missed two responsi
 | Guitar duet for print | No material change | Voice direction, sustained notes and ties retain the same single-system score and printed form. |
 | Two independent editors | Acceptable | The notation/TAB pair is more compact. Both editors use the same source. The packaged guide interaction checks exercise them independently. |
 
-The Chopin grand-staff hairpin spacing remains an open engraving regression. The rhythmic TAB tuplet uses envelope spacing pending the native fix. Both have stock 5.10.0 reproductions. [Hairpin control](https://github.com/vexflow/vexflow/issues/475) · [TAB tuplet control](https://github.com/vexflow/vexflow/issues/476)
+At 5.10.0 the Chopin grand-staff hairpin spacing was an open engraving regression. The rhythmic TAB tuplet used envelope spacing pending the native fix. Both have stock 5.10.0 reproductions. [Hairpin control](https://github.com/vexflow/vexflow/issues/475) · [TAB tuplet control](https://github.com/vexflow/vexflow/issues/476)

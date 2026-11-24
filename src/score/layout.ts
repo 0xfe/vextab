@@ -150,6 +150,7 @@ function voiceSpec(voice: MeasureVoice, measure: Measure, staff: Staff, sources:
     autoBeam: !voice.events.some(e => e.tremolo) && voice.beams && (staff !== 'tab' || voice.tabStems) && {
       groups: voice.beatGroups?.map(n => new Fraction(n, Number(measure.state.meter.split('/')[1]))),
       stemDirection, flatBeams: voice.flatBeams, beamRests: voice.beamRests, showStemlets: voice.stemlets, beamMiddleOnly: voice.middleRests },
+    // The native group resolves one stem side across the middle line and preserves an authored direction.
     beams: staff === 'tab' && !voice.tabStems ? [] : voice.beamGroups?.map(group => ({
       start: group.start, count: group.end - group.start + 1, flatBeams: voice.flatBeams,
       feathered: group.feather, showStemlets: voice.stemlets,
@@ -208,8 +209,6 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
   // A sustained outer notation voice ties away from the other voices on its staff.
   const notationTieSides = new Map<string, 'above' | 'below'>();
   const mixedEndings: ScoreSpan[] = [];
-  // The native TAB profile omits tuplet numerals. Keep room for both rhythmic projections.
-  const pairedTuplets = staves.includes('tab') && parsed.measures.some(m => m.voices.some(v => v.tabStems && v.tuplets.length));
   const spec: EasyScoreCompositionSpec = {
     stemPolicy: 'active-voices', accidentals: 'key-aware', graceAccidentals: 'ordered', sheet: { width, x: 10, y: parsed.layout?.top ?? 14, rowGap: parsed.layout?.rowGap ?? 36,
       ...(parsed.layout?.spacing && { measurePadding: 18, measureGap: 0 }) },
@@ -240,20 +239,16 @@ function project(parsed: ParsedScore, part: Part, width: number, publication = f
             id => eventId(staff, id), publication || !staves.includes('tab'), publication, guitarChordLane, extensions)),
           voices: [
             ...voices.map((v, index) => v.events.length ? voiceSpec(v, m, staff, sources)
-              : { notes: [textLanes.anchor(eventId(staff, 'blank-' + m.number + '-' + index), null)] }),
+              : { notes: [{ id: eventId(staff, 'blank-' + m.number + '-' + index), skip: 'w' }] }),
             ...(m.state.piano && staves.length === 2 ? pianoTextLanes(m.text ?? [], staff === 'left', parsed.layout?.staffDistance ?? 9)
-              : staff === staves[0] ? m.text ?? [] : []).map(lane => ({
-              notes: lane.map(cell => {
-                for (const at of cell.boundaries ?? []) sources.project(staff, cell.id + '-at-' + at.range.start, at.range);
-                return textLanes.anchor(sources.project(staff, cell.id, cell.range), cell);
-              }),
-            })),
+              : staff === staves[0] ? m.text ?? [] : []).flatMap(lane =>
+                textLanes.voices(lane, (id, range) => sources.project(staff, id, range))),
           ],
         };
       }),
     })),
     continuous: {
-      verticalSpacing: parsed.measures[0].state.piano || (staves.length > 1 && !pairedTuplets) ? 'profile' : 'envelope',
+      verticalSpacing: parsed.measures[0].state.piano || staves.length > 1 ? 'profile' : 'envelope',
       textLanes: 'system',
       opening: { indent: parsed.layout?.firstSystemIndent, blocks },
       courtesy: false, measureNumbers: parsed.measureNumbers, spans,
@@ -516,10 +511,10 @@ function engraving(parsed: ParsedScore, view: Projection): EasyScoreCompositionS
     for (const voice of voicesFor(measure, staff)) for (const event of voice.events)
       events.set(view.eventId(staff, event.id), { event, staff, voice, measure });
   return {
-    prepareNote(options, note, builder) {
-      view.textLanes.hook(options, note, builder);
+    prepareNote(options, note) {
       const entry = events.get(options.id);
       if (entry) prepareAttack(note, entry.event, entry.staff, entry.voice, entry.staff === view.staves[0]);
+      else view.textLanes.prepare(options.id, note);
     },
     place(composition, add) {
       const notes = new Map<string, Note>();

@@ -39,6 +39,18 @@ try {
           });
           checks.handLabels = [...host.querySelectorAll('text')].filter(el => ['R.H.', 'L.H.'].includes(el.textContent)).length;
         }
+        if (id === 'chopin-ballade-no3') {
+          const gap = composition => {
+            const [upper, lower] = composition.staves[0];
+            return lower.getYForLine(0) - upper.getYForLine(4);
+          };
+          const control = vextab.parseScore(source);
+          for (const part of control.parts) for (const staff of part.staves) for (const voice of staff.voices)
+            voice.spans = voice.spans.filter(span => !['crescendo', 'diminuendo', 'hairpin'].includes(span.kind));
+          const withoutWedges = vextab.renderConductor(host.appendChild(document.createElement('div')), control,
+            { width: score.layout.width });
+          checks.openingWedgeClearance = gap(view.composition) - gap(withoutWedges.composition);
+        }
         if (id === 'handy-st-louis-blues') {
           checks.pianoGaps = view.composition.sheet.getContinuousLayout().rows.map(row => {
             const [, upper, lower] = view.composition.staves[row.measures[0] - 1];
@@ -65,6 +77,9 @@ try {
       const [first, second, third] = report.checks.distance;
       assert.ok(second <= Math.max(first, third) + 25, 'bar 9 text clears the bass without separating the hands');
       assert.equal(report.checks.handLabels, 0, 'preserve the two explicitly empty hand names');
+    }
+    if (id === 'chopin-ballade-no3') {
+      assert.ok(Math.abs(report.checks.openingWedgeClearance) < 10, 'both opening wedges fit inside the existing piano gap');
     }
     if (id === 'handy-st-louis-blues') {
       assert.ok(report.checks.pianoGaps.every(gap => gap > 0 && gap < 100), 'keep the piano hands together beneath the singer');

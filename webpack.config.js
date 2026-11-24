@@ -84,7 +84,6 @@ module.exports = (env = {}) => {
     module: { rules: [
       // A standalone parser needs VexFlow's music tables but never loads engraving fonts.
       { issuerLayer: 'parser', resolve: { alias: { 'vexflow$': 'vexflow/core' } } },
-      { test: /[\\/]vexflow[\\/]build[\\/]esm[\\/]src[\\/](engravinggeometry|slurfit)\.js$/, loader: path.resolve(__dirname, 'scripts/vexflow-engraving-loader.cjs') },
       { resourceQuery: /guide-content/, type: 'asset/source' },
       { test: /\.(otf|sf2)$/, type: 'asset/bytes' },
       { test: /\.vextab$/, type: 'asset/source' },

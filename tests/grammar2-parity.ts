@@ -71,7 +71,7 @@ QUnit.module('Grammar v2 historical parity', () => {
   });
 
   QUnit.test('timed signs keep their music glyphs and clear the words, notes and barlines', assert => {
-    const source = 'meter 2/4 staff { :h C4 | text words line 8 font "Georgia" size 14 style italic ink navy { start sign coda :8 "One," "and" ink crimson "three" "four" end sign segno | } }';
+    const source = 'meter 2/4 staff { :h C4 | text words line 8 align center font "Georgia" size 14 style italic ink navy { start sign coda :8 "One," "and" ink crimson "three" "four" end sign segno | } }';
     const score = read(source);
     const inspect = (svg: SVGSVGElement) => {
       const labels = [...svg.querySelectorAll<SVGTextElement>('.vf-timed-text text, .vf-timed-direction text')];
@@ -98,6 +98,25 @@ QUnit.module('Grammar v2 historical parity', () => {
       assert.deepEqual(canvas.extraRegions.map(r => [r.x, r.y, r.w, r.h]), view.extraRegions.map(r => [r.x, r.y, r.w, r.h]));
     }
     inspect(renderScorePart(host(), score, 'notation').publication.pages[0].svg);
+  });
+
+  QUnit.test('two directions at each bar edge keep separate source selections', assert => {
+    const input = 'staff { :w C4 | text words { start "Solo" start "Andante" :w "dolce" end "ten." end "Fine" | } }';
+    const score = read(input);
+    const tokens = ['start "Solo"', 'start "Andante"', '"dolce"', 'end "ten."', 'end "Fine"'];
+    const selections = (svg: SVGSVGElement, rangeFor: ReturnType<typeof renderScore>['rangeFor']) =>
+      [...svg.querySelectorAll<SVGGElement>('.vf-timed-direction')].sort((a, b) => a.getBBox().x - b.getBBox().x).map(group => {
+        const range = rangeFor(group.getAttribute('data-direction-id'), input);
+        return input.slice(range.start, range.end);
+      });
+    for (const width of [280, 560]) {
+      const surface = host(), view = renderScore(surface, score, { width });
+      assert.deepEqual(selections(surface.querySelector('svg'), view.rangeFor), tokens);
+      assert.equal(view.extraRegions.length, tokens.length);
+      for (const box of view.extraRegions) assert.equal(view.hitTest(box.x + box.w / 2, box.y + box.h / 2)?.id, box.id);
+    }
+    const printed = renderScorePart(host(), score, 'notation');
+    assert.deepEqual(selections(printed.publication.pages[0].svg, printed.rangeFor), tokens);
   });
 
   QUnit.test('scoped transposition keeps diagram, symbol, fret, string and performed notes together', assert => {
