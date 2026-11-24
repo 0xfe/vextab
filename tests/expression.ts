@@ -168,6 +168,26 @@ QUnit.module('Expressive notation and performance', () => {
     }
   });
 
+  QUnit.test('per-attack stems override the voice in both screen and printed beams', assert => {
+    const source = 'meter 2/4 staff { voice melody stem down { :8 beam { C4[stem up] D4[stem up] } '
+      + 'E4[stem down] F4[stem down] | :q G4[stem up, tieStart g below] G4[tieEnd g] | } }';
+    const score = parseScore(source);
+    const directions = [1, 1, -1, -1, 1, -1];
+    for (const renderer of ['svg', 'canvas'] as const) {
+      const view = renderConductor(host(), score, { renderer });
+      const notes = view.navigation.events.map(event => view.composition.getNote(event.id) as StaveNote);
+      assert.deepEqual(notes.map(note => note.getStemDirection()), directions);
+      assert.equal(view.score.ties[0].side, 'below', 'the tie keeps its own side');
+    }
+    const page = renderScorePart(host(), score, 'notation').publication.pages[0].svg;
+    const stems = [...page.querySelectorAll<SVGPathElement>('.vf-stem path')];
+    // Beam paths are emitted separately from unbeamed stems. Put them in reading order.
+    stems.sort((a,b) => a.getPointAtLength(0).x - b.getPointAtLength(0).x);
+    assert.deepEqual(stems.map(path => Math.sign(path.getPointAtLength(0).y - path.getPointAtLength(path.getTotalLength()).y)), directions);
+    assert.throws(() => parseScore('staff { :w C4[stem left] | }'), /stem up or down/);
+    assert.throws(() => parseScore('staff { :w C4[stem down, stem up] | }'), /Only one stem/);
+  });
+
   QUnit.test('native beams, divided tremolo time, nested tuplets and a shared piano stem', assert => {
     const target = host(), score = parseScore(rhythm);
     const view = renderConductor(target, score, { width: 600 });
