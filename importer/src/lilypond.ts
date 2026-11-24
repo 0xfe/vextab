@@ -514,6 +514,8 @@ class Resolver {
         this.unfoldBars(s, start, t);
         break;
       }
+      case '#': case '$':
+        return input.fail('unsupported', 'Computed Scheme music is outside the static LilyPond profile.', t.range);
       case '\\repeat': return this.repeat(words, i, s, scope, depth, t);
       default: {
         if (command.startsWith('\\')) {

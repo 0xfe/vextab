@@ -1,5 +1,6 @@
 // Re-import the named corpus through both modes and check the published, reproducible coverage table.
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { parseScore } from 'vextab/parse';
@@ -129,6 +130,16 @@ function count(group, status) {
   if (!counts.has(group)) counts.set(group, [0, 0, 0, 0]);
   counts.get(group)[statuses.indexOf(status)]++;
 }
+/** Read the declared score version independently from each pinned MXL container. */
+function archiveVersion(file) {
+  const script = `import sys, zipfile, xml.etree.ElementTree as ET
+with zipfile.ZipFile(sys.argv[1]) as z:
+    manifest = ET.fromstring(z.read("META-INF/container.xml"))
+    path = manifest.find(".//{*}rootfile").attrib["full-path"]
+    with z.open(path) as member:
+        print(next(ET.iterparse(member, events=("start",)))[1].get("version", ""))`;
+  return execFileSync('python3', ['-c', script, file], { encoding: 'utf8' }).trim();
+}
 const table = [];
 for (const { file, tags, options, label, outside } of rows) {
   const bytes = readFileSync(file);
@@ -136,11 +147,14 @@ for (const { file, tags, options, label, outside } of rows) {
     mxl = file.endsWith('.mxl');
   const input = lily ? bytes.toString() : bytes;
   const source = mxl ? '' : bytes.toString();
-  const version = lily
-    ? source.match(/\\version\s+"([^"]+)"/)?.[1]
-    : source.match(/<score-(?:partwise|timewise)\b[^>]*?version="([^"]+)"/)?.[1];
+  const version = mxl
+    ? archiveVersion(file)
+    : lily
+      ? source.match(/\\version\s+"([^"]+)"/)?.[1]
+      : source.match(/<score-(?:partwise|timewise)\b[^>]*?version="([^"]+)"/)?.[1];
   const convert = lily ? importLilyPond : mxl ? importMXL : importMusicXML;
   const outcomes = [];
+  let detail = '0';
   for (const mode of ['strict', 'partial']) {
     const result = await convert(input, {
       filename: basename(file),
@@ -163,13 +177,20 @@ for (const { file, tags, options, label, outside } of rows) {
       assert.ok(d.file && d.range[0] >= 0 && d.range[0] <= d.range[1], label);
       if (!mxl) assert.ok(d.range[1] <= source.length, label);
     }
+    if (mode === 'partial') {
+      const error = result.diagnostics.find((d) => d.severity === 'error');
+      detail = error
+        ? (error.measure ? 'Bar ' + error.measure + '. ' : '') + error.message
+        : String(result.diagnostics.length);
+      detail = detail.replaceAll('|', '\\|').replaceAll('\n', ' ');
+    }
     outcomes.push(result.status);
   }
   if (outside) assert.deepEqual(outcomes, ['failed', 'failed']);
   const status = outside ? 'outside' : outcomes[1];
   for (const tag of ['All cases', ...tags]) count(tag, status);
   const format = (lily ? 'LilyPond' : mxl ? 'MXL' : 'MusicXML') + (version ? ' ' + version : '');
-  table.push('| ' + [label, format, ...outcomes, tags.join(', ')].join(' | ') + ' |');
+  table.push('| ' + [label, format, ...outcomes, tags.join(', '), detail].join(' | ') + ' |');
 }
 const report = [
   '# Importer qualification corpus',
@@ -180,8 +201,8 @@ const report = [
   '| --- | ---: | ---: | ---: | ---: |',
   ...[...counts].map(([tag, values]) => '| ' + [tag, ...values].join(' | ') + ' |'),
   '',
-  '| Score or fixture | Source | Strict | Partial mode | Features under test |',
-  '| --- | --- | --- | --- | --- |',
+  '| Score or fixture | Source | Strict | Partial mode | Features under test | Warnings or failure in partial mode |',
+  '| --- | --- | --- | --- | --- | --- |',
   ...table,
   '',
 ].join('\n');
