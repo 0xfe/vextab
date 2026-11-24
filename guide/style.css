@@ -243,3 +243,16 @@ textarea.editor { font-family: ui-monospace, SFMono-Regular, Consolas, monospace
   .syntax-editor > .syntax-layer { display: none; }
   .syntax-editor > textarea.editor { color: CanvasText; background: Canvas; caret-color: auto; }
 }
+
+/* The source language and the editable VexTab result keep separate labels and controls. */
+.import-example { margin: 1em 0; }
+.import-example label, .import-controls, .import-example [role=status], .import-diagnostics {
+  font: 14px/1.5 system-ui, sans-serif;
+}
+.import-example textarea {
+  display: block; width: 100%; margin: .4em 0; padding: .7em 1em; resize: vertical;
+  border: 1px solid var(--line); color: var(--ink); background: white;
+  font: 14px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.import-controls { display: flex; flex-wrap: wrap; gap: .5em 1em; align-items: center; }
+.import-diagnostics:empty { display: none; }
