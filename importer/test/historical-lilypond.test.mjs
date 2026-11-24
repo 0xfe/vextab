@@ -160,10 +160,12 @@ test('neutral polyphony uses pitch-driven stems and the numbered voice separator
   assert.equal(plain.target.minimumVersion,'6.6.0');
   assert.doesNotMatch(read(ly`{ \stemNeutral c'2 d'2 }`,expressive).documents[0].text,/stemPolicy/);
   const split=ly`{ << { c'2~ c'2 } \\ { g2 \stemNeutral a2 } >> }`;
-  assert.equal(read(split,expressive).status,'failed');
-  const numbered=read(split,{...expressive,mode:'partial'});
-  assert.equal(numbered.status,'partial');
-  assert.equal(split.slice(...numbered.diagnostics[0].range),ly`\\`);
+  const numbered=read(split,expressive);
+  assert.equal(numbered.status,'exact');
+  const resting=split.replace('g2','r2');
+  const omitted=read(resting,{...expressive,mode:'partial'});
+  assert.equal(omitted.status,'partial');
+  assert.equal(resting.slice(...omitted.diagnostics[0].range),'r2');
   assert.match(numbered.documents[0].text,/stemPolicy pitch/);
   assert.match(numbered.documents[0].text,/C4\[tieStart tie\d+ above, stem up\]/);
   assert.match(numbered.documents[0].text,/G3\[stem down\] A3/);

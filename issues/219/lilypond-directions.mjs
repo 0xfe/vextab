@@ -44,10 +44,34 @@ try {
       if (!origin) throw Error('Missing source for ' + fragment.id);
       tied.add(origin + '\ttie\t' + (fragment.above ? 1 : -1));
     }
-    return [...rows,...tied].sort().join('\n') + '\n';
+    // Stems inside a beam are siblings of the note groups in the SVG. Record native IDs when the
+    // publication draws each note, then read the direction of the actual path on the finished page.
+    const notePrototype = Object.getPrototypeOf([...notes.values()].find(note => note.hasStem()));
+    const draw = notePrototype.draw, stemOwners = new Map();
+    notePrototype.draw = function (...args) {
+      if (!this.isRest() && this.hasStem()) stemOwners.set(this.getStem().getAttribute('id'), this.getAttribute('id'));
+      return draw.apply(this,args);
+    };
+    const aside = document.body.appendChild(document.createElement('aside'));
+    let print;
+    try { print = window.vextab.renderEdition(aside,model,'conductor'); }
+    finally { notePrototype.draw = draw; }
+    const printed = [];
+    for (const group of aside.querySelectorAll('.vf-stem[data-vf-id]')) {
+      const path = group.querySelector('path');
+      if (!path) continue;
+      const stemId = group.getAttribute('data-vf-id').replace(/^vf-/,'');
+      const origin = origins.get(print.sourceFor(stemOwners.get(stemId)));
+      if (!origin) throw Error('Missing source for printed stem ' + stemId);
+      const direction = Math.sign(path.getPointAtLength(0).y - path.getPointAtLength(path.getTotalLength()).y);
+      printed.push(origin + '\tstem\t' + direction);
+    }
+    return { screen:[...rows,...tied].sort().join('\n') + '\n', print:printed.sort() };
   },source);
-  assert.equal(result.trimEnd().split('\n').length,834);
-  if (native !== undefined) assert.deepEqual(result.split('\n'), native.split('\n'));
-  assert.equal(createHash('sha256').update(result).digest('hex'),expected);
-  console.log('781 native stem directions and 53 native tie sides match at their exact voice and onset.');
+  const rows = result.screen.trimEnd().split('\n');
+  assert.equal(rows.length,834);
+  if (native !== undefined) assert.deepEqual(rows, native.trimEnd().split('\n'));
+  assert.equal(createHash('sha256').update(result.screen).digest('hex'),expected);
+  assert.deepEqual(result.print,rows.filter(row => row.includes('\tstem\t')));
+  console.log('781 screen and printed stem directions and 53 screen tie sides match native LilyPond.');
 } finally { await browser.close(); }

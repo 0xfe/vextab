@@ -27,7 +27,7 @@ interface PianoHand { declaration: Token; key: string; name?: string }
 
 interface State {
   chordMode?:boolean;
-  stem?: 'up'|'down'; tieSide?: 'above'|'below';
+  stem?: 'up'|'down'; tieSide?: 'above'|'below'; numberedVoice?: number;
   marks:Attachments; instrument?:Instrument; headTies?:Map<string,string>;
   label?:string; slideFrom?:number; lastEvent?:Event; lastDetails?:HeadDetail[]; tieFrom?: { event: Event; side?: 'above'|'below' }; graceSlashed?:boolean;
   part: string; voice: string; group?: NonNullable<Measure['group']>; piano?: { id: string; hands: PianoHand[] }; display?: number; index: number; at: Time;
@@ -307,9 +307,9 @@ class Resolver {
         const staffContext = ['Staff','TabStaff','DrumStaff'].includes(context);
         const localDirections = (voiceContext || staffContext) &&
           (command === '\\new' || (id && id !== (voiceContext ? oldVoice : oldPart)));
-        const previous = { stem: s.stem, tie: s.tieSide, slur: s.marks.side, phrasing: s.marks.phrasingSide };
+        const previous = { stem: s.stem, tie: s.tieSide, slur: s.marks.side, phrasing: s.marks.phrasingSide, numbered: s.numberedVoice };
         if (localDirections) {
-          s.stem = undefined; s.tieSide = undefined; s.marks.side = undefined; s.marks.phrasingSide = undefined;
+          s.stem = undefined; s.tieSide = undefined; s.marks.side = undefined; s.marks.phrasingSide = undefined; s.numberedVoice = undefined;
         }
         if (voiceContext && id) s.voice = id;
         if (words[i]?.value==='\\with') {
@@ -322,7 +322,7 @@ class Resolver {
         child();
         while (words[i]?.value==='\\addlyrics') i=this.one(words,i,s,scope,depth+1);
         if (localDirections) {
-          s.stem = previous.stem; s.tieSide = previous.tie; s.marks.side = previous.slur; s.marks.phrasingSide = previous.phrasing;
+          s.stem = previous.stem; s.tieSide = previous.tie; s.marks.side = previous.slur; s.marks.phrasingSide = previous.phrasing; s.numberedVoice = previous.numbered;
         }
         s.part = oldPart; s.voice = oldVoice; s.piano = oldPiano; s.display = oldDisplay; s.group = oldGroup; s.instrument = oldInstrument;
         break;
@@ -438,6 +438,7 @@ class Resolver {
           s.tieSide = side;
           s.marks.side = side;
           s.marks.phrasingSide = side;
+          s.numberedVoice = undefined;
           input.omit('Voice positioning of rests, scripts, note columns and grace settings from '+command+' omitted.',t.range);
         } else input.omit('Source engraving directive '+command+' omitted.',t.range);
         break;
@@ -637,13 +638,13 @@ class Resolver {
   private simultaneous(token: Token, s: State, scope: Scope, depth: number) {
     const words = token.children!;
     const separator = this.input.options.targetProfile === 'expressive' && words.find(word => word.value === '\\\\');
-    if (separator) this.input.omit('Numbered voices also set rest, script, note-column and grace positions.', separator.range);
     let longest: State = { ...s }, branch = 0;
     for (let i = 0; i < words.length;) {
       if (words[i].value === '\\\\') this.input.fail('syntax', 'Missing simultaneous branch.', words[i].range);
       const v: State = { ...s, voice: branch === 0 ? s.voice : branch === 1 ? 'lower' : 'voice' + (branch + 1),
         pendingGrace: [], tie: undefined, tieFrom:undefined, headTies:undefined, marks:{...s.marks,spans:new Map()} };
       if (separator) {
+        v.numberedVoice = branch + 1;
         v.stem = branch % 2 ? 'down' : 'up';
         v.tieSide = v.stem === 'up' ? 'above' : 'below';
         v.marks.side = v.tieSide;
@@ -947,6 +948,14 @@ class Resolver {
         i=end;
       }
       event.range=[t.range[0],words[i-1].range[1]];
+      if (s.numberedVoice && kind !== 'skip') {
+        const direction = s.numberedVoice % 2 ? 'above' : 'below';
+        for (const sign of event.expression?.articulations ?? []) sign.side ??= direction;
+        if (kind === 'rest' || event.grace || event.expression?.dynamic || event.expression?.label || event.expression?.ornament)
+          input.omit('Numbered voice positioning of this rest, grace group or script uses the target default.', event.range);
+        if (s.numberedVoice > 2 && kind === 'attack')
+          input.omit('The additional numbered voice uses the target note-column offset.', event.range);
+      }
       if (s.instrument?.kind==='guitar') {
         if (previousSlide) {
           if (heads.length!==1 || details[0].string && details[0].string!==previousSlide)

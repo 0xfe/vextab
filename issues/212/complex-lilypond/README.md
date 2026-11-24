@@ -12,7 +12,7 @@ Use `{targetProfile: 'expressive', mode: 'partial', score: 'print'}` at default 
 | Bass | 168 | 143 |
 | **Total** | **848** | **734** |
 
-The 847 written events contain 787 noteheads and 61 rests. The score retains 770 explicitly directed visible stems, 11 pitch-driven stems after `\stemNeutral`, all 53 outgoing tie directions and the two authored cross-bar beams. The native LilyPond engraving and the VexTab screen engraving agree on the direction at every one of these 834 source positions. The tenor beam joins bars 10–11 and the soprano beam joins bars 20–21. The tenor’s twelve upward stems leave its downward tie directions intact.
+The 847 written events contain 787 noteheads and 61 rests. The score retains 770 explicitly directed visible stems, 11 pitch-driven stems after `\stemNeutral`, all 53 outgoing tie directions and the two authored cross-bar beams. All 781 VexTab stems match native LilyPond at their written voice and onset on screen and on the printed pages. All 53 screen tie sides also match. The tenor beam joins bars 10–11 and the soprano beam joins bars 20–21. The tenor’s twelve upward stems leave its downward tie directions intact.
 
 Twelve source diagnostics locate three ornament signs, four system breaks, four voice presets and the final double barline. The voice presets also control rests, scripts, note columns and grace styling. These properties still use the target’s engraving defaults.
 
