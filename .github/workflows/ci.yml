@@ -57,6 +57,7 @@ jobs:
           node issues/212/browser.mjs
           node issues/212/musicxml-surfaces.mjs
           node issues/219/engraving.mjs
+          node issues/219/lilypond-directions.mjs
       - run: npm run build -- --json "$RUNNER_TEMP/vextab-webpack.json"
       - name: Pack the distribution and test the files consumers receive
         env:
