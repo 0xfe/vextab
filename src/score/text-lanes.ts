@@ -23,6 +23,11 @@ export function pianoTextLanes(lanes: MeasuredText[][], lower: boolean, distance
   });
 }
 
+/** A beat sharing the opening sign's line needs space for that sign before its text. */
+function followsOpeningSign(cell: MeasuredText) {
+  return cell.boundaries?.some(sign => sign.edge === 'start' && sign.style.line === cell.style.line);
+}
+
 /** Resolve source ranges and fresh VexFlow text objects separately for each composition. */
 export class TextLanes {
   readonly regions = new Map<string, ScoreHitRegion>();
@@ -58,7 +63,7 @@ export class TextLanes {
       ...(style === 'bold' && { weight: style }), ...(cell.glyph && { family: scoreMusicFont(), style: 'normal', weight: 'normal' }) };
     // Reserve the leading side of the first beat when a same-line sign occupies the bar opening.
     // Drawing uses the written alignment after VexFlow has spaced the neighboring beats.
-    const afterStart = anchor === 'beat' && cell.boundaries?.some(b => b.edge === 'start' && b.style.line === line);
+    const afterStart = anchor === 'beat' && followsOpeningSign(cell);
     const justification = afterStart ? 'right' : align ?? 'center';
     return { id, direction: { ...rhythm, text, anchor, line, align: justification, font } };
   }
@@ -73,21 +78,26 @@ export class TextLanes {
     const id = note.getAttribute('id'), cell = this.cells.get(id);
     if (!cell) return;
     let label: TextNote;
-    if (note instanceof TextNote) label = note;
-    else {
+    if (note instanceof TextNote) {
+      label = note;
+      if (label.getDirectionAnchor() === 'beat' && followsOpeningSign(cell)) {
+        // Retain the reserved tick width if Canvas or print formats the voice a second time.
+        const width = label.getTextMetrics().width;
+        label.setXShift(cell.style.align === 'right' ? 0 : cell.style.align === 'left' ? width : width / 2);
+      }
+    } else {
       if (!cell.style.smooth) return;
-      const { family, size, style, line } = cell.style;
+      const { family, size, style, align, line } = cell.style;
       label = new TextNote({ duration: cell.base, ...(cell.glyph ? { glyph: cell.text } : { text: cell.text }), line })
         .setDirectionAnchor('beat').setAttribute('id', id);
       if (cell.glyph) {
         if (size) label.setFontSize(size);
       } else label.setFont(family ?? label.fontInfo.family, size ?? label.fontInfo.size as number,
         style === 'bold' ? 'bold' : undefined, style === 'italic' ? 'italic' : undefined);
+      label.setJustification(align === 'right' ? TextNote.Justification.RIGHT : align === 'left' ? TextNote.Justification.LEFT : TextNote.Justification.CENTER);
       label.setStave(note.checkStave()).setTickContext(note.checkTickContext());
       label.preFormat();
     }
-    const align = cell.style.align;
-    label.setJustification(align === 'right' ? TextNote.Justification.RIGHT : align === 'left' ? TextNote.Justification.LEFT : TextNote.Justification.CENTER);
     if (cell.style.ink) label.setStyle(inkStyle(cell.style.ink));
     const stave = note.checkStave();
     if (label.getLine() - 3 >= stave.getNumLines()) {

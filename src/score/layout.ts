@@ -656,6 +656,19 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
   if (views.some(view => view.mixedEndings.length)) spec.sheet.y += 20;
   const factory = new Factory({ renderer: { elementId: null, width, height: 1 } }).setContext(ctx);
   const easy = factory.EasyScore();
+  if (canvas) {
+    // Resizing clears a bitmap. Size it after native layout and before painting, in the same pass as SVG.
+    const place = spec.engraving.place;
+    spec.engraving = { ...spec.engraving, place(score, add) {
+      let bottom = 0;
+      for (const mark of score.sheet.getContinuousLayout().detailMarks) bottom = Math.max(bottom, mark.bounds.y + mark.bounds.h);
+      place(score, mark => {
+        bottom = Math.max(bottom, mark.bounds.y + mark.bounds.h);
+        add(mark);
+      });
+      resize(score.sheet, bottom);
+    } };
+  }
   const composition = easy.compose(spec);
   let offset = 0;
   const instruments = views.map((view, i) => {
@@ -665,17 +678,9 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
     return { score, view, local };
   });
 
-  function resize() {
-    const rows = composition.sheet.getRows();
-    const extent = Math.max(width, ...rows.map(r => r.x + r.width + 10));
-    ctx.resize(extent, Math.ceil(composition.sheet.getHeight() + 20));
-  }
-  function draw() {
-    if (canvas) {
-      composition.sheet.format();
-      resize();
-    }
-    factory.draw();
+  function resize(sheet: EasyScoreComposition['sheet'], markBottom = 0) {
+    const extent = Math.max(width, ...sheet.getRows().map(r => r.x + r.width + 10));
+    ctx.resize(extent, Math.ceil(Math.max(sheet.getHeight(), markBottom) + 20));
   }
 
   const frameRegions: ScoreHitRegion[] = [];
@@ -685,7 +690,7 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
     const previous = Registry.getDefaultRegistry(), registry = previous ?? new Registry();
     if (!previous) Registry.enableDefaultRegistry(registry);
     try {
-      draw();
+      factory.draw();
       const rendered = registry.getElementsByType(FretDiagram.CATEGORY).filter(el => el.isRendered() && el.getContext() === ctx);
       rendered.forEach((el, i) => {
         const { frame, sources } = frames[i], { x, y, w, h } = el.getBoundingBox();
@@ -695,7 +700,7 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
     } finally {
       if (!previous) Registry.disableDefaultRegistry();
     }
-  } else draw();
+  } else factory.draw();
   const labels = views.flatMap(view => [...view.textLanes.regions.values()]);
   const extraRegions = [...labels, ...frameRegions, ...views.flatMap(view => view.endingRegions)];
   const sources = Object.assign(Object.create(null), ...views.map(view => view.sources.ids));
@@ -727,7 +732,7 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
     if (hit && !hidden.has(hit.id)) return hit;
     return extraRegions.find(contains);
   }
-  if (!canvas) resize();
+  if (!canvas) resize(composition.sheet);
   else {
     canvas.setAttribute('role', 'img');
     canvas.setAttribute('aria-label', navigation.events.map(event => event.label).join('. '));
