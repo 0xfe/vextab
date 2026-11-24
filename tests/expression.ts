@@ -105,13 +105,15 @@ QUnit.module('Expressive notation and performance', () => {
       assert.deepEqual(view.diagnostics, []);
       check(view.composition.notes[0][0][0] as StemmableNote[]);
     }
-    const printed: StemmableNote[] = [];
-    const sheet = renderEdition(host(), score, 'conductor', {noteHooks: [(_opts, note) => {
-      if (note.getBeam()) printed.push(note);
-    }]});
+    // Publication prepares individual notes before it builds the beam. Inspect the finished page.
+    const sheet = renderEdition(host(), score, 'conductor');
     assert.deepEqual(sheet.diagnostics, []);
-    check(printed.slice(-4));
-    assert.ok(sheet.publication.pages[0].svg.querySelector('.vf-beam'));
+    const beams = sheet.publication.pages[0].svg.querySelectorAll<SVGGElement>('.vf-beam');
+    assert.equal(beams.length, 1, 'one printed beam connects the two staves');
+    const stems = [...beams[0].querySelectorAll<SVGPathElement>('.vf-stem path')];
+    assert.deepEqual(stems.map(stem => Math.sign(stem.getPointAtLength(0).y - stem.getPointAtLength(stem.getTotalLength()).y)),
+      [-1, -1, 1, 1], 'all four printed stems point toward the shared beam');
+    assert.ok(beams[0].getBBox().width > 10, 'the printed beam spans the notes');
   });
 
   QUnit.test('authored grace shares and pedal lift on the written onset', assert => {
