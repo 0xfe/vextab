@@ -58,5 +58,6 @@ for (const [entry, ceiling] of [
   const bytes = gzipSync(code, { level: 9 }).length;
   assert.ok(bytes <= ceiling, entry + ' exceeds its gzip budget');
   writeFileSync(outfile, code);
-  console.log(entry + ': ' + bytes + ' gzip bytes (' + graph.join(', ') + ')');
+  // npm pack --json reserves stdout for the tarball manifest, including during prepack.
+  console.error(entry + ': ' + bytes + ' gzip bytes (' + graph.join(', ') + ')');
 }

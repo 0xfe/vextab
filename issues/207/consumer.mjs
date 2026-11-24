@@ -12,7 +12,9 @@ import { parseScore } from 'vextab/parse';
 const out = resolve('build/importer-consumer');
 await mkdir(out, { recursive: true });
 const consumer = await mkdtemp(join(tmpdir(), 'vextab-import-consumer-'));
-const [pack] = JSON.parse(execFileSync('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', out],
+// Exercise the real release lifecycle once. The minimum-Node job consumes the prebuilt distribution.
+const packFlags = process.argv.includes('--node-only') ? ['--ignore-scripts'] : [];
+const [pack] = JSON.parse(execFileSync('npm', ['pack', '--json', ...packFlags, '--pack-destination', out],
   { cwd: 'importer', encoding: 'utf8' }));
 assert.ok(pack.size <= 96 * 1024 && pack.unpackedSize <= 320 * 1024);
 // Inspect the package npm actually produced, including generated declarations and license notices.
