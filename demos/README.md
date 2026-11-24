@@ -1,6 +1,6 @@
 # VexTab demos
 
-Run `npm ci` and `npm start`, then open the [demo library](http://127.0.0.1:9005/guide/#studies). Each study has an edit to try. Open it in the playground to save a draft or download the score. The same demos ship offline at `dist/guide/index.html#studies`.
+Run `npm ci` and `npm start`, then open the [demo library](http://127.0.0.1:9005/guide/#studies). Each study has an edit to try. Open it in the playground to save a draft or download the score. After a local build, the same demos work offline at `dist/guide/index.html#studies`.
 
 | Study | What to try |
 | --- | --- |
@@ -15,4 +15,4 @@ Run `npm ci` and `npm start`, then open the [demo library](http://127.0.0.1:9005
 | Guitar duet for print | Switch player and paper size, then inspect the independent page. |
 | Two independent editors | Edit, break, recover and resize two embeds independently. |
 
-The [canonical VexTab files](../guide/scores/) feed the guide and its tests. The distribution includes plain-text copies in `dist/guide/scores/`. The [project index](http://127.0.0.1:9005/) also links to both playback demos, the DOM embed, and the score API example. Press **Play** at the bottom center of any guide score. The first play loads the bundled SpessaSynth worklet and SoundFont. The separate native Web Audio demo demonstrates the sample-free embed default.
+The [canonical VexTab files](../guide/scores/) feed the guide and its tests. The local site build includes plain-text copies in `dist/guide/scores/`. The [project index](http://127.0.0.1:9005/) also links to both playback demos, the DOM embed, and the score API example. Press **Play** at the bottom center of any guide score. The first play loads the bundled SpessaSynth worklet and SoundFont. The separate native Web Audio demo demonstrates the sample-free embed default.

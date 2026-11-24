@@ -34,7 +34,7 @@ In VexTab 7, load the full VexFlow browser build first, then VexTab. These versi
 <div class="vextab-auto" editor="true">play { tempo 96 }
 meter 4/4
 guitar { :q 0/1 2/1 3/1 2/1 | }</div>
-<script defer src="https://cdn.jsdelivr.net/npm/vexflow@5.10.1/build/cjs/vexflow.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/vexflow@5.11.0/build/cjs/vexflow.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/vextab@7.0.0/dist/runtime/vextab.js"></script>
 ```
 
