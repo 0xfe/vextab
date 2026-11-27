@@ -2,7 +2,7 @@
 import { compile as compileGrammar2 } from './grammar2/compiler.mts';
 import type { ScoreCapacity } from './grammar2/capacity.mts';
 import type { ScoreV2 } from './grammar2/model';
-import VexFlow, { Fraction, KeyManager, Music, Tuning } from 'vexflow';
+import VexFlow, { Fraction, KeyManager, Music, Tuning } from 'vexflow/core';
 import { drumError, drumKit } from './drums';
 import { isScoreColor } from './color';
 import { readSyntax, ScoreError, type SourceRange } from './source';

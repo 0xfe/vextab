@@ -1,5 +1,5 @@
 // The fixed and responsive renderers share VexFlow’s unpitched drum identities and staff positions.
-import { PercussionMap } from 'vexflow';
+import { PercussionMap } from 'vexflow/core';
 
 /** The standard kit describes both the noteheads and their readable instrument names. */
 export const drumKit = new PercussionMap();

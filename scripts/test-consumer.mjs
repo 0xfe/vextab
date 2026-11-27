@@ -1,7 +1,7 @@
 // Install the actual tarball in a fresh project and compile a typed browser consumer against it.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -12,6 +12,9 @@ const archive = resolve(process.argv[2]);
 const cwd = await mkdtemp(join(tmpdir(), 'vextab-consumer-'));
 await writeFile(join(cwd,'package.json'), JSON.stringify({name:'vextab-consumer',version:'1.0.0',private:true}));
 execFileSync('npm', ['install','--ignore-scripts','--no-audit','--no-fund','--no-package-lock',archive], { cwd, stdio:'inherit' });
+// Run the resolver inside the installed project in an ordinary Node ESM process.
+await copyFile(new URL('./fixtures/resolve-consumer.mjs', import.meta.url), join(cwd, 'resolve-consumer.mjs'));
+const resolvedCases = JSON.parse(execFileSync(process.execPath, ['resolve-consumer.mjs'], { cwd, encoding: 'utf8' }));
 // Hosts can compile and mount every public playback adapter without installing a synth.
 const consumerRequire = createRequire(join(cwd, 'package.json'));
 assert.throws(() => consumerRequire.resolve('spessasynth_lib'), { code: 'MODULE_NOT_FOUND' });
@@ -25,11 +28,16 @@ const previewCheck = "if (parseScore('staff { :w C4 | }').measureCount !== 1) pr
 execFileSync(process.execPath, ['--input-type=module','-e',"import {parseScore} from 'vextab/parse';" + previewCheck], { cwd });
 execFileSync(process.execPath, ['-e',"const {parseScore}=require('vextab/parse');" + previewCheck], { cwd });
 await writeFile(join(cwd,'consumer.ts'), `import { Div, parseScore, renderScore, renderScorePart, type ScoreV2, type PlaybackPlugin, createSpessaSynthPlayback } from 'vextab/browser';
+import { resolvePart, type ParsedScore, type PartSelector } from 'vextab/resolve';
 import VexFlow from 'vexflow';
 import { Vex } from 'vextab/browser';
 if (Vex !== VexFlow) throw Error('Multiple engraving engines');
 const host = document.getElementById('manual')!;
 const score: ScoreV2 = parseScore('meter 1/4 staff { C4 | }');
+const selector: PartSelector = { partIndex: 0 };
+const resolved: ParsedScore = resolvePart(score, selector);
+const sounding: string | null = resolved.measures[0].voices[0].events[0].heads[0].sounding;
+if (sounding !== 'c/4') throw Error('Unexpected resolved pitch');
 const preview: ScoreV2 = parseScore('meter common staff { :w C4 | text words { :h "One" "two" | } }');
 if (preview.parts[0].staves[0].voices[0].events[0].duration !== '1/1') throw new Error('bad preview timing');
 renderScore(document.getElementById('preview')!, preview, { renderer: 'canvas' });
@@ -86,6 +94,16 @@ try {
   await embed.locator('.vextab-auto svg .vf-stavenote').waitFor();
   await embed.locator('.vex-tabdiv canvas').waitFor();
   assert.ok(await embed.evaluate(() => window.vextab.Vex === window.VexFlow && window.VexTabDiv.Flow === window.VexFlow));
+  for (const { document, selector, part } of resolvedCases) {
+    const rendered = await embed.evaluate(({ score, selector }) => {
+      const host = window.document.createElement('div');
+      window.document.body.append(host);
+      const result = window.vextab.renderScore(host, score, selector).score;
+      host.remove();
+      return JSON.stringify(result);
+    }, { score: document, selector });
+    assert.deepEqual(JSON.parse(rendered), part);
+  }
   // Exercise every authored guide score with only the two installed scripts, including print fonts.
   const fixtures = new URL('../guide/scores/', import.meta.url);
   for (const name of (await readdir(fixtures)).filter(file => file.endsWith('.vextab'))) {

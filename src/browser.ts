@@ -19,6 +19,7 @@ export {
 };
 
 export { parseScore, ScoreError, ScoreV2Error, type ScoreCapacity, type ScoreV2, type ParsedScore, type SourceRange } from './score/parse';
+export { resolvePart, type PartSelector } from './score/resolve';
 export { renderScore, renderConductor, renderEdition, renderScorePart, type Part } from './score/layout';
 
 export * from './playback/performer';

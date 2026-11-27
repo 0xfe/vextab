@@ -83,6 +83,28 @@ const player = new Player(score, { controls, playback });
 
 For an editable embed, set `data-editor="true"` on the source element. See [milestone 3 verification](../issues/182/parity.md) for the comparison scores and output-specific limits.
 
+### Resolve a part before engraving
+
+Use `resolvePart` in a Node program, a worker or a browser to read the notes a musician will play. It returns the same measured part that `renderScore(...).score` exposes. A MIDI exporter can read sounding pitches while a notation editor uses written pitches from the same events.
+
+```js
+import { parseScore } from 'vextab/parse';
+import { resolvePart } from 'vextab/resolve';
+
+const document = parseScore('meter 2/4 staff cello { :h C3 | } staff reed { sounds -2 :q D4 rest | }');
+const reed = resolvePart(document, { partId: 'reed' });
+const [note, rest] = reed.measures[0].voices[0].events;
+console.log(note.heads[0].written, note.heads[0].sounding); // d/4, c/4
+console.log(rest.onset, rest.duration); // 1/4, 1/4
+```
+
+Select an instrument by its declared `partId` or zero-based `partIndex`. Omitting both selects the first instrument. An unknown ID, an invalid index, or selectors that identify different instruments throw `RangeError`. Browser integrations can also import `resolvePart` from `vextab/browser`.
+
+- Measures appear in written order, numbered from one including a pickup. Measure spans, event durations and onsets are whole-note fractions. Onsets start at zero in each measure. Tuplet durations include their timing ratio.
+- Read each measure’s `voices` in source staff and voice order. Each v2 voice has a `name`. Each event has an `id`, `range`, and `heads`. A rest occupies time and has an empty head list. Structured chord symbols appear on the event as `harmony` with a root, quality and optional bass.
+- Tie endpoints identify the events by `from` and `to` and the chord heads by zero-based `fromHead` and `toHead`. Use `document.source.slice(event.range.start, event.range.end)` to recover the authored text.
+- Treat the resolved part as read-only. VexTab caches it for the parsed document. Join event IDs to a render of that revision, and resolve a new part after an edit.
+
 ### Working with historical scores
 
 ```js

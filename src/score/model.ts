@@ -88,6 +88,8 @@ export interface Bar {
 export type PianoHand = 'right' | 'left';
 
 export interface MeasureVoice {
+  /** Grammar-v2 voice name, shared by every measure of the line. */
+  name?: string;
   /** A hand identifies the physical stave, independently of this voice's stem direction. */
   hand?: PianoHand;
   declaration: SourceRange;

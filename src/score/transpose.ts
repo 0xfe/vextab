@@ -1,5 +1,5 @@
 // Transpose parsed VexTab tokens before either compiler builds a score. Ranges refer to the original source.
-import VexFlow, { Music, NotationSpelling, Tuning } from 'vexflow';
+import VexFlow, { Music, NotationSpelling, Tuning } from 'vexflow/core';
 import { midiPitch } from './music';
 
 /** Jison's options, attacks, and commands share a location, with fields specific to their production. */

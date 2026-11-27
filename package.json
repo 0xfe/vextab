@@ -118,6 +118,10 @@
             "types": "./dist/runtime/types/score/parse.d.ts",
             "default": "./dist/runtime/parse.mjs"
         },
+        "./resolve": {
+            "types": "./dist/runtime/types/score/resolve.d.ts",
+            "default": "./dist/runtime/resolve.mjs"
+        },
         "./performer": {
             "types": "./dist/runtime/types/playback/performer.d.ts",
             "default": "./dist/runtime/performer.mjs"

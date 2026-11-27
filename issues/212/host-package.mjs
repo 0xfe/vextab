@@ -33,9 +33,12 @@ function inputsOf(graph, entry) {
   visit(entry);
   return [...inputs];
 }
-for (const entry of ['auto', 'browser', 'parse', 'performer']) {
+for (const entry of ['auto', 'browser', 'parse', 'resolve', 'performer']) {
   assert.ok(inputsOf(modules, 'dist/runtime/' + entry + '.mjs').every(file => !file.startsWith('importer/')));
 }
+const parserInputs = inputsOf(modules, 'dist/runtime/parse.mjs');
+assert.ok(!parserInputs.includes('src/score/grammar2/project.ts'), 'Syntax-only imports must omit the part projection');
+assert.ok(!inputsOf(modules, 'dist/runtime/resolve.mjs').includes('src/score/layout.ts'), 'Resolving a part must omit screen rendering');
 assert.ok(inputsOf(browser, 'dist/runtime/vextab.js').every(file => !file.startsWith('importer/')));
 for (const name of ['musicxml', 'mxl', 'lilypond']) {
   const inputs = inputsOf(modules, 'dist/runtime/import/' + name + '.mjs');

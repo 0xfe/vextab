@@ -64,7 +64,7 @@ function configuration(env, gallery) {
       }),
     },
     externals: [({ request, contextInfo }, done) => {
-      if (request === 'vexflow') return done(null, contextInfo.issuerLayer === 'npm'
+      if (request === 'vexflow' || request === 'vexflow/core') return done(null, contextInfo.issuerLayer === 'npm'
         ? 'commonjs vexflow' : 'var globalThis.VexFlow');
       if (guideSite && request?.endsWith('/src/browser')) return done(null, 'var globalThis.vextab');
       done();
