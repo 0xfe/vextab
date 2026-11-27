@@ -56,9 +56,17 @@ catch (error) {
 </section>
 <section id="layout">
   <h2>Rendering and navigation</h2>
-  <article id="render-score"><h3>renderScore(host, score, options?)</h3><p>Pass a host element, a parsed score and optional layout settings. The default renderer produces SVG. <code>width</code> is measured in CSS pixels and must exceed 20. It defaults to the host width, or 640 when the host has no width. Choose <code>part: 'score'</code> for the authored staves, <code>'notation'</code> for the staff or <code>'tab'</code> for the frets. Successful layout replaces the host contents and returns the composition, navigation data, hit regions and diagnostics.</p>
+  <article id="render-score"><h3>renderScore(host, score, options?)</h3><p>Pass a host element, a parsed score and optional layout settings. The default renderer produces SVG. <code>width</code> is measured in CSS pixels and must exceed 20. It defaults to the host width, or 640 when the host has no width. Choose <code>part: 'score'</code> for the authored staves, <code>'notation'</code> for the staff or <code>'tab'</code> for the frets. Successful layout replaces the host contents and returns the composition, navigation data, hit regions, diagnostics and a written-time layout map.</p>
     <pre>const score = parseScore(input.value);
 const view = renderScore(preview, score, { width: 640, part: 'tab' });</pre></article>
+  <article id="layout-map"><h3>view.layoutMap</h3><p>Use the map returned by <code>renderScore</code> or <code>renderConductor</code> to place a cursor at a written time or seek from a pointer event. A measure starts at offset zero. Offsets count whole notes, including time inside rests. Get a fresh map when the score reflows. <a href="https://github.com/0xfe/vextab/blob/master/docs/layout-map.md">Coordinates, staff selection and return fields</a></p>
+    <pre>const map = view.layoutMap;
+const cursor = map.positionAt({ partIndex: 0, measure: 1, offset: '3/4' });
+preview.addEventListener('pointerdown', event =&gt; {
+  const point = map.clientPoint(event);
+  const location = point &amp;&amp; map.hitTest(point);
+  if (location) seek(location.measure, location.offset);
+});</pre></article>
   <article id="navigation"><h3>navigation.events and hitTest(x, y)</h3><p>Use <code>view.navigation.events</code> to read labelled attacks in musical order. For a pointer selection, convert the screen position to SVG-local coordinates and pass them to <code>view.hitTest(x, y)</code>. It returns the hit region, or <code>undefined</code> in empty space. A tie across a system break can occupy more than one region.</p></article>
   <article id="source-mapping"><h3>sourceFor(id) and rangeFor(id, source)</h3><p>Pass a screen or print ID to <code>sourceFor(id)</code> to recover the shared musical ID. For an editor selection, pass the ID and the current source string to <code>rangeFor</code>. An unknown ID or a changed source string yields <code>undefined</code>.</p>
     <pre>const range = view.rangeFor(view.navigation.events[0].id, input.value);

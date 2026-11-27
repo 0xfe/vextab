@@ -5,6 +5,7 @@
  * live-editing and error display support.
  */
 
+import { screenClientPoint } from './score/layout-map';
 import $ from 'zepto-webpack';
 import Vex from './vexflow';
 import Artist from './artist';
@@ -360,18 +361,10 @@ class Div {
       ? renderConductor(host, score, { width, renderer })
       : renderScore(host, score, { width, part: this.part, renderer });
     const surface = host.querySelector<HTMLCanvasElement | SVGSVGElement>('svg, canvas');
+    const clientPoint = screenClientPoint(surface);
     if (this.text_area) surface.addEventListener('click', (event: MouseEvent) => {
-      let point: DOMPoint;
-      if (surface instanceof SVGSVGElement) {
-        const transform = surface.getScreenCTM();
-        if (!transform) return;
-        point = new DOMPoint(event.clientX, event.clientY).matrixTransform(transform.inverse());
-      } else {
-        const rect = surface.getBoundingClientRect();
-        if (!rect.width || !rect.height) return;
-        point = new DOMPoint((event.clientX - rect.left) * surface.clientWidth / rect.width,
-          (event.clientY - rect.top) * surface.clientHeight / rect.height);
-      }
+      const point = clientPoint(event);
+      if (!point) return;
       const hit = layout.hitTest(point.x, point.y);
       if (hit) this.selectSource(hit.id, revision);
     });
