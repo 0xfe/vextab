@@ -21,6 +21,8 @@ export {
 export { parseScore, ScoreError, ScoreV2Error, type ScoreCapacity, type ScoreV2, type ParsedScore, type SourceRange } from './score/parse';
 export { renderScore, renderConductor, renderEdition, renderScorePart, type Part } from './score/layout';
 
+export type { ScoreLocation, ScoreBounds, ScoreLayoutPosition, ScoreLayoutMap } from './score/layout-map';
+
 export * from './playback/performer';
 export { createWebAudioPlayback } from './playback/web-audio';
 export { createSpessaSynthPlayback, type SpessaSynthHost } from './playback/spessasynth';

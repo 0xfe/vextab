@@ -1,5 +1,6 @@
 // Project the shared score into fresh VexFlow objects for each screen or publication view.
 import { staveRow, printedGeometry, scoreSurfaces, type PrintAnchor, type Geometry } from '../playback/geometry';
+import { scoreLayoutMap, screenClientPoint, type ScoreLayoutMap } from './layout-map';
 import { lyrics } from './verses';
 import { editionSettings, type EditionOptions } from './editions';
 import { locations, projectScoreV2 } from './grammar2/project';
@@ -613,7 +614,7 @@ function hiddenNotes(parsed: ParsedScore, view: Projection) {
 type ScreenOptions = { width?: number; renderer?: 'svg' | 'canvas' };
 
 /** A native part view borrows the conductor's systems and owns just its stave columns. */
-type ScreenInstrument = { score: ParsedScore; view: Projection; local: EasyScoreComposition };
+type ScreenInstrument = { partIndex: number; score: ParsedScore; view: Projection; local: EasyScoreComposition };
 
 /** Preserve VexTab's keyboard access to authored skips, which native reading order omits. */
 class VexTabNavigation extends ScoreNavigation {
@@ -669,8 +670,9 @@ function playbackGeometry(composition: EasyScoreComposition, instruments: Screen
 export function renderScore(host: HTMLElement, source: ParsedScore | ScoreV2,
   options: ScreenOptions & PartSelector & { part?: Part } = {}) {
   const part = options.part ?? 'score';
-  const selected = 'parts' in source ? projectScoreV2(source, selectedPart(source, options)) : source;
-  return withScoreFonts(selected.layout?.font, () => renderParts(host, [selectVoices(selected, part)], part, options));
+  const index = 'parts' in source ? selectedPart(source, options) : 0;
+  const selected = 'parts' in source ? projectScoreV2(source, index) : source;
+  return withScoreFonts(selected.layout?.font, () => renderParts(host, [selectVoices(selected, part)], part, options, false, index));
 }
 
 /** Build one native conductor composition and retain each source instrument for independent extraction. */
@@ -679,7 +681,7 @@ export function renderConductor(host: HTMLElement, document: ScoreV2, options: S
 }
 
 /** Prepare fresh native objects for the requested surface. Commit the DOM only after successful layout. */
-function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, options: ScreenOptions, conductor = false) {
+function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, options: ScreenOptions, conductor = false, firstPart = 0) {
   const parsed = scores[0];
   const width = options.width ?? parsed.layout?.width ?? (host.clientWidth || 640);
   if (!Number.isFinite(width) || width <= 20) throw new RangeError('Score width must exceed 20 pixels');
@@ -714,7 +716,7 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
     const local = views.length === 1 ? composition : instrumentComposition(composition, offset, view.staves.length);
     offset += view.staves.length;
     const score = scores[i];
-    return { score, view, local };
+    return { partIndex: firstPart + i, score, view, local };
   });
 
   function resize(sheet: EasyScoreComposition['sheet'], markBottom = 0) {
@@ -807,8 +809,15 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
     }
   }
 
-  scoreSurfaces.set(canvas ?? (ctx as SVGContext).svg, { score: parsed, ensemble: conductor ? scores : undefined, read: () => withScoreFonts(parsed.layout?.font, () => playbackGeometry(composition, instruments, navigation)) });
+  const music = canvas ?? (ctx as SVGContext).svg;
+  const clientPoint = screenClientPoint(music);
+  let layoutMap: ScoreLayoutMap;
+  scoreSurfaces.set(music, { score: parsed, ensemble: conductor ? scores : undefined, read: () => withScoreFonts(parsed.layout?.font, () => playbackGeometry(composition, instruments, navigation)) });
   return { score: parsed, parts: scores, composition, navigation, hitTest, tabRegions, extraRegions, diagnostics, rangeFor, headRangeFor,
+    // Build the written-time index only for callers that request it.
+    get layoutMap(): ScoreLayoutMap {
+      return layoutMap ??= withScoreFonts(parsed.layout?.font, () => scoreLayoutMap(composition, instruments, navigation.heads, readingStaves, clientPoint));
+    },
     sourceFor: (id: string): string | undefined => sources[id] };
 }
 
