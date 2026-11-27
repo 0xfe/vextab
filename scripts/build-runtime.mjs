@@ -30,6 +30,7 @@ const modules = await build({
   ...options, format: 'esm', platform: 'neutral', mainFields: ['module', 'main'],
   entryPoints: {
     auto: 'src/auto.ts', browser: 'src/browser.ts', parse: 'src/score/parse.ts', performer: 'src/playback/performer.ts',
+    resolve: 'src/score/resolve.ts',
     ...Object.fromEntries(formats.map(name => ['import/' + name, 'importer/src/' + name + '.ts'])),
   },
   // Resolve from the root lockfile even when the importer test workspace has its own install.
@@ -42,7 +43,7 @@ const browser = await build({
   plugins: [assets, {
     name: 'browser-vexflow',
     setup(builder) {
-      builder.onResolve({ filter: /^vexflow$/ }, () => ({ path: 'vexflow', namespace: 'browser' }));
+      builder.onResolve({ filter: /^vexflow(?:\/core)?$/ }, () => ({ path: 'vexflow', namespace: 'browser' }));
       builder.onLoad({ filter: /.*/, namespace: 'browser' }, () => ({
         contents: 'if (!window.VexFlow) throw new Error("Load vexflow.js before vextab.js."); module.exports = window.VexFlow;',
       }));

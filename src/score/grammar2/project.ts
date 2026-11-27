@@ -1,7 +1,7 @@
 // Translate one v2 instrument into the measured score used by engraving, printing, navigation and playback.
 import { resolveVerseLinks } from '../verses';
 import { duplicateMark } from './marks.mts';
-import { NotationSpelling, PercussionMap, Fraction, FrettedInstrument, KeyManager, Music, Tuning } from 'vexflow';
+import { NotationSpelling, PercussionMap, Fraction, FrettedInstrument, KeyManager, Music, Tuning } from 'vexflow/core';
 import type { Attack, Head, Measure, MeasureVoice, ParsedScore, StaffState } from '../model';
 import { midiPitch, soundingGuitarPitch, spellFret } from '../music';
 import { Interval, transposeChord } from '../transpose';
@@ -416,7 +416,7 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
       const displayed = score.transpose ? changes.map(change => change.key
         ? { ...change, key: new Interval(score.transpose, change.key).target } : change) : changes;
       const openingState = { key: state.key, clef: activeClef, changes: displayed };
-      const value: MeasureVoice = { declaration: locate(voice.range), hand, span, events: voice.events.slice(bar.start, bar.end).map(voiceAttack),
+      const value: MeasureVoice = { name: voice.name, declaration: locate(voice.range), hand, span, events: voice.events.slice(bar.start, bar.end).map(voiceAttack),
         tuplets: [], stem: engraving.stem, beams: engraving.beam ?? true, flatBeams: engraving.flatBeams, beamRests: engraving.beamRests ?? true, beatGroups: engraving.beatGroups, stemlets: engraving.stemlets ?? false, middleRests: engraving.middleRests ?? false, tabStems: engraving.tabStems ?? false,
         rehearsal: bar.rehearsal, opening: bar.opening ? { type: bar.opening, range } : undefined, closing: bar.closing ? { type: bar.closing, range } : undefined, tabDirection: engraving.tabDirection === 'down' ? -1 : 1
       };

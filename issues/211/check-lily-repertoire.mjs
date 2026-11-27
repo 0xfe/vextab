@@ -23,7 +23,7 @@ function player() {
       "export {measureVisits} from './src/playback/visits.ts';",
       "export {scorePerformance} from './src/playback/performance.ts';"
     ].join('\n'), resolveDir: root },
-    bundle: true, format: 'cjs', platform: 'node', alias:{vexflow:'vexflow/core'}, loader:{'.jison':'text'}, outfile: file
+    bundle: true, format: 'cjs', platform: 'node', loader:{'.jison':'text'}, outfile: file
   });
   return require(file);
 }

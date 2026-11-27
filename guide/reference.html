@@ -5,6 +5,12 @@
     <p>Use this module to validate music in Node.js or a worker. <code>parseScore(source)</code> returns a <code>ScoreV2</code> document or throws <code>ScoreV2Error</code>. With <code>{ language: 1 }</code>, the result is a <code>ParsedScore</code> and parse errors use <code>ScoreError</code>. Both CommonJS and ES module callers can use this entry.</p>
     <pre>import { parseScore } from 'vextab/parse';
 const score = parseScore('meter 1/4 staff { C4 | }');</pre></article>
+  <article id="resolve-module"><h3>vextab/resolve</h3>
+    <p>Resolve one grammar-v2 instrument for analysis, playback or export. Its measures and voices contain the same pitches, chord symbols, timing and event IDs as the rendered part. Select an instrument by ID or zero-based index, or omit the selector for the first part. Unknown instruments raise <code>RangeError</code>.</p>
+    <pre>import { resolvePart } from 'vextab/resolve';
+const part = resolvePart(score, { partIndex: 0 });
+const events = part.measures[0].voices[0].events;</pre>
+  </article>
   <article id="browser-module"><h3>vextab/browser</h3>
     <p>Import <code>Div</code> to mount an editor on an existing element. For a separate preview, import <code>parseScore</code> and <code>renderScore</code>. The same entry exports part and conductor renderers, <code>Player</code> and its audio adapters, and the legacy <code>Artist</code>, <code>VexTab</code> and <code>Vex</code> objects.</p>
     <pre>import { Div, parseScore, renderScore } from 'vextab/browser';</pre></article>

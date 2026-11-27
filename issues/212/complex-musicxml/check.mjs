@@ -32,7 +32,6 @@ buildSync({
   bundle: true,
   format: 'cjs',
   platform: 'node',
-  alias: { vexflow: 'vexflow/core' },
   loader: { '.jison': 'text' },
   outfile: player,
 });
