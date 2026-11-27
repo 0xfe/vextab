@@ -1,5 +1,5 @@
 // Realize unmeasured grace groups and ornaments within the principal attack's written time.
-import { KeyManager } from 'vexflow';
+import { KeyManager } from 'vexflow/core';
 import type { Attack } from '../score/model';
 import { midiPitch } from '../score/music';
 import type { PlaybackEvent } from './transport';

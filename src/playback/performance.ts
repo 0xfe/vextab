@@ -2,7 +2,7 @@
 import type { createPerformer, PerformanceBar } from './performer';
 import { measureVisits } from './visits';
 import { decorateAttack } from './decorations';
-import VexFlow, { KeyManager } from 'vexflow';
+import VexFlow, { KeyManager } from 'vexflow/core';
 import { midiPitch } from '../score/music';
 import type { SourceRange } from '../score/source';
 import type Artist from '../artist';

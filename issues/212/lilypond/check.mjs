@@ -26,7 +26,7 @@ function literalPlayer(){
     "export {projectScoreV2} from './src/score/grammar2/project';",
     "export {scorePerformance} from './src/playback/performance';",
     "export {measureVisits} from './src/playback/visits';",
-  ].join('\n'),resolveDir:root},bundle:true,format:'cjs',platform:'node',alias:{vexflow:'vexflow/core'},
+  ].join('\n'),resolveDir:root},bundle:true,format:'cjs',platform:'node',
   loader:{'.jison':'text'},outfile:path});
   return createRequire(import.meta.url)(path);
 }
