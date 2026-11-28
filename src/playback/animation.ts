@@ -2,25 +2,15 @@
 import type { Geometry, PlaybackRow, Point } from './geometry';
 import type { Performance } from './transport';
 
-const ns = 'http://www.w3.org/2000/svg';
-export const anticipation = 0.075; // Seconds from first visible colour to the attack.
-let nextGradient = 0;
-
-function svg<K extends keyof SVGElementTagNameMap>(name: K, attrs: Record<string, string | number> = {}) {
-  const el = document.createElementNS(ns, name);
-  for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, String(value));
-  return el;
-}
+import { anticipation, glowOpacity, PlaybackInk, svg } from './ink';
+export { anticipation } from './ink';
 
 interface Pulse { time: number; end: number; heads: Point[]; row: PlaybackRow }
 interface Anchor { time: number; x: number; row: PlaybackRow; slope: number; speed: number }
 
 /** Pool the visible dots, and interpolate between the actual engraved attacks on each system. */
 export class PlaybackAnimation {
-  private readonly layer = svg('g', { class: 'vextab-playback-ink', 'pointer-events': 'none', 'aria-hidden': 'true' });
-  private readonly bar = svg('line', { stroke: '#a8a8a8', 'stroke-opacity': .55, 'stroke-width': 3.5, 'stroke-linecap': 'round' });
-  private readonly gradient = 'vextab-glow-' + ++nextGradient;
-  private readonly dots: { node: SVGEllipseElement; point?: Point; opacity?: number }[] = [];
+  private readonly ink = new PlaybackInk();
   private readonly anchors: Anchor[] = [];
   private readonly pulses: Pulse[] = [];
   private readonly active: Pulse[] = [];
@@ -33,14 +23,6 @@ export class PlaybackAnimation {
 
   constructor(private surface: SVGElement | undefined, private music: Performance, geometry: Geometry,
     private follow?: (bar: SVGLineElement, newSystem: boolean) => void) {
-    const gradient = svg('radialGradient', { id: this.gradient });
-    // Let the engraved ink show through the center. Peak just outside it, then feather into the paper.
-    for (const [offset, opacity] of [[0, .50], [.32, .72], [.52, .60], [.76, .22], [1, 0]]) {
-      gradient.append(svg('stop', { offset, 'stop-color': 'currentColor', 'stop-opacity': opacity }));
-    }
-    const defs = svg('defs');
-    defs.append(gradient);
-    this.layer.append(defs, this.bar);
     for (const event of music.events) {
       const pos = geometry.get(event.source);
       if (!pos) continue;
@@ -68,8 +50,8 @@ export class PlaybackAnimation {
   private rowLayer(row: PlaybackRow): SVGGElement {
     const paper = row.printedPage;
     if (!paper) {
-      if (!this.layer.parentNode) this.surface?.append(this.layer);
-      return this.layer;
+      if (!this.ink.layer.parentNode) this.surface?.append(this.ink.layer);
+      return this.ink.layer;
     }
     const mounted = this.printedRows.get(row);
     if (mounted) return mounted;
@@ -85,7 +67,7 @@ export class PlaybackAnimation {
       overlay.style.cssText = 'pointer-events:none;background:transparent;border-color:transparent';
       wrapper.append(paper, overlay);
       this.pages.set(paper, overlay);
-      if (!this.layer.parentNode) overlay.append(this.layer);
+      if (!this.ink.layer.parentNode) overlay.append(this.ink.layer);
     }
     // Keep separate row groups so a new line can begin to glow before the bar wraps.
     const group = svg('g', { transform: 'scale(' + row.scale + ')',
@@ -98,9 +80,9 @@ export class PlaybackAnimation {
   /** Move the playhead to the coordinate system of the next stave or system. */
   private moveToRow(row: PlaybackRow) {
     const group = this.rowLayer(row);
-    group.prepend(this.bar);
-    this.bar.setAttribute('y1', String(row.top));
-    this.bar.setAttribute('y2', String(row.bottom));
+    group.prepend(this.ink.bar);
+    this.ink.bar.setAttribute('y1', String(row.top));
+    this.ink.bar.setAttribute('y2', String(row.bottom));
     this.row = row;
   }
 
@@ -114,7 +96,7 @@ export class PlaybackAnimation {
       const newSystem = here.row !== this.row;
       if (newSystem) this.moveToRow(here.row);
       this.drawBar(time, here, this.anchors[this.anchor + 1]);
-      this.follow?.(this.bar, newSystem);
+      this.follow?.(this.ink.bar, newSystem);
       this.drawHeads(time);
       this.frame = requestAnimationFrame(draw);
     };
@@ -130,7 +112,7 @@ export class PlaybackAnimation {
     const endSpeed = sameRow ? next.speed : here.slope;
     const ease = (1 - t) * (here.speed * span - distance) + t * (distance - endSpeed * span);
     const x = here.x + t * distance + t * (1 - t) * ease;
-    this.bar.setAttribute('transform', 'translate(' + x + ' 0)');
+    this.ink.bar.setAttribute('transform', 'translate(' + x + ' 0)');
   }
 
   /** Compact the active set in place. Frame work scales with audible polyphony. */
@@ -142,42 +124,17 @@ export class PlaybackAnimation {
     for (const p of this.active) {
       if (p.end <= time) continue;
       this.active[alive++] = p;
-      const length = p.end - p.time;
-      const rise = Math.min(anticipation, length / 2);
-      const fade = Math.min(.14, length / 2);
-      const opacity = Math.min(1, (time - p.time + rise) / rise, (p.end - time) / fade);
-      if (opacity > 0) for (const point of p.heads) this.drawDot(used++, point, opacity, p.row);
+      const opacity = glowOpacity(time, p.time, p.end);
+      if (opacity > 0) for (const point of p.heads) this.ink.drawDot(used++, point, opacity, this.rowLayer(p.row));
     }
     this.active.length = alive;
-    for (let i = used; i < this.dots.length; i++) {
-      const dot = this.dots[i];
-      if (dot.opacity !== 0) dot.node.setAttribute('opacity', '0');
-      dot.opacity = 0;
-    }
-  }
-
-  /** Reuse each ellipse and leave sustained notes alone between frames. */
-  private drawDot(index: number, point: Point, opacity: number, row: PlaybackRow) {
-    let dot = this.dots[index];
-    if (!dot) {
-      dot = { node: svg('ellipse', { rx: 17, ry: 13, fill: 'url(#' + this.gradient + ')', stroke: 'none' }) };
-      this.dots.push(dot);
-    }
-    if (dot.point !== point) {
-      const group = this.rowLayer(row);
-      if (dot.node.parentNode !== group) group.append(dot.node);
-      dot.node.setAttribute('cx', String(point.x));
-      dot.node.setAttribute('cy', String(point.y));
-      dot.point = point;
-    }
-    if (dot.opacity !== opacity) dot.node.setAttribute('opacity', String(opacity));
-    dot.opacity = opacity;
+    this.ink.hideUnused(used);
   }
 
   /** Stop schedules no further frames and restores the untouched printed page. */
   stop() {
     cancelAnimationFrame(this.frame);
-    this.layer.remove();
+    this.ink.layer.remove();
     for (const [paper, overlay] of this.pages) overlay.parentElement?.replaceWith(paper);
   }
 }

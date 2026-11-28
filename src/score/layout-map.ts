@@ -66,7 +66,7 @@ interface Bar {
 }
 
 /** Only accept a complete, nonnegative whole-note fraction with a positive denominator. */
-function wholeNotes(offset: ScoreLocation['offset']): number {
+export function wholeNotes(offset: ScoreLocation['offset']): number {
   if (typeof offset === 'number') return offset;
   if (!/^\d+\/[1-9]\d*$/.test(offset)) return NaN;
   const [numerator, denominator] = offset.split('/').map(Number);

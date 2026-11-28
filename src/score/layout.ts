@@ -1,5 +1,6 @@
 // Project the shared score into fresh VexFlow objects for each screen or publication view.
 import { staveRow, printedGeometry, scoreSurfaces, type PrintAnchor, type Geometry } from '../playback/geometry';
+import { writtenPlaybackOverlay, type PlaybackOverlay } from '../playback/written-overlay';
 import { scoreLayoutMap, screenClientPoint, type ScoreLayoutMap } from './layout-map';
 import { lyrics } from './verses';
 import { editionSettings, type EditionOptions } from './editions';
@@ -691,7 +692,8 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
   const surface = document.createElement('div');
   const canvas = options.renderer === 'canvas' ? surface.appendChild(document.createElement('canvas')) : undefined;
   const ctx = canvas ? new CanvasContext(canvas.getContext('2d')) : new SVGContext(surface);
-  if (!canvas) setFretPaper(ctx, host);
+  if (canvas) surface.style.position = 'relative';
+  else setFretPaper(ctx, host);
 
   if (parsed.layout?.heading && !views[0].nativeHeading) spec.sheet.y += 125;
   if (views.some(view => view.mixedEndings.length)) spec.sheet.y += 20;
@@ -812,12 +814,16 @@ function renderParts(host: HTMLElement, scores: ParsedScore[], part: Part, optio
   const music = canvas ?? (ctx as SVGContext).svg;
   const clientPoint = screenClientPoint(music);
   let layoutMap: ScoreLayoutMap;
-  scoreSurfaces.set(music, { score: parsed, ensemble: conductor ? scores : undefined, read: () => withScoreFonts(parsed.layout?.font, () => playbackGeometry(composition, instruments, navigation)) });
+  const readGeometry = () => withScoreFonts(parsed.layout?.font, () => playbackGeometry(composition, instruments, navigation));
+  // Share a single written-time index between navigation and transport overlays on this render.
+  function getLayoutMap(): ScoreLayoutMap {
+    return layoutMap ??= withScoreFonts(parsed.layout?.font, () => scoreLayoutMap(composition, instruments, navigation.heads, readingStaves, clientPoint));
+  }
+  scoreSurfaces.set(music, { score: parsed, ensemble: conductor ? scores : undefined, read: readGeometry });
   return { score: parsed, parts: scores, composition, navigation, hitTest, tabRegions, extraRegions, diagnostics, rangeFor, headRangeFor,
-    // Build the written-time index only for callers that request it.
-    get layoutMap(): ScoreLayoutMap {
-      return layoutMap ??= withScoreFonts(parsed.layout?.font, () => scoreLayoutMap(composition, instruments, navigation.heads, readingStaves, clientPoint));
-    },
+    get layoutMap(): ScoreLayoutMap { return getLayoutMap(); },
+    /** Mount the guide's playback bar and sounding-head glows for an external clock. */
+    createPlaybackOverlay(): PlaybackOverlay { return writtenPlaybackOverlay(surface, music, getLayoutMap(), scores, readGeometry()); },
     sourceFor: (id: string): string | undefined => sources[id] };
 }
 
