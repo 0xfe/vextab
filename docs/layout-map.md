@@ -49,3 +49,20 @@ host.addEventListener('pointerdown', event => {
 A pointer within half a local engraving pixel of a column snaps to that exact onset. Elsewhere, the returned offset is interpolated. Allow half a local pixel when mapping the result back to the screen. Inside a staff band the map follows rhythmic columns, so every interpolated position can round-trip. Outside the bands it also recognizes a visible ledger-line notehead and returns its attack. Other empty space returns `undefined`. Use `view.hitTest(x, y)` for the identity of the printed glyph under the pointer, including an optically displaced chord head. An unknown part, staff, measure or out-of-range offset also returns `undefined` from `positionAt`.
 
 A map belongs to one rendered surface. After rendering again at a different width, use the new view's map and look up the saved written location again. CSS scaling alone preserves the engraving. `clientPoint` reads the current display transform for each pointer event. Keep the source revision with any stored event ID.
+
+## Draw playback from an external clock
+
+Each screen score or conductor view can draw the guide’s playback bar and notehead glows on SVG or Canvas. Feed it the written address from your transport. A seek, repeat or loop can move to any address in either direction.
+
+```js
+const ink = view.createPlaybackOverlay();
+const saved = { partIndex: 0, measure: 2, offset: '1/8' };
+ink.setPosition(saved, 96); // Quarter notes per minute, including live tempo changes.
+ink.clear();                // Hide the bar and glows during a count-in.
+ink.setPosition(saved);     // Resume at the saved address.
+ink.dispose();              // Release the overlay when replacing the view.
+```
+
+The address selects a column on the shared system. Every displayed voice contributes its sounding heads, including held chords, both piano hands and simultaneous conductor parts. Rests and silent heads carry no glow. The bar spans the active system, and pointer events pass through to the score. An address outside the rendered score clears the overlay.
+
+Call `setPosition` when your transport updates. The overlay draws synchronously. The optional positive tempo controls the 75 ms anticipation and 140 ms fade within the current measure. Short notes use half their duration for each effect. The default is the score’s initial tempo or 120 BPM. After reflow, create an overlay on the new view and pass the saved address again.

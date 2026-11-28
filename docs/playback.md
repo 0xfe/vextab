@@ -63,6 +63,8 @@ The same settings work on an HTML embed with `data-playback-controls="always"`, 
 
 To enable the sheet controls from JavaScript, pass <code>{ player: true }</code> to <code>new Div(host, options)</code>. To put buttons in your own toolbar, pass <code>{ playback, playbackControls: toolbar }</code> as the second argument to <code>new Div</code>. This enables playback for the embed without changing its source text. A standalone <code>Player</code> accepts <code>{ playback, controls: toolbar }</code> and mounts the buttons when you call <code>render()</code>. To animate a score drawn with <code>renderScore</code>, pass its SVG to <code>player.render(svg)</code>. For an extracted part, construct the player with the score returned by <code>renderScorePart</code> and pass its first page SVG.
 
+A host that owns its playback clock can draw VexTab’s bar and notehead glows by sending the current written position to a screen score or conductor view. [External playback overlay](layout-map.md#draw-playback-from-an-external-clock)
+
 ## Play a score without a renderer
 
 ```ts

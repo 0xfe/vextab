@@ -1,6 +1,7 @@
 // Register grammar v2, public API and historical-reader compatibility tests.
 import './engraving';
 import './layout-map';
+import './playback-overlay';
 import './part-engraving';
 import './drums';
 import './open-slides';
