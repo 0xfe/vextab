@@ -9,7 +9,7 @@ import { frame, resolveMarks } from '../commands';
 import { isScoreColor } from '../color';
 import { drumKit } from '../drums';
 import { ScoreError, type SourceRange } from '../source';
-import type { EventMark, ScoreV2, Head as WrittenHead, ScoreVoice, ScoreEvent, TextRange } from './model';
+import type { EventMark, ScoreV2, Head as WrittenHead, ScoreVoice, ScoreEvent, TextRange, WrittenRepeat } from './model';
 
 /** Index the original revision once. CRLF and non-BMP characters keep their DOM selection offsets. */
 export function locations(source: string) {
@@ -79,6 +79,8 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
   };
   const measures: Measure[] = [];
   const projected: ParsedScore = { ...(score.groups && { groups: score.groups }), ...(instrument && { instrument }), source: score.source, measures, ties: [], spans: [], playback: score.playback, layout: score.layout, measureNumbers: score.measureNumbers ?? false };
+  // Each stack holds the shared scopes at one written body, outermost first.
+  const repeatScopes = new Map<string, WrittenRepeat[]>();
   projected.program = part.program;
   const kit = part.drums?.length ? new PercussionMap([...PercussionMap.kit, ...part.drums]) : drumKit;
   if (part.kind === 'drums') state.kit = kit;
@@ -448,14 +450,39 @@ export function projectScoreV2(score: ScoreV2, index = 0): ParsedScore {
     addSpans(voice, voices);
   }
 
+  /** Match repeated markings across voices by their body and nesting level. */
+  function mergeRepeatScopes(repeats: WrittenRepeat[]) {
+    const depths = new Map<string, number>();
+    const added: WrittenRepeat[] = [];
+    // The compiler emits children before parents. Read backwards so a voice that
+    // marks only the outer repeat still matches the other voice's outer scope.
+    for (let i = repeats.length - 1; i >= 0; i--) {
+      const repeat = repeats[i];
+      const body = repeat.first + ':' + repeat.bodyEnd;
+      const depth = depths.get(body) ?? 0;
+      depths.set(body, depth + 1);
+      const scopes = repeatScopes.get(body) ?? [];
+      const shared = scopes[depth];
+      if (!shared) {
+        scopes.push(repeat);
+        repeatScopes.set(body, scopes);
+        added.push(repeat);
+      } else if (shared.count !== repeat.count) {
+        throw new ScoreError('measure', 'Voices disagree about the repeat count', locate(repeat.range));
+      } else if (shared.endings.length !== repeat.endings.length ||
+          shared.endings.some((ending, i) => ending.last !== repeat.endings[i].last)) {
+        throw new ScoreError('measure', 'Voices disagree about repeat endings', locate(repeat.range));
+      }
+    }
+    // Keep the original declaration ranges and compiler order in the public part.
+    if (added.length) (projected.repeats ??= []).push(...added.reverse());
+  }
+
   /** Endings describe shared bar boundaries even when only one voice declares the repeat. */
   function addEndings(voice: ScoreVoice) {
-    for (const repeat of voice.repeats ?? []) {
-      const sameBody = projected.repeats?.find(r => r.first === repeat.first && r.bodyEnd === repeat.bodyEnd);
-      if (sameBody && sameBody.count !== repeat.count)
-        throw new ScoreError('measure', 'Voices disagree about the repeat count', locate(repeat.range));
-      if (!projected.repeats?.some(r => r.first === repeat.first && r.bodyEnd === repeat.bodyEnd &&
-        r.count === repeat.count && r.endings.length === repeat.endings.length && r.endings.every((e, i) => e.last === repeat.endings[i].last))) (projected.repeats ??= []).push(repeat);
+    if (!voice.repeats?.length) return;
+    mergeRepeatScopes(voice.repeats);
+    for (const repeat of voice.repeats) {
       const range = locate(repeat.range);
       const lastBar = repeat.endings[repeat.endings.length - 1]?.last ?? repeat.bodyEnd;
       if (measures.slice(repeat.first - 1, lastBar).some(m => !m.voices[0].events.length))

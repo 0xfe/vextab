@@ -4,6 +4,7 @@ import { parseScore, Player, renderConductor, renderEdition, renderScorePart } f
 import { scoreSurfaces } from '../src/playback/geometry';
 import { scorePerformance } from '../src/playback/performance';
 import { measureVisits } from '../src/playback/visits';
+import { resolvePart } from '../src/score/resolve';
 import voice from '../issues/199/voice.vextab';
 import rhythm from '../issues/199/rhythm.vextab';
 import techniques from '../issues/199/techniques.vextab';
@@ -377,6 +378,29 @@ QUnit.module('Expressive notation and performance', () => {
     assert.equal(pair[0].getStemDirection(), pair[1].getStemDirection());
     const page = renderEdition(host(), score, {partId:'listener'}).publication.pages[0].svg;
     assert.ok(page.querySelector('[data-region="cue"] .vf-alternating-tremolo'));
+  });
+
+  QUnit.test('coincident counted repeats retain their written scopes and performed visits', assert => {
+    const nested = (inner: number, outer = 2) => `repeatCount ${outer} { repeatCount ${inner} { :q C4 | } } :q D4 |`;
+    const voices = (one: string, two: string) => parseScore(`meter 1/4 staff { voice a { ${one} } voice b { ${two} } }`);
+    for (const count of [2, 3]) {
+      const body = nested(count);
+      for (const model of [parseScore(`meter 1/4 staff { ${body} }`), voices(body, body)]) {
+        const part = resolvePart(model);
+        assert.deepEqual(part.repeats.map(r => model.source.slice(...r.range)), [
+          `repeatCount ${count} { :q C4 | }`, `repeatCount 2 { repeatCount ${count} { :q C4 | } }`,
+        ]);
+        assert.deepEqual(measureVisits(part, false), [1, 2]);
+        assert.deepEqual(measureVisits(part, true), [...Array(2 * count).fill(1), 2]);
+      }
+    }
+    const outer = 'repeatCount 2 { :q E4 | } :q F4 |';
+    for (const model of [voices(outer, nested(3)), voices(nested(3), outer)]) {
+      assert.deepEqual(measureVisits(resolvePart(model), true), [1, 1, 1, 1, 1, 1, 2]);
+    }
+    for (const conflicting of [nested(4), nested(3, 4), nested(2, 3)]) {
+      assert.throws(() => resolvePart(voices(nested(3), conflicting)), /Voices disagree about the repeat count/);
+    }
   });
 
   QUnit.test('repeat barlines and invalid expressive commands preserve their written locations', assert => {
